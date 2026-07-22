@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct UncoilApp: App {
@@ -19,7 +20,34 @@ struct UncoilApp: App {
                 }
                 .keyboardShortcut("O", modifiers: [.command, .shift])
             }
+            CommandMenu("Claude") {
+                Button("Hook'ları Kur") { runInstaller(install: true) }
+                Button("Hook'ları Kaldır") { runInstaller(install: false) }
+            }
         }
+    }
+
+    private func runInstaller(install: Bool) {
+        let alert = NSAlert()
+        do {
+            if install {
+                try HookInstaller.install()
+                alert.messageText = "Claude hook'ları kuruldu"
+                alert.informativeText = """
+                ~/.claude/settings.json güncellendi (önce yedeği alındı). \
+                Açık Claude oturumlarını yeniden başlattığında durum takibi başlar.
+                """
+            } else {
+                try HookInstaller.uninstall()
+                alert.messageText = "Claude hook'ları kaldırıldı"
+                alert.informativeText = "Uncoil'e ait girdiler silindi; diğer hook'lara dokunulmadı."
+            }
+        } catch {
+            alert.alertStyle = .warning
+            alert.messageText = install ? "Hook kurulamadı" : "Hook kaldırılamadı"
+            alert.informativeText = error.localizedDescription
+        }
+        alert.runModal()
     }
 }
 

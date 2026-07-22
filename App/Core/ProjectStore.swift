@@ -14,7 +14,7 @@ final class ProjectStore: ObservableObject {
         load()
     }
 
-    static func defaultDirectory() -> URL {
+    nonisolated static func defaultDirectory() -> URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Uncoil", isDirectory: true)
     }
@@ -24,6 +24,15 @@ final class ProjectStore: ObservableObject {
         guard !projects.contains(where: { $0.rootPath == path }) else { return }
         projects.append(Project(name: url.lastPathComponent, rootPath: path))
         save()
+    }
+
+    /// Longest-prefix match so agents running in worktree subdirectories
+    /// still resolve to their project.
+    func project(containing path: String) -> Project? {
+        let normalized = URL(fileURLWithPath: path).standardizedFileURL.path
+        return projects
+            .filter { normalized == $0.rootPath || normalized.hasPrefix($0.rootPath + "/") }
+            .max { $0.rootPath.count < $1.rootPath.count }
     }
 
     func removeProject(_ project: Project) {
@@ -49,6 +58,7 @@ final class ProjectStore: ObservableObject {
 @MainActor
 final class SessionStore: ObservableObject {
     @Published var sessions: [AgentSession] = []
+    var hookServer: HookServer?
 
     func session(for projectID: UUID) -> AgentSession? {
         sessions.first { $0.projectID == projectID && $0.status != .terminated }

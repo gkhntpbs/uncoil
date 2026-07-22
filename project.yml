@@ -18,6 +18,16 @@ settings:
     CODE_SIGN_STYLE: Automatic
 
 targets:
+  uncoil-hook:
+    type: tool
+    platform: macOS
+    sources:
+      - path: HookHelper
+    settings:
+      base:
+        PRODUCT_NAME: uncoil-hook
+        SKIP_INSTALL: true
+
   Uncoil:
     type: application
     platform: macOS
@@ -25,6 +35,16 @@ targets:
       - path: App
     dependencies:
       - package: SwiftTerm
+      - target: uncoil-hook
+        embed: false
+    postBuildScripts:
+      - name: Embed uncoil-hook helper
+        script: |
+          cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-hook"
+        inputFiles:
+          - $(BUILT_PRODUCTS_DIR)/uncoil-hook
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-hook
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil
@@ -49,6 +69,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.tests
+        GENERATE_INFOPLIST_FILE: true
 
 schemes:
   Uncoil:

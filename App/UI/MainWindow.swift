@@ -29,6 +29,12 @@ struct MainWindow: View {
             if selectedProjectID == nil {
                 selectedProjectID = projectStore.projects.first?.id
             }
+            if sessionStore.hookServer == nil {
+                let store = projectStore
+                sessionStore.startHookServer { path in
+                    store.project(containing: path)
+                }
+            }
         }
     }
 
