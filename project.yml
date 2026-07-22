@@ -1,0 +1,63 @@
+name: Uncoil
+options:
+  bundleIdPrefix: com.gkhntpbs
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    from: 1.5.1
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: K3TKWWVEB9
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  Uncoil:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: SwiftTerm
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil
+        PRODUCT_NAME: Uncoil
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Gökhan Topbaş"
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        ENABLE_HARDENED_RUNTIME: false
+        ENABLE_USER_SCRIPT_SANDBOXING: false
+        SWIFT_STRICT_CONCURRENCY: minimal
+
+  UncoilTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Uncoil
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.tests
+
+schemes:
+  Uncoil:
+    build:
+      targets:
+        Uncoil: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - UncoilTests
