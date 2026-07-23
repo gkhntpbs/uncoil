@@ -4,7 +4,7 @@ struct SidebarView: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
-    @Binding var selectedSessionID: UUID?
+    @Binding var selection: MainSelection?
     @Binding var showFolderPicker: Bool
     @Environment(\.openWindow) private var openWindow
 
@@ -18,7 +18,7 @@ struct SidebarView: View {
                     ForEach(projectStore.projects) { project in
                         ProjectSection(
                             project: project,
-                            selectedSessionID: $selectedSessionID
+                            selection: $selection
                         )
                     }
                     if projectStore.projects.isEmpty {
@@ -73,11 +73,15 @@ private struct RailButton: View {
 
 private struct ProjectSection: View {
     let project: Project
-    @Binding var selectedSessionID: UUID?
+    @Binding var selection: MainSelection?
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var hovering = false
+
+    private var isProjectSelected: Bool {
+        selection == .project(project.id)
+    }
 
     var body: some View {
         VStack(spacing: 1) {
@@ -92,13 +96,18 @@ private struct ProjectSection: View {
                     .lineLimit(1)
                 Spacer(minLength: 4)
                 if hovering {
-                    AgentLauncherStrip(project: project, selectedSessionID: $selectedSessionID)
+                    AgentLauncherStrip(project: project, selection: $selection)
                         .transition(.opacity)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 7))
+            .background(
+                isProjectSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .onTapGesture { selection = .project(project.id) }
             .onHover { value in
                 withAnimation(.easeOut(duration: 0.12)) { hovering = value }
             }
@@ -115,9 +124,9 @@ private struct ProjectSection: View {
             ForEach(projectStore.sessions(for: project.id)) { record in
                 SessionRow(
                     record: record,
-                    isSelected: selectedSessionID == record.id
+                    isSelected: selection == .session(record.id)
                 ) {
-                    selectedSessionID = record.id
+                    selection = .session(record.id)
                 }
             }
         }
@@ -128,7 +137,7 @@ private struct ProjectSection: View {
 /// Hover strip: pick an agent, it launches into this project.
 struct AgentLauncherStrip: View {
     let project: Project
-    @Binding var selectedSessionID: UUID?
+    @Binding var selection: MainSelection?
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
 
@@ -154,7 +163,7 @@ struct AgentLauncherStrip: View {
                 ? "terminal"
                 : "\(provider.rawValue): yeni oturum"
         )
-        selectedSessionID = record.id
+        selection = .session(record.id)
     }
 }
 

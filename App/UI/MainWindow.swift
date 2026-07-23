@@ -1,25 +1,21 @@
 import SwiftUI
 
+enum MainSelection: Hashable {
+    case project(UUID)
+    case session(UUID)
+}
+
 struct MainWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
-    @State private var selectedSessionID: UUID?
+    @State private var selection: MainSelection?
     @State private var showFolderPicker = false
-
-    private var selection: (record: SessionRecord, project: Project)? {
-        guard
-            let id = selectedSessionID,
-            let record = projectStore.sessions.first(where: { $0.id == id }),
-            let project = projectStore.projects.first(where: { $0.id == record.projectID })
-        else { return nil }
-        return (record, project)
-    }
 
     var body: some View {
         HStack(spacing: 0) {
             SidebarView(
-                selectedSessionID: $selectedSessionID,
+                selection: $selection,
                 showFolderPicker: $showFolderPicker
             )
             .frame(width: 252)
@@ -28,25 +24,47 @@ struct MainWindow: View {
                 .fill(Theme.border)
                 .frame(width: 1)
 
-            Group {
-                if let selection {
-                    SessionDetailView(record: selection.record, project: selection.project)
-                        .id(selection.record.id)
-                } else {
-                    EmptyDetailView(showFolderPicker: $showFolderPicker)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.bg)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerSheet { url in
                 projectStore.addProject(at: url)
+                if let added = projectStore.projects.last {
+                    selection = .project(added.id)
+                }
             }
         }
         .onAppear {
             startServices()
+            if selection == nil, let first = projectStore.projects.first {
+                selection = .project(first.id)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch selection {
+        case .project(let id):
+            if let project = projectStore.projects.first(where: { $0.id == id }) {
+                ProjectDashboardView(project: project, selection: $selection)
+                    .id(project.id)
+            } else {
+                EmptyDetailView(showFolderPicker: $showFolderPicker)
+            }
+        case .session(let id):
+            if let record = projectStore.sessions.first(where: { $0.id == id }),
+               let project = projectStore.projects.first(where: { $0.id == record.projectID }) {
+                SessionDetailView(record: record, project: project, selection: $selection)
+                    .id(record.id)
+            } else {
+                EmptyDetailView(showFolderPicker: $showFolderPicker)
+            }
+        case nil:
+            EmptyDetailView(showFolderPicker: $showFolderPicker)
         }
     }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct SessionDetailView: View {
     let record: SessionRecord
     let project: Project
+    @Binding var selection: MainSelection?
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
@@ -36,6 +37,23 @@ struct SessionDetailView: View {
 
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
+            Button {
+                selection = .project(project.id)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .frame(width: 22, height: 22)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Theme.border, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .help("Proje panosuna dön")
+            .padding(.top, 2)
+
             DotGlyph(color: record.provider.color, dotSize: 3.4)
                 .padding(.top, 4)
 
