@@ -30,11 +30,13 @@ struct MainWindow: View {
 
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .topLeading) {
-                    SidebarToggle(sidebarVisible: $sidebarVisible)
-                        .padding(.leading, sidebarVisible ? 10 : 84)
-                        .padding(.top, 9)
-                }
+        }
+        // Toggle lives in the title-bar strip, right after the traffic
+        // lights — the standard macOS spot, same place open or closed.
+        .overlay(alignment: .topLeading) {
+            SidebarToggle(sidebarVisible: $sidebarVisible)
+                .padding(.leading, 80)
+                .padding(.top, 7)
         }
         .background(Theme.bg)
         .preferredColorScheme(.dark)
