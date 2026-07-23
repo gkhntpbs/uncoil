@@ -107,7 +107,13 @@ struct CommandPaletteOverlay: View {
                         ForEach(group.items) { item in
                             let index = flat[item.id] ?? 0
                             PaletteRow(item: item, selected: index == model.selectedIndex)
-                                .id(index)
+                                // Identify rows by stable content id, never the
+                                // positional index: a LazyVStack caches subviews by
+                                // identity, so a positional id makes it serve stale
+                                // rows when the result set changes under the same
+                                // indices (rows would not reflect the new query or
+                                // the moved selection). Scrolling targets this id.
+                                .id(item.id)
                                 .accessibilityIdentifier("palette.result.\(index)")
                                 .onTapGesture { model.execute(item) }
                                 .onContinuousHover(coordinateSpace: .global) { phase in
@@ -131,9 +137,10 @@ struct CommandPaletteOverlay: View {
                 .uncoilScrollers()
             }
             .frame(maxHeight: 380)
-            .onChange(of: model.selectedIndex) { _, new in
+            .onChange(of: model.selectedIndex) { _, _ in
+                guard let id = model.selectedItem?.id else { return }
                 withAnimation(uncoilAnimation(.easeOut(duration: 0.12))) {
-                    proxy.scrollTo(new, anchor: .center)
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
         }

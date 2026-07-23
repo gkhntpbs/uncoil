@@ -198,6 +198,36 @@ final class PaletteModelTests: XCTestCase {
         XCTAssertEqual(model.selectedIndex, 0)
     }
 
+    func testResultsFullyReplaceWhenQueryChanges() {
+        // Guards the contract the view relies on: after a query change the
+        // result set is the fresh computation, with no rows lingering from the
+        // previous query, and selectedItem resolves into the new set.
+        let store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("palette-replace-\(UUID().uuidString)"))
+        store.addProject(at: URL(fileURLWithPath: "/tmp/replace-project"))
+        let sessions = SessionStore()
+        let model = PaletteModel()
+        model.configure(projectStore: store, sessionStore: sessions,
+                        settingsPanes: [("theme", "Tema")])
+        model.currentProjectID = store.projects.first?.id
+        model.open()
+
+        model.query = "proje"
+        model.recomputeNow()
+        let projeTitles = Set(model.flatItems.map(\.title))
+        XCTAssertTrue(projeTitles.contains { $0.contains("Yeni Proje Ekle") })
+
+        model.query = "worktree"
+        model.recomputeNow()
+        let worktreeTitles = model.flatItems.map(\.title)
+        // No stale "proje"-only rows survive.
+        XCTAssertFalse(worktreeTitles.contains { $0.contains("Yeni Proje Ekle") })
+        XCTAssertTrue(worktreeTitles.contains { $0.contains("Worktree") })
+        // Selection stays within the new set.
+        XCTAssertNotNil(model.selectedItem)
+        XCTAssertTrue(model.flatItems.contains { $0.id == model.selectedItem?.id })
+    }
+
     func testExecuteSetsPendingActionAndCloses() {
         let store = ProjectStore(directory: FileManager.default.temporaryDirectory
             .appendingPathComponent("palette-exec-\(UUID().uuidString)"))
