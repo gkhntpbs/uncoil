@@ -34,6 +34,15 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .terminal: nil  // plain login shell
         }
     }
+
+    /// The provider's own browser-login flow, run inside a login terminal.
+    var loginCommand: String? {
+        switch self {
+        case .claude: "claude /login"
+        case .codex: "codex login"
+        case .terminal: nil
+        }
+    }
 }
 
 // MARK: - Account profile
@@ -59,6 +68,16 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         return profilesRoot
             .appendingPathComponent(provider.rawValue, isDirectory: true)
             .appendingPathComponent(directoryName, isDirectory: true)
+    }
+
+    /// Environment variable that points the provider CLI at this profile's
+    /// isolated config root.
+    var isolationEnvironmentKey: String? {
+        switch provider {
+        case .claude: "CLAUDE_CONFIG_DIR"
+        case .codex: "CODEX_HOME"
+        case .terminal: nil
+        }
     }
 }
 

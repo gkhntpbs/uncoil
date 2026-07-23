@@ -49,8 +49,10 @@ final class TerminalRegistry {
                 env.append("\(key)=\(value)")
             }
         }
-        if let dir = account?.configDirectory(profilesRoot: settings.profilesRootURL) {
-            env.append("CLAUDE_CONFIG_DIR=\(dir.path)")
+        if let account,
+           let key = account.isolationEnvironmentKey,
+           let dir = account.configDirectory(profilesRoot: settings.profilesRootURL) {
+            env.append("\(key)=\(dir.path)")
         }
 
         let shell = processEnv["SHELL"] ?? "/bin/zsh"

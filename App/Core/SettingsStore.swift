@@ -122,6 +122,11 @@ final class SettingsStore: ObservableObject {
     /// Resolves the provider CLI through the user's login shell once and caches it.
     func resolveBinaries() async {
         for provider in [AgentProvider.claude, .codex] {
+            // Drop cached paths whose binary vanished (reinstall/move).
+            if let cached = resolvedBinaries[provider.rawValue],
+               !FileManager.default.isExecutableFile(atPath: cached) {
+                resolvedBinaries[provider.rawValue] = nil
+            }
             guard resolvedBinaries[provider.rawValue] == nil,
                   let command = provider.launchCommand else { continue }
             let path = await Task.detached(priority: .utility) {
@@ -173,11 +178,27 @@ final class SettingsStore: ObservableObject {
     }
 
     nonisolated private static func which(_ command: String) -> String? {
+        // 1) Well-known install locations first: GUI apps start with a
+        //    minimal PATH, and users often extend PATH only in ~/.zshrc.
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let knownLocations = [
+            "\(home)/.local/bin/\(command)",
+            "\(home)/.claude/local/\(command)",
+            "/opt/homebrew/bin/\(command)",
+            "/usr/local/bin/\(command)",
+            "\(home)/.npm-global/bin/\(command)",
+            "\(home)/.bun/bin/\(command)",
+        ]
+        for candidate in knownLocations where FileManager.default.isExecutableFile(atPath: candidate) {
+            return candidate
+        }
+
+        // 2) Interactive login shell (-l -i sources both zprofile and zshrc).
         let process = Process()
         process.executableURL = URL(
             fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         )
-        process.arguments = ["-l", "-c", "command -v \(command)"]
+        process.arguments = ["-l", "-i", "-c", "command -v \(command)"]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = Pipe()
@@ -187,6 +208,7 @@ final class SettingsStore: ObservableObject {
         guard process.terminationStatus == 0 else { return nil }
         let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: "\n").last.map(String.init)
         return path?.isEmpty == false ? path : nil
     }
 

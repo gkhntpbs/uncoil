@@ -400,6 +400,8 @@ private struct AccountRow: View {
     let profile: AccountProfile
     @EnvironmentObject private var settings: SettingsStore
     @State private var email: String?
+    @State private var showLogin = false
+    @State private var refreshToken = 0
 
     private var isDefault: Bool {
         settings.defaultAccount(for: profile.provider)?.id == profile.id
@@ -426,6 +428,11 @@ private struct AccountRow: View {
                     .foregroundStyle(email == nil ? Theme.textFaint : Theme.ok)
             }
             Spacer()
+            if profile.provider.loginCommand != nil, email == nil {
+                Button("Giriş Yap") { showLogin = true }
+                    .buttonStyle(AccentButtonStyle())
+                    .accessibilityIdentifier("settings.account.loginButton.\(profile.name)")
+            }
             if !isDefault {
                 Button("Varsayılan yap") { settings.setDefaultAccount(profile) }
                     .buttonStyle(GhostButtonStyle())
@@ -443,7 +450,12 @@ private struct AccountRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .task(id: profile.id) {
+        .sheet(isPresented: $showLogin) {
+            LoginTerminalSheet(profile: profile) {
+                refreshToken += 1
+            }
+        }
+        .task(id: "\(profile.id)-\(refreshToken)") {
             guard profile.provider == .claude else { return }
             let root = settings.profilesRootURL
             let store = settings
