@@ -88,6 +88,44 @@ final class HookReducerTests: XCTestCase {
         XCTAssertEqual(sessions.status(of: record.id), .running)
     }
 
+    func testPromptBecomesTitleAndProviderSessionIDCaptured() {
+        var capturedSID: String?
+        var capturedTitle: String?
+        let data = try! JSONSerialization.data(withJSONObject: [
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": "prov-123",
+            "cwd": "/tmp/demo",
+            "prompt": "Login ekranındaki hatayı düzelt\nDetaylar: ...",
+        ])
+        let event = HookEvent(jsonLine: data)!
+        sessions.reduce(
+            event,
+            projectResolver: { [projects] path in projects!.project(containing: path) },
+            sessionResolver: { [projects, sessions] projectID in
+                sessions!.liveSessionID(projectSessions: projects!.sessions(for: projectID))
+            },
+            touchSession: { _ in },
+            applyMeta: { _, sid, title in
+                capturedSID = sid
+                capturedTitle = title
+            }
+        )
+        XCTAssertEqual(capturedSID, "prov-123")
+        XCTAssertEqual(capturedTitle, "Login ekranındaki hatayı düzelt")
+    }
+
+    func testLongPromptTitleTruncated() {
+        let long = String(repeating: "a", count: 80)
+        let data = try! JSONSerialization.data(withJSONObject: [
+            "hook_event_name": "UserPromptSubmit",
+            "cwd": "/tmp/demo",
+            "prompt": long,
+        ])
+        let title = SessionStore.titleCandidate(from: HookEvent(jsonLine: data)!)
+        XCTAssertEqual(title?.count, 42)
+        XCTAssertTrue(title!.hasSuffix("…"))
+    }
+
     func testEventWithNoLiveSessionIgnored() {
         sessions.setStatus(.terminated, for: record.id)
         send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])

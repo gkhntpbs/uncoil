@@ -8,12 +8,19 @@ struct ProjectDashboardView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var git = GitService.Snapshot()
+    @State private var worktrees: [GitService.Worktree] = []
+    @State private var newWorktreeName = ""
+    @State private var worktreeError: String?
+    @State private var creatingWorktree = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 header
                 sessionsPanel
+                if git.isRepo {
+                    worktreesPanel
+                }
                 HStack(alignment: .top, spacing: 14) {
                     gitPanel
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -28,9 +35,77 @@ struct ProjectDashboardView: View {
 
     private func refreshGit() async {
         let path = project.rootPath
-        git = await Task.detached(priority: .utility) {
-            GitService.snapshot(repoPath: path)
+        let (snapshot, trees) = await Task.detached(priority: .utility) {
+            (GitService.snapshot(repoPath: path), GitService.worktrees(repoPath: path))
         }.value
+        git = snapshot
+        worktrees = trees
+    }
+
+    // MARK: - Worktrees
+
+    private var worktreesPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PanelHeading(title: "Worktree'ler", count: max(0, worktrees.count - 1))
+
+            VStack(spacing: 1) {
+                ForEach(worktrees) { worktree in
+                    WorktreeRow(worktree: worktree, project: project, selection: $selection)
+                }
+            }
+            .padding(6)
+
+            Divider().overlay(Theme.border)
+
+            HStack(spacing: 8) {
+                TextField("Yeni worktree adı (izole görev dalı)", text: $newWorktreeName)
+                    .textFieldStyle(.plain)
+                    .font(Theme.mono(11.5))
+                    .foregroundStyle(Theme.text)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.bg, in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Theme.border, lineWidth: 1)
+                    )
+                    .onSubmit { createWorktree() }
+                Button(creatingWorktree ? "Oluşturuluyor…" : "Oluştur") { createWorktree() }
+                    .buttonStyle(GhostButtonStyle())
+                    .disabled(creatingWorktree || newWorktreeName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(10)
+
+            if let worktreeError {
+                Text(worktreeError)
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.danger)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
+            }
+        }
+        .panel(radius: 12)
+    }
+
+    private func createWorktree() {
+        let name = newWorktreeName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !creatingWorktree else { return }
+        creatingWorktree = true
+        worktreeError = nil
+        let path = project.rootPath
+        Task {
+            let result = await Task.detached(priority: .utility) {
+                GitService.createWorktree(repoPath: path, name: name)
+            }.value
+            creatingWorktree = false
+            switch result {
+            case .success:
+                newWorktreeName = ""
+                await refreshGit()
+            case .failure(let failure):
+                worktreeError = failure.message
+            }
+        }
     }
 
     // MARK: - Header
@@ -276,6 +351,45 @@ private struct SessionCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+}
+
+private struct WorktreeRow: View {
+    let worktree: GitService.Worktree
+    let project: Project
+    @Binding var selection: MainSelection?
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: worktree.isMain ? "house" : "arrow.triangle.branch")
+                .font(.system(size: 10))
+                .foregroundStyle(worktree.isMain ? Theme.textFaint : Theme.warn.opacity(0.85))
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(worktree.isMain ? "ana kopya" : URL(fileURLWithPath: worktree.path).lastPathComponent)
+                    .font(Theme.mono(12, .medium))
+                    .foregroundStyle(Theme.text)
+                Text(worktree.branch ?? "detached")
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            Spacer()
+            if hovering {
+                AgentLauncherStrip(
+                    project: project,
+                    worktreePath: worktree.isMain ? nil : worktree.path,
+                    selection: $selection
+                )
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .onHover { value in
+            withAnimation(.easeOut(duration: 0.12)) { hovering = value }
+        }
     }
 }
 

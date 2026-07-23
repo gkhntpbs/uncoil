@@ -38,7 +38,11 @@ final class TerminalRegistry {
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
-        if let command = record.provider.launchCommand {
+        if var command = record.provider.launchCommand {
+            // Reopening a Claude session with a known provider id resumes it.
+            if record.provider == .claude, let sid = record.providerSessionID {
+                command += " --resume \(sid)"
+            }
             // `exec` replaces the shell with the agent: the user never sees
             // a typed command, and closing the agent closes the session.
             args = ["-l", "-c", "exec \(command)"]
@@ -48,7 +52,7 @@ final class TerminalRegistry {
             args: args,
             environment: env,
             execName: nil,
-            currentDirectory: project.rootPath
+            currentDirectory: record.workingDirectory(in: project)
         )
 
         let delegate = SessionProcessDelegate(recordID: record.id, sessionStore: sessionStore)

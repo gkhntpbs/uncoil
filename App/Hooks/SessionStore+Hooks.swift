@@ -3,10 +3,12 @@ import UserNotifications
 
 extension SessionStore {
     /// Starts the hook socket server and routes events into session state.
+    /// `applyMeta` persists provider session id / title candidates onto the record.
     func startHookServer(
         projectResolver: @escaping @MainActor (String) -> Project?,
         sessionResolver: @escaping @MainActor (UUID) -> UUID?,
-        touchSession: @escaping @MainActor (UUID) -> Void
+        touchSession: @escaping @MainActor (UUID) -> Void,
+        applyMeta: @escaping @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
     ) {
         let server = HookServer(socketPath: HookInstaller.socketPath)
         server.onEvent = { [weak self] event in
@@ -15,7 +17,8 @@ extension SessionStore {
                     event,
                     projectResolver: projectResolver,
                     sessionResolver: sessionResolver,
-                    touchSession: touchSession
+                    touchSession: touchSession,
+                    applyMeta: applyMeta
                 )
             }
         }
@@ -39,7 +42,8 @@ extension SessionStore {
         _ event: HookEvent,
         projectResolver: @MainActor (String) -> Project?,
         sessionResolver: @MainActor (UUID) -> UUID?,
-        touchSession: @MainActor (UUID) -> Void
+        touchSession: @MainActor (UUID) -> Void,
+        applyMeta: @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
     ) {
         guard
             let cwd = event.cwd,
@@ -48,6 +52,7 @@ extension SessionStore {
         else { return }
 
         touchSession(sessionID)
+        applyMeta(sessionID, event.sessionID, Self.titleCandidate(from: event))
 
         switch event.kind {
         case .sessionStart:
@@ -74,6 +79,18 @@ extension SessionStore {
         case .sessionEnd:
             setStatus(.terminated, for: sessionID)
         }
+    }
+
+    /// First line of the first prompt, tightened for the sidebar.
+    nonisolated static func titleCandidate(from event: HookEvent) -> String? {
+        guard event.kind == .userPromptSubmit, let prompt = event.prompt else { return nil }
+        let firstLine = prompt
+            .split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true)
+            .first
+            .map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !firstLine.isEmpty else { return nil }
+        return firstLine.count > 42 ? String(firstLine.prefix(41)) + "…" : firstLine
     }
 
     // MARK: - Attention notifications

@@ -42,6 +42,44 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(store.sessions.isEmpty)
     }
 
+    func testWorktreeSessionPersistsWorkingDirectory() throws {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
+        let project = store.projects[0]
+        store.createSession(
+            projectID: project.id,
+            provider: .claude,
+            accountID: nil,
+            title: "wt",
+            worktreePath: "/tmp/demo/.uncoil-worktrees/fix-login"
+        )
+        let reloaded = ProjectStore(directory: tempDir)
+        let record = reloaded.sessions(for: project.id)[0]
+        XCTAssertEqual(record.workingDirectory(in: project), "/tmp/demo/.uncoil-worktrees/fix-login")
+    }
+
+    func testWorktreePorcelainParsing() {
+        let porcelain = """
+        worktree /repo
+        HEAD abc
+        branch refs/heads/main
+
+        worktree /repo/.uncoil-worktrees/fix-login
+        HEAD def
+        branch refs/heads/uncoil/fix-login
+
+        worktree /repo/.uncoil-worktrees/spike
+        HEAD 123
+        detached
+        """
+        let trees = GitService.parseWorktrees(porcelain, mainPath: "/repo")
+        XCTAssertEqual(trees.count, 3)
+        XCTAssertTrue(trees[0].isMain)
+        XCTAssertEqual(trees[1].branch, "uncoil/fix-login")
+        XCTAssertFalse(trees[1].isMain)
+        XCTAssertNil(trees[2].branch)
+    }
+
     func testAttentionPriorityOrdering() {
         XCTAssertGreaterThan(
             AgentSessionStatus.waitingForPermission.attentionPriority,

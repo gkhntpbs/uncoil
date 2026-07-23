@@ -60,6 +60,95 @@ enum GitService {
         return snapshot
     }
 
+    // MARK: - Worktrees
+
+    struct Worktree: Identifiable, Equatable {
+        var id: String { path }
+        let path: String
+        let branch: String?
+        let isMain: Bool
+    }
+
+    /// Blocking; call from a background task.
+    static func worktrees(repoPath: String) -> [Worktree] {
+        guard let output = run(["-C", repoPath, "worktree", "list", "--porcelain"]) else {
+            return []
+        }
+        return parseWorktrees(output, mainPath: repoPath)
+    }
+
+    static func parseWorktrees(_ porcelain: String, mainPath: String) -> [Worktree] {
+        var result: [Worktree] = []
+        var path: String?
+        var branch: String?
+
+        func flush() {
+            if let p = path {
+                let normalizedMain = URL(fileURLWithPath: mainPath).standardizedFileURL.path
+                let normalized = URL(fileURLWithPath: p).standardizedFileURL.path
+                result.append(Worktree(path: p, branch: branch, isMain: normalized == normalizedMain))
+            }
+            path = nil
+            branch = nil
+        }
+
+        for line in porcelain.split(separator: "\n", omittingEmptySubsequences: false) {
+            if line.hasPrefix("worktree ") {
+                flush()
+                path = String(line.dropFirst("worktree ".count))
+            } else if line.hasPrefix("branch refs/heads/") {
+                branch = String(line.dropFirst("branch refs/heads/".count))
+            } else if line == "detached" {
+                branch = nil
+            }
+        }
+        flush()
+        return result
+    }
+
+    struct GitFailure: LocalizedError, Equatable {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// Creates `<repo>/.uncoil-worktrees/<slug>` on a fresh `uncoil/<slug>` branch.
+    /// Blocking; call from a background task.
+    static func createWorktree(repoPath: String, name: String) -> Result<Worktree, GitFailure> {
+        let slug = name
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+        guard !slug.isEmpty else { return .failure(GitFailure(message: "Geçerli bir isim gerekli.")) }
+
+        let container = URL(fileURLWithPath: repoPath)
+            .appendingPathComponent(".uncoil-worktrees", isDirectory: true)
+        let destination = container.appendingPathComponent(slug, isDirectory: true)
+        guard !FileManager.default.fileExists(atPath: destination.path) else {
+            return .failure(GitFailure(message: "\(slug) zaten var."))
+        }
+
+        let branch = "uncoil/\(slug)"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", repoPath, "worktree", "add", "-b", branch, destination.path]
+        let errPipe = Pipe()
+        process.standardOutput = Pipe()
+        process.standardError = errPipe
+        do {
+            try process.run()
+        } catch {
+            return .failure(GitFailure(message: error.localizedDescription))
+        }
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let message = String(data: errData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return .failure(GitFailure(message: message?.isEmpty == false ? message! : "git worktree add başarısız"))
+        }
+        return .success(Worktree(path: destination.path, branch: branch, isMain: false))
+    }
+
     private static func run(_ arguments: [String]) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")

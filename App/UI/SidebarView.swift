@@ -134,9 +134,11 @@ private struct ProjectSection: View {
     }
 }
 
-/// Hover strip: pick an agent, it launches into this project.
+/// Hover strip: pick an agent, it launches into this project
+/// (or into a specific worktree when `worktreePath` is set).
 struct AgentLauncherStrip: View {
     let project: Project
+    var worktreePath: String? = nil
     @Binding var selection: MainSelection?
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
@@ -155,13 +157,15 @@ struct AgentLauncherStrip: View {
 
     private func launch(_ provider: AgentProvider) {
         let account = settings.defaultAccount(for: provider)
+        let worktreeName = worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent }
         let record = projectStore.createSession(
             projectID: project.id,
             provider: provider,
             accountID: provider == .terminal ? nil : account?.id,
             title: provider == .terminal
-                ? "terminal"
-                : "\(provider.rawValue): yeni oturum"
+                ? (worktreeName.map { "terminal @ \($0)" } ?? "terminal")
+                : "\(provider.rawValue): yeni oturum",
+            worktreePath: worktreePath
         )
         selection = .session(record.id)
     }

@@ -79,6 +79,16 @@ struct MainWindow: View {
                 },
                 touchSession: { id in
                     projects.updateSession(id) { $0.lastActivityAt = .now }
+                },
+                applyMeta: { id, providerSessionID, titleCandidate in
+                    projects.updateSession(id) { record in
+                        if let providerSessionID {
+                            record.providerSessionID = providerSessionID
+                        }
+                        if let titleCandidate, record.hasPlaceholderTitle {
+                            record.title = titleCandidate
+                        }
+                    }
                 }
             )
         }

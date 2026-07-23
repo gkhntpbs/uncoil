@@ -116,13 +116,22 @@ struct SessionDetailView: View {
             Text("Bu oturum kapandı")
                 .font(Theme.mono(13, .medium))
                 .foregroundStyle(Theme.textDim)
-            Button("Yeniden Başlat") {
+            if record.provider == .claude, record.providerSessionID != nil {
+                Text("Konuşma geçmişiyle birlikte devam ettirilebilir.")
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            Button(resumable ? "Kaldığı Yerden Devam Et" : "Yeniden Başlat") {
                 projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
                 sessionStore.setStatus(.running, for: record.id)
             }
             .buttonStyle(AccentButtonStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var resumable: Bool {
+        record.provider == .claude && record.providerSessionID != nil
     }
 }
 

@@ -59,13 +59,15 @@ final class ProjectStore: ObservableObject {
         projectID: UUID,
         provider: AgentProvider,
         accountID: UUID?,
-        title: String
+        title: String,
+        worktreePath: String? = nil
     ) -> SessionRecord {
         let record = SessionRecord(
             projectID: projectID,
             provider: provider,
             accountID: accountID,
-            title: title
+            title: title,
+            worktreePath: worktreePath
         )
         sessions.append(record)
         save()

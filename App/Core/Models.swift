@@ -135,6 +135,9 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     var createdAt: Date
     var lastActivityAt: Date
     var providerSessionID: String?
+    /// When set, the session runs inside this worktree instead of the
+    /// project root.
+    var worktreePath: String?
 
     init(
         id: UUID = UUID(),
@@ -142,6 +145,7 @@ struct SessionRecord: Identifiable, Codable, Equatable {
         provider: AgentProvider,
         accountID: UUID?,
         title: String,
+        worktreePath: String? = nil,
         createdAt: Date = .now
     ) {
         self.id = id
@@ -149,7 +153,17 @@ struct SessionRecord: Identifiable, Codable, Equatable {
         self.provider = provider
         self.accountID = accountID
         self.title = title
+        self.worktreePath = worktreePath
         self.createdAt = createdAt
         self.lastActivityAt = createdAt
+    }
+
+    func workingDirectory(in project: Project) -> String {
+        worktreePath ?? project.rootPath
+    }
+
+    /// Default titles get replaced by the first real prompt.
+    var hasPlaceholderTitle: Bool {
+        title.hasSuffix(": yeni oturum") || title == "terminal"
     }
 }

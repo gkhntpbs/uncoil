@@ -19,6 +19,7 @@ struct HookEvent {
     let cwd: String?
     let toolName: String?
     let message: String?
+    let prompt: String?
 
     init?(jsonLine: Data) {
         guard
@@ -31,5 +32,6 @@ struct HookEvent {
         cwd = object["cwd"] as? String
         toolName = object["tool_name"] as? String
         message = object["message"] as? String
+        prompt = object["prompt"] as? String
     }
 }
