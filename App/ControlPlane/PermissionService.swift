@@ -106,6 +106,38 @@ final class PermissionService: ObservableObject {
     func grant(id: String) { setStatus(.granted, id: id) }
     func deny(id: String) { setStatus(.denied, id: id) }
 
+    /// Proactively creates a GRANTED directional record without an agent asking
+    /// first (Settings → İzinler → "İzin Ekle"). Produces the exact record shape
+    /// the approve flow yields (a `.granted` PermissionRequest with `decidedAt`
+    /// set), so pre-authorizing A→B is indistinguishable from approving a live
+    /// request. Reuses/reopens a matching record rather than piling up.
+    @discardableResult
+    func addGrant(grantKey: String, from: String, target: String?) -> PermissionRequest {
+        let record = request(grantKey: grantKey, from: from, target: target)
+        setStatus(.granted, id: record.id)
+        return requests.first { $0.id == record.id } ?? record
+    }
+
+    /// Injects a sample PENDING request so the approve/deny UI can be exercised
+    /// without a live agent (dev/testing affordance). The synthetic session ids
+    /// are clearly marked so the record reads as a test.
+    @discardableResult
+    func injectTestRequest(
+        grantKey: String = "sessions.control_children",
+        from: String? = nil,
+        target: String? = nil
+    ) -> PermissionRequest {
+        let record = PermissionRequest(
+            id: UUID().uuidString,
+            grantKey: grantKey,
+            fromSessionID: from ?? "test-\(UUID().uuidString.prefix(8))",
+            targetSessionID: target ?? "test-\(UUID().uuidString.prefix(8))",
+            status: .pending, createdAt: Date(), decidedAt: nil)
+        requests.append(record)
+        save()
+        return record
+    }
+
     /// Revokes a decision by removing the record entirely; the next attempt
     /// will require a fresh request.
     func revoke(id: String) {

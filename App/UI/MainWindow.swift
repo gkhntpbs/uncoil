@@ -119,7 +119,7 @@ struct MainWindow: View {
             settingsPanes: SettingsView.Pane.allCases.map { ($0.rawValue, $0.title) }
         )
         syncPaletteSelection()
-        PaletteHotkeyMonitor.install(model: palette)
+        PaletteHotkeyMonitor.install(model: palette, settings: settings)
     }
 
     private func syncPaletteSelection() {

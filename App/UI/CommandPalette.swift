@@ -24,7 +24,23 @@ struct CommandPaletteOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .transition(.opacity)
-        .onAppear { searchFocused = true }
+        .onAppear { focusSearchField() }
+    }
+
+    /// Moves keyboard focus into the search field on open. The overlay mounts
+    /// fresh each time (conditional in MainWindow's ZStack), but a SwiftTerm
+    /// NSView usually holds first responder and SwiftUI's @FocusState does not
+    /// reliably take on the same runloop turn the overlay is inserted. Resign
+    /// the current responder, then assert focus across a few turns so the field
+    /// wins every time — and re-assert if the responder is stolen back.
+    private func focusSearchField() {
+        NSApp.keyWindow?.makeFirstResponder(nil)
+        searchFocused = true
+        for delay in [0.02, 0.06, 0.15, 0.3] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if !searchFocused { searchFocused = true }
+            }
+        }
     }
 
     private var panel: some View {
@@ -166,16 +182,17 @@ private struct PaletteRow: View {
 enum PaletteHotkeyMonitor {
     private static var installed = false
 
-    static func install(model: PaletteModel) {
+    static func install(model: PaletteModel, settings: SettingsStore) {
         guard !installed else { return }
         installed = true
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model] event in
-            guard let model else { return event }
-            let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model, weak settings] event in
+            guard let model, let settings else { return event }
 
-            // ⌘K toggles — but not in the settings / popout windows.
-            if mods == .command,
-               event.charactersIgnoringModifiers?.lowercased() == "k",
+            // The configurable palette hotkey toggles — read live so a rebind
+            // applies without restart. Suppressed in settings / popout windows.
+            let binding = settings.commandPaletteHotkey
+            if binding.matches(keyCode: event.keyCode,
+                               modifiers: event.modifierFlags.rawValue),
                !isAuxiliaryWindow(event.window) {
                 model.toggle()
                 return nil

@@ -17,6 +17,9 @@ final class SettingsStore: ObservableObject {
         /// Per-provider terminal behavior (Shift+Enter newline, …). Optional for
         /// backward compatibility; a missing entry ⇒ the provider's defaults.
         var providerBehaviors: [String: ProviderBehavior]? = nil
+        /// Command-palette hotkey. Optional for backward compatibility with
+        /// settings.json written before it was configurable; nil ⇒ ⌘K.
+        var commandPaletteHotkey: HotkeyBinding? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -31,6 +34,8 @@ final class SettingsStore: ObservableObject {
     @Published var configuredPresets: [SessionPreset]? = nil
     /// Per-provider terminal behavior overrides; a missing key ⇒ provider default.
     @Published var providerBehaviors: [String: ProviderBehavior] = [:]
+    /// The hotkey that toggles the command palette. Defaults to ⌘K.
+    @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -79,6 +84,17 @@ final class SettingsStore: ObservableObject {
         behavior.shiftEnterNewline = value
         providerBehaviors[provider.rawValue] = behavior
         save()
+    }
+
+    // MARK: - Command palette hotkey
+
+    func setCommandPaletteHotkey(_ binding: HotkeyBinding) {
+        commandPaletteHotkey = binding
+        save()
+    }
+
+    func resetCommandPaletteHotkey() {
+        setCommandPaletteHotkey(.commandPaletteDefault)
     }
 
     // MARK: - Accounts
@@ -330,6 +346,7 @@ final class SettingsStore: ObservableObject {
         notifications = decoded.notifications
         configuredPresets = decoded.presets
         providerBehaviors = decoded.providerBehaviors ?? [:]
+        commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
     }
 
     func save() {
@@ -342,7 +359,9 @@ final class SettingsStore: ObservableObject {
             preferredEditor: preferredEditor,
             notifications: notifications,
             presets: configuredPresets,
-            providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors
+            providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors,
+            commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
+                ? nil : commandPaletteHotkey
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)
