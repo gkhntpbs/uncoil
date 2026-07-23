@@ -31,6 +31,15 @@ enum PolicyEngine {
         "artifacts.read", "artifacts.write",
     ]
 
+    /// Opt-in grants that are OFF by default; a session must explicitly list
+    /// them in `capabilities`. Browser/computer control (Milestones 3+4) plus
+    /// the earlier control grants live here for discoverability.
+    static let optionalGrants: Set<String> = [
+        "sessions.read_all", "sessions.control_children", "worktrees.create",
+        "browser.use", "browser.persistent_state",
+        "computer.inspect", "computer.background_control", "computer.foreground_control",
+    ]
+
     static func grants(for record: SessionRecord) -> Set<String> {
         if let caps = record.capabilities { return Set(caps) }
         return defaultGrants

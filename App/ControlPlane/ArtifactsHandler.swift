@@ -103,6 +103,29 @@ extension CapabilityRouter {
         }
     }
 
+    /// Appends artifact metadata to the caller's `artifacts.json`. Shared by
+    /// the browser/computer handlers so their screenshots/state files show up
+    /// in `uncoil_artifacts list` exactly like `register` entries.
+    func recordArtifact(name: String, kind: String?, description: String?, caller: SessionRecord) {
+        let root = caller.artifactRoot(dataDirectory: dataDirectory)
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let metaURL = root.appendingPathComponent("artifacts.json")
+        var entries: [JSONValue] = []
+        if let data = try? Data(contentsOf: metaURL),
+           let existing = try? JSONDecoder().decode([JSONValue].self, from: data) {
+            entries = existing
+        }
+        entries.append(.object([
+            "name": .string(name),
+            "kind": .string(optional: kind),
+            "description": .string(optional: description),
+            "registered_at": .string(ISO8601DateFormatter().string(from: Date())),
+        ]))
+        if let data = try? JSONEncoder().encode(entries) {
+            try? data.write(to: metaURL, options: .atomic)
+        }
+    }
+
     // MARK: - Helpers
 
     /// The session whose artifact root the request targets, or nil if the

@@ -28,10 +28,12 @@ extension CapabilityRouter {
             return .success(request, data: .object(["checks": .array(doctorChecks())]))
 
         case "dependencies":
+            let browser = browserEngine.probe()
+            let computer = computerEngine.probe()
             return .success(request, data: .object([
                 "dependencies": .array([
-                    dependencyStatus("agent-browser"),
-                    dependencyStatus("cua-driver"),
+                    dependencyStatus(browser),
+                    dependencyStatus(computer),
                 ]),
             ]))
 
@@ -40,12 +42,13 @@ extension CapabilityRouter {
         }
     }
 
-    private func dependencyStatus(_ name: String) -> JSONValue {
-        .object([
-            "name": .string(name),
-            "status": .string("not_integrated_yet"),
-            "detail": .string("integration arrives in a later milestone"),
-        ])
+    private func dependencyStatus(_ info: DependencyInfo) -> JSONValue {
+        var obj = info.asJSON()
+        if case .object(var dict) = obj {
+            dict["status"] = .string(info.installed ? "installed" : "not_installed")
+            obj = .object(dict)
+        }
+        return obj
     }
 
     private func check(_ name: String, ok: Bool, detail: String, remedy: String?) -> JSONValue {
@@ -86,6 +89,24 @@ extension CapabilityRouter {
         checks.append(check("hook_server", ok: hookOK,
             detail: hookOK ? "hook socket server running" : "hook server not running",
             remedy: hookOK ? nil : "hooks are optional; install them from Settings → Hooks"))
+
+        // Optional external drivers (Milestones 3+4). These are diagnostics —
+        // absence is not a failure of Uncoil itself, so `remedy` is the install
+        // hint rather than a hard error.
+        let browser = browserEngine.probe()
+        checks.append(check("agent_browser", ok: browser.installed,
+            detail: browser.installed
+                ? "installed at \(browser.path ?? "?")\(browser.version.map { " (v\($0))" } ?? "")"
+                : "not installed",
+            remedy: browser.installed ? nil : (browser.remedy ?? "npm install -g agent-browser")))
+
+        let computer = computerEngine.probe()
+        var computerDetail = computer.installed
+            ? "installed at \(computer.path ?? "?")\(computer.version.map { " (v\($0))" } ?? "")"
+            : "not installed"
+        if let extra = computer.detail { computerDetail += " — \(extra)" }
+        checks.append(check("cua_driver", ok: computer.installed, detail: computerDetail,
+            remedy: computer.installed ? nil : (computer.remedy ?? "install cua-driver from cua.ai")))
 
         return checks
     }

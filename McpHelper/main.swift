@@ -32,6 +32,10 @@ let tools: [ToolDef] = [
             description: "List, read, and register text artifacts inside session artifact roots. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_system",
             description: "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics. Call {\"action\":\"help\"} for full documentation."),
+    ToolDef(name: "uncoil_browser",
+            description: "Drive an isolated headless browser (open, snapshot, click element refs, fill, screenshot) via the optional agent-browser CLI; needs the browser.use grant. Call {\"action\":\"help\"} for full documentation."),
+    ToolDef(name: "uncoil_computer",
+            description: "Inspect and control native macOS apps through a per-session window binding via the optional cua-driver CLI; graded computer.inspect/background_control/foreground_control grants. Call {\"action\":\"help\"} for full documentation."),
 ]
 
 // MARK: - stdout

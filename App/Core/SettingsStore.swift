@@ -232,7 +232,10 @@ final class SettingsStore: ObservableObject {
         await checkCLIUpdates()
     }
 
-    nonisolated private static func which(_ command: String) -> String? {
+    /// Resolves a CLI by name using well-known install locations and an
+    /// interactive login shell. Reused by the control-plane adapters to locate
+    /// optional external drivers (agent-browser / cua-driver).
+    nonisolated static func which(_ command: String) -> String? {
         // 1) Well-known install locations first: GUI apps start with a
         //    minimal PATH, and users often extend PATH only in ~/.zshrc.
         let home = FileManager.default.homeDirectoryForCurrentUser.path

@@ -26,7 +26,7 @@ enum HelpRegistry {
 
     static let capabilities: [String: CapabilityDoc] = {
         var map: [String: CapabilityDoc] = [:]
-        for doc in [projects, sessions, artifacts, system] {
+        for doc in [projects, sessions, artifacts, system, browser, computer] {
             map[doc.capability] = doc
         }
         return map
@@ -160,7 +160,117 @@ enum HelpRegistry {
                 ActionDoc(action: "doctor", summary: "Per-check health diagnostics.",
                     doc: "# doctor\nRuns checks (control socket, runtime daemon, git, data dir, hook server) returning `{name, ok, detail, remedy}` for each."),
                 ActionDoc(action: "dependencies", summary: "External driver integration status.",
-                    doc: "# dependencies\nReports agent-browser / cua-driver as `not_integrated_yet`."),
+                    doc: "# dependencies\nReports the optional external drivers `agent-browser` and `cua-driver` with `{installed, path, version, remedy}` (or `not_installed`)."),
+            ])
+    }()
+
+    // MARK: - uncoil_browser
+
+    static let browser: CapabilityDoc = {
+        let names = ["help", "status", "start", "stop", "open", "navigate", "back", "reload",
+                     "snapshot", "click", "fill", "type", "press", "hover", "select", "scroll",
+                     "wait", "get", "screenshot", "list_tabs", "new_tab", "switch_tab",
+                     "close_tab", "save_state", "clear_state"]
+        let overview = "Drive an isolated headless browser (via the optional agent-browser CLI) to open pages, snapshot the accessibility tree, and act on stable element refs. Requires the browser.use grant; degrades to BROWSER_UNAVAILABLE when agent-browser is not installed."
+        return CapabilityDoc(
+            capability: "uncoil_browser",
+            overview: overview,
+            actions: [
+                helpAction(overview, names),
+                ActionDoc(action: "status", summary: "Browser session identity + engine availability.",
+                    doc: "# status\nReturns `{browser_session_id, installed, profile_mode, allowed_domains, blocked_domains, engine}`. No side effects."),
+                ActionDoc(action: "start", summary: "Initialize the isolated browser session.",
+                    doc: "# start\nArgs: `profile_mode` (ephemeral_session|persistent_session|persistent_project — persistent modes need browser.persistent_state), `allowed_domains`/`blocked_domains` (string arrays). Establishes the derived session id `uncoil-<pid8>-<sid8>`."),
+                ActionDoc(action: "stop", summary: "Close the caller's own browser session.",
+                    doc: "# stop\nCloses only the caller's derived browser session — never another session's."),
+                ActionDoc(action: "open", summary: "Open a URL (subject to domain policy).",
+                    doc: "# open\nArgs: `url` (required). Enforces allowed/blocked domain policy → PERMISSION_DENIED on violation."),
+                ActionDoc(action: "navigate", summary: "Navigate to a URL (alias of open).",
+                    doc: "# navigate\nArgs: `url` (required). Same domain policy as `open`."),
+                ActionDoc(action: "back", summary: "Go back in history.", doc: "# back\nNo args."),
+                ActionDoc(action: "reload", summary: "Reload the page.", doc: "# reload\nNo args."),
+                ActionDoc(action: "snapshot", summary: "Accessibility snapshot with element refs.",
+                    doc: "# snapshot\nArgs: `interactive_only` (bool). Returns the tree under `external_content` (untrusted) with stable refs like `@e1` to use in click/fill/hover."),
+                ActionDoc(action: "click", summary: "Click an element ref.",
+                    doc: "# click\nArgs: `ref` (required, e.g. `@e2`). A stale/unknown ref → STALE_ELEMENT_REFERENCE; take a fresh snapshot."),
+                ActionDoc(action: "fill", summary: "Clear and fill an input.",
+                    doc: "# fill\nArgs: `ref`, `text` (both required)."),
+                ActionDoc(action: "type", summary: "Type into an element.",
+                    doc: "# type\nArgs: `ref`, `text` (both required)."),
+                ActionDoc(action: "press", summary: "Press a key.",
+                    doc: "# press\nArgs: `keys` (required, e.g. `Enter`, `Control+a`)."),
+                ActionDoc(action: "hover", summary: "Hover an element ref.",
+                    doc: "# hover\nArgs: `ref` (required)."),
+                ActionDoc(action: "select", summary: "Select a dropdown option.",
+                    doc: "# select\nArgs: `ref`, `value` (both required)."),
+                ActionDoc(action: "scroll", summary: "Scroll the page.",
+                    doc: "# scroll\nArgs: `direction` (up/down/left/right, default down), `amount` (px, optional)."),
+                ActionDoc(action: "wait", summary: "Wait for a selector or milliseconds.",
+                    doc: "# wait\nArgs: `selector` (CSS) or `ms` (int). Defaults to 1000ms."),
+                ActionDoc(action: "get", summary: "Read page/element info.",
+                    doc: "# get\nArgs: `what` (url|title|text|html|value|…, default url), `ref` (optional). Content returns under `external_content`."),
+                ActionDoc(action: "screenshot", summary: "Capture a screenshot artifact.",
+                    doc: "# screenshot\nArgs: `full_page` (bool). Writes a timestamped PNG under the session's browser/screenshots and registers it in artifacts."),
+                ActionDoc(action: "list_tabs", summary: "List open tabs.", doc: "# list_tabs\nNo args."),
+                ActionDoc(action: "new_tab", summary: "Open a new tab.",
+                    doc: "# new_tab\nArgs: `url` (optional)."),
+                ActionDoc(action: "switch_tab", summary: "Switch to a tab by index.",
+                    doc: "# switch_tab\nArgs: `index` (required, int)."),
+                ActionDoc(action: "close_tab", summary: "Close a tab.",
+                    doc: "# close_tab\nArgs: `index` (optional; current tab if omitted)."),
+                ActionDoc(action: "save_state", summary: "Persist cookies/state to an artifact.",
+                    doc: "# save_state\nRequires browser.persistent_state. Writes a state JSON artifact under browser/states."),
+                ActionDoc(action: "clear_state", summary: "Clear the caller's browser state.",
+                    doc: "# clear_state\nClears only the caller's own derived session state — never another session's."),
+            ])
+    }()
+
+    // MARK: - uncoil_computer
+
+    static let computer: CapabilityDoc = {
+        let names = ["help", "status", "doctor", "permissions", "list_apps", "launch_app",
+                     "list_windows", "inspect_window", "snapshot", "click", "double_click",
+                     "right_click", "type", "press", "hotkey", "scroll", "screenshot", "bring_to_front"]
+        let overview = "Inspect and control native macOS apps (via the optional cua-driver CLI) through a per-session window binding. Read actions need computer.inspect, mutating actions computer.background_control, and focus-stealing bring_to_front needs computer.foreground_control. Degrades to COMPUTER_UNAVAILABLE when cua-driver is not installed."
+        return CapabilityDoc(
+            capability: "uncoil_computer",
+            overview: overview,
+            actions: [
+                helpAction(overview, names),
+                ActionDoc(action: "status", summary: "Engine availability + current window binding.",
+                    doc: "# status\nReturns `{installed, engine, has_binding, binding}`. Works even when cua-driver is not installed."),
+                ActionDoc(action: "doctor", summary: "cua-driver self-diagnostics.",
+                    doc: "# doctor\nRuns the driver's doctor. Requires computer.inspect."),
+                ActionDoc(action: "permissions", summary: "Accessibility/Screen-Recording status.",
+                    doc: "# permissions\nReports the driver's permission state. Requires computer.inspect."),
+                ActionDoc(action: "list_apps", summary: "Running/known applications.",
+                    doc: "# list_apps\nRequires computer.inspect. Content returns under `external_content`."),
+                ActionDoc(action: "launch_app", summary: "Launch an application.",
+                    doc: "# launch_app\nArgs: `bundle_id` (required). Requires computer.background_control."),
+                ActionDoc(action: "list_windows", summary: "Windows for an app.",
+                    doc: "# list_windows\nArgs: `bundle_id` (optional). Requires computer.inspect."),
+                ActionDoc(action: "inspect_window", summary: "Establish a window binding.",
+                    doc: "# inspect_window\nArgs: `bundle_id` (required), `window_id` (optional). Establishes the per-session binding `{bundle_id, pid, window_id, title, generation}` required by mutating actions."),
+                ActionDoc(action: "snapshot", summary: "Accessibility snapshot of the bound window.",
+                    doc: "# snapshot\nArgs: `bundle_id`/`window_id` to (re)bind, or none to reuse the current binding. Content returns under `external_content` (untrusted)."),
+                ActionDoc(action: "click", summary: "Click at window coordinates.",
+                    doc: "# click\nArgs: `x`, `y` (required). Acts on the bound window (never the frontmost implicitly). Requires computer.background_control; STALE_WINDOW_BINDING if the window is gone."),
+                ActionDoc(action: "double_click", summary: "Double-click at window coordinates.",
+                    doc: "# double_click\nArgs: `x`, `y` (required). Bound window only."),
+                ActionDoc(action: "right_click", summary: "Right-click at window coordinates.",
+                    doc: "# right_click\nArgs: `x`, `y` (required). Bound window only."),
+                ActionDoc(action: "type", summary: "Type text into the bound window.",
+                    doc: "# type\nArgs: `text` (required). Bound window only."),
+                ActionDoc(action: "press", summary: "Press a key in the bound window.",
+                    doc: "# press\nArgs: `keys` (required). Bound window only."),
+                ActionDoc(action: "hotkey", summary: "Send a hotkey chord to the bound window.",
+                    doc: "# hotkey\nArgs: `keys` (required, e.g. `cmd+s`). Bound window only."),
+                ActionDoc(action: "scroll", summary: "Scroll the bound window.",
+                    doc: "# scroll\nArgs: `direction` (default down), `amount` (optional). Bound window only."),
+                ActionDoc(action: "screenshot", summary: "Capture a screenshot artifact.",
+                    doc: "# screenshot\nCaptures the bound window (or screen). Writes a timestamped PNG under computer/screenshots and registers it. Requires computer.inspect."),
+                ActionDoc(action: "bring_to_front", summary: "Focus the bound window (intrusive).",
+                    doc: "# bring_to_front\nRequires computer.foreground_control. Steals focus; returns a warning and is audited."),
             ])
     }()
 }

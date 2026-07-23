@@ -16,6 +16,15 @@ final class CapabilityRouter {
     var hookServerRunning: () -> Bool = { false }
     var runtimeReachable: () -> Bool = { RuntimeClient.shared.phase == .ready }
 
+    /// Optional external-driver engines (Milestones 3+4). Default to the real
+    /// CLI adapters; tests inject fakes. Marked `var` so they are swappable.
+    var browserEngine: BrowserEngine = AgentBrowserAdapter()
+    var computerEngine: ComputerEngine = CuaDriverAdapter()
+
+    /// In-memory computer window bindings, keyed by the caller session id.
+    /// Established by inspect_window/snapshot; required by mutating actions.
+    var computerBindings: [UUID: WindowBinding] = [:]
+
     init(
         projectStore: ProjectStore,
         sessionStore: SessionStore,
@@ -72,6 +81,8 @@ final class CapabilityRouter {
         case "uncoil_sessions": return await handleSessions(request)
         case "uncoil_artifacts": return handleArtifacts(request)
         case "uncoil_system": return handleSystem(request)
+        case "uncoil_browser": return await handleBrowser(request)
+        case "uncoil_computer": return await handleComputer(request)
         default:
             return .failure(request, code: .invalidAction, message: "unhandled capability")
         }
