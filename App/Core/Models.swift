@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 // MARK: - Provider
 
@@ -91,6 +92,7 @@ struct Project: Identifiable, Codable, Equatable {
 
 enum AgentSessionStatus: String, Codable {
     case idle
+    case thinking
     case running
     case waitingForPermission
     case waitingForInput
@@ -99,7 +101,8 @@ enum AgentSessionStatus: String, Codable {
 
     var label: String {
         switch self {
-        case .idle: "Boşta"
+        case .idle: "Hazır"
+        case .thinking: "Düşünüyor"
         case .running: "Çalışıyor"
         case .waitingForPermission: "İzin bekliyor"
         case .waitingForInput: "Yanıt bekliyor"
@@ -112,6 +115,7 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .waitingForPermission: Theme.claude
         case .waitingForInput: Theme.warn
+        case .thinking: Color(hex: 0xB56CD6)
         case .running: Theme.ok
         case .completed: Theme.codex
         case .idle: Theme.textDim
@@ -125,6 +129,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForPermission: 5
         case .waitingForInput: 4
         case .running: 3
+        case .thinking: 3
         case .completed: 2
         case .idle: 1
         case .terminated: 0
@@ -143,6 +148,8 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     var createdAt: Date
     var lastActivityAt: Date
     var providerSessionID: String?
+    /// Pinned sessions sort to the top of their project.
+    var isPinned: Bool?
     /// When set, the session runs inside this worktree instead of the
     /// project root.
     var worktreePath: String?
@@ -173,5 +180,56 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Default titles get replaced by the first real prompt.
     var hasPlaceholderTitle: Bool {
         title.hasSuffix(": yeni oturum") || title == "terminal"
+    }
+}
+
+// MARK: - Preferred editor
+
+enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
+    case vscode
+    case zed
+    case cursor
+    case sublime
+    case textedit
+    case xcode
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .vscode: "VS Code"
+        case .zed: "Zed"
+        case .cursor: "Cursor"
+        case .sublime: "Sublime Text"
+        case .textedit: "TextEdit"
+        case .xcode: "Xcode"
+        }
+    }
+
+    var bundleID: String {
+        switch self {
+        case .vscode: "com.microsoft.VSCode"
+        case .zed: "dev.zed.Zed"
+        case .cursor: "com.todesktop.230313mzl4w4u92"
+        case .sublime: "com.sublimetext.4"
+        case .textedit: "com.apple.TextEdit"
+        case .xcode: "com.apple.dt.Xcode"
+        }
+    }
+
+    var isInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    }
+
+    func open(_ fileURL: URL) {
+        guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            NSWorkspace.shared.open(fileURL)
+            return
+        }
+        NSWorkspace.shared.open(
+            [fileURL],
+            withApplicationAt: appURL,
+            configuration: NSWorkspace.OpenConfiguration()
+        )
     }
 }

@@ -56,13 +56,13 @@ extension SessionStore {
 
         switch event.kind {
         case .sessionStart:
-            setStatus(.running, for: sessionID)
+            setStatus(.idle, for: sessionID)
         case .userPromptSubmit:
-            setStatus(.running, for: sessionID)
+            setStatus(.thinking, for: sessionID)
         case .preToolUse:
             setStatus(.running, detail: event.toolName.map { "araç: \($0)" }, for: sessionID)
         case .postToolUse:
-            setStatus(.running, for: sessionID)
+            setStatus(.thinking, for: sessionID)
         case .notification:
             let message = event.message ?? ""
             if message.localizedCaseInsensitiveContains("permission") {
@@ -72,10 +72,11 @@ extension SessionStore {
                 setStatus(.waitingForInput, detail: message, for: sessionID)
                 notifyAttention(title: project.name, body: "Claude yanıtını bekliyor")
             } else {
-                setStatus(.running, detail: message.isEmpty ? nil : message, for: sessionID)
+                setStatus(.thinking, detail: message.isEmpty ? nil : message, for: sessionID)
             }
         case .stop:
-            setStatus(.completed, for: sessionID)
+            // Turn finished — the agent now idles waiting for the human.
+            setStatus(.idle, for: sessionID)
         case .sessionEnd:
             setStatus(.terminated, for: sessionID)
         }

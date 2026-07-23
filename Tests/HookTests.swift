@@ -76,11 +76,19 @@ final class HookReducerTests: XCTestCase {
         XCTAssertEqual(sessions.status(of: record.id), .waitingForPermission)
     }
 
-    func testStopMarksCompletedAndPromptResumesRunning() {
-        send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
-        XCTAssertEqual(sessions.status(of: record.id), .completed)
+    func testStatusMachine_thinkingRunningIdle() {
+        // Prompt submitted -> the agent is thinking.
         send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .thinking)
+        // Tool started -> actively working.
+        send(["hook_event_name": "PreToolUse", "cwd": "/tmp/demo", "tool_name": "Bash"])
         XCTAssertEqual(sessions.status(of: record.id), .running)
+        // Tool finished -> back to thinking (composing).
+        send(["hook_event_name": "PostToolUse", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .thinking)
+        // Turn done -> idle, NOT "running" while waiting for the human.
+        send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .idle)
     }
 
     func testEventOutsideRegisteredProjectsIgnored() {

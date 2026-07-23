@@ -280,6 +280,9 @@ private struct SessionRow: View {
                     .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                if record.isPinned == true || hovering {
+                    PinButton(record: record)
+                }
                 StatusOrb(status: status, size: 11)
                 Text(RelativeClock.short(since: record.lastActivityAt))
                     .font(Theme.mono(10))
@@ -302,10 +305,39 @@ private struct SessionRow: View {
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.session.\(record.title)")
         .contextMenu {
+            Button(record.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle") {
+                projectStore.togglePin(record.id)
+            }
+            Divider()
             Button("Oturumu Sil", role: .destructive) {
                 TerminalRegistry.shared.closeTerminal(for: record.id)
                 projectStore.removeSession(record.id)
             }
         }
+    }
+}
+
+private struct PinButton: View {
+    let record: SessionRecord
+    @EnvironmentObject private var projectStore: ProjectStore
+    @State private var hovering = false
+
+    private var isPinned: Bool { record.isPinned == true }
+
+    var body: some View {
+        Button {
+            projectStore.togglePin(record.id)
+        } label: {
+            TablerIcon(
+                name: isPinned ? "pinned-filled" : "pin",
+                size: 10,
+                color: isPinned ? Theme.warn : (hovering ? Theme.text : Theme.textFaint)
+            )
+            .frame(width: 14, height: 14)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityIdentifier("sidebar.pin.\(record.title)")
+        .help(isPinned ? "Sabitlemeyi kaldır" : "Sabitle")
     }
 }

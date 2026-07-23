@@ -7,6 +7,9 @@ struct SessionDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
+    @State private var showChangesPanel = false
+    @State private var restartToken = 0
+    @State private var git = GitService.Snapshot()
 
     private var status: AgentSessionStatus {
         sessionStore.status(of: record.id)
@@ -16,28 +19,45 @@ struct SessionDetailView: View {
         settings.account(id: record.accountID)
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 12)
+    private var workingDirectory: String {
+        record.workingDirectory(in: project)
+    }
 
-            // Selecting a session always (re)starts its agent: the registry
-            // reuses a live terminal or launches fresh (resuming Claude when
-            // a provider session id is known). No "restart" screen.
-            TerminalHostView(record: record, project: project, account: account)
-                .padding(.horizontal, 10)
-                .padding(.bottom, 10)
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            VStack(spacing: 0) {
+                header
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 12)
+
+                // Selecting a session always (re)starts its agent: the registry
+                // reuses a live terminal or launches fresh (resuming Claude when
+                // a provider session id is known). No "restart" screen.
+                TerminalHostView(record: record, project: project, account: account)
+                    .id(restartToken)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
+            }
+
+            if showChangesPanel {
+                ChangesPanel(
+                    workingDirectory: workingDirectory,
+                    git: $git,
+                    onClose: { toggleChangesPanel(false) }
+                )
+                .frame(width: 320)
+                .transition(.move(edge: .trailing))
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.container")
     }
 
-    // MARK: - Header card
+    // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             Button {
                 selection = .project(project.id)
             } label: {
@@ -54,10 +74,8 @@ struct SessionDetailView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("session.backButton")
             .help("Proje panosuna dön")
-            .padding(.top, 2)
 
             ProviderMark(provider: record.provider, size: 17)
-                .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
@@ -97,19 +115,236 @@ struct SessionDetailView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(status.color.opacity(0.10), in: Capsule())
+
+            controlCluster
         }
         .padding(14)
         .panel(radius: 12)
     }
 
-    private var displayPath: String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        if project.rootPath.hasPrefix(home) {
-            return "~" + project.rootPath.dropFirst(home.count)
+    /// Session controls: open last change in editor · restart · changes panel.
+    private var controlCluster: some View {
+        HStack(spacing: 2) {
+            ControlButton(
+                iconName: "pencil",
+                help: "Son değişen dosyayı \(settings.preferredEditor.displayName) ile aç",
+                identifier: "session.openLastChangeButton"
+            ) {
+                openLastChange()
+            }
+
+            Rectangle().fill(Theme.border).frame(width: 1, height: 16)
+
+            ControlButton(
+                iconName: "refresh",
+                help: "Oturumu yeniden başlat" +
+                    (record.providerSessionID != nil ? " (geçmişiyle devam eder)" : ""),
+                identifier: "session.restartButton"
+            ) {
+                restart()
+            }
+
+            Rectangle().fill(Theme.border).frame(width: 1, height: 16)
+
+            ControlButton(
+                iconName: showChangesPanel ? "chevron-right" : "chevron-down",
+                help: "Değişiklikler panelini aç/kapat",
+                identifier: "session.changesButton"
+            ) {
+                toggleChangesPanel(!showChangesPanel)
+            }
         }
-        return project.rootPath
+        .padding(3)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Theme.border, lineWidth: 1)
+        )
     }
 
+    private var displayPath: String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        if workingDirectory.hasPrefix(home) {
+            return "~" + workingDirectory.dropFirst(home.count)
+        }
+        return workingDirectory
+    }
+
+    // MARK: - Actions
+
+    private func restart() {
+        TerminalRegistry.shared.closeTerminal(for: record.id)
+        projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
+        restartToken += 1
+    }
+
+    private func openLastChange() {
+        let dir = workingDirectory
+        let editor = settings.preferredEditor
+        Task.detached(priority: .userInitiated) {
+            guard let file = GitService.lastChangedFile(repoPath: dir) else { return }
+            await MainActor.run {
+                editor.open(URL(fileURLWithPath: file))
+            }
+        }
+    }
+
+    private func toggleChangesPanel(_ show: Bool) {
+        withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
+            showChangesPanel = show
+        }
+    }
+}
+
+private struct ControlButton: View {
+    let iconName: String
+    let help: String
+    let identifier: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            TablerIcon(name: iconName, size: 13, color: hovering ? Theme.text : Theme.textDim)
+                .frame(width: 26, height: 24)
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityIdentifier(identifier)
+        .help(help)
+    }
+}
+
+// MARK: - Changes panel
+
+/// Right-side sliding panel: uncommitted changes + recent commits for the
+/// session's working directory.
+private struct ChangesPanel: View {
+    let workingDirectory: String
+    @Binding var git: GitService.Snapshot
+    let onClose: () -> Void
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("DEĞİŞİKLİKLER")
+                    .font(Theme.mono(11, .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .kerning(0.6)
+                if let branch = git.branch {
+                    Text(branch)
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                Spacer()
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+
+            Divider().overlay(Theme.border)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !git.isRepo {
+                        Text("Bu klasör bir git deposu değil.")
+                            .font(Theme.mono(11))
+                            .foregroundStyle(Theme.textFaint)
+                    } else {
+                        if git.changedFiles.isEmpty {
+                            Text("Çalışma ağacı temiz")
+                                .font(Theme.mono(11))
+                                .foregroundStyle(Theme.ok)
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(git.changedFiles) { file in
+                                    ChangedFileRow(file: file, workingDirectory: workingDirectory)
+                                }
+                            }
+                        }
+
+                        if !git.recentCommits.isEmpty {
+                            Divider().overlay(Theme.border)
+                            VStack(alignment: .leading, spacing: 5) {
+                                ForEach(git.recentCommits) { commit in
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(commit.subject)
+                                            .font(Theme.mono(11))
+                                            .foregroundStyle(Theme.textDim)
+                                            .lineLimit(1)
+                                        HStack(spacing: 6) {
+                                            Text(commit.hash)
+                                                .font(Theme.mono(9.5))
+                                                .foregroundStyle(Theme.codex)
+                                            Text(commit.relativeDate)
+                                                .font(Theme.mono(9.5))
+                                                .foregroundStyle(Theme.textFaint)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(14)
+                .uncoilScrollers()
+            }
+        }
+        .background(Theme.panel)
+        .overlay(
+            Rectangle().fill(Theme.border).frame(width: 1),
+            alignment: .leading
+        )
+        .task(id: workingDirectory) { await refresh() }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("session.changesPanel")
+    }
+
+    private func refresh() async {
+        let dir = workingDirectory
+        git = await Task.detached(priority: .utility) {
+            GitService.snapshot(repoPath: dir)
+        }.value
+    }
+}
+
+private struct ChangedFileRow: View {
+    let file: GitService.ChangedFile
+    let workingDirectory: String
+    @EnvironmentObject private var settings: SettingsStore
+    @State private var hovering = false
+
+    var body: some View {
+        Button {
+            let url = URL(fileURLWithPath: workingDirectory).appendingPathComponent(file.path)
+            settings.preferredEditor.open(url)
+        } label: {
+            HStack(spacing: 8) {
+                Text(file.status)
+                    .font(Theme.mono(10, .bold))
+                    .foregroundStyle(file.status == "??" ? Theme.textFaint : Theme.warn)
+                    .frame(width: 20, alignment: .leading)
+                Text(file.path)
+                    .font(Theme.mono(11))
+                    .foregroundStyle(hovering ? Theme.text : Theme.textDim)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+            }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("\(settings.preferredEditor.displayName) ile aç")
+    }
 }
 
 struct EmptyDetailView: View {

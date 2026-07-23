@@ -9,6 +9,7 @@ final class SettingsStore: ObservableObject {
         var defaultProvider: AgentProvider = .claude
         var resolvedBinaries: [String: String] = [:]
         var extraArguments: [String: String] = [:]
+        var preferredEditor: PreferredEditor = .vscode
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -17,6 +18,7 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var resolvedBinaries: [String: String] = [:]
     /// Extra CLI arguments appended to the agent launch command, per provider.
     @Published var extraArguments: [String: String] = [:]
+    @Published var preferredEditor: PreferredEditor = .vscode
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -208,6 +210,7 @@ final class SettingsStore: ObservableObject {
         defaultProvider = decoded.defaultProvider
         resolvedBinaries = decoded.resolvedBinaries
         extraArguments = decoded.extraArguments
+        preferredEditor = decoded.preferredEditor
     }
 
     func save() {
@@ -216,7 +219,8 @@ final class SettingsStore: ObservableObject {
             defaultAccountByProvider: defaultAccountByProvider,
             defaultProvider: defaultProvider,
             resolvedBinaries: resolvedBinaries,
-            extraArguments: extraArguments
+            extraArguments: extraArguments,
+            preferredEditor: preferredEditor
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

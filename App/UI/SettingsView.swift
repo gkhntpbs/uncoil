@@ -28,10 +28,10 @@ struct SettingsView: View {
             }
             .padding(20)
             .uncoilScrollers()
-            .accessibilityIdentifier("settings.container")
         }
         .frame(width: 480, height: 640)
         .background(Theme.bg)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.container")
     }
 
@@ -129,6 +129,37 @@ struct SettingsView: View {
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
                 }
                 .padding(12)
+
+                Divider().overlay(Theme.border)
+
+                HStack {
+                    Text("Editör")
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.textDim)
+                    Spacer()
+                    Menu {
+                        ForEach(PreferredEditor.allCases) { editor in
+                            Button {
+                                settings.preferredEditor = editor
+                                settings.save()
+                            } label: {
+                                if editor.isInstalled {
+                                    Text(editor.displayName)
+                                } else {
+                                    Text("\(editor.displayName) (kurulu değil)")
+                                }
+                            }
+                        }
+                    } label: {
+                        Text(settings.preferredEditor.displayName)
+                            .font(Theme.mono(11, .medium))
+                            .foregroundStyle(Theme.text)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
 
                 Divider().overlay(Theme.border)
 

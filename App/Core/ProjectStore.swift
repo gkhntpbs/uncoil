@@ -60,7 +60,16 @@ final class ProjectStore: ObservableObject {
     func sessions(for projectID: UUID) -> [SessionRecord] {
         sessions
             .filter { $0.projectID == projectID }
-            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+            .sorted {
+                let leftPinned = $0.isPinned ?? false
+                let rightPinned = $1.isPinned ?? false
+                if leftPinned != rightPinned { return leftPinned }
+                return $0.lastActivityAt > $1.lastActivityAt
+            }
+    }
+
+    func togglePin(_ id: UUID) {
+        updateSession(id) { $0.isPinned = !($0.isPinned ?? false) }
     }
 
     @discardableResult

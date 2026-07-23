@@ -65,6 +65,38 @@ enum GitService {
         run(["-C", repoPath, "remote", "get-url", "origin"])
     }
 
+    /// Most recently modified file among uncommitted changes; falls back to
+    /// the newest file in the last commit. Blocking; call from background.
+    static func lastChangedFile(repoPath: String) -> String? {
+        let root = URL(fileURLWithPath: repoPath)
+        let changed = run(["-C", repoPath, "status", "--porcelain"])?
+            .split(separator: "\n")
+            .compactMap { line -> String? in
+                guard line.count > 3 else { return nil }
+                return String(line.dropFirst(3))
+            } ?? []
+        if !changed.isEmpty {
+            let newest = changed.max { left, right in
+                let leftDate = (try? FileManager.default.attributesOfItem(
+                    atPath: root.appendingPathComponent(left).path
+                )[.modificationDate] as? Date) ?? .distantPast
+                let rightDate = (try? FileManager.default.attributesOfItem(
+                    atPath: root.appendingPathComponent(right).path
+                )[.modificationDate] as? Date) ?? .distantPast
+                return leftDate < rightDate
+            }
+            if let newest {
+                return root.appendingPathComponent(newest).path
+            }
+        }
+        if let committed = run(["-C", repoPath, "log", "-1", "--name-only", "--pretty=format:"])?
+            .split(separator: "\n")
+            .first {
+            return root.appendingPathComponent(String(committed)).path
+        }
+        return nil
+    }
+
     // MARK: - Worktrees
 
     struct Worktree: Identifiable, Equatable {

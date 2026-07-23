@@ -77,7 +77,9 @@ final class TerminalRegistry {
         delegates[record.id] = delegate
         terminals[record.id] = view
 
-        sessionStore.setStatus(record.provider == .terminal ? .idle : .running, for: record.id)
+        // The agent starts ready-and-waiting; hooks flip it to thinking/
+        // running as real work happens.
+        sessionStore.setStatus(.idle, for: record.id)
         return view
     }
 

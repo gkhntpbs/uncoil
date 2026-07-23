@@ -11,7 +11,7 @@ struct StatusOrb: View {
 
     var body: some View {
         switch status {
-        case .running:
+        case .running, .thinking:
             OrbitingDots(color: status.color, size: size)
         case .waitingForPermission, .waitingForInput:
             PulsingOrb(color: status.color, size: size)
