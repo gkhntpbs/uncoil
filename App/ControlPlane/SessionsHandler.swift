@@ -8,6 +8,12 @@ extension CapabilityRouter {
         let all = sessionMap()
         let grants = PolicyEngine.grants(for: caller)
 
+        // Milestone 5 orchestration actions live in a separate file.
+        if let orchestrated = await handleSessionsOrchestration(
+            request, caller: caller, all: all, grants: grants) {
+            return orchestrated
+        }
+
         switch request.action {
         case "current":
             return .success(request, data: sessionData(caller, caller: caller, all: all, grants: grants),
@@ -128,9 +134,15 @@ extension CapabilityRouter {
             let target = resolveSession(request, caller: caller) ?? caller
             let relation = PolicyEngine.relation(of: target, to: caller, in: all)
             let close = PolicyEngine.canClose(relation: relation, grants: grants)
-            guard close.allowed else {
-                return .failure(request, code: close.code ?? .permissionDenied,
-                    message: close.message ?? "close denied", target_session_id: target.id.uuidString)
+            if !close.allowed {
+                if close.code == .permissionDenied {
+                    if let gate = permissionOutcome(request, caller: caller, target: target, grantKey: "sessions.close") {
+                        return gate
+                    }
+                } else {
+                    return .failure(request, code: close.code ?? .permissionDenied,
+                        message: close.message ?? "close denied", target_session_id: target.id.uuidString)
+                }
             }
             RuntimeClient.shared.kill(sid: target.id)
             sessionStore.setStatus(.terminated, for: target.id)
@@ -159,11 +171,49 @@ extension CapabilityRouter {
         }
         let relation = PolicyEngine.relation(of: target, to: caller, in: all)
         let control = PolicyEngine.canControl(relation: relation, grants: grants)
-        guard control.allowed else {
-            return .failure(request, code: control.code ?? .permissionDenied,
-                message: control.message ?? "control denied", target_session_id: target.id.uuidString)
+        if !control.allowed {
+            // A missing grant is a hard capability failure; a wrong relationship
+            // (sibling/unrelated) can be lifted by an explicit user permission.
+            if control.code == .permissionDenied {
+                if let gate = permissionOutcome(request, caller: caller, target: target, grantKey: "sessions.control") {
+                    return gate  // PERMISSION_REQUIRED (or DENIED when no service)
+                }
+                // else: an active grant authorizes it — fall through to body.
+            } else {
+                return .failure(request, code: control.code ?? .permissionDenied,
+                    message: control.message ?? "control denied", target_session_id: target.id.uuidString)
+            }
         }
         return body(target)
+    }
+
+    /// Consults the PermissionService for a relationship that policy would
+    /// otherwise deny. Returns:
+    /// - `nil` when an active directional grant (caller→target) authorizes it —
+    ///   the caller should proceed.
+    /// - a `PERMISSION_REQUIRED` envelope (with `{grant_key, target}` details)
+    ///   when a service exists but no grant is present yet.
+    /// - a `PERMISSION_DENIED` envelope when no service is wired (tests).
+    func permissionOutcome(
+        _ request: ControlRequest, caller: SessionRecord,
+        target: SessionRecord, grantKey: String
+    ) -> ControlEnvelope? {
+        let targetID = target.id.uuidString
+        guard let permissions else {
+            return .failure(request, code: .permissionDenied,
+                message: "not permitted for this relationship",
+                target_session_id: targetID)
+        }
+        if permissions.isGranted(from: caller.id.uuidString, to: targetID, key: grantKey) {
+            return nil
+        }
+        return .failure(request, code: .permissionRequired,
+            message: "user permission required: call uncoil_system request_permission",
+            details: .object([
+                "grant_key": .string(grantKey),
+                "target": .string(targetID),
+            ]),
+            target_session_id: targetID)
     }
 
     func resolveSession(_ request: ControlRequest, caller: SessionRecord) -> SessionRecord? {
@@ -192,6 +242,7 @@ extension CapabilityRouter {
         let canRead = PolicyEngine.canRead(target: record, caller: caller, relation: relation, grants: grants).allowed
         let canControl = PolicyEngine.canControl(relation: relation, grants: grants).allowed
         let canClose = PolicyEngine.canClose(relation: relation, grants: grants).allowed
+        let canCreateChild = PolicyEngine.canCreateChild(grants: grants).allowed
         return .object([
             "id": .string(record.id.uuidString),
             "project_id": .string(record.projectID.uuidString),
@@ -205,7 +256,8 @@ extension CapabilityRouter {
             "can_read": .bool(canRead),
             "can_control": .bool(canControl),
             "can_close": .bool(canClose),
-            "can_create_child": .bool(false),
+            "can_create_child": .bool(canCreateChild),
+            "pending_reports": .int(pendingReportCount(for: record)),
         ])
     }
 }

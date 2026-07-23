@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var sessionStore: SessionStore
     @State private var hookStatus = HookInstaller.status()
     @State private var hookMessage: String?
     @State private var newAccountName = ""
@@ -17,6 +18,7 @@ struct SettingsView: View {
         case theme
         case github
         case hooks
+        case permissions
 
         var id: String { rawValue }
 
@@ -30,6 +32,7 @@ struct SettingsView: View {
             case .theme: "Tema"
             case .github: "GitHub"
             case .hooks: "Hooks"
+            case .permissions: "İzinler"
             }
         }
 
@@ -43,6 +46,7 @@ struct SettingsView: View {
             case .theme: "palette"
             case .github: "brand-github"
             case .hooks: "webhook"
+            case .permissions: "shield-lock"
             }
         }
 
@@ -57,6 +61,7 @@ struct SettingsView: View {
             case .theme: "tema theme renk color açık koyu light dark terminal"
             case .github: "github token pr pull request giriş login"
             case .hooks: "hook durum status izleme kanca"
+            case .permissions: "izin permission mcp grant onay agent kontrol"
             }
         }
     }
@@ -136,6 +141,14 @@ struct SettingsView: View {
                         githubSection
                     case .hooks:
                         hooksSection
+                    case .permissions:
+                        if let service = sessionStore.permissionService {
+                            PermissionsSettingsSection(service: service)
+                        } else {
+                            Text("Kontrol düzlemi çalışmıyor; izin isteği yok.")
+                                .font(Theme.mono(11.5))
+                                .foregroundStyle(Theme.textFaint)
+                        }
                     }
                 }
                 .padding(18)

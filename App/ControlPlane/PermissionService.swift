@@ -1,0 +1,134 @@
+import Foundation
+
+/// A single directional permission record: caller (`from`) asking to act on a
+/// `target` session under a named `grantKey`. Grants are directional — A→B
+/// being granted never implies C→B. Persisted so decisions survive restarts.
+struct PermissionRequest: Codable, Equatable, Identifiable {
+    let id: String
+    let grantKey: String
+    let fromSessionID: String
+    let targetSessionID: String?
+    var status: Status
+    let createdAt: Date
+    var decidedAt: Date?
+
+    enum Status: String, Codable {
+        case pending
+        case granted
+        case denied
+    }
+
+    func matches(from: String, to: String?, key: String) -> Bool {
+        fromSessionID == from && targetSessionID == to && grantKey == key
+    }
+}
+
+/// Persists and evaluates control-plane permission requests at
+/// <AppSupport>/Uncoil/permissions.json. Pending requests auto-expire after 10
+/// minutes. The UI lists pending/granted entries and approves/denies/revokes
+/// them; the PolicyEngine consults `isGranted` on every call (no caching).
+@MainActor
+final class PermissionService: ObservableObject {
+    /// Pending requests older than this are dropped when the list is read.
+    static let pendingTTL: TimeInterval = 10 * 60
+
+    @Published private(set) var requests: [PermissionRequest] = []
+
+    private let fileURL: URL
+
+    init(dataDirectory: URL) {
+        fileURL = dataDirectory.appendingPathComponent("permissions.json")
+        load()
+    }
+
+    // MARK: - Queries
+
+    /// True when a non-expired GRANTED record authorizes `from` to act on `to`
+    /// under `key`. Directional and exact: never widens to other callers.
+    func isGranted(from: String, to: String?, key: String) -> Bool {
+        pruneExpired()
+        return requests.contains {
+            $0.status == .granted && $0.matches(from: from, to: to, key: key)
+        }
+    }
+
+    func pending() -> [PermissionRequest] {
+        pruneExpired()
+        return requests.filter { $0.status == .pending }
+    }
+
+    func granted() -> [PermissionRequest] {
+        requests.filter { $0.status == .granted }
+    }
+
+    // MARK: - Mutations
+
+    /// Creates (or returns the existing) request for this (from, target, key).
+    /// A matching granted/pending record is reused so repeated asks don't pile
+    /// up; a previously denied record is reopened as pending.
+    @discardableResult
+    func request(grantKey: String, from: String, target: String?) -> PermissionRequest {
+        pruneExpired()
+        if let index = requests.firstIndex(where: {
+            $0.matches(from: from, to: target, key: grantKey) && $0.status != .denied
+        }) {
+            return requests[index]
+        }
+        // Reopen a denied one in place, else append.
+        if let index = requests.firstIndex(where: {
+            $0.matches(from: from, to: target, key: grantKey)
+        }) {
+            requests[index].status = .pending
+            requests[index].decidedAt = nil
+            save()
+            return requests[index]
+        }
+        let record = PermissionRequest(
+            id: UUID().uuidString, grantKey: grantKey, fromSessionID: from,
+            targetSessionID: target, status: .pending, createdAt: Date(), decidedAt: nil)
+        requests.append(record)
+        save()
+        return record
+    }
+
+    func grant(id: String) { setStatus(.granted, id: id) }
+    func deny(id: String) { setStatus(.denied, id: id) }
+
+    /// Revokes a decision by removing the record entirely; the next attempt
+    /// will require a fresh request.
+    func revoke(id: String) {
+        requests.removeAll { $0.id == id }
+        save()
+    }
+
+    private func setStatus(_ status: PermissionRequest.Status, id: String) {
+        guard let index = requests.firstIndex(where: { $0.id == id }) else { return }
+        requests[index].status = status
+        requests[index].decidedAt = Date()
+        save()
+    }
+
+    // MARK: - Expiry
+
+    /// Drops pending requests past their TTL. Granted/denied records are kept
+    /// (a grant is durable until revoked).
+    private func pruneExpired() {
+        let cutoff = Date().addingTimeInterval(-Self.pendingTTL)
+        let before = requests.count
+        requests.removeAll { $0.status == .pending && $0.createdAt < cutoff }
+        if requests.count != before { save() }
+    }
+
+    // MARK: - Persistence (atomic write-temp-rename)
+
+    private func load() {
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode([PermissionRequest].self, from: data) else { return }
+        requests = decoded
+    }
+
+    private func save() {
+        guard let data = try? JSONEncoder().encode(requests) else { return }
+        AtomicFile.write(data, to: fileURL)
+    }
+}

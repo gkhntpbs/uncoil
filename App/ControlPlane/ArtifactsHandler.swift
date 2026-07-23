@@ -93,7 +93,7 @@ extension CapabilityRouter {
                 "registered_at": .string(ISO8601DateFormatter().string(from: Date())),
             ]))
             if let data = try? JSONEncoder().encode(entries) {
-                try? data.write(to: metaURL, options: .atomic)
+                AtomicFile.write(data, to: metaURL)
             }
             return .success(request, data: .object(["registered": .string(name), "count": .int(entries.count)]),
                             target_session_id: caller.id.uuidString)
@@ -122,7 +122,7 @@ extension CapabilityRouter {
             "registered_at": .string(ISO8601DateFormatter().string(from: Date())),
         ]))
         if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: metaURL, options: .atomic)
+            AtomicFile.write(data, to: metaURL)
         }
     }
 

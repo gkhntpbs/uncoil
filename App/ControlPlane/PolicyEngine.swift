@@ -35,7 +35,8 @@ enum PolicyEngine {
     /// them in `capabilities`. Browser/computer control (Milestones 3+4) plus
     /// the earlier control grants live here for discoverability.
     static let optionalGrants: Set<String> = [
-        "sessions.read_all", "sessions.control_children", "worktrees.create",
+        "sessions.read_all", "sessions.control_children", "sessions.create_children",
+        "sessions.cross_project", "worktrees.create",
         "browser.use", "browser.persistent_state",
         "computer.inspect", "computer.background_control", "computer.foreground_control",
     ]
@@ -114,8 +115,26 @@ enum PolicyEngine {
             : .deny(.permissionDenied, "cannot close an unrelated session")
     }
 
-    /// Child creation arrives in a later milestone.
-    static func canCreateChild(relation: SessionRelation, grants: Set<String>) -> PolicyDecision {
-        .deny(.invalidAction, "create_child is not available yet")
+    /// A caller may spawn children when it holds `sessions.create_children`.
+    static func canCreateChild(grants: Set<String>) -> PolicyDecision {
+        grants.contains("sessions.create_children")
+            ? .allow
+            : .deny(.capabilityDisabled, "sessions.create_children is not granted")
+    }
+
+    /// Intersects a requested capability set with what the preset allows and
+    /// what the caller itself holds, so a child can never escalate beyond both.
+    /// `nil` requested ⇒ take the preset's full granted set (still intersected
+    /// with the caller's grants).
+    static func childCapabilities(
+        requested: [String]?,
+        preset: [String],
+        callerGrants: Set<String>
+    ) -> [String] {
+        let base = requested.map(Set.init) ?? Set(preset)
+        let allowed = base
+            .intersection(Set(preset))
+            .intersection(callerGrants)
+        return allowed.sorted()
     }
 }

@@ -183,6 +183,9 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Control-plane capability grants for this session. `nil` = the default
     /// grant set (see PolicyEngine.defaultGrants). Backward-compatible.
     var capabilities: [String]?
+    /// Extra CLI arguments from the launching preset (control-plane children).
+    /// Appended after the provider's default arguments. Backward-compatible.
+    var extraArguments: [String]?
 
     init(
         id: UUID = UUID(),

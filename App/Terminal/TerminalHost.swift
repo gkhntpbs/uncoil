@@ -131,7 +131,8 @@ final class TerminalRegistry {
             for: record,
             binaryPath: settings.binaryPath(for: record.provider),
             mcpConfigPath: mcpConfigPath,
-            extraArguments: settings.extraArguments[record.provider.rawValue]
+            extraArguments: settings.extraArguments[record.provider.rawValue],
+            presetArguments: record.extraArguments
         ) {
             args = ["-l", "-i", "-c", "exec \(command)"]
         }
@@ -225,7 +226,8 @@ final class TerminalRegistry {
         for record: SessionRecord,
         binaryPath: String? = nil,
         mcpConfigPath: String? = nil,
-        extraArguments: String?
+        extraArguments: String?,
+        presetArguments: [String]? = nil
     ) -> String? {
         guard let name = record.provider.launchCommand else { return nil }
         var command = binaryPath.map { "\"\($0)\"" } ?? name
@@ -234,6 +236,9 @@ final class TerminalRegistry {
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""
+        }
+        if let presetArguments, !presetArguments.isEmpty {
+            command += " " + presetArguments.joined(separator: " ")
         }
         if let extra = extraArguments?.trimmingCharacters(in: .whitespaces), !extra.isEmpty {
             command += " " + extra

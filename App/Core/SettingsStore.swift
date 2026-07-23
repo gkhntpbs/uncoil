@@ -11,6 +11,9 @@ final class SettingsStore: ObservableObject {
         var extraArguments: [String: String] = [:]
         var preferredEditor: PreferredEditor = .vscode
         var notifications: NotificationPrefs = NotificationPrefs()
+        /// Configured session presets. Optional for backward compatibility with
+        /// settings.json written before presets existed; nil/empty ⇒ built-ins.
+        var presets: [SessionPreset]? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -21,6 +24,8 @@ final class SettingsStore: ObservableObject {
     @Published var extraArguments: [String: String] = [:]
     @Published var preferredEditor: PreferredEditor = .vscode
     @Published var notifications = NotificationPrefs()
+    /// Configured session presets; nil ⇒ the built-in defaults are used.
+    @Published var configuredPresets: [SessionPreset]? = nil
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -44,6 +49,17 @@ final class SettingsStore: ObservableObject {
     }
 
     var profilesRootURL: URL { profilesRoot }
+
+    /// Effective session presets: the user's configured list when non-empty,
+    /// otherwise the built-in defaults.
+    var presets: [SessionPreset] {
+        if let configured = configuredPresets, !configured.isEmpty { return configured }
+        return SessionPreset.builtInDefaults
+    }
+
+    func preset(id: String) -> SessionPreset? {
+        presets.first { $0.id == id }
+    }
 
     // MARK: - Accounts
 
@@ -292,6 +308,7 @@ final class SettingsStore: ObservableObject {
         extraArguments = decoded.extraArguments
         preferredEditor = decoded.preferredEditor
         notifications = decoded.notifications
+        configuredPresets = decoded.presets
     }
 
     func save() {
@@ -302,7 +319,8 @@ final class SettingsStore: ObservableObject {
             resolvedBinaries: resolvedBinaries,
             extraArguments: extraArguments,
             preferredEditor: preferredEditor,
-            notifications: notifications
+            notifications: notifications,
+            presets: configuredPresets
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

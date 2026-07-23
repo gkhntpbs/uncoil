@@ -76,6 +76,7 @@ struct UncoilApp: App {
             SettingsView()
                 .environmentObject(settings)
                 .environmentObject(projectStore)
+                .environmentObject(sessionStore)
                 .environmentObject(theme)
                 .preferredColorScheme(theme.palette.isLight ? .light : .dark)
         }

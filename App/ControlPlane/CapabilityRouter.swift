@@ -25,6 +25,19 @@ final class CapabilityRouter {
     /// Established by inspect_window/snapshot; required by mutating actions.
     var computerBindings: [UUID: WindowBinding] = [:]
 
+    /// Directional permission grants/requests (nil in socket-free tests that
+    /// don't exercise the permission flow).
+    var permissions: PermissionService?
+
+    /// Idempotency map for create_child, keyed "callerID:idempotency_key" →
+    /// the child session id already created for that key.
+    var childIdempotency: [String: UUID] = [:]
+
+    /// Launches a freshly-created child session's terminal (and delivers its
+    /// initial prompt). Injected by the app; nil in tests, where the child
+    /// record is still created but no PTY is spawned.
+    var childLauncher: ((_ record: SessionRecord, _ initialPrompt: String?) -> Void)?
+
     init(
         projectStore: ProjectStore,
         sessionStore: SessionStore,

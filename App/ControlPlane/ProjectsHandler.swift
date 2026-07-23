@@ -68,8 +68,18 @@ extension CapabilityRouter {
             }
 
         case "list_presets":
-            return .success(request, data: .object(["presets": .array([])]),
-                            warnings: ["presets not yet configured"])
+            let presets = (settings?.presets ?? SessionPreset.builtInDefaults).map { $0.asJSON() }
+            return .success(request, data: .object(["presets": .array(presets)]))
+
+        case "inspect_preset":
+            guard let id = request.args["preset_id"]?.stringValue else {
+                return .failure(request, code: .invalidArgument, message: "'preset_id' is required")
+            }
+            let presets = settings?.presets ?? SessionPreset.builtInDefaults
+            guard let preset = presets.first(where: { $0.id == id }) else {
+                return .failure(request, code: .invalidArgument, message: "unknown preset_id '\(id)'")
+            }
+            return .success(request, data: preset.asJSON())
 
         default:
             return .failure(request, code: .invalidAction, message: "unsupported project action")

@@ -24,6 +24,24 @@ extension CapabilityRouter {
                 "capabilities": .array(grants.map(JSONValue.string)),
             ]))
 
+        case "request_permission":
+            guard let grantKey = request.args["grant_key"]?.stringValue, !grantKey.isEmpty else {
+                return .failure(request, code: .invalidArgument, message: "'grant_key' is required")
+            }
+            let target = request.args["target_session_id"]?.stringValue
+            guard let permissions else {
+                return .failure(request, code: .controlPlaneUnavailable,
+                    message: "permission service unavailable")
+            }
+            let from = request.caller_session_id ?? "unknown"
+            let record = permissions.request(grantKey: grantKey, from: from, target: target)
+            return .success(request, data: .object([
+                "request_id": .string(record.id),
+                "grant_key": .string(record.grantKey),
+                "target": .string(optional: record.targetSessionID),
+                "status": .string(record.status.rawValue),
+            ]), target_session_id: target)
+
         case "doctor":
             return .success(request, data: .object(["checks": .array(doctorChecks())]))
 

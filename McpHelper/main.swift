@@ -27,7 +27,7 @@ let tools: [ToolDef] = [
     ToolDef(name: "uncoil_projects",
             description: "Inspect Uncoil projects and their git worktrees, and create new worktrees. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_sessions",
-            description: "Inspect agent sessions, read their output, and (for direct children) send input or stop them. Call {\"action\":\"help\"} for full documentation."),
+            description: "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_artifacts",
             description: "List, read, and register text artifacts inside session artifact roots. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_system",

@@ -213,6 +213,36 @@ struct MainWindow: View {
             appVersion: version
         )
         router.hookServerRunning = { [weak sessionStore] in sessionStore?.hookServer != nil }
+
+        // Directional permission service, shared with the Settings → İzinler pane.
+        let permissions = PermissionService(dataDirectory: dataDir)
+        sessionStore.permissionService = permissions
+        router.permissions = permissions
+
+        // Child-session launcher: spawn the PTY through the normal terminal
+        // path so the child shows up in the sidebar like any session, then
+        // deliver its initial prompt once the agent is ready.
+        router.childLauncher = { [weak projectStore, weak settings, weak sessionStore] record, prompt in
+            guard let projectStore, let settings, let sessionStore,
+                  let project = projectStore.projects.first(where: { $0.id == record.projectID })
+            else { return }
+            let account = settings.account(id: record.accountID)
+            _ = TerminalRegistry.shared.terminal(
+                for: record, project: project, account: account,
+                settings: settings, sessionStore: sessionStore)
+            guard let prompt, !prompt.isEmpty else { return }
+            let sid = record.id
+            Task { @MainActor in
+                // Wait for the first hook to flip status off .terminated, else
+                // fall back to a fixed delay, then send the prompt as input.
+                let deadline = Date().addingTimeInterval(3)
+                while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                }
+                RuntimeClient.shared.sendText(Data((prompt + "\n").utf8), sid: sid)
+            }
+        }
+
         let server = ControlPlaneServer(
             socketPath: ControlPlaneServer.defaultSocketPath(), router: router)
         do {

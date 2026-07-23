@@ -64,7 +64,8 @@ enum HelpRegistry {
     // MARK: - uncoil_projects
 
     static let projects: CapabilityDoc = {
-        let names = ["help", "current", "list", "inspect", "list_worktrees", "create_worktree", "list_presets"]
+        let names = ["help", "current", "list", "inspect", "list_worktrees", "create_worktree",
+                     "list_presets", "inspect_preset"]
         let overview = "Inspect Uncoil projects and their git worktrees, and create new worktrees."
         return CapabilityDoc(
             capability: "uncoil_projects",
@@ -81,8 +82,10 @@ enum HelpRegistry {
                     doc: "# list_worktrees\nArgs: `project_id` (optional). Returns `worktrees:[{path, branch, is_main}]`."),
                 ActionDoc(action: "create_worktree", summary: "Create a `.uncoil-worktrees/<name>` worktree.",
                     doc: "# create_worktree\nRequires the `worktrees.create` grant. Args: `project_id` (optional), `name` (required, `[a-zA-Z0-9._-]{1,64}`). Creates `<repo>/.uncoil-worktrees/<slug>` on branch `uncoil/<slug>`."),
-                ActionDoc(action: "list_presets", summary: "Configured project presets (none yet).",
-                    doc: "# list_presets\nReturns an empty list for now; presets arrive in a later milestone."),
+                ActionDoc(action: "list_presets", summary: "Configured session presets.",
+                    doc: "# list_presets\nReturns the configured session presets (or the built-in `claude-worker`/`codex-reviewer` defaults): `presets:[{id, name, provider, extra_arguments, initial_prompt_template, granted_capabilities, permission_mode}]`. Feed a preset `id` to `uncoil_sessions create_child`."),
+                ActionDoc(action: "inspect_preset", summary: "Full detail for one preset.",
+                    doc: "# inspect_preset\nArgs: `preset_id` (required). Returns the single preset object, or `INVALID_ARGUMENT` if unknown."),
             ])
     }()
 
@@ -90,8 +93,10 @@ enum HelpRegistry {
 
     static let sessions: CapabilityDoc = {
         let names = ["help", "current", "list", "inspect", "read_output", "send_text",
-                     "interrupt", "list_children", "wait_for_status", "stop"]
-        let overview = "Inspect agent sessions, read their output, and (for direct children) send input or stop them."
+                     "interrupt", "list_children", "wait_for_status", "stop",
+                     "create_child", "inspect_child", "wait_for_children",
+                     "summarize_children", "report_to_parent", "read_reports"]
+        let overview = "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them."
         return CapabilityDoc(
             capability: "uncoil_sessions",
             overview: overview,
@@ -114,7 +119,19 @@ enum HelpRegistry {
                 ActionDoc(action: "wait_for_status", summary: "Block until a session reaches a status.",
                     doc: "# wait_for_status\nArgs: `session_id` (optional), `status` (required, one of the AgentSessionStatus raw values), `timeout_s` (int, default 30, max 120). Returns `TIMEOUT` on expiry."),
                 ActionDoc(action: "stop", summary: "Terminate self or a direct-child session.",
-                    doc: "# stop\nStops the caller's own session or a direct child (`sessions.control_children`). Args: `session_id` (optional, defaults to caller). Sends SIGTERM via the daemon."),
+                    doc: "# stop\nStops the caller's own session or a direct child (`sessions.control_children`). Args: `session_id` (optional, defaults to caller). Sends SIGTERM via the daemon. Stopping an unrelated session needs a user permission grant (PERMISSION_REQUIRED)."),
+                ActionDoc(action: "create_child", summary: "Spawn a child session from a preset.",
+                    doc: "# create_child\nRequires the `sessions.create_children` grant. Args: `preset_id` (required — see uncoil_projects list_presets), `project_id` (optional, defaults to caller's; cross-project needs `sessions.cross_project`), `worktree_path`/`worktree_id` (optional, must be an existing worktree of that project), `initial_prompt` (optional, ≤4000 chars, sanitized), `capabilities` (optional array — intersected with preset.granted_capabilities and the caller's own grants, never escalates), `idempotency_key` (optional — a matching prior child is returned instead of duplicated). NO raw shell commands. Returns `{child_session_id, status, capabilities, …}`. The child appears in the sidebar like any session."),
+                ActionDoc(action: "inspect_child", summary: "Inspect a direct child (relationship-checked).",
+                    doc: "# inspect_child\nArgs: `session_id` (required). Sugar for `inspect` that requires the target be a direct child (else INVALID_RELATIONSHIP)."),
+                ActionDoc(action: "wait_for_children", summary: "Block until children settle.",
+                    doc: "# wait_for_children\nArgs: `session_ids` (optional array — defaults to all direct children), `until` (`completed_or_waiting`), `timeout_s` (int ≤300, default 120). Waits until each child status ∈ {idle, waitingForInput, waitingForPermission, completed, terminated}. Returns `TIMEOUT` listing still-pending ids."),
+                ActionDoc(action: "summarize_children", summary: "Status + output tail per child.",
+                    doc: "# summarize_children\nReturns for each direct child: `{id, title, status, output_tail (≤2 KB), artifact_count}`."),
+                ActionDoc(action: "report_to_parent", summary: "Send a one-way report to the parent.",
+                    doc: "# report_to_parent\nChild → parent. Args: `message` (required, ≤8 KB), `data` (optional JSON). Appends a JSON line to the parent's `reports/inbox.jsonl`; INVALID_RELATIONSHIP if the caller has no parent."),
+                ActionDoc(action: "read_reports", summary: "Read (and optionally clear) the report inbox.",
+                    doc: "# read_reports\nArgs: `clear` (bool, default false). Returns `reports:[{ts, from_session, message, data?}]` from the caller's own inbox, clearing it when `clear` is true."),
             ])
     }()
 
@@ -144,7 +161,8 @@ enum HelpRegistry {
     // MARK: - uncoil_system
 
     static let system: CapabilityDoc = {
-        let names = ["help", "status", "version", "capabilities", "doctor", "dependencies"]
+        let names = ["help", "status", "version", "capabilities", "doctor", "dependencies",
+                     "request_permission"]
         let overview = "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics."
         return CapabilityDoc(
             capability: "uncoil_system",
@@ -161,6 +179,8 @@ enum HelpRegistry {
                     doc: "# doctor\nRuns checks (control socket, runtime daemon, git, data dir, hook server) returning `{name, ok, detail, remedy}` for each."),
                 ActionDoc(action: "dependencies", summary: "External driver integration status.",
                     doc: "# dependencies\nReports the optional external drivers `agent-browser` and `cua-driver` with `{installed, path, version, remedy}` (or `not_installed`)."),
+                ActionDoc(action: "request_permission", summary: "Ask the user to authorize a denied action.",
+                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → İzinler. Grants are revocable and pending requests auto-expire after 10 minutes."),
             ])
     }()
 
