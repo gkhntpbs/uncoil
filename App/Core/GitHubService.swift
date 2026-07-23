@@ -212,6 +212,10 @@ enum BrowserApp: String, CaseIterable, Identifiable {
     case arc
     case firefox
     case edge
+    case brave
+    case opera
+    case vivaldi
+    case tor
 
     var id: String { rawValue }
 
@@ -222,6 +226,10 @@ enum BrowserApp: String, CaseIterable, Identifiable {
         case .arc: "Arc"
         case .firefox: "Firefox"
         case .edge: "Edge"
+        case .brave: "Brave"
+        case .opera: "Opera"
+        case .vivaldi: "Vivaldi"
+        case .tor: "Tor Browser"
         }
     }
 
@@ -232,6 +240,10 @@ enum BrowserApp: String, CaseIterable, Identifiable {
         case .arc: "company.thebrowser.Browser"
         case .firefox: "org.mozilla.firefox"
         case .edge: "com.microsoft.edgemac"
+        case .brave: "com.brave.Browser"
+        case .opera: "com.operasoftware.Opera"
+        case .vivaldi: "com.vivaldi.Vivaldi"
+        case .tor: "org.torproject.torbrowser"
         }
     }
 

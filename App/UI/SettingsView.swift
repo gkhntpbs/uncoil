@@ -562,12 +562,12 @@ struct GitHubLoginView: View {
                 ProgressView().controlSize(.small)
             }
 
-            Text("Bu kodu açılan sayfaya gir — kod panoya kopyalandı, onaylayınca otomatik bağlanır.")
+            Text("Kod panoya kopyalandı — aşağıdan bir tarayıcı seçip sayfaya yapıştır; onaylayınca otomatik bağlanır.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
 
             HStack(spacing: 6) {
-                Button("Tarayıcıda Aç") {
+                Button("Varsayılanda Aç") {
                     NSWorkspace.shared.open(code.verificationURL)
                 }
                 .buttonStyle(AccentButtonStyle())
@@ -592,6 +592,19 @@ struct GitHubLoginView: View {
                     .help("\(browser.displayName) ile aç")
                 }
 
+                // Fallback when no browser was detected (or by preference):
+                // copy the login link and open it anywhere.
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code.verificationURL.absoluteString, forType: .string)
+                } label: {
+                    TablerIcon(name: "link", size: 13, color: Theme.textDim)
+                        .frame(width: 26, height: 26)
+                        .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .help("Giriş linkini kopyala")
+
                 Spacer()
                 Button("Vazgeç") {
                     pollTask?.cancel()
@@ -614,7 +627,6 @@ struct GitHubLoginView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(code.userCode, forType: .string)
                 phase = .waitingForBrowser(code)
-                NSWorkspace.shared.open(code.verificationURL)
 
                 switch await GitHubAuthService.pollForToken(code) {
                 case .success(let token):
