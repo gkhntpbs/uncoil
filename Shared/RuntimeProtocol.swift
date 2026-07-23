@@ -6,6 +6,9 @@ import Foundation
 /// connection on a version mismatch.
 enum RuntimeProtocol {
     static let version = 1
+    /// Minor revision: additive commands (`peek`/`replay`) that don't break
+    /// the version-1 handshake. Bumped when such commands are added.
+    static let minor = 1
     static let socketName = "runtime.sock"
     /// Per-session replay buffer cap inside the daemon.
     static let replayBufferLimit = 512 * 1024
@@ -13,7 +16,7 @@ enum RuntimeProtocol {
 
 /// App → daemon.
 struct RuntimeCommand: Codable {
-    var cmd: String        // hello|launch|attach|input|resize|kill|list|shutdown
+    var cmd: String        // hello|launch|attach|input|resize|kill|list|shutdown|peek
     var version: Int?
     var sid: String?
     var shell: String?
@@ -31,7 +34,7 @@ struct RuntimeCommand: Codable {
 
 /// Daemon → app.
 struct RuntimeEventMessage: Codable {
-    var ev: String         // hello|sessions|data|exited|error
+    var ev: String         // hello|sessions|data|exited|error|replay
     var version: Int?
     var sid: String?
     var sids: [String]?

@@ -1,0 +1,124 @@
+import Foundation
+
+/// Dispatches a decoded `ControlRequest` to the right capability handler.
+/// Deliberately socket-free: constructed with plain stores so the whole
+/// router + policy + handler stack is unit-testable without any IPC.
+@MainActor
+final class CapabilityRouter {
+    let projectStore: ProjectStore
+    let sessionStore: SessionStore
+    let settings: SettingsStore?
+    let audit: AuditLog
+    let dataDirectory: URL
+    let appVersion: String
+
+    /// Injected liveness probes (overridable in tests).
+    var hookServerRunning: () -> Bool = { false }
+    var runtimeReachable: () -> Bool = { RuntimeClient.shared.phase == .ready }
+
+    init(
+        projectStore: ProjectStore,
+        sessionStore: SessionStore,
+        settings: SettingsStore? = nil,
+        audit: AuditLog,
+        dataDirectory: URL,
+        appVersion: String = "0.1.0"
+    ) {
+        self.projectStore = projectStore
+        self.sessionStore = sessionStore
+        self.settings = settings
+        self.audit = audit
+        self.dataDirectory = dataDirectory
+        self.appVersion = appVersion
+    }
+
+    // MARK: - Entry point
+
+    func handle(_ request: ControlRequest) async -> ControlEnvelope {
+        let envelope = await route(request)
+        audit.record(
+            requestID: request.request_id,
+            callerSessionID: request.caller_session_id,
+            capability: request.capability,
+            action: request.action,
+            target: envelope.target_session_id,
+            decision: envelope.ok ? "allow" : "deny",
+            errorCode: envelope.error?.code,
+            argKeys: Array(request.args.keys)
+        )
+        return envelope
+    }
+
+    private func route(_ request: ControlRequest) async -> ControlEnvelope {
+        guard let capabilityDoc = HelpRegistry.capabilities[request.capability] else {
+            return .failure(
+                request, code: .invalidAction,
+                message: "unknown capability '\(request.capability)'",
+                details: .object(["valid_capabilities": .array(HelpRegistry.capabilityNames.map(JSONValue.string))]))
+        }
+        guard capabilityDoc.actionNames.contains(request.action) else {
+            return .failure(
+                request, code: .invalidAction,
+                message: "unknown action '\(request.action)' for \(request.capability)",
+                details: .object(["valid_actions": .array(capabilityDoc.actionNames.map(JSONValue.string))]))
+        }
+
+        if request.action == "help" {
+            return handleHelp(request, capabilityDoc: capabilityDoc)
+        }
+
+        switch request.capability {
+        case "uncoil_projects": return handleProjects(request)
+        case "uncoil_sessions": return await handleSessions(request)
+        case "uncoil_artifacts": return handleArtifacts(request)
+        case "uncoil_system": return handleSystem(request)
+        default:
+            return .failure(request, code: .invalidAction, message: "unhandled capability")
+        }
+    }
+
+    // MARK: - Help
+
+    private func handleHelp(_ request: ControlRequest, capabilityDoc: HelpRegistry.CapabilityDoc) -> ControlEnvelope {
+        if let forAction = request.args["for_action"]?.stringValue {
+            guard let doc = capabilityDoc.action(forAction) else {
+                return .failure(
+                    request, code: .invalidAction,
+                    message: "unknown action '\(forAction)'",
+                    details: .object(["valid_actions": .array(capabilityDoc.actionNames.map(JSONValue.string))]))
+            }
+            return .success(request, data: .object([
+                "action": .string(doc.action),
+                "summary": .string(doc.summary),
+                "markdown": .string(doc.doc),
+            ]))
+        }
+        let full = ([capabilityDoc.overview] + capabilityDoc.actions.map(\.doc)).joined(separator: "\n\n")
+        return .success(request, data: .object([
+            "capability": .string(capabilityDoc.capability),
+            "overview": .string(capabilityDoc.overview),
+            "actions": .array(capabilityDoc.actionNames.map(JSONValue.string)),
+            "markdown": .string(full),
+        ]))
+    }
+
+    // MARK: - Resolution helpers
+
+    func sessionMap() -> [UUID: SessionRecord] {
+        Dictionary(uniqueKeysWithValues: projectStore.sessions.map { ($0.id, $0) })
+    }
+
+    func caller(of request: ControlRequest) -> SessionRecord? {
+        guard let raw = request.caller_session_id, let id = UUID(uuidString: raw) else { return nil }
+        return projectStore.sessions.first { $0.id == id }
+    }
+
+    func session(id raw: String?) -> SessionRecord? {
+        guard let raw, let id = UUID(uuidString: raw) else { return nil }
+        return projectStore.sessions.first { $0.id == id }
+    }
+
+    func project(id: UUID) -> Project? {
+        projectStore.projects.first { $0.id == id }
+    }
+}

@@ -160,6 +160,8 @@ final class SessionStore: ObservableObject {
     @Published private(set) var statuses: [UUID: AgentSessionStatus] = [:]
     @Published private(set) var details: [UUID: String] = [:]
     var hookServer: HookServer?
+    /// Retains the control-plane socket server (MCP → app) for its lifetime.
+    var controlServer: ControlPlaneServer?
     /// Once-per-state notification dedup keys ("<sessionID>-permission" …).
     var sentNotificationKeys: Set<String> = []
 

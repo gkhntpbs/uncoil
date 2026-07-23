@@ -39,6 +39,17 @@ targets:
         PRODUCT_NAME: uncoil-runtimed
         SKIP_INSTALL: true
 
+  uncoil-mcp:
+    type: tool
+    platform: macOS
+    sources:
+      - path: McpHelper
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: uncoil-mcp
+        SKIP_INSTALL: true
+
   Uncoil:
     type: application
     platform: macOS
@@ -51,17 +62,22 @@ targets:
         embed: false
       - target: uncoil-runtimed
         embed: false
+      - target: uncoil-mcp
+        embed: false
     postBuildScripts:
       - name: Embed uncoil-hook helper
         script: |
           cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-hook"
           cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-runtimed"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-mcp" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-mcp"
         inputFiles:
           - $(BUILT_PRODUCTS_DIR)/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/uncoil-runtimed
+          - $(BUILT_PRODUCTS_DIR)/uncoil-mcp
         outputFiles:
           - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-runtimed
+          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-mcp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil

@@ -234,6 +234,14 @@ final class RuntimeDaemon {
                 var size = winsize(ws_row: UInt16(rows), ws_col: UInt16(cols), ws_xpixel: 0, ws_ypixel: 0)
                 _ = ioctl(session.masterFD, TIOCSWINSZ, &size)
             }
+        case "peek":
+            // Return the replay buffer WITHOUT attaching (control-plane read).
+            if let sid = command.sid, let session = sessions[sid] {
+                send(RuntimeEventMessage(ev: "replay", sid: sid,
+                                         b64: session.buffer.base64EncodedString()), to: fd)
+            } else {
+                send(RuntimeEventMessage(ev: "error", sid: command.sid, message: "no such session"), to: fd)
+            }
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
         case "shutdown":

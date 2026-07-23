@@ -177,6 +177,12 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// When set, the session runs inside this worktree instead of the
     /// project root.
     var worktreePath: String?
+    /// Control-plane parentage: the session that spawned this one (for the
+    /// relationship calculator). Optional & backward-compatible.
+    var parentSessionID: UUID?
+    /// Control-plane capability grants for this session. `nil` = the default
+    /// grant set (see PolicyEngine.defaultGrants). Backward-compatible.
+    var capabilities: [String]?
 
     init(
         id: UUID = UUID(),
@@ -199,6 +205,17 @@ struct SessionRecord: Identifiable, Codable, Equatable {
 
     func workingDirectory(in project: Project) -> String {
         worktreePath ?? project.rootPath
+    }
+
+    /// Per-session artifact root under Application Support/Uncoil. Created
+    /// lazily by callers that write into it.
+    func artifactRoot(dataDirectory: URL) -> URL {
+        dataDirectory
+            .appendingPathComponent("projects", isDirectory: true)
+            .appendingPathComponent(projectID.uuidString, isDirectory: true)
+            .appendingPathComponent("sessions", isDirectory: true)
+            .appendingPathComponent(id.uuidString, isDirectory: true)
+            .appendingPathComponent("artifacts", isDirectory: true)
     }
 
     /// Sidebar/dashboard title: the provider prefix ("claude: ") is

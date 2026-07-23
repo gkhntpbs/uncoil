@@ -190,6 +190,36 @@ struct MainWindow: View {
                 }
             )
         }
+        startControlPlane()
         Task { await settings.resolveBinaries() }
+    }
+
+    /// Starts the MCP control-plane socket server. Gated off under UI testing
+    /// unless -control-plane is passed (mirrors the runtime daemon gating).
+    private func startControlPlane() {
+        guard sessionStore.controlServer == nil else { return }
+        let gatedOn = !LaunchConfig.shared.isUITesting
+            || ProcessInfo.processInfo.arguments.contains("-control-plane")
+        guard gatedOn else { return }
+
+        let dataDir = ProjectStore.defaultDirectory()
+        let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.1.0"
+        let router = CapabilityRouter(
+            projectStore: projectStore,
+            sessionStore: sessionStore,
+            settings: settings,
+            audit: AuditLog(dataDirectory: dataDir),
+            dataDirectory: dataDir,
+            appVersion: version
+        )
+        router.hookServerRunning = { [weak sessionStore] in sessionStore?.hookServer != nil }
+        let server = ControlPlaneServer(
+            socketPath: ControlPlaneServer.defaultSocketPath(), router: router)
+        do {
+            try server.start()
+            sessionStore.controlServer = server
+        } catch {
+            NSLog("Uncoil control plane could not start: \(error)")
+        }
     }
 }

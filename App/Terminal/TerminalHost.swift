@@ -61,7 +61,11 @@ final class TerminalRegistry {
     /// PTY environment: SwiftTerm's helper env has no HOME/USER/PATH —
     /// without HOME the login shell never reads ~/.zprofile and
     /// user-installed CLIs (~/.local/bin/claude) are not on PATH.
-    private func environment(for account: AccountProfile?, settings: SettingsStore) -> [String] {
+    private func environment(
+        for account: AccountProfile?,
+        settings: SettingsStore,
+        record: SessionRecord
+    ) -> [String] {
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("LANG=en_US.UTF-8")
         let processEnv = ProcessInfo.processInfo.environment
@@ -75,7 +79,43 @@ final class TerminalRegistry {
            let dir = account.configDirectory(profilesRoot: settings.profilesRootURL) {
             env.append("\(key)=\(dir.path)")
         }
+        // Control-plane wiring: agent sessions learn their identity and the
+        // control socket so the bundled uncoil-mcp server can reach the app.
+        if record.provider != .terminal {
+            env.append("UNCOIL_SESSION_ID=\(record.id.uuidString)")
+            env.append("UNCOIL_PROJECT_ID=\(record.projectID.uuidString)")
+            env.append("UNCOIL_CONTROL_SOCKET=\(ControlPlaneServer.defaultSocketPath())")
+        }
         return env
+    }
+
+    /// Writes a per-session MCP config registering the bundled `uncoil-mcp`
+    /// server, and returns its path. We never touch the user's ~/.claude.json;
+    /// Claude Code merges this file via `--mcp-config` (additive, not strict).
+    private func writeMCPConfig(for record: SessionRecord) -> String? {
+        guard let mcpBinary = Bundle.main.url(forResource: "uncoil-mcp", withExtension: nil) else {
+            return nil
+        }
+        let config: [String: Any] = [
+            "mcpServers": [
+                "uncoil": [
+                    "command": mcpBinary.path,
+                    "env": [
+                        "UNCOIL_SESSION_ID": record.id.uuidString,
+                        "UNCOIL_PROJECT_ID": record.projectID.uuidString,
+                        "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
+                    ],
+                ],
+            ],
+        ]
+        let dir = ProjectStore.defaultDirectory().appendingPathComponent("mcp", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let fileURL = dir.appendingPathComponent("\(record.id.uuidString).json")
+        guard let data = try? JSONSerialization.data(withJSONObject: config, options: [.prettyPrinted]) else {
+            return nil
+        }
+        try? data.write(to: fileURL, options: .atomic)
+        return fileURL.path
     }
 
     /// Shell arguments launching the agent. `exec` replaces the shell so the
@@ -84,9 +124,13 @@ final class TerminalRegistry {
     private func shellArguments(for record: SessionRecord, settings: SettingsStore) -> (shell: String, args: [String]) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
+        // Register the uncoil MCP server for Claude Code (additive config,
+        // never touching ~/.claude.json). Codex auto-injection is deferred.
+        let mcpConfigPath = record.provider == .claude ? writeMCPConfig(for: record) : nil
         if let command = Self.launchCommand(
             for: record,
             binaryPath: settings.binaryPath(for: record.provider),
+            mcpConfigPath: mcpConfigPath,
             extraArguments: settings.extraArguments[record.provider.rawValue]
         ) {
             args = ["-l", "-i", "-c", "exec \(command)"]
@@ -116,7 +160,7 @@ final class TerminalRegistry {
         let spec = RuntimeClient.LaunchSpec(
             shell: shell,
             args: args,
-            env: environment(for: account, settings: settings),
+            env: environment(for: account, settings: settings, record: record),
             cwd: record.workingDirectory(in: project)
         )
 
@@ -156,7 +200,7 @@ final class TerminalRegistry {
         view.startProcess(
             executable: shell,
             args: args,
-            environment: environment(for: account, settings: settings),
+            environment: environment(for: account, settings: settings, record: record),
             execName: nil,
             currentDirectory: record.workingDirectory(in: project)
         )
@@ -180,12 +224,16 @@ final class TerminalRegistry {
     nonisolated static func launchCommand(
         for record: SessionRecord,
         binaryPath: String? = nil,
+        mcpConfigPath: String? = nil,
         extraArguments: String?
     ) -> String? {
         guard let name = record.provider.launchCommand else { return nil }
         var command = binaryPath.map { "\"\($0)\"" } ?? name
         if record.provider == .claude, let sid = record.providerSessionID {
             command += " --resume \(sid)"
+        }
+        if record.provider == .claude, let mcpConfigPath {
+            command += " --mcp-config \"\(mcpConfigPath)\""
         }
         if let extra = extraArguments?.trimmingCharacters(in: .whitespaces), !extra.isEmpty {
             command += " " + extra

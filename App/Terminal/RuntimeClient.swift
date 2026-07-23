@@ -29,6 +29,11 @@ final class RuntimeClient {
     /// Delivered on the main queue.
     private var dataHandlers: [String: (Data) -> Void] = [:]
     private var exitHandlers: [String: (Int32?) -> Void] = [:]
+    /// One-shot replay-buffer readers keyed by sid (control-plane `peek`).
+    private var peekHandlers: [String: (Data?) -> Void] = [:]
+
+    /// True once the daemon handshake completed and sessions are known.
+    var isReady: Bool { phase == .ready }
 
     static var socketPath: String {
         ProjectStore.defaultDirectory().appendingPathComponent(RuntimeProtocol.socketName).path
@@ -160,6 +165,12 @@ final class RuntimeClient {
                let handler = dataHandlers[sid] {
                 DispatchQueue.main.async { handler(data) }
             }
+        case "replay":
+            if let sid = event.sid, let handler = peekHandlers[sid] {
+                peekHandlers[sid] = nil
+                let data = event.b64.flatMap { Data(base64Encoded: $0) } ?? Data()
+                DispatchQueue.main.async { handler(data) }
+            }
         case "exited":
             if let sid = event.sid {
                 aliveSessions.remove(sid)
@@ -246,6 +257,47 @@ final class RuntimeClient {
         queue.async { [self] in
             sendCommand(RuntimeCommand(cmd: "resize", sid: key, cols: cols, rows: rows))
         }
+    }
+
+    /// Whether the daemon reported this session alive at/after handshake.
+    /// Read on `queue`; call from `queue` contexts or via the async peek.
+    func sessionIsAlive(_ sid: UUID, completion: @escaping (Bool) -> Void) {
+        let key = sid.uuidString
+        queue.async { [self] in
+            let alive = phase == .ready && aliveSessions.contains(key)
+            DispatchQueue.main.async { completion(alive) }
+        }
+    }
+
+    /// Reads the daemon's replay buffer for a session WITHOUT attaching.
+    /// Returns nil if the daemon is unreachable or the session isn't alive.
+    func peek(sid: UUID, timeout: TimeInterval = 5) async -> Data? {
+        await withCheckedContinuation { continuation in
+            let key = sid.uuidString
+            queue.async { [self] in
+                guard phase == .ready, aliveSessions.contains(key) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                peekHandlers[key] = { data in continuation.resume(returning: data) }
+                sendCommand(RuntimeCommand(cmd: "peek", sid: key))
+                queue.asyncAfter(deadline: .now() + timeout) { [weak self] in
+                    guard let self, let handler = self.peekHandlers[key] else { return }
+                    self.peekHandlers[key] = nil
+                    handler(nil)
+                }
+            }
+        }
+    }
+
+    /// Sends raw bytes to a live session's PTY (control-plane send_text).
+    func sendText(_ data: Data, sid: UUID) {
+        sendInput(data, sid: sid)
+    }
+
+    /// Sends Ctrl-C (0x03) to a live session.
+    func interrupt(sid: UUID) {
+        sendInput(Data([0x03]), sid: sid)
     }
 
     func kill(sid: UUID) {
