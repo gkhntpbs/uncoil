@@ -125,13 +125,55 @@ struct SessionDetailView: View {
     /// Session controls: open last change in editor · restart · changes panel.
     private var controlCluster: some View {
         HStack(spacing: 2) {
-            ControlButton(
-                iconName: "pencil",
-                help: "Son değişen dosyayı \(settings.preferredEditor.displayName) ile aç",
-                identifier: "session.openLastChangeButton"
-            ) {
+            // Editor: the selected app's real icon opens the last change;
+            // the chevron menu picks among the user's installed editors.
+            Button {
                 openLastChange()
+            } label: {
+                Group {
+                    if let icon = settings.preferredEditor.appIcon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .frame(width: 15, height: 15)
+                    } else {
+                        TablerIcon(name: "pencil", size: 13, color: Theme.textDim)
+                    }
+                }
+                .frame(width: 26, height: 24)
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("session.openLastChangeButton")
+            .help("Son değişen dosyayı \(settings.preferredEditor.displayName) ile aç")
+
+            Menu {
+                ForEach(PreferredEditor.installed) { editor in
+                    Button {
+                        settings.preferredEditor = editor
+                        settings.save()
+                        openLastChange()
+                    } label: {
+                        if let icon = editor.appIcon {
+                            Image(nsImage: icon)
+                        }
+                        Text(editor.displayName)
+                    }
+                }
+                Divider()
+                Button("Klasörü Finder'da Aç") {
+                    NSWorkspace.shared.activateFileViewerSelecting(
+                        [URL(fileURLWithPath: workingDirectory)]
+                    )
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .frame(width: 16, height: 24)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityIdentifier("session.editorMenu")
 
             Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 

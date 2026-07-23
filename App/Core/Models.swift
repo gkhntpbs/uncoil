@@ -221,6 +221,20 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
     }
 
+    static var installed: [PreferredEditor] {
+        allCases.filter(\.isInstalled)
+    }
+
+    /// The app's real icon from disk, for the session control cluster.
+    var appIcon: NSImage? {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return nil
+        }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icon.size = NSSize(width: 16, height: 16)
+        return icon
+    }
+
     func open(_ fileURL: URL) {
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
             NSWorkspace.shared.open(fileURL)
