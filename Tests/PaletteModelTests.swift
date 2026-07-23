@@ -151,6 +151,53 @@ final class PaletteModelTests: XCTestCase {
         XCTAssertEqual(model.selectedIndex, 0)
     }
 
+    func testSelectionClampsWhenResultsShrink() {
+        let store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("palette-clamp-\(UUID().uuidString)"))
+        store.addProject(at: URL(fileURLWithPath: "/tmp/clamp-project"))
+        let sessions = SessionStore()
+        let model = PaletteModel()
+        model.configure(projectStore: store, sessionStore: sessions,
+                        settingsPanes: [("theme", "Tema")])
+        model.currentProjectID = store.projects.first?.id
+        model.open()
+
+        // Broad query → several results; select a late row.
+        model.query = "yeni"
+        model.recomputeNow()
+        let broadCount = model.flatItems.count
+        XCTAssertGreaterThan(broadCount, 1)
+        model.selectedIndex = broadCount - 1
+
+        // Narrow query → fewer results; selection must clamp into range.
+        model.query = "yeni proje ekle"
+        model.recomputeNow()
+        let narrowCount = model.flatItems.count
+        XCTAssertGreaterThan(narrowCount, 0)
+        XCTAssertLessThan(narrowCount, broadCount)
+        XCTAssertLessThan(model.selectedIndex, narrowCount)
+        XCTAssertGreaterThanOrEqual(model.selectedIndex, 0)
+    }
+
+    func testSelectionResetsToZeroWhenNoResults() {
+        let store = ProjectStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("palette-empty-\(UUID().uuidString)"))
+        store.addProject(at: URL(fileURLWithPath: "/tmp/empty-project"))
+        let sessions = SessionStore()
+        let model = PaletteModel()
+        model.configure(projectStore: store, sessionStore: sessions, settingsPanes: [])
+        model.currentProjectID = store.projects.first?.id
+        model.open()
+        model.query = "yeni"
+        model.recomputeNow()
+        model.selectedIndex = max(0, model.flatItems.count - 1)
+
+        model.query = "zzzxqqqnomatch"
+        model.recomputeNow()
+        XCTAssertEqual(model.flatItems.count, 0)
+        XCTAssertEqual(model.selectedIndex, 0)
+    }
+
     func testExecuteSetsPendingActionAndCloses() {
         let store = ProjectStore(directory: FileManager.default.temporaryDirectory
             .appendingPathComponent("palette-exec-\(UUID().uuidString)"))

@@ -7,6 +7,11 @@ import AppKit
 struct CommandPaletteOverlay: View {
     @ObservedObject var model: PaletteModel
     @FocusState private var searchFocused: Bool
+    /// Last pointer position seen by a row's hover. Used to tell a genuine
+    /// mouse move (claims selection) from rows scrolling under a stationary
+    /// cursor during keyboard navigation (must be ignored, or hover would
+    /// fight the arrow keys and pin selection to whatever sits under the mouse).
+    @State private var lastHoverLocation: CGPoint?
 
     var body: some View {
         GeometryReader { geo in
@@ -105,7 +110,20 @@ struct CommandPaletteOverlay: View {
                                 .id(index)
                                 .accessibilityIdentifier("palette.result.\(index)")
                                 .onTapGesture { model.execute(item) }
-                                .onHover { if $0 { model.selectedIndex = index } }
+                                .onContinuousHover(coordinateSpace: .global) { phase in
+                                    guard case .active(let location) = phase else { return }
+                                    // Ignore hovers where the pointer did not move:
+                                    // those come from the list scrolling under a
+                                    // stationary cursor as arrow keys change the
+                                    // selection. Only a real mouse move claims a row.
+                                    if let last = lastHoverLocation,
+                                       abs(location.x - last.x) < 1.5,
+                                       abs(location.y - last.y) < 1.5 { return }
+                                    lastHoverLocation = location
+                                    if model.selectedIndex != index {
+                                        model.selectedIndex = index
+                                    }
+                                }
                         }
                     }
                 }
