@@ -21,6 +21,7 @@ struct SettingsView: View {
                 accountsSection(.claude)
                 accountsSection(.codex)
                 defaultsSection
+                cliToolsSection
                 launchArgsSection
                 githubSection
                 hooksSection
@@ -151,6 +152,30 @@ struct SettingsView: View {
             }
             .panel()
         }
+    }
+
+    // MARK: - CLI tools
+
+    private var cliToolsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("CLI Araçları")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Kurulu sürümleri kontrol et ve tek tıkla güncelle.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            VStack(spacing: 0) {
+                ForEach([AgentProvider.claude, .codex]) { provider in
+                    CLIToolRow(provider: provider)
+                    if provider != .codex {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel()
+        }
+        .task { await settings.refreshCLIVersions() }
     }
 
     // MARK: - Launch arguments
@@ -313,6 +338,72 @@ struct SettingsView: View {
             hookMessage = error.localizedDescription
         }
         hookStatus = HookInstaller.status()
+    }
+}
+
+private struct CLIToolRow: View {
+    let provider: AgentProvider
+    @EnvironmentObject private var settings: SettingsStore
+
+    private var path: String? { settings.binaryPath(for: provider) }
+    private var updating: Bool { settings.cliUpdating.contains(provider.rawValue) }
+
+    private var sourceLabel: String? {
+        path.map { CLIToolService.source(forBinaryAt: $0, provider: provider).label }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                ProviderMark(provider: provider, size: 12)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 6) {
+                        Text(provider.displayName)
+                            .font(Theme.mono(12, .medium))
+                            .foregroundStyle(Theme.text)
+                        if let sourceLabel {
+                            Text(sourceLabel)
+                                .font(Theme.mono(9))
+                                .foregroundStyle(Theme.textFaint)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Theme.panelActive, in: Capsule())
+                        }
+                    }
+                    Text(settings.cliVersions[provider.rawValue] ?? (path == nil ? "kurulu değil" : "sürüm okunuyor…"))
+                        .font(Theme.mono(10.5))
+                        .foregroundStyle(path == nil ? Theme.danger : Theme.textFaint)
+                        .lineLimit(1)
+                }
+                Spacer()
+                if updating {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("güncelleniyor…")
+                        .font(Theme.mono(10.5))
+                        .foregroundStyle(Theme.textDim)
+                } else {
+                    Button("Kontrol Et") {
+                        Task { await settings.refreshCLIVersions() }
+                    }
+                    .buttonStyle(GhostButtonStyle())
+                    Button("Güncelle") {
+                        Task { await settings.updateCLI(provider) }
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(path == nil)
+                }
+            }
+            if let result = settings.cliUpdateResult[provider.rawValue] {
+                Text(result)
+                    .font(Theme.mono(10))
+                    .foregroundStyle(result.hasPrefix("✓") ? Theme.ok : Theme.danger)
+                    .lineLimit(2)
+                    .padding(.leading, 22)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 }
 

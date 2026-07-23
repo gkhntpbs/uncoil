@@ -17,6 +17,12 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var resolvedBinaries: [String: String] = [:]
     /// Extra CLI arguments appended to the agent launch command, per provider.
     @Published var extraArguments: [String: String] = [:]
+    /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
+    @Published var cliVersions: [String: String] = [:]
+    /// Providers with an update currently running.
+    @Published var cliUpdating: Set<String> = []
+    /// Last update-run output per provider.
+    @Published var cliUpdateResult: [String: String] = [:]
 
     private let fileURL: URL
     private let profilesRoot: URL
@@ -124,6 +130,44 @@ final class SettingsStore: ObservableObject {
             }
         }
         save()
+    }
+
+    // MARK: - CLI versions & updates
+
+    func refreshCLIVersions() async {
+        for provider in [AgentProvider.claude, .codex] {
+            guard let path = binaryPath(for: provider) else { continue }
+            let version = await Task.detached(priority: .utility) {
+                CLIToolService.version(binaryPath: path)
+            }.value
+            if let version {
+                cliVersions[provider.rawValue] = version
+            }
+        }
+    }
+
+    func updateCLI(_ provider: AgentProvider) async {
+        guard !cliUpdating.contains(provider.rawValue) else { return }
+        let source = binaryPath(for: provider).map {
+            CLIToolService.source(forBinaryAt: $0, provider: provider)
+        } ?? .unknown
+        guard let command = CLIToolService.updateCommand(provider: provider, source: source) else {
+            cliUpdateResult[provider.rawValue] = "Bu kurulum için güncelleme yolu bilinmiyor."
+            return
+        }
+        cliUpdating.insert(provider.rawValue)
+        cliUpdateResult[provider.rawValue] = nil
+        let result = await Task.detached(priority: .userInitiated) {
+            CLIToolService.runUpdate(command: command)
+        }.value
+        cliUpdating.remove(provider.rawValue)
+        cliUpdateResult[provider.rawValue] = result.success
+            ? "✓ \(result.output)"
+            : "✗ \(result.output)"
+        // Path may have changed (e.g. npm relink); re-resolve then re-read.
+        resolvedBinaries[provider.rawValue] = nil
+        await resolveBinaries()
+        await refreshCLIVersions()
     }
 
     nonisolated private static func which(_ command: String) -> String? {

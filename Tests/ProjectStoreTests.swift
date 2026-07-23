@@ -92,6 +92,14 @@ final class ProjectStoreTests: XCTestCase {
             TerminalRegistry.launchCommand(for: record, extraArguments: " --model opus "),
             "claude --resume abc-1 --model opus"
         )
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: record,
+                binaryPath: "/Users/x/.local/bin/claude",
+                extraArguments: nil
+            ),
+            "\"/Users/x/.local/bin/claude\" --resume abc-1"
+        )
         let shell = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "sh")
         XCTAssertNil(TerminalRegistry.launchCommand(for: shell, extraArguments: "x"))
     }

@@ -40,14 +40,24 @@ final class TerminalRegistry {
 
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("LANG=en_US.UTF-8")
+        // SwiftTerm's helper env has no HOME/USER/PATH — without HOME the
+        // login shell never reads ~/.zprofile and user-installed CLIs
+        // (~/.local/bin/claude) are not on PATH.
+        let processEnv = ProcessInfo.processInfo.environment
+        for key in ["HOME", "USER", "LOGNAME", "SHELL", "PATH", "TMPDIR"] {
+            if let value = processEnv[key] {
+                env.append("\(key)=\(value)")
+            }
+        }
         if let dir = account?.configDirectory(profilesRoot: settings.profilesRootURL) {
             env.append("CLAUDE_CONFIG_DIR=\(dir.path)")
         }
 
-        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        let shell = processEnv["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
         if let command = Self.launchCommand(
             for: record,
+            binaryPath: settings.binaryPath(for: record.provider),
             extraArguments: settings.extraArguments[record.provider.rawValue]
         ) {
             // `exec` replaces the shell with the agent: the user never sees
@@ -78,12 +88,16 @@ final class TerminalRegistry {
     }
 
     /// Full command line for a provider session (nil = plain shell).
+    /// Prefers the resolved absolute binary path so launch works even when
+    /// the login shell's PATH misses user-local install dirs.
     /// Kept static and pure so tests can cover resume/extra-arg composition.
     nonisolated static func launchCommand(
         for record: SessionRecord,
+        binaryPath: String? = nil,
         extraArguments: String?
     ) -> String? {
-        guard var command = record.provider.launchCommand else { return nil }
+        guard let name = record.provider.launchCommand else { return nil }
+        var command = binaryPath.map { "\"\($0)\"" } ?? name
         if record.provider == .claude, let sid = record.providerSessionID {
             command += " --resume \(sid)"
         }
