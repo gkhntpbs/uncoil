@@ -32,6 +32,7 @@ final class HookReducerTests: XCTestCase {
     private var projects: ProjectStore!
     private var sessions: SessionStore!
     private var project: Project!
+    private var record: SessionRecord!
 
     override func setUp() async throws {
         tempDir = FileManager.default.temporaryDirectory
@@ -40,6 +41,13 @@ final class HookReducerTests: XCTestCase {
         projects.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
         project = projects.projects[0]
         sessions = SessionStore()
+        record = projects.createSession(
+            projectID: project.id,
+            provider: .claude,
+            accountID: nil,
+            title: "test"
+        )
+        sessions.setStatus(.running, for: record.id)
     }
 
     override func tearDown() async throws {
@@ -49,9 +57,14 @@ final class HookReducerTests: XCTestCase {
     private func send(_ json: [String: Any]) {
         let data = try! JSONSerialization.data(withJSONObject: json)
         guard let event = HookEvent(jsonLine: data) else { return }
-        sessions.reduce(event) { [projects] path in
-            projects!.project(containing: path)
-        }
+        sessions.reduce(
+            event,
+            projectResolver: { [projects] path in projects!.project(containing: path) },
+            sessionResolver: { [projects, sessions] projectID in
+                sessions!.liveSessionID(projectSessions: projects!.sessions(for: projectID))
+            },
+            touchSession: { _ in }
+        )
     }
 
     func testPermissionNotificationSetsAttentionState() {
@@ -60,19 +73,24 @@ final class HookReducerTests: XCTestCase {
             "cwd": "/tmp/demo/sub/dir",
             "message": "Claude needs your permission to use Bash",
         ])
-        let session = sessions.session(for: project.id)
-        XCTAssertEqual(session?.status, .waitingForPermission)
+        XCTAssertEqual(sessions.status(of: record.id), .waitingForPermission)
     }
 
     func testStopMarksCompletedAndPromptResumesRunning() {
-        send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
-        XCTAssertEqual(sessions.session(for: project.id)?.status, .running)
         send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
-        XCTAssertEqual(sessions.session(for: project.id)?.status, .completed)
+        XCTAssertEqual(sessions.status(of: record.id), .completed)
+        send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .running)
     }
 
     func testEventOutsideRegisteredProjectsIgnored() {
-        send(["hook_event_name": "UserPromptSubmit", "cwd": "/somewhere/else"])
-        XCTAssertTrue(sessions.sessions.isEmpty)
+        send(["hook_event_name": "Stop", "cwd": "/somewhere/else"])
+        XCTAssertEqual(sessions.status(of: record.id), .running)
+    }
+
+    func testEventWithNoLiveSessionIgnored() {
+        sessions.setStatus(.terminated, for: record.id)
+        send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .terminated)
     }
 }

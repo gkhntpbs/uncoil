@@ -1,0 +1,270 @@
+import SwiftUI
+
+struct SettingsView: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @State private var hookStatus = HookInstaller.status()
+    @State private var hookMessage: String?
+    @State private var newAccountName = ""
+    @State private var addingAccountFor: AgentProvider?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Spacer().frame(height: 26)
+
+                Text("Ayarlar")
+                    .font(Theme.mono(16, .bold))
+                    .foregroundStyle(Theme.text)
+
+                accountsSection(.claude)
+                accountsSection(.codex)
+                defaultsSection
+                hooksSection
+            }
+            .padding(20)
+        }
+        .frame(width: 480, height: 560)
+        .background(Theme.bg)
+    }
+
+    // MARK: - Accounts
+
+    private func accountsSection(_ provider: AgentProvider) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                DotGlyph(color: provider.color, dotSize: 2.4)
+                Text("\(provider.displayName) Hesapları")
+                    .font(Theme.mono(12, .semibold))
+                    .foregroundStyle(Theme.text)
+                Spacer()
+                Button {
+                    addingAccountFor = provider
+                    newAccountName = ""
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.textDim)
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(spacing: 1) {
+                ForEach(settings.accounts(for: provider)) { profile in
+                    AccountRow(profile: profile)
+                }
+            }
+            .panel()
+
+            if addingAccountFor == provider {
+                HStack(spacing: 8) {
+                    TextField("Hesap adı (ör. İş, Kişisel)", text: $newAccountName)
+                        .textFieldStyle(.plain)
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
+                    Button("Ekle") {
+                        let trimmed = newAccountName.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { return }
+                        settings.addAccount(provider: provider, name: trimmed)
+                        addingAccountFor = nil
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                    Button("Vazgeç") { addingAccountFor = nil }
+                        .buttonStyle(GhostButtonStyle())
+                }
+            }
+        }
+    }
+
+    // MARK: - Defaults
+
+    private var defaultsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Varsayılanlar")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Varsayılan agent")
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.textDim)
+                    Spacer()
+                    HStack(spacing: 2) {
+                        ForEach([AgentProvider.claude, .codex]) { provider in
+                            Button {
+                                settings.defaultProvider = provider
+                                settings.save()
+                            } label: {
+                                Text(provider.displayName)
+                                    .font(Theme.mono(11, .medium))
+                                    .foregroundStyle(
+                                        settings.defaultProvider == provider ? Theme.text : Theme.textFaint
+                                    )
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        settings.defaultProvider == provider ? Theme.panelActive : .clear,
+                                        in: RoundedRectangle(cornerRadius: 5)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(2)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                }
+                .padding(12)
+
+                Divider().overlay(Theme.border)
+
+                ForEach([AgentProvider.claude, .codex]) { provider in
+                    HStack {
+                        Text("\(provider.displayName) CLI")
+                            .font(Theme.mono(12))
+                            .foregroundStyle(Theme.textDim)
+                        Spacer()
+                        Text(settings.binaryPath(for: provider) ?? "bulunamadı")
+                            .font(Theme.mono(11))
+                            .foregroundStyle(
+                                settings.binaryPath(for: provider) == nil ? Theme.danger : Theme.textFaint
+                            )
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
+            }
+            .panel()
+        }
+    }
+
+    // MARK: - Hooks
+
+    private var hooksSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Claude Durum Takibi (hooks)")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(hookStatus == .installed ? Theme.ok : Theme.warn)
+                        .frame(width: 7, height: 7)
+                    Text(hookStatusLabel)
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.textDim)
+                    Spacer()
+                    if hookStatus == .installed {
+                        Button("Kaldır") { runHook(install: false) }
+                            .buttonStyle(GhostButtonStyle())
+                    } else {
+                        Button("Kur") { runHook(install: true) }
+                            .buttonStyle(AccentButtonStyle())
+                    }
+                }
+                .padding(12)
+
+                if let hookMessage {
+                    Divider().overlay(Theme.border)
+                    Text(hookMessage)
+                        .font(Theme.mono(11))
+                        .foregroundStyle(Theme.textFaint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                }
+            }
+            .panel()
+        }
+    }
+
+    private var hookStatusLabel: String {
+        switch hookStatus {
+        case .installed: "Kurulu — durumlar canlı akıyor"
+        case .notInstalled: "Kurulu değil"
+        case .partiallyInstalled(let missing): "Eksik: \(missing.joined(separator: ", "))"
+        }
+    }
+
+    private func runHook(install: Bool) {
+        do {
+            if install {
+                try HookInstaller.install()
+                hookMessage = "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
+            } else {
+                try HookInstaller.uninstall()
+                hookMessage = "Uncoil girdileri kaldırıldı; diğer hook'lara dokunulmadı."
+            }
+        } catch {
+            hookMessage = error.localizedDescription
+        }
+        hookStatus = HookInstaller.status()
+    }
+}
+
+private struct AccountRow: View {
+    let profile: AccountProfile
+    @EnvironmentObject private var settings: SettingsStore
+    @State private var email: String?
+
+    private var isDefault: Bool {
+        settings.defaultAccount(for: profile.provider)?.id == profile.id
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(profile.name)
+                        .font(Theme.mono(12, .medium))
+                        .foregroundStyle(Theme.text)
+                    if isDefault {
+                        Text("varsayılan")
+                            .font(Theme.mono(9, .semibold))
+                            .foregroundStyle(profile.provider.color)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(profile.provider.color.opacity(0.12), in: Capsule())
+                    }
+                }
+                Text(email ?? "giriş yapılmamış — oturum başlatınca provider login akışı açılır")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(email == nil ? Theme.textFaint : Theme.ok)
+            }
+            Spacer()
+            if !isDefault {
+                Button("Varsayılan yap") { settings.setDefaultAccount(profile) }
+                    .buttonStyle(GhostButtonStyle())
+            }
+            if profile.directoryName != nil {
+                Button {
+                    settings.removeAccount(profile)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .task(id: profile.id) {
+            guard profile.provider == .claude else { return }
+            let root = settings.profilesRootURL
+            let store = settings
+            let value = await Task.detached(priority: .utility) {
+                store.loggedInEmail(for: profile, profilesRoot: root)
+            }.value
+            email = value
+        }
+    }
+}

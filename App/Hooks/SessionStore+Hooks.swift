@@ -3,12 +3,20 @@ import UserNotifications
 
 extension SessionStore {
     /// Starts the hook socket server and routes events into session state.
-    /// `projectResolver` maps a hook cwd to a registered project.
-    func startHookServer(projectResolver: @escaping @MainActor (String) -> Project?) {
+    func startHookServer(
+        projectResolver: @escaping @MainActor (String) -> Project?,
+        sessionResolver: @escaping @MainActor (UUID) -> UUID?,
+        touchSession: @escaping @MainActor (UUID) -> Void
+    ) {
         let server = HookServer(socketPath: HookInstaller.socketPath)
         server.onEvent = { [weak self] event in
             Task { @MainActor in
-                self?.reduce(event, projectResolver: projectResolver)
+                self?.reduce(
+                    event,
+                    projectResolver: projectResolver,
+                    sessionResolver: sessionResolver,
+                    touchSession: touchSession
+                )
             }
         }
         do {
@@ -27,52 +35,45 @@ extension SessionStore {
     // MARK: - Reducer
 
     @MainActor
-    func reduce(_ event: HookEvent, projectResolver: @MainActor (String) -> Project?) {
-        guard let cwd = event.cwd, let project = projectResolver(cwd) else { return }
+    func reduce(
+        _ event: HookEvent,
+        projectResolver: @MainActor (String) -> Project?,
+        sessionResolver: @MainActor (UUID) -> UUID?,
+        touchSession: @MainActor (UUID) -> Void
+    ) {
+        guard
+            let cwd = event.cwd,
+            let project = projectResolver(cwd),
+            let sessionID = sessionResolver(project.id)
+        else { return }
 
-        let session: AgentSession
-        if let existing = self.session(for: project.id) {
-            session = existing
-        } else if event.kind == .sessionEnd {
-            return
-        } else {
-            session = startSession(projectID: project.id, title: project.name)
-        }
-        if let sid = event.sessionID {
-            session.providerSessionID = sid
-        }
+        touchSession(sessionID)
 
         switch event.kind {
         case .sessionStart:
-            session.status = .idle
-            session.statusDetail = nil
+            setStatus(.running, for: sessionID)
         case .userPromptSubmit:
-            session.status = .running
-            session.statusDetail = nil
+            setStatus(.running, for: sessionID)
         case .preToolUse:
-            session.status = .running
-            session.statusDetail = event.toolName.map { "Araç: \($0)" }
+            setStatus(.running, detail: event.toolName.map { "araç: \($0)" }, for: sessionID)
         case .postToolUse:
-            session.status = .running
+            setStatus(.running, for: sessionID)
         case .notification:
             let message = event.message ?? ""
             if message.localizedCaseInsensitiveContains("permission") {
-                session.status = .waitingForPermission
+                setStatus(.waitingForPermission, detail: message, for: sessionID)
                 notifyAttention(title: project.name, body: "Claude izin bekliyor")
             } else if message.localizedCaseInsensitiveContains("waiting") {
-                session.status = .waitingForInput
+                setStatus(.waitingForInput, detail: message, for: sessionID)
                 notifyAttention(title: project.name, body: "Claude yanıtını bekliyor")
+            } else {
+                setStatus(.running, detail: message.isEmpty ? nil : message, for: sessionID)
             }
-            session.statusDetail = message.isEmpty ? nil : message
         case .stop:
-            session.status = .completed
-            session.statusDetail = nil
+            setStatus(.completed, for: sessionID)
         case .sessionEnd:
-            session.status = .terminated
+            setStatus(.terminated, for: sessionID)
         }
-        // AgentSession fields are @Published on the object; poke the store so
-        // list rows that only observe the store also refresh.
-        objectWillChange.send()
     }
 
     // MARK: - Attention notifications

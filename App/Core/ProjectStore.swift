@@ -1,16 +1,19 @@
 import Foundation
 
-/// Persists registered projects as JSON under Application Support/Uncoil.
+/// Persists projects and session records as JSON under Application Support/Uncoil.
 @MainActor
 final class ProjectStore: ObservableObject {
     @Published private(set) var projects: [Project] = []
+    @Published private(set) var sessions: [SessionRecord] = []
 
-    private let fileURL: URL
+    private let projectsURL: URL
+    private let sessionsURL: URL
 
     init(directory: URL? = nil) {
         let base = directory ?? Self.defaultDirectory()
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        fileURL = base.appendingPathComponent("projects.json")
+        projectsURL = base.appendingPathComponent("projects.json")
+        sessionsURL = base.appendingPathComponent("sessions.json")
         load()
     }
 
@@ -18,6 +21,8 @@ final class ProjectStore: ObservableObject {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Uncoil", isDirectory: true)
     }
+
+    // MARK: - Projects
 
     func addProject(at url: URL) {
         let path = url.standardizedFileURL.path
@@ -37,37 +42,96 @@ final class ProjectStore: ObservableObject {
 
     func removeProject(_ project: Project) {
         projects.removeAll { $0.id == project.id }
+        sessions.removeAll { $0.projectID == project.id }
         save()
     }
 
+    // MARK: - Sessions
+
+    func sessions(for projectID: UUID) -> [SessionRecord] {
+        sessions
+            .filter { $0.projectID == projectID }
+            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+    }
+
+    @discardableResult
+    func createSession(
+        projectID: UUID,
+        provider: AgentProvider,
+        accountID: UUID?,
+        title: String
+    ) -> SessionRecord {
+        let record = SessionRecord(
+            projectID: projectID,
+            provider: provider,
+            accountID: accountID,
+            title: title
+        )
+        sessions.append(record)
+        save()
+        return record
+    }
+
+    func updateSession(_ id: UUID, mutate: (inout SessionRecord) -> Void) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&sessions[index])
+        save()
+    }
+
+    func removeSession(_ id: UUID) {
+        sessions.removeAll { $0.id == id }
+        save()
+    }
+
+    // MARK: - Persistence
+
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        if let decoded = try? JSONDecoder().decode([Project].self, from: data) {
+        if let data = try? Data(contentsOf: projectsURL),
+           let decoded = try? JSONDecoder().decode([Project].self, from: data) {
             projects = decoded
+        }
+        if let data = try? Data(contentsOf: sessionsURL),
+           let decoded = try? JSONDecoder().decode([SessionRecord].self, from: data) {
+            sessions = decoded
         }
     }
 
     private func save() {
-        guard let data = try? JSONEncoder().encode(projects) else { return }
-        // Atomic write so a crash can never corrupt the registry.
-        try? data.write(to: fileURL, options: .atomic)
+        if let data = try? JSONEncoder().encode(projects) {
+            try? data.write(to: projectsURL, options: .atomic)
+        }
+        if let data = try? JSONEncoder().encode(sessions) {
+            try? data.write(to: sessionsURL, options: .atomic)
+        }
     }
 }
 
-/// Tracks live agent sessions (not persisted yet — MVP keeps them in-memory).
+/// Runtime status per session record (in-memory; terminals do not survive quit).
 @MainActor
 final class SessionStore: ObservableObject {
-    @Published var sessions: [AgentSession] = []
+    @Published private(set) var statuses: [UUID: AgentSessionStatus] = [:]
+    @Published private(set) var details: [UUID: String] = [:]
     var hookServer: HookServer?
 
-    func session(for projectID: UUID) -> AgentSession? {
-        sessions.first { $0.projectID == projectID && $0.status != .terminated }
+    func status(of recordID: UUID) -> AgentSessionStatus {
+        statuses[recordID] ?? .terminated
     }
 
-    @discardableResult
-    func startSession(projectID: UUID, title: String) -> AgentSession {
-        let session = AgentSession(projectID: projectID, title: title)
-        sessions.append(session)
-        return session
+    func detail(of recordID: UUID) -> String? {
+        details[recordID]
+    }
+
+    func setStatus(_ status: AgentSessionStatus, detail: String? = nil, for recordID: UUID) {
+        statuses[recordID] = status
+        details[recordID] = detail
+    }
+
+    /// The session that should receive hook events for a project: the most
+    /// recently started live (non-terminated) one.
+    func liveSessionID(projectSessions: [SessionRecord]) -> UUID? {
+        projectSessions
+            .filter { (statuses[$0.id] ?? .terminated) != .terminated }
+            .max { $0.createdAt < $1.createdAt }?
+            .id
     }
 }
