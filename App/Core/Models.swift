@@ -18,6 +18,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    @MainActor
     var color: Color {
         switch self {
         case .claude: Theme.claude
@@ -95,6 +96,7 @@ struct Project: Identifiable, Codable, Equatable {
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
 
+    @MainActor
     var accentColor: Color {
         colorHex.map { Color(hex: $0) } ?? Theme.textDim
     }
@@ -130,6 +132,7 @@ enum AgentSessionStatus: String, Codable {
         }
     }
 
+    @MainActor
     var color: Color {
         switch self {
         case .waitingForPermission: Theme.claude

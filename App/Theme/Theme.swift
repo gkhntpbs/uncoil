@@ -1,22 +1,26 @@
 import SwiftUI
 
-/// Uncoil design tokens — single dark surface, mono type, warm accent.
+/// Uncoil design tokens — single surface, mono type, warm accent.
+/// All colors read the live user palette (Ayarlar > Tema).
+@MainActor
 enum Theme {
+    private static var p: ThemePalette { ThemeStore.shared.palette }
+
     // Surfaces
-    static let bg = Color(hex: 0x0F0F11)
-    static let panel = Color(hex: 0x1A1A1E)
-    static let panelHover = Color(hex: 0x222227)
-    static let panelActive = Color(hex: 0x26262C)
-    static let border = Color(hex: 0x2A2A30)
+    static var bg: Color { Color(hex: p.bg) }
+    static var panel: Color { Color(hex: p.panel) }
+    static var panelHover: Color { Color(hex: p.panelHover) }
+    static var panelActive: Color { Color(hex: p.panelActive) }
+    static var border: Color { Color(hex: p.border) }
 
     // Text
-    static let text = Color(hex: 0xE9E9EC)
-    static let textDim = Color(hex: 0x86868F)
-    static let textFaint = Color(hex: 0x55555E)
+    static var text: Color { Color(hex: p.text) }
+    static var textDim: Color { Color(hex: p.textDim) }
+    static var textFaint: Color { Color(hex: p.textFaint) }
 
     // Accents
-    static let claude = Color(hex: 0xE2572B)
-    static let codex = Color(hex: 0x4A8FD9)
+    static var claude: Color { Color(hex: p.claude) }
+    static var codex: Color { Color(hex: p.codex) }
     static let terminal = Color(hex: 0x8A8A93)
     static let ok = Color(hex: 0x4CAF7A)
     static let warn = Color(hex: 0xD9A63F)

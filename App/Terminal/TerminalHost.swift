@@ -35,8 +35,9 @@ final class TerminalRegistry {
         deadSessions.remove(record.id)
 
         let view = LocalProcessTerminalView(frame: .zero)
-        view.nativeBackgroundColor = NSColor(Theme.bg)
-        view.nativeForegroundColor = NSColor(Theme.text)
+        let palette = ThemeStore.shared.palette
+        view.nativeBackgroundColor = NSColor(Color(hex: palette.terminalBg))
+        view.nativeForegroundColor = NSColor(Color(hex: palette.terminalFg))
 
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("LANG=en_US.UTF-8")

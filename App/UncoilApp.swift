@@ -6,11 +6,29 @@ struct UncoilApp: App {
     @StateObject private var projectStore = ProjectStore()
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
+    @StateObject private var theme = ThemeStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
 
     init() {
         LaunchConfig.shared.prepareEnvironment()
         TablerIcons.register()
+        // Window state restoration can come back as "zero windows" once a
+        // value-presented WindowGroup exists; sessions are persisted by our
+        // own stores, so native window restoration is disabled entirely.
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        // Fully opt out of AppKit state restoration: with another instance
+        // alive (Xcode runs, tests) the shared saved state restores zero
+        // windows. Uncoil's own stores restore everything that matters.
+        UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
+        // Stale saved state (written before this default existed) can still
+        // restore "zero windows" — clear it; our stores restore real state.
+        if let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first,
+           let bundleID = Bundle.main.bundleIdentifier {
+            let savedState = library
+                .appendingPathComponent("Saved Application State", isDirectory: true)
+                .appendingPathComponent("\(bundleID).savedState", isDirectory: true)
+            try? FileManager.default.removeItem(at: savedState)
+        }
     }
 
     var body: some Scene {
@@ -19,6 +37,8 @@ struct UncoilApp: App {
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
                 .environmentObject(settings)
+                .environmentObject(theme)
+                .preferredColorScheme(theme.palette.isLight ? .light : .dark)
                 .frame(minWidth: 940, minHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
@@ -39,7 +59,8 @@ struct UncoilApp: App {
                     .environmentObject(projectStore)
                     .environmentObject(sessionStore)
                     .environmentObject(settings)
-            }
+                    .environmentObject(theme)
+                }
         }
         .windowStyle(.hiddenTitleBar)
 
@@ -47,7 +68,8 @@ struct UncoilApp: App {
             SettingsView()
                 .environmentObject(settings)
                 .environmentObject(projectStore)
-                .preferredColorScheme(.dark)
+                .environmentObject(theme)
+                .preferredColorScheme(theme.palette.isLight ? .light : .dark)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)

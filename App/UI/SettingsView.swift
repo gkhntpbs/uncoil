@@ -8,29 +8,144 @@ struct SettingsView: View {
     @State private var addingAccountFor: AgentProvider?
     @State private var githubTokenSaved = KeychainStore.read(key: "github-token") != nil
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Spacer().frame(height: 26)
+    enum Pane: String, CaseIterable, Identifiable {
+        case accounts
+        case defaults
+        case cliTools
+        case launchArgs
+        case notifications
+        case theme
+        case github
+        case hooks
 
-                Text("Ayarlar")
-                    .font(Theme.mono(16, .bold))
-                    .foregroundStyle(Theme.text)
+        var id: String { rawValue }
 
-                accountsSection(.claude)
-                accountsSection(.codex)
-                defaultsSection
-                cliToolsSection
-                launchArgsSection
-                notificationsSection
-                githubSection
-                hooksSection
+        var title: String {
+            switch self {
+            case .accounts: "Hesaplar"
+            case .defaults: "Varsayılanlar"
+            case .cliTools: "CLI Araçları"
+            case .launchArgs: "Parametreler"
+            case .notifications: "Bildirimler"
+            case .theme: "Tema"
+            case .github: "GitHub"
+            case .hooks: "Hooks"
             }
-            .padding(20)
-            .uncoilScrollers()
         }
-        .frame(width: 480, height: 640)
+
+        var iconName: String {
+            switch self {
+            case .accounts: "users"
+            case .defaults: "adjustments"
+            case .cliTools: "terminal-2"
+            case .launchArgs: "command"
+            case .notifications: "bell"
+            case .theme: "palette"
+            case .github: "brand-github"
+            case .hooks: "webhook"
+            }
+        }
+
+        /// Search terms (Turkish + English) matched by the filter box.
+        var keywords: String {
+            switch self {
+            case .accounts: "hesap account claude codex login giriş profil"
+            case .defaults: "varsayılan default editör editor agent cli yol path"
+            case .cliTools: "cli güncelle update sürüm version brew npm"
+            case .launchArgs: "parametre argüman argument model flag"
+            case .notifications: "bildirim notification ses sound öncelik priority"
+            case .theme: "tema theme renk color açık koyu light dark terminal"
+            case .github: "github token pr pull request giriş login"
+            case .hooks: "hook durum status izleme kanca"
+            }
+        }
+    }
+
+    @State private var pane: Pane = .accounts
+    @State private var search = ""
+
+    private var visiblePanes: [Pane] {
+        let query = search.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return Pane.allCases }
+        return Pane.allCases.filter {
+            $0.title.lowercased().contains(query) || $0.keywords.contains(query)
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Settings sidebar: search + pane list
+            VStack(alignment: .leading, spacing: 8) {
+                Spacer().frame(height: 34)
+
+                HStack(spacing: 6) {
+                    TablerIcon(name: "search", size: 11, color: Theme.textFaint)
+                    TextField("Ara", text: $search)
+                        .textFieldStyle(.plain)
+                        .font(Theme.mono(11.5))
+                        .foregroundStyle(Theme.text)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(Theme.border, lineWidth: 1)
+                )
+                .padding(.horizontal, 10)
+
+                VStack(spacing: 1) {
+                    ForEach(visiblePanes) { candidate in
+                        SettingsPaneRow(
+                            pane: candidate,
+                            isSelected: pane == candidate
+                        ) { pane = candidate }
+                    }
+                }
+                .padding(.horizontal, 8)
+
+                Spacer()
+            }
+            .frame(width: 170)
+
+            Rectangle().fill(Theme.border).frame(width: 1)
+
+            // Selected pane
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Spacer().frame(height: 30)
+                    Text(pane.title)
+                        .font(Theme.mono(15, .bold))
+                        .foregroundStyle(Theme.text)
+
+                    switch pane {
+                    case .accounts:
+                        accountsSection(.claude)
+                        accountsSection(.codex)
+                    case .defaults:
+                        defaultsSection
+                    case .cliTools:
+                        cliToolsSection
+                    case .launchArgs:
+                        launchArgsSection
+                    case .notifications:
+                        notificationsSection
+                    case .theme:
+                        ThemeSettingsSection()
+                    case .github:
+                        githubSection
+                    case .hooks:
+                        hooksSection
+                    }
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .uncoilScrollers()
+            }
+        }
+        .frame(width: 660, height: 620)
         .background(Theme.bg)
+        .ignoresSafeArea(edges: .top)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.container")
     }
@@ -776,6 +891,7 @@ private struct NotificationSettingsSection: View {
     }
 }
 
+@MainActor
 func priorityPicker(
     current: NotificationPrefs.Priority,
     onPick: @escaping (NotificationPrefs.Priority) -> Void
@@ -793,6 +909,7 @@ func priorityPicker(
     .fixedSize()
 }
 
+@MainActor
 func soundPicker(
     current: String,
     onPick: @escaping (String) -> Void
@@ -860,5 +977,114 @@ private struct ProjectNotificationRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+}
+
+
+private struct SettingsPaneRow: View {
+    let pane: SettingsView.Pane
+    let isSelected: Bool
+    let onSelect: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 8) {
+                TablerIcon(
+                    name: pane.iconName,
+                    size: 12,
+                    color: isSelected ? Theme.text : Theme.textDim
+                )
+                Text(pane.title)
+                    .font(Theme.mono(12, isSelected ? .medium : .regular))
+                    .foregroundStyle(isSelected ? Theme.text : Theme.textDim)
+                Spacer()
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(
+                isSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityIdentifier("settings.pane.\(pane.rawValue)")
+    }
+}
+
+// MARK: - Theme settings
+
+private struct ThemeSettingsSection: View {
+    @EnvironmentObject private var theme: ThemeStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Hazır temalar")
+                .font(Theme.mono(11, .semibold))
+                .foregroundStyle(Theme.textDim)
+            HStack(spacing: 8) {
+                Button("Koyu") { theme.apply(preset: .dark) }
+                    .buttonStyle(theme.palette.isLight ? AnyButtonStyle(GhostButtonStyle()) : AnyButtonStyle(AccentButtonStyle()))
+                Button("Açık") { theme.apply(preset: .light) }
+                    .buttonStyle(theme.palette.isLight ? AnyButtonStyle(AccentButtonStyle()) : AnyButtonStyle(GhostButtonStyle()))
+                Spacer()
+            }
+
+            Text("Renkler")
+                .font(Theme.mono(11, .semibold))
+                .foregroundStyle(Theme.textDim)
+                .padding(.top, 6)
+
+            VStack(spacing: 0) {
+                colorRow("Arka plan", \.bg)
+                Divider().overlay(Theme.border)
+                colorRow("Panel", \.panel)
+                colorRow("Kenarlık", \.border)
+                Divider().overlay(Theme.border)
+                colorRow("Metin", \.text)
+                colorRow("Soluk metin", \.textDim)
+                Divider().overlay(Theme.border)
+                colorRow("Claude rengi", \.claude)
+                colorRow("Codex rengi", \.codex)
+                Divider().overlay(Theme.border)
+                colorRow("Terminal arka planı", \.terminalBg)
+                colorRow("Terminal metni", \.terminalFg)
+            }
+            .panel()
+
+            Text("Terminal renkleri yeni açılan oturumlarda geçerli olur.")
+                .font(Theme.mono(10))
+                .foregroundStyle(Theme.textFaint)
+        }
+    }
+
+    private func colorRow(
+        _ title: String,
+        _ keyPath: WritableKeyPath<ThemePalette, UInt32>
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.textDim)
+            Spacer()
+            ColorPicker("", selection: theme.binding(keyPath), supportsOpacity: false)
+                .labelsHidden()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+    }
+}
+
+/// Type-erased button style so preset buttons can swap styles dynamically.
+struct AnyButtonStyle: ButtonStyle {
+    private let make: (Configuration) -> AnyView
+
+    init<S: ButtonStyle>(_ style: S) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        make(configuration)
     }
 }

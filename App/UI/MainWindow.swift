@@ -74,7 +74,6 @@ struct MainWindow: View {
         }
         .ignoresSafeArea(edges: .top)
         .background(Theme.bg)
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerSheet { url in
                 projectStore.addProject(at: url)
