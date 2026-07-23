@@ -14,6 +14,9 @@ final class SettingsStore: ObservableObject {
         /// Configured session presets. Optional for backward compatibility with
         /// settings.json written before presets existed; nil/empty ⇒ built-ins.
         var presets: [SessionPreset]? = nil
+        /// Per-provider terminal behavior (Shift+Enter newline, …). Optional for
+        /// backward compatibility; a missing entry ⇒ the provider's defaults.
+        var providerBehaviors: [String: ProviderBehavior]? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -26,6 +29,8 @@ final class SettingsStore: ObservableObject {
     @Published var notifications = NotificationPrefs()
     /// Configured session presets; nil ⇒ the built-in defaults are used.
     @Published var configuredPresets: [SessionPreset]? = nil
+    /// Per-provider terminal behavior overrides; a missing key ⇒ provider default.
+    @Published var providerBehaviors: [String: ProviderBehavior] = [:]
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -59,6 +64,21 @@ final class SettingsStore: ObservableObject {
 
     func preset(id: String) -> SessionPreset? {
         presets.first { $0.id == id }
+    }
+
+    // MARK: - Provider behavior
+
+    /// Effective Shift+Enter-newline setting for a provider: the user override
+    /// when set, otherwise the provider's built-in default.
+    func shiftEnterNewline(for provider: AgentProvider) -> Bool {
+        providerBehaviors[provider.rawValue]?.shiftEnterNewline ?? provider.defaultShiftEnterNewline
+    }
+
+    func setShiftEnterNewline(_ value: Bool, for provider: AgentProvider) {
+        var behavior = providerBehaviors[provider.rawValue] ?? ProviderBehavior()
+        behavior.shiftEnterNewline = value
+        providerBehaviors[provider.rawValue] = behavior
+        save()
     }
 
     // MARK: - Accounts
@@ -309,6 +329,7 @@ final class SettingsStore: ObservableObject {
         preferredEditor = decoded.preferredEditor
         notifications = decoded.notifications
         configuredPresets = decoded.presets
+        providerBehaviors = decoded.providerBehaviors ?? [:]
     }
 
     func save() {
@@ -320,7 +341,8 @@ final class SettingsStore: ObservableObject {
             extraArguments: extraArguments,
             preferredEditor: preferredEditor,
             notifications: notifications,
-            presets: configuredPresets
+            presets: configuredPresets,
+            providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

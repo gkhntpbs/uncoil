@@ -33,6 +33,9 @@ struct PermissionsSettingsSection: View {
                     .foregroundStyle(Theme.textDim)
             }
         }
+        // Prune expired pending records off the view-update path (never from
+        // body — that would publish changes during a view update and crash).
+        .task { service.pruneExpiredIfNeeded() }
     }
 
     @ViewBuilder

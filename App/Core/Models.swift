@@ -44,6 +44,28 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .terminal: nil
         }
     }
+
+    /// Default for the Shift+Enter → literal-newline behavior. Claude Code and
+    /// the Codex TUI both accept a backslash+CR for an in-prompt newline (this
+    /// is what `claude /terminal-setup` configures in iTerm/VSCode), so it is on
+    /// by default for both; a plain terminal keeps Enter meaning submit.
+    var defaultShiftEnterNewline: Bool {
+        switch self {
+        case .claude, .codex: true
+        case .terminal: false
+        }
+    }
+}
+
+// MARK: - Per-provider behavior
+
+/// User-tunable per-provider terminal behavior. All fields optional so a value
+/// written by an older build decodes, and an unset field falls back to the
+/// provider's built-in default (`AgentProvider.defaultShiftEnterNewline`).
+struct ProviderBehavior: Codable, Equatable {
+    /// When true, Shift+Enter (and Option+Enter) sends a literal newline
+    /// (backslash + carriage return) to the agent instead of submitting.
+    var shiftEnterNewline: Bool?
 }
 
 // MARK: - Account profile

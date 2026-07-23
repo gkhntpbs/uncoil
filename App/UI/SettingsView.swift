@@ -14,6 +14,7 @@ struct SettingsView: View {
         case defaults
         case cliTools
         case launchArgs
+        case agentBehavior
         case notifications
         case theme
         case github
@@ -28,6 +29,7 @@ struct SettingsView: View {
             case .defaults: "Varsayılanlar"
             case .cliTools: "CLI Araçları"
             case .launchArgs: "Parametreler"
+            case .agentBehavior: "Agent Ayarları"
             case .notifications: "Bildirimler"
             case .theme: "Tema"
             case .github: "GitHub"
@@ -42,6 +44,7 @@ struct SettingsView: View {
             case .defaults: "adjustments"
             case .cliTools: "terminal-2"
             case .launchArgs: "command"
+            case .agentBehavior: "keyboard"
             case .notifications: "bell"
             case .theme: "palette"
             case .github: "brand-github"
@@ -57,6 +60,7 @@ struct SettingsView: View {
             case .defaults: "varsayılan default editör editor agent cli yol path"
             case .cliTools: "cli güncelle update sürüm version brew npm"
             case .launchArgs: "parametre argüman argument model flag"
+            case .agentBehavior: "agent davranış behavior shift enter newline satır klavye keyboard"
             case .notifications: "bildirim notification ses sound öncelik priority"
             case .theme: "tema theme renk color açık koyu light dark terminal"
             case .github: "github token pr pull request giriş login"
@@ -133,6 +137,8 @@ struct SettingsView: View {
                         cliToolsSection
                     case .launchArgs:
                         launchArgsSection
+                    case .agentBehavior:
+                        AgentBehaviorSettingsSection()
                     case .notifications:
                         notificationsSection
                     case .theme:

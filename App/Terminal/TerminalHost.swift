@@ -9,6 +9,11 @@ import SwiftTerm
 final class TerminalRegistry {
     static let shared = TerminalRegistry()
 
+    private init() {
+        // App-wide key monitor for Shift/Option+Enter → literal newline.
+        TerminalKeyMonitor.installIfNeeded()
+    }
+
     private var terminals: [UUID: TerminalView] = [:]
     private var delegates: [UUID: AnyObject] = [:]
     /// Sessions whose process exited; the next request recreates the terminal
@@ -154,8 +159,12 @@ final class TerminalRegistry {
         settings: SettingsStore,
         sessionStore: SessionStore
     ) -> TerminalView {
-        let view = TerminalView(frame: .zero)
+        let view = UncoilTerminalView(frame: .zero)
         applyTheme(view)
+        let provider = record.provider
+        view.resolveShiftEnterNewline = { [weak settings] in
+            settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
+        }
 
         let (shell, args) = shellArguments(for: record, settings: settings)
         let spec = RuntimeClient.LaunchSpec(
@@ -195,8 +204,12 @@ final class TerminalRegistry {
         settings: SettingsStore,
         sessionStore: SessionStore
     ) -> TerminalView {
-        let view = LocalProcessTerminalView(frame: .zero)
+        let view = UncoilLocalTerminalView(frame: .zero)
         applyTheme(view)
+        let provider = record.provider
+        view.resolveShiftEnterNewline = { [weak settings] in
+            settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
+        }
         let (shell, args) = shellArguments(for: record, settings: settings)
         view.startProcess(
             executable: shell,

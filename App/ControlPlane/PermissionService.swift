@@ -52,13 +52,25 @@ final class PermissionService: ObservableObject {
         }
     }
 
+    /// Non-mutating: filters out expired pending records for display WITHOUT
+    /// touching `@Published requests`. This is read from SwiftUI view bodies, so
+    /// it must never publish changes (doing so crashes with "Publishing changes
+    /// from within view updates is not allowed"). Actual pruning/persistence
+    /// happens lazily on the control-plane paths (`isGranted`/`request`) and via
+    /// `pruneExpiredIfNeeded()` scheduled outside any view update.
     func pending() -> [PermissionRequest] {
-        pruneExpired()
-        return requests.filter { $0.status == .pending }
+        let cutoff = Date().addingTimeInterval(-Self.pendingTTL)
+        return requests.filter { $0.status == .pending && $0.createdAt >= cutoff }
     }
 
     func granted() -> [PermissionRequest] {
         requests.filter { $0.status == .granted }
+    }
+
+    /// Prunes expired pending records off the view-update path. Safe to call
+    /// from `.task`/`.onAppear`-driven async work; mutates and persists.
+    func pruneExpiredIfNeeded() {
+        pruneExpired()
     }
 
     // MARK: - Mutations
