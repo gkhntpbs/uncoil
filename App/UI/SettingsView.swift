@@ -6,7 +6,6 @@ struct SettingsView: View {
     @State private var hookMessage: String?
     @State private var newAccountName = ""
     @State private var addingAccountFor: AgentProvider?
-    @State private var githubTokenDraft = ""
     @State private var githubTokenSaved = KeychainStore.read(key: "github-token") != nil
 
     var body: some View {
@@ -259,52 +258,11 @@ struct SettingsView: View {
             Text("GitHub")
                 .font(Theme.mono(12, .semibold))
                 .foregroundStyle(Theme.text)
-            Text("Token yalnızca Keychain'de saklanır; özel depoların PR'ları için gerekir.")
+            Text("Tarayıcıdan giriş yap; token yalnızca Keychain'de saklanır.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
 
-            HStack(spacing: 8) {
-                if githubTokenSaved {
-                    HStack(spacing: 6) {
-                        Circle().fill(Theme.ok).frame(width: 6, height: 6)
-                        Text("Token kayıtlı")
-                            .font(Theme.mono(12))
-                            .foregroundStyle(Theme.textDim)
-                    }
-                    Spacer()
-                    Button("Sil") {
-                        KeychainStore.delete(key: "github-token")
-                        githubTokenSaved = false
-                    }
-                    .buttonStyle(GhostButtonStyle())
-                } else {
-                    SecureField("ghp_… kişisel erişim token'ı", text: $githubTokenDraft)
-                        .textFieldStyle(.plain)
-                        .font(Theme.mono(11.5))
-                        .foregroundStyle(Theme.text)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 7)
-                                .strokeBorder(Theme.border, lineWidth: 1)
-                        )
-                    Button("Kaydet") {
-                        let trimmed = githubTokenDraft.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty else { return }
-                        KeychainStore.save(key: "github-token", value: trimmed)
-                        githubTokenDraft = ""
-                        githubTokenSaved = true
-                    }
-                    .buttonStyle(AccentButtonStyle())
-                }
-            }
-            .padding(githubTokenSaved ? 12 : 0)
-            .background(githubTokenSaved ? Theme.panel : .clear, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(githubTokenSaved ? Theme.border : .clear, lineWidth: 1)
-            )
+            GitHubLoginView(loggedIn: $githubTokenSaved)
         }
     }
 
@@ -493,6 +451,183 @@ private struct AccountRow: View {
                 store.loggedInEmail(for: profile, profilesRoot: root)
             }.value
             email = value
+        }
+    }
+}
+
+// MARK: - GitHub browser login
+
+/// Device-flow login: shows the one-time code, opens github.com in the
+/// chosen browser, polls until authorized, stores the token in Keychain.
+struct GitHubLoginView: View {
+    @Binding var loggedIn: Bool
+    @State private var phase: Phase = .idle
+    @State private var username: String?
+    @State private var pollTask: Task<Void, Never>?
+
+    enum Phase: Equatable {
+        case idle
+        case requesting
+        case waitingForBrowser(GitHubAuthService.DeviceCode)
+        case failed(String)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if loggedIn {
+                loggedInRow
+            } else {
+                switch phase {
+                case .idle, .failed:
+                    startRow
+                case .requesting:
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("GitHub'dan kod isteniyor…")
+                            .font(Theme.mono(11.5))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    .padding(12)
+                case .waitingForBrowser(let code):
+                    codeRow(code)
+                }
+                if case .failed(let message) = phase {
+                    Text(message)
+                        .font(Theme.mono(10.5))
+                        .foregroundStyle(Theme.danger)
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 10)
+                }
+            }
+        }
+        .panel()
+        .task {
+            guard loggedIn, username == nil,
+                  let token = KeychainStore.read(key: "github-token") else { return }
+            username = await GitHubAuthService.fetchUsername(token: token)
+        }
+    }
+
+    private var loggedInRow: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Theme.ok).frame(width: 6, height: 6)
+            Text(username.map { "@\($0)" } ?? "Giriş yapıldı")
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.text)
+            Spacer()
+            Button("Çıkış Yap") {
+                KeychainStore.delete(key: "github-token")
+                loggedIn = false
+                username = nil
+                phase = .idle
+            }
+            .buttonStyle(GhostButtonStyle())
+        }
+        .padding(12)
+    }
+
+    private var startRow: some View {
+        HStack {
+            Text("GitHub hesabınla bağlan")
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.textDim)
+            Spacer()
+            Button("Tarayıcıdan Giriş Yap") { startLogin() }
+                .buttonStyle(AccentButtonStyle())
+                .accessibilityIdentifier("settings.github.loginButton")
+        }
+        .padding(12)
+    }
+
+    private func codeRow(_ code: GitHubAuthService.DeviceCode) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text(code.userCode)
+                    .font(Theme.mono(18, .bold))
+                    .foregroundStyle(Theme.text)
+                    .kerning(2)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 8))
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code.userCode, forType: .string)
+                } label: {
+                    TablerIcon(name: "copy", size: 13, color: Theme.textDim)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .help("Kodu kopyala")
+                Spacer()
+                ProgressView().controlSize(.small)
+            }
+
+            Text("Bu kodu açılan sayfaya gir — kod panoya kopyalandı, onaylayınca otomatik bağlanır.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            HStack(spacing: 6) {
+                Button("Tarayıcıda Aç") {
+                    NSWorkspace.shared.open(code.verificationURL)
+                }
+                .buttonStyle(AccentButtonStyle())
+
+                ForEach(BrowserApp.installed) { browser in
+                    Button {
+                        browser.open(code.verificationURL)
+                    } label: {
+                        Group {
+                            if let icon = browser.appIcon {
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .frame(width: 15, height: 15)
+                            } else {
+                                Text(browser.displayName).font(Theme.mono(10))
+                            }
+                        }
+                        .frame(width: 26, height: 26)
+                        .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    .help("\(browser.displayName) ile aç")
+                }
+
+                Spacer()
+                Button("Vazgeç") {
+                    pollTask?.cancel()
+                    phase = .idle
+                }
+                .buttonStyle(GhostButtonStyle())
+            }
+        }
+        .padding(12)
+    }
+
+    private func startLogin() {
+        phase = .requesting
+        pollTask = Task {
+            switch await GitHubAuthService.requestDeviceCode() {
+            case .failure(let error):
+                phase = .failed(error.errorDescription ?? "Bağlantı hatası")
+            case .success(let code):
+                // Copy the code and open the page right away.
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(code.userCode, forType: .string)
+                phase = .waitingForBrowser(code)
+                NSWorkspace.shared.open(code.verificationURL)
+
+                switch await GitHubAuthService.pollForToken(code) {
+                case .success(let token):
+                    KeychainStore.save(key: "github-token", value: token)
+                    username = await GitHubAuthService.fetchUsername(token: token)
+                    loggedIn = true
+                    phase = .idle
+                case .failure(let error):
+                    if !Task.isCancelled {
+                        phase = .failed(error.errorDescription ?? "Giriş tamamlanamadı")
+                    }
+                }
+            }
         }
     }
 }
