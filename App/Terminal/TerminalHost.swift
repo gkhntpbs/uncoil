@@ -62,7 +62,8 @@ final class TerminalRegistry {
         ) {
             // `exec` replaces the shell with the agent: the user never sees
             // a typed command, and closing the agent closes the session.
-            args = ["-l", "-c", "exec \(command)"]
+            // -i: also source ~/.zshrc, for users whose PATH is set there.
+            args = ["-l", "-i", "-c", "exec \(command)"]
         }
         view.startProcess(
             executable: shell,
@@ -78,8 +79,12 @@ final class TerminalRegistry {
         terminals[record.id] = view
 
         // The agent starts ready-and-waiting; hooks flip it to thinking/
-        // running as real work happens.
-        sessionStore.setStatus(.idle, for: record.id)
+        // running as real work happens. Deferred: this runs from makeNSView
+        // (a view-update pass) where publishing changes is not allowed.
+        let recordID = record.id
+        DispatchQueue.main.async { [weak sessionStore] in
+            sessionStore?.setStatus(.idle, for: recordID)
+        }
         return view
     }
 

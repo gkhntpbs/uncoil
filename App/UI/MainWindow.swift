@@ -82,10 +82,14 @@ struct MainWindow: View {
             }
         }
         .onAppear {
-            LaunchConfig.shared.seedFixture(projectStore: projectStore)
-            startServices()
-            applyLaunchRoute()
-            applyFixedWindowFrame()
+            // Deferred: mutating @Published stores inside the first view
+            // update triggers "Publishing changes from within view updates".
+            DispatchQueue.main.async {
+                LaunchConfig.shared.seedFixture(projectStore: projectStore)
+                startServices()
+                applyLaunchRoute()
+                applyFixedWindowFrame()
+            }
         }
     }
 
