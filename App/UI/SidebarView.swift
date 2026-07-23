@@ -279,6 +279,7 @@ private struct SessionRow: View {
     let onSelect: () -> Void
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
+    @Environment(\.openWindow) private var openWindow
     @State private var hovering = false
     @State private var confirmDelete = false
 
@@ -330,6 +331,9 @@ private struct SessionRow: View {
         .contextMenu {
             Button(record.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle") {
                 projectStore.togglePin(record.id)
+            }
+            Button("Yeni Pencerede Aç") {
+                openWindow(id: "session-window", value: record.id)
             }
             Divider()
             Button("Oturumu Sil", role: .destructive) {

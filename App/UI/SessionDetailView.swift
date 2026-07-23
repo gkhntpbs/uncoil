@@ -4,6 +4,7 @@ struct SessionDetailView: View {
     let record: SessionRecord
     let project: Project
     @Binding var selection: MainSelection?
+    var splitSessionID: Binding<UUID?>?
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
@@ -52,6 +53,19 @@ struct SessionDetailView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.container")
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            guard let splitBinding = splitSessionID,
+                  let provider = providers.first else { return false }
+            _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+                guard let string = object as? String,
+                      let droppedID = UUID(uuidString: string),
+                      droppedID != record.id else { return }
+                Task { @MainActor in
+                    splitBinding.wrappedValue = droppedID
+                }
+            }
+            return true
+        }
     }
 
     // MARK: - Header
@@ -410,5 +424,51 @@ struct EmptyDetailView: View {
                 .padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+
+/// Right half of a drag-to-split: terminal + tiny header with close.
+struct SplitSessionPane: View {
+    let record: SessionRecord
+    let project: Project
+    let onClose: () -> Void
+    @EnvironmentObject private var sessionStore: SessionStore
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                ProviderMark(provider: record.provider, size: 12)
+                Text(record.displayTitle)
+                    .font(Theme.mono(11.5, .medium))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                Text(project.name)
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.textFaint)
+                Spacer()
+                StatusOrb(status: sessionStore.status(of: record.id), size: 11)
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+                .help("Bölmeyi kapat")
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 18)
+            .padding(.bottom, 8)
+
+            TerminalHostView(
+                record: record,
+                project: project,
+                account: settings.account(id: record.accountID)
+            )
+            .padding([.horizontal, .bottom], 8)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("session.splitPane")
     }
 }

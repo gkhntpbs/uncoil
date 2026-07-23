@@ -10,6 +10,8 @@ struct MainWindow: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var selection: MainSelection?
+    /// Secondary session shown side-by-side (drop a session onto the view).
+    @State private var splitSessionID: UUID?
     @State private var showFolderPicker = false
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
@@ -106,8 +108,28 @@ struct MainWindow: View {
         case .session(let id):
             if let record = projectStore.sessions.first(where: { $0.id == id }),
                let project = projectStore.projects.first(where: { $0.id == record.projectID }) {
-                SessionDetailView(record: record, project: project, selection: $selection)
+                HSplitView {
+                    SessionDetailView(
+                        record: record,
+                        project: project,
+                        selection: $selection,
+                        splitSessionID: $splitSessionID
+                    )
                     .id(record.id)
+                    .frame(minWidth: 320)
+
+                    if let splitID = splitSessionID, splitID != id,
+                       let splitRecord = projectStore.sessions.first(where: { $0.id == splitID }),
+                       let splitProject = projectStore.projects.first(where: { $0.id == splitRecord.projectID }) {
+                        SplitSessionPane(
+                            record: splitRecord,
+                            project: splitProject,
+                            onClose: { splitSessionID = nil }
+                        )
+                        .id(splitID)
+                        .frame(minWidth: 320)
+                    }
+                }
             } else {
                 EmptyDetailView(showFolderPicker: $showFolderPicker)
             }

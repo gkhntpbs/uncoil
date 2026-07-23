@@ -31,6 +31,18 @@ struct UncoilApp: App {
             }
         }
 
+        // Terminal-only popout: a session dragged/sent out of the main
+        // window lives here; the PTY is shared via TerminalRegistry.
+        WindowGroup("Oturum", id: "session-window", for: UUID.self) { $sessionID in
+            if let sessionID {
+                SessionPopoutWindow(sessionID: sessionID)
+                    .environmentObject(projectStore)
+                    .environmentObject(sessionStore)
+                    .environmentObject(settings)
+            }
+        }
+        .windowStyle(.hiddenTitleBar)
+
         Window("Uncoil Ayarları", id: "settings") {
             SettingsView()
                 .environmentObject(settings)
