@@ -12,6 +12,11 @@ struct MainWindow: View {
     @State private var selection: MainSelection?
     @State private var showFolderPicker = false
     @AppStorage("sidebarVisible") private var sidebarVisible = true
+    @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
+    @State private var dragStartWidth: Double?
+
+    static let maxSidebarWidth: Double = 252
+    private static let hideThreshold: Double = 120
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,26 +25,52 @@ struct MainWindow: View {
                     selection: $selection,
                     showFolderPicker: $showFolderPicker
                 )
-                .frame(width: 252)
+                .frame(width: sidebarWidth)
+                .clipped()
                 .transition(.move(edge: .leading))
 
+                // Divider doubles as a resize handle: drag to size the
+                // sidebar (max = default width), drag to the left edge to
+                // hide it entirely.
                 Rectangle()
                     .fill(Theme.border)
                     .frame(width: 1)
+                    .overlay(
+                        Color.clear
+                            .frame(width: 8)
+                            .contentShape(Rectangle())
+                            .onHover { inside in
+                                if inside {
+                                    NSCursor.resizeLeftRight.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .gesture(
+                                DragGesture(coordinateSpace: .global)
+                                    .onChanged { value in
+                                        if dragStartWidth == nil {
+                                            dragStartWidth = sidebarWidth
+                                        }
+                                        let proposed = (dragStartWidth ?? sidebarWidth)
+                                            + value.translation.width
+                                        sidebarWidth = min(Self.maxSidebarWidth, max(0, proposed))
+                                    }
+                                    .onEnded { _ in
+                                        dragStartWidth = nil
+                                        if sidebarWidth < Self.hideThreshold {
+                                            sidebarVisible = false
+                                            sidebarWidth = Self.maxSidebarWidth
+                                        }
+                                    }
+                            )
+                    )
             }
 
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        // Content underlaps the (hidden) title bar so the toggle can sit on
-        // the same row as the traffic lights — fixed spot, never moves.
         .ignoresSafeArea(edges: .top)
-        .overlay(alignment: .topLeading) {
-            SidebarToggle(sidebarVisible: $sidebarVisible)
-                .padding(.leading, 76)
-                .padding(.top, 8)
-                .ignoresSafeArea(edges: .top)
-        }
         .background(Theme.bg)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showFolderPicker) {
@@ -78,29 +109,6 @@ struct MainWindow: View {
             }
         case nil:
             EmptyDetailView(showFolderPicker: $showFolderPicker)
-        }
-    }
-
-    private struct SidebarToggle: View {
-        @Binding var sidebarVisible: Bool
-        @State private var hovering = false
-
-        var body: some View {
-            Button {
-                withAnimation(.easeOut(duration: 0.18)) { sidebarVisible.toggle() }
-            } label: {
-                TablerIcon(
-                    name: sidebarVisible ? "layout-sidebar-left-collapse" : "layout-sidebar-left-expand",
-                    size: 14,
-                    color: hovering ? Theme.text : Theme.textFaint
-                )
-                .frame(width: 24, height: 24)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering = $0 }
-            .keyboardShortcut("\\", modifiers: .command)
-            .help("Kenar çubuğunu göster/gizle (⌘\\)")
         }
     }
 

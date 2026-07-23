@@ -6,6 +6,7 @@ struct UncoilApp: App {
     @StateObject private var projectStore = ProjectStore()
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
 
     init() {
         TablerIcons.register()
@@ -20,6 +21,14 @@ struct UncoilApp: App {
                 .frame(minWidth: 940, minHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Button(sidebarVisible ? "Kenar Çubuğunu Gizle" : "Kenar Çubuğunu Göster") {
+                    sidebarVisible.toggle()
+                }
+                .keyboardShortcut("b", modifiers: .command)
+            }
+        }
 
         Window("Uncoil Ayarları", id: "settings") {
             SettingsView()
