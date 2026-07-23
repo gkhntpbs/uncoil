@@ -97,6 +97,7 @@ struct FolderPickerSheet: View {
                         }
                     }
                     .padding(8)
+                    .uncoilScrollers()
                 }
             }
             .frame(minHeight: 300)

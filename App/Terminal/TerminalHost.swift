@@ -10,9 +10,16 @@ final class TerminalRegistry {
 
     private var terminals: [UUID: LocalProcessTerminalView] = [:]
     private var delegates: [UUID: SessionProcessDelegate] = [:]
+    /// Sessions whose process exited; the next request recreates the terminal
+    /// (auto-relaunch — the user never sees a "restart" screen).
+    private var deadSessions: Set<UUID> = []
 
     func hasTerminal(for recordID: UUID) -> Bool {
         terminals[recordID] != nil
+    }
+
+    func markDead(_ recordID: UUID) {
+        deadSessions.insert(recordID)
     }
 
     func terminal(
@@ -22,9 +29,10 @@ final class TerminalRegistry {
         settings: SettingsStore,
         sessionStore: SessionStore
     ) -> LocalProcessTerminalView {
-        if let existing = terminals[record.id] {
+        if let existing = terminals[record.id], !deadSessions.contains(record.id) {
             return existing
         }
+        deadSessions.remove(record.id)
 
         let view = LocalProcessTerminalView(frame: .zero)
         view.nativeBackgroundColor = NSColor(Theme.bg)
@@ -38,11 +46,10 @@ final class TerminalRegistry {
 
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
-        if var command = record.provider.launchCommand {
-            // Reopening a Claude session with a known provider id resumes it.
-            if record.provider == .claude, let sid = record.providerSessionID {
-                command += " --resume \(sid)"
-            }
+        if let command = Self.launchCommand(
+            for: record,
+            extraArguments: settings.extraArguments[record.provider.rawValue]
+        ) {
             // `exec` replaces the shell with the agent: the user never sees
             // a typed command, and closing the agent closes the session.
             args = ["-l", "-c", "exec \(command)"]
@@ -67,6 +74,23 @@ final class TerminalRegistry {
     func closeTerminal(for recordID: UUID) {
         terminals[recordID] = nil
         delegates[recordID] = nil
+        deadSessions.remove(recordID)
+    }
+
+    /// Full command line for a provider session (nil = plain shell).
+    /// Kept static and pure so tests can cover resume/extra-arg composition.
+    nonisolated static func launchCommand(
+        for record: SessionRecord,
+        extraArguments: String?
+    ) -> String? {
+        guard var command = record.provider.launchCommand else { return nil }
+        if record.provider == .claude, let sid = record.providerSessionID {
+            command += " --resume \(sid)"
+        }
+        if let extra = extraArguments?.trimmingCharacters(in: .whitespaces), !extra.isEmpty {
+            command += " " + extra
+        }
+        return command
     }
 }
 
@@ -84,7 +108,9 @@ final class SessionProcessDelegate: LocalProcessTerminalViewDelegate {
         let id = recordID
         Task { @MainActor [weak sessionStore] in
             sessionStore?.setStatus(.terminated, for: id)
-            TerminalRegistry.shared.closeTerminal(for: id)
+            // Keep the frozen output visible; the next selection recreates
+            // the terminal automatically (resuming Claude when possible).
+            TerminalRegistry.shared.markDead(id)
         }
     }
 

@@ -11,21 +11,30 @@ struct MainWindow: View {
     @EnvironmentObject private var settings: SettingsStore
     @State private var selection: MainSelection?
     @State private var showFolderPicker = false
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
 
     var body: some View {
         HStack(spacing: 0) {
-            SidebarView(
-                selection: $selection,
-                showFolderPicker: $showFolderPicker
-            )
-            .frame(width: 252)
+            if sidebarVisible {
+                SidebarView(
+                    selection: $selection,
+                    showFolderPicker: $showFolderPicker
+                )
+                .frame(width: 252)
+                .transition(.move(edge: .leading))
 
-            Rectangle()
-                .fill(Theme.border)
-                .frame(width: 1)
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(width: 1)
+            }
 
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .topLeading) {
+                    SidebarToggle(sidebarVisible: $sidebarVisible)
+                        .padding(.leading, sidebarVisible ? 10 : 84)
+                        .padding(.top, 9)
+                }
         }
         .background(Theme.bg)
         .preferredColorScheme(.dark)
@@ -65,6 +74,29 @@ struct MainWindow: View {
             }
         case nil:
             EmptyDetailView(showFolderPicker: $showFolderPicker)
+        }
+    }
+
+    private struct SidebarToggle: View {
+        @Binding var sidebarVisible: Bool
+        @State private var hovering = false
+
+        var body: some View {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { sidebarVisible.toggle() }
+            } label: {
+                TablerIcon(
+                    name: sidebarVisible ? "layout-sidebar-left-collapse" : "layout-sidebar-left-expand",
+                    size: 14,
+                    color: hovering ? Theme.text : Theme.textFaint
+                )
+                .frame(width: 24, height: 24)
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering = $0 }
+            .keyboardShortcut("\\", modifiers: .command)
+            .help("Kenar çubuğunu göster/gizle (⌘\\)")
         }
     }
 

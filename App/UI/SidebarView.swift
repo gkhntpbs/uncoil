@@ -33,14 +33,15 @@ struct SidebarView: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                .uncoilScrollers()
             }
 
             // Bottom rail: settings gear + add project
             HStack(spacing: 10) {
-                RailButton(systemName: "gearshape.fill") {
+                RailButton(iconName: "settings") {
                     openWindow(id: "settings")
                 }
-                RailButton(systemName: "plus") {
+                RailButton(iconName: "plus") {
                     showFolderPicker = true
                 }
                 Spacer()
@@ -52,15 +53,13 @@ struct SidebarView: View {
 }
 
 private struct RailButton: View {
-    let systemName: String
+    let iconName: String
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(hovering ? Theme.text : Theme.textDim)
+            TablerIcon(name: iconName, size: 13, color: hovering ? Theme.text : Theme.textDim)
                 .frame(width: 24, height: 24)
                 .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
         }
@@ -78,22 +77,46 @@ private struct ProjectSection: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var hovering = false
+    @State private var showCustomize = false
+    @State private var sessionsCollapsed: Bool
+
+    init(project: Project, selection: Binding<MainSelection?>) {
+        self.project = project
+        _selection = selection
+        _sessionsCollapsed = State(
+            initialValue: CollapsedProjects.contains(project.id)
+        )
+    }
 
     private var isProjectSelected: Bool {
         selection == .project(project.id)
     }
 
+    private var records: [SessionRecord] {
+        projectStore.sessions(for: project.id)
+    }
+
     var body: some View {
         VStack(spacing: 1) {
-            // Project row — hover reveals the agent launcher strip.
+            // Project row — hover reveals collapse chevron + agent launcher.
             HStack(spacing: 8) {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.textDim)
+                ProjectIcon(project: project)
                 Text(project.name)
                     .font(Theme.mono(12.5, .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
+                if !records.isEmpty {
+                    Button {
+                        toggleCollapsed()
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(Theme.textFaint)
+                            .rotationEffect(.degrees(sessionsCollapsed ? -90 : 0))
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(hovering || sessionsCollapsed ? 1 : 0)
+                }
                 Spacer(minLength: 4)
                 if hovering {
                     AgentLauncherStrip(project: project, selection: $selection)
@@ -112,6 +135,11 @@ private struct ProjectSection: View {
                 withAnimation(.easeOut(duration: 0.12)) { hovering = value }
             }
             .contextMenu {
+                Button("Özelleştir…") { showCustomize = true }
+                Button(sessionsCollapsed ? "Oturumları Göster" : "Oturumları Gizle") {
+                    toggleCollapsed()
+                }
+                Divider()
                 Button("Finder'da Göster") {
                     NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
                 }
@@ -119,18 +147,49 @@ private struct ProjectSection: View {
                     projectStore.removeProject(project)
                 }
             }
+            .sheet(isPresented: $showCustomize) {
+                ProjectCustomizeSheet(project: project)
+            }
 
             // Session rows
-            ForEach(projectStore.sessions(for: project.id)) { record in
-                SessionRow(
-                    record: record,
-                    isSelected: selection == .session(record.id)
-                ) {
-                    selection = .session(record.id)
+            if !sessionsCollapsed {
+                ForEach(records) { record in
+                    SessionRow(
+                        record: record,
+                        isSelected: selection == .session(record.id)
+                    ) {
+                        selection = .session(record.id)
+                    }
                 }
             }
         }
         .padding(.bottom, 6)
+    }
+
+    private func toggleCollapsed() {
+        withAnimation(.easeOut(duration: 0.15)) {
+            sessionsCollapsed.toggle()
+        }
+        CollapsedProjects.set(project.id, collapsed: sessionsCollapsed)
+    }
+}
+
+/// Persisted per-project "sessions hidden" state.
+enum CollapsedProjects {
+    private static let key = "collapsedProjects"
+
+    static func contains(_ id: UUID) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(id.uuidString)
+    }
+
+    static func set(_ id: UUID, collapsed: Bool) {
+        var list = UserDefaults.standard.stringArray(forKey: key) ?? []
+        if collapsed {
+            if !list.contains(id.uuidString) { list.append(id.uuidString) }
+        } else {
+            list.removeAll { $0 == id.uuidString }
+        }
+        UserDefaults.standard.set(list, forKey: key)
     }
 }
 
@@ -178,17 +237,9 @@ private struct LauncherButton: View {
 
     var body: some View {
         Button(action: action) {
-            Group {
-                if provider == .terminal {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(hovering ? Theme.text : Theme.textDim)
-                } else {
-                    DotGlyph(color: provider.color, dotSize: 2.2)
-                }
-            }
-            .frame(width: 22, height: 18)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+            ProviderMark(provider: provider, size: 11)
+                .frame(width: 22, height: 18)
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 4))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -213,8 +264,8 @@ private struct SessionRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 8) {
-                DotGlyph(color: record.provider.color, dotSize: 2.0)
-                    .opacity(status == .terminated ? 0.4 : 1)
+                ProviderMark(provider: record.provider, size: 11)
+                    .opacity(status == .terminated ? 0.45 : 1)
                 Text(record.title)
                     .font(Theme.mono(12))
                     .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)

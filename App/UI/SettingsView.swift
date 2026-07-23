@@ -6,6 +6,8 @@ struct SettingsView: View {
     @State private var hookMessage: String?
     @State private var newAccountName = ""
     @State private var addingAccountFor: AgentProvider?
+    @State private var githubTokenDraft = ""
+    @State private var githubTokenSaved = KeychainStore.read(key: "github-token") != nil
 
     var body: some View {
         ScrollView {
@@ -19,11 +21,14 @@ struct SettingsView: View {
                 accountsSection(.claude)
                 accountsSection(.codex)
                 defaultsSection
+                launchArgsSection
+                githubSection
                 hooksSection
             }
             .padding(20)
+            .uncoilScrollers()
         }
-        .frame(width: 480, height: 560)
+        .frame(width: 480, height: 640)
         .background(Theme.bg)
     }
 
@@ -32,7 +37,7 @@ struct SettingsView: View {
     private func accountsSection(_ provider: AgentProvider) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                DotGlyph(color: provider.color, dotSize: 2.4)
+                ProviderMark(provider: provider, size: 12)
                 Text("\(provider.displayName) Hesapları")
                     .font(Theme.mono(12, .semibold))
                     .foregroundStyle(Theme.text)
@@ -143,6 +148,105 @@ struct SettingsView: View {
                 }
             }
             .panel()
+        }
+    }
+
+    // MARK: - Launch arguments
+
+    private var launchArgsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Çalıştırma Parametreleri")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Agent başlatılırken komuta eklenir; bir sonraki oturumdan itibaren geçerli.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            VStack(spacing: 0) {
+                ForEach([AgentProvider.claude, .codex]) { provider in
+                    HStack(spacing: 10) {
+                        ProviderMark(provider: provider, size: 12)
+                        Text(provider.displayName)
+                            .font(Theme.mono(12))
+                            .foregroundStyle(Theme.textDim)
+                            .frame(width: 60, alignment: .leading)
+                        TextField(
+                            provider == .claude ? "ör. --model opus" : "ör. --full-auto",
+                            text: Binding(
+                                get: { settings.extraArguments[provider.rawValue] ?? "" },
+                                set: { settings.extraArguments[provider.rawValue] = $0 }
+                            )
+                        )
+                        .textFieldStyle(.plain)
+                        .font(Theme.mono(11.5))
+                        .foregroundStyle(Theme.text)
+                        .onSubmit { settings.save() }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    if provider != .codex {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel()
+            .onDisappear { settings.save() }
+        }
+    }
+
+    // MARK: - GitHub
+
+    private var githubSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GitHub")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Token yalnızca Keychain'de saklanır; özel depoların PR'ları için gerekir.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            HStack(spacing: 8) {
+                if githubTokenSaved {
+                    HStack(spacing: 6) {
+                        Circle().fill(Theme.ok).frame(width: 6, height: 6)
+                        Text("Token kayıtlı")
+                            .font(Theme.mono(12))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    Spacer()
+                    Button("Sil") {
+                        KeychainStore.delete(key: "github-token")
+                        githubTokenSaved = false
+                    }
+                    .buttonStyle(GhostButtonStyle())
+                } else {
+                    SecureField("ghp_… kişisel erişim token'ı", text: $githubTokenDraft)
+                        .textFieldStyle(.plain)
+                        .font(Theme.mono(11.5))
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
+                    Button("Kaydet") {
+                        let trimmed = githubTokenDraft.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { return }
+                        KeychainStore.save(key: "github-token", value: trimmed)
+                        githubTokenDraft = ""
+                        githubTokenSaved = true
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                }
+            }
+            .padding(githubTokenSaved ? 12 : 0)
+            .background(githubTokenSaved ? Theme.panel : .clear, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(githubTokenSaved ? Theme.border : .clear, lineWidth: 1)
+            )
         }
     }
 

@@ -80,6 +80,65 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertNil(trees[2].branch)
     }
 
+    func testLaunchCommandComposition() {
+        var record = SessionRecord(projectID: UUID(), provider: .claude, accountID: nil, title: "t")
+        XCTAssertEqual(TerminalRegistry.launchCommand(for: record, extraArguments: nil), "claude")
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(for: record, extraArguments: "--model opus"),
+            "claude --model opus"
+        )
+        record.providerSessionID = "abc-1"
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(for: record, extraArguments: " --model opus "),
+            "claude --resume abc-1 --model opus"
+        )
+        let shell = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "sh")
+        XCTAssertNil(TerminalRegistry.launchCommand(for: shell, extraArguments: "x"))
+    }
+
+    func testGitHubRepoSlugParsing() {
+        XCTAssertEqual(
+            GitHubService.repoSlug(fromRemoteURL: "git@github.com:gkhntpbs/uncoil.git"),
+            "gkhntpbs/uncoil"
+        )
+        XCTAssertEqual(
+            GitHubService.repoSlug(fromRemoteURL: "https://github.com/owner/repo"),
+            "owner/repo"
+        )
+        XCTAssertNil(GitHubService.repoSlug(fromRemoteURL: "https://gitlab.com/x/y.git"))
+    }
+
+    func testPullRequestParsing() {
+        let items: [[String: Any]] = [
+            [
+                "id": 1, "number": 42, "title": "Fix login",
+                "user": ["login": "gkhntpbs"], "draft": true,
+                "html_url": "https://github.com/o/r/pull/42",
+            ],
+            ["id": 2, "title": "missing number"],
+        ]
+        let prs = GitHubService.parsePullRequests(items)
+        XCTAssertEqual(prs.count, 1)
+        XCTAssertEqual(prs[0].number, 42)
+        XCTAssertEqual(prs[0].author, "gkhntpbs")
+        XCTAssertTrue(prs[0].isDraft)
+    }
+
+    func testProjectCustomizationPersists() {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
+        let id = store.projects[0].id
+        store.updateProject(id) { project in
+            project.iconName = "rocket"
+            project.colorHex = 0xE2572B
+            project.name = "Roket"
+        }
+        let reloaded = ProjectStore(directory: tempDir)
+        XCTAssertEqual(reloaded.projects[0].iconName, "rocket")
+        XCTAssertEqual(reloaded.projects[0].colorHex, 0xE2572B)
+        XCTAssertEqual(reloaded.projects[0].name, "Roket")
+    }
+
     func testAttentionPriorityOrdering() {
         XCTAssertGreaterThan(
             AgentSessionStatus.waitingForPermission.attentionPriority,

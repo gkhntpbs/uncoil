@@ -8,12 +8,15 @@ final class SettingsStore: ObservableObject {
         var defaultAccountByProvider: [String: UUID] = [:]
         var defaultProvider: AgentProvider = .claude
         var resolvedBinaries: [String: String] = [:]
+        var extraArguments: [String: String] = [:]
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
     @Published var defaultProvider: AgentProvider = .claude
     @Published private(set) var defaultAccountByProvider: [String: UUID] = [:]
     @Published private(set) var resolvedBinaries: [String: String] = [:]
+    /// Extra CLI arguments appended to the agent launch command, per provider.
+    @Published var extraArguments: [String: String] = [:]
 
     private let fileURL: URL
     private let profilesRoot: URL
@@ -160,6 +163,7 @@ final class SettingsStore: ObservableObject {
         defaultAccountByProvider = decoded.defaultAccountByProvider
         defaultProvider = decoded.defaultProvider
         resolvedBinaries = decoded.resolvedBinaries
+        extraArguments = decoded.extraArguments
     }
 
     func save() {
@@ -167,7 +171,8 @@ final class SettingsStore: ObservableObject {
             accounts: accounts,
             defaultAccountByProvider: defaultAccountByProvider,
             defaultProvider: defaultProvider,
-            resolvedBinaries: resolvedBinaries
+            resolvedBinaries: resolvedBinaries,
+            extraArguments: extraArguments
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

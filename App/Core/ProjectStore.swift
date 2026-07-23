@@ -40,6 +40,12 @@ final class ProjectStore: ObservableObject {
             .max { $0.rootPath.count < $1.rootPath.count }
     }
 
+    func updateProject(_ id: UUID, mutate: (inout Project) -> Void) {
+        guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&projects[index])
+        save()
+    }
+
     func removeProject(_ project: Project) {
         projects.removeAll { $0.id == project.id }
         sessions.removeAll { $0.projectID == project.id }

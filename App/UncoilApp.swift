@@ -7,6 +7,10 @@ struct UncoilApp: App {
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
 
+    init() {
+        TablerIcons.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             MainWindow()

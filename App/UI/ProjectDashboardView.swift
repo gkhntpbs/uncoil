@@ -12,6 +12,8 @@ struct ProjectDashboardView: View {
     @State private var newWorktreeName = ""
     @State private var worktreeError: String?
     @State private var creatingWorktree = false
+    @State private var pullRequests: [GitHubService.PullRequest] = []
+    @State private var prMessage: String?
 
     var body: some View {
         ScrollView {
@@ -22,24 +24,74 @@ struct ProjectDashboardView: View {
                     worktreesPanel
                 }
                 HStack(alignment: .top, spacing: 14) {
-                    gitPanel
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    VStack(spacing: 14) {
+                        gitPanel
+                        if git.isRepo {
+                            pullRequestsPanel
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                     filesPanel
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
             .padding(16)
+            .uncoilScrollers()
         }
         .task(id: project.id) { await refreshGit() }
     }
 
     private func refreshGit() async {
         let path = project.rootPath
-        let (snapshot, trees) = await Task.detached(priority: .utility) {
-            (GitService.snapshot(repoPath: path), GitService.worktrees(repoPath: path))
+        let (snapshot, trees, remote) = await Task.detached(priority: .utility) {
+            (
+                GitService.snapshot(repoPath: path),
+                GitService.worktrees(repoPath: path),
+                GitService.remoteURL(repoPath: path)
+            )
         }.value
         git = snapshot
         worktrees = trees
+        await refreshPullRequests(remote: remote)
+    }
+
+    private func refreshPullRequests(remote: String?) async {
+        guard let remote, let slug = GitHubService.repoSlug(fromRemoteURL: remote) else {
+            prMessage = "Origin GitHub deposu değil ya da remote yok."
+            pullRequests = []
+            return
+        }
+        switch await GitHubService.openPullRequests(slug: slug) {
+        case .success(let prs):
+            pullRequests = prs
+            prMessage = prs.isEmpty ? "Açık PR yok." : nil
+        case .failure(let error):
+            pullRequests = []
+            prMessage = error.errorDescription
+        }
+    }
+
+    // MARK: - Pull requests
+
+    private var pullRequestsPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PanelHeading(title: "Pull Request'ler", count: pullRequests.count)
+
+            if let prMessage {
+                Text(prMessage)
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.textFaint)
+                    .padding(14)
+            } else {
+                VStack(spacing: 1) {
+                    ForEach(pullRequests) { pr in
+                        PullRequestRow(pullRequest: pr)
+                    }
+                }
+                .padding(6)
+            }
+        }
+        .panel(radius: 12)
     }
 
     // MARK: - Worktrees
@@ -112,9 +164,7 @@ struct ProjectDashboardView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "folder.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(Theme.claude)
+            ProjectIcon(project: project, size: 16)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(project.name)
@@ -322,7 +372,7 @@ private struct SessionCard: View {
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 10) {
-                DotGlyph(color: record.provider.color, dotSize: 2.4)
+                ProviderMark(provider: record.provider, size: 12)
                     .opacity(status == .terminated ? 0.4 : 1)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(record.title)
@@ -347,6 +397,51 @@ private struct SessionCard: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+}
+
+private struct PullRequestRow: View {
+    let pullRequest: GitHubService.PullRequest
+    @State private var hovering = false
+
+    var body: some View {
+        Button {
+            if let url = pullRequest.htmlURL {
+                NSWorkspace.shared.open(url)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                TablerIcon(
+                    name: "git-pull-request",
+                    size: 12,
+                    color: pullRequest.isDraft ? Theme.textFaint : Theme.ok
+                )
+                Text("#\(pullRequest.number)")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.codex)
+                Text(pullRequest.title)
+                    .font(Theme.mono(11.5))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                if pullRequest.isDraft {
+                    Text("taslak")
+                        .font(Theme.mono(9))
+                        .foregroundStyle(Theme.textFaint)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Theme.panelActive, in: Capsule())
+                }
+                Spacer(minLength: 4)
+                Text(pullRequest.author)
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
@@ -403,6 +498,7 @@ struct FileTreeView: View {
             LazyVStack(spacing: 0) {
                 FileTreeLevel(directoryURL: rootURL, depth: 0)
             }
+            .uncoilScrollers()
         }
         .frame(maxHeight: 340)
     }

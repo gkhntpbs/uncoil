@@ -68,8 +68,16 @@ struct Project: Identifiable, Codable, Equatable {
     var name: String
     var rootPath: String
     var createdAt: Date
+    /// Tabler icon name; nil = default folder icon.
+    var iconName: String?
+    /// Accent color as 0xRRGGBB; nil = neutral.
+    var colorHex: UInt32?
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
+
+    var accentColor: Color {
+        colorHex.map { Color(hex: $0) } ?? Theme.textDim
+    }
 
     init(id: UUID = UUID(), name: String, rootPath: String, createdAt: Date = .now) {
         self.id = id

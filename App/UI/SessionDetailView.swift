@@ -23,13 +23,12 @@ struct SessionDetailView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 12)
 
-            if TerminalRegistry.shared.hasTerminal(for: record.id) || status != .terminated {
-                TerminalHostView(record: record, project: project, account: account)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
-            } else {
-                deadSessionView
-            }
+            // Selecting a session always (re)starts its agent: the registry
+            // reuses a live terminal or launches fresh (resuming Claude when
+            // a provider session id is known). No "restart" screen.
+            TerminalHostView(record: record, project: project, account: account)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 10)
         }
     }
 
@@ -54,8 +53,8 @@ struct SessionDetailView: View {
             .help("Proje panosuna dön")
             .padding(.top, 2)
 
-            DotGlyph(color: record.provider.color, dotSize: 3.4)
-                .padding(.top, 4)
+            ProviderMark(provider: record.provider, size: 17)
+                .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
@@ -108,31 +107,6 @@ struct SessionDetailView: View {
         return project.rootPath
     }
 
-    // MARK: - Dead session
-
-    private var deadSessionView: some View {
-        VStack(spacing: 14) {
-            DotGlyph(color: record.provider.color.opacity(0.5), dotSize: 4)
-            Text("Bu oturum kapandı")
-                .font(Theme.mono(13, .medium))
-                .foregroundStyle(Theme.textDim)
-            if record.provider == .claude, record.providerSessionID != nil {
-                Text("Konuşma geçmişiyle birlikte devam ettirilebilir.")
-                    .font(Theme.mono(11))
-                    .foregroundStyle(Theme.textFaint)
-            }
-            Button(resumable ? "Kaldığı Yerden Devam Et" : "Yeniden Başlat") {
-                projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
-                sessionStore.setStatus(.running, for: record.id)
-            }
-            .buttonStyle(AccentButtonStyle())
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var resumable: Bool {
-        record.provider == .claude && record.providerSessionID != nil
-    }
 }
 
 struct EmptyDetailView: View {
@@ -140,9 +114,9 @@ struct EmptyDetailView: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack(spacing: 10) {
-                DotGlyph(color: Theme.claude, dotSize: 4)
-                DotGlyph(color: Theme.codex, dotSize: 4, litPattern: [false, true, true, true, false, true])
+            HStack(spacing: 12) {
+                ProviderMark(provider: .claude, size: 20)
+                ProviderMark(provider: .codex, size: 20)
             }
             Text("Bir projenin üzerine gel, agent seç")
                 .font(Theme.mono(13, .medium))

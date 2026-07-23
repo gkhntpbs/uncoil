@@ -60,6 +60,11 @@ enum GitService {
         return snapshot
     }
 
+    /// Blocking; call from a background task.
+    static func remoteURL(repoPath: String) -> String? {
+        run(["-C", repoPath, "remote", "get-url", "origin"])
+    }
+
     // MARK: - Worktrees
 
     struct Worktree: Identifiable, Equatable {
