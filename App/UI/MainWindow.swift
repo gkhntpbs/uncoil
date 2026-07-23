@@ -31,12 +31,14 @@ struct MainWindow: View {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        // Toggle lives in the title-bar strip, right after the traffic
-        // lights — the standard macOS spot, same place open or closed.
+        // Content underlaps the (hidden) title bar so the toggle can sit on
+        // the same row as the traffic lights — fixed spot, never moves.
+        .ignoresSafeArea(edges: .top)
         .overlay(alignment: .topLeading) {
             SidebarToggle(sidebarVisible: $sidebarVisible)
-                .padding(.leading, 80)
-                .padding(.top, 7)
+                .padding(.leading, 76)
+                .padding(.top, 8)
+                .ignoresSafeArea(edges: .top)
         }
         .background(Theme.bg)
         .preferredColorScheme(.dark)
