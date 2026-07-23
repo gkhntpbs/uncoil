@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Cross-window channel so the command palette can deep-link to a settings pane.
+@MainActor
+final class SettingsRoute: ObservableObject {
+    static let shared = SettingsRoute()
+    @Published var requestedPane: String?
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
@@ -167,6 +174,16 @@ struct SettingsView: View {
         .ignoresSafeArea(edges: .top)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.container")
+        .onAppear { applyRequestedPane() }
+        .onReceive(SettingsRoute.shared.$requestedPane) { _ in applyRequestedPane() }
+    }
+
+    private func applyRequestedPane() {
+        guard let raw = SettingsRoute.shared.requestedPane,
+              let requested = Pane(rawValue: raw) else { return }
+        pane = requested
+        search = ""
+        SettingsRoute.shared.requestedPane = nil
     }
 
     // MARK: - Accounts

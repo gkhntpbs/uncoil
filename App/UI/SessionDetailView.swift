@@ -36,7 +36,7 @@ struct SessionDetailView: View {
                 // reuses a live terminal or launches fresh (resuming Claude when
                 // a provider session id is known). No "restart" screen.
                 TerminalHostView(record: record, project: project, account: account)
-                    .id(restartToken)
+                    .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
                     .padding(.horizontal, 10)
                     .padding(.bottom, 10)
             }

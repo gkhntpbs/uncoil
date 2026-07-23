@@ -159,6 +159,12 @@ final class ProjectStore: ObservableObject {
 final class SessionStore: ObservableObject {
     @Published private(set) var statuses: [UUID: AgentSessionStatus] = [:]
     @Published private(set) var details: [UUID: String] = [:]
+    /// Bumped to force a session's terminal view to rebuild (palette "restart").
+    @Published private(set) var restartCounter: [UUID: Int] = [:]
+
+    func bumpRestart(_ id: UUID) {
+        restartCounter[id, default: 0] += 1
+    }
     var hookServer: HookServer?
     /// Retains the control-plane socket server (MCP → app) for its lifetime.
     var controlServer: ControlPlaneServer?

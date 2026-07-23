@@ -9,6 +9,8 @@ struct MainWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.openWindow) private var openWindow
+    @StateObject private var palette = PaletteModel()
     @State private var selection: MainSelection?
     /// Secondary session shown side-by-side (drop a session onto the view).
     @State private var splitSessionID: UUID?
@@ -21,6 +23,19 @@ struct MainWindow: View {
     private static let hideThreshold: Double = 120
 
     var body: some View {
+        ZStack {
+            mainContent
+            if palette.isOpen {
+                CommandPaletteOverlay(model: palette)
+            }
+        }
+        .onChange(of: selection) { _, _ in syncPaletteSelection() }
+        .onChange(of: palette.pendingAction) { _, action in
+            if let action { perform(action); palette.pendingAction = nil }
+        }
+    }
+
+    private var mainContent: some View {
         HStack(spacing: 0) {
             if sidebarVisible {
                 SidebarView(
@@ -90,7 +105,106 @@ struct MainWindow: View {
                 startServices()
                 applyLaunchRoute()
                 applyFixedWindowFrame()
+                setupPalette()
             }
+        }
+    }
+
+    // MARK: - Command palette
+
+    private func setupPalette() {
+        palette.configure(
+            projectStore: projectStore,
+            sessionStore: sessionStore,
+            settingsPanes: SettingsView.Pane.allCases.map { ($0.rawValue, $0.title) }
+        )
+        syncPaletteSelection()
+        PaletteHotkeyMonitor.install(model: palette)
+    }
+
+    private func syncPaletteSelection() {
+        switch selection {
+        case .project(let id):
+            palette.currentProjectID = id
+            palette.currentSessionID = nil
+        case .session(let id):
+            palette.currentSessionID = id
+            palette.currentProjectID = projectStore.sessions.first { $0.id == id }?.projectID
+        case nil:
+            palette.currentProjectID = nil
+            palette.currentSessionID = nil
+        }
+    }
+
+    private func perform(_ action: PaletteAction) {
+        switch action {
+        case .addProject:
+            showFolderPicker = true
+        case .openProject(let id):
+            selection = .project(id)
+        case .focusSession(let id):
+            selection = .session(id)
+        case .newSession(let projectID, let provider):
+            launchSession(projectID: projectID, provider: provider)
+        case .createWorktree(let projectID):
+            selection = .project(projectID)
+        case .openSettings(let paneID):
+            SettingsRoute.shared.requestedPane = paneID
+            openWindow(id: "settings")
+        case .restartSession(let id):
+            TerminalRegistry.shared.closeTerminal(for: id)
+            projectStore.updateSession(id) { $0.lastActivityAt = .now }
+            sessionStore.bumpRestart(id)
+        case .closeSession(let id):
+            TerminalRegistry.shared.closeTerminal(for: id)
+            sessionStore.setStatus(.terminated, for: id)
+        case .popoutSession(let id):
+            openWindow(id: "session-window", value: id)
+        case .openFile(let url), .openArtifact(let url):
+            settings.preferredEditor.open(url)
+        case .askClaude(let prompt, let projectID):
+            askClaude(prompt, projectID: projectID)
+        }
+    }
+
+    @discardableResult
+    private func launchSession(projectID: UUID, provider: AgentProvider) -> SessionRecord {
+        let account = settings.defaultAccount(for: provider)
+        let record = projectStore.createSession(
+            projectID: projectID,
+            provider: provider,
+            accountID: provider == .terminal ? nil : account?.id,
+            title: provider == .terminal ? "terminal" : "\(provider.rawValue): yeni oturum"
+        )
+        selection = .session(record.id)
+        return record
+    }
+
+    /// Starts (or reuses a live) Claude session in the project and sends the
+    /// query as its initial prompt. Mirrors the control-plane child launcher.
+    private func askClaude(_ prompt: String, projectID: UUID) {
+        let live = projectStore.sessions(for: projectID).first {
+            $0.provider == .claude && sessionStore.status(of: $0.id) != .terminated
+        }
+        let record = live ?? projectStore.createSession(
+            projectID: projectID, provider: .claude,
+            accountID: settings.defaultAccount(for: .claude)?.id,
+            title: "claude: yeni oturum")
+        selection = .session(record.id)
+
+        guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
+        _ = TerminalRegistry.shared.terminal(
+            for: record, project: project,
+            account: settings.account(id: record.accountID),
+            settings: settings, sessionStore: sessionStore)
+
+        let sid = record.id
+        Task { @MainActor in
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            RuntimeClient.shared.sendText(Data((prompt + "\n").utf8), sid: sid)
         }
     }
 
