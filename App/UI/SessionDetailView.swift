@@ -82,7 +82,7 @@ struct SessionDetailView: View {
                     Text(record.provider.displayName)
                         .font(Theme.mono(13, .bold))
                         .foregroundStyle(Theme.text)
-                    Text(record.title)
+                    Text(record.displayTitle)
                         .font(Theme.mono(13))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)

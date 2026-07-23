@@ -10,6 +10,7 @@ final class SettingsStore: ObservableObject {
         var resolvedBinaries: [String: String] = [:]
         var extraArguments: [String: String] = [:]
         var preferredEditor: PreferredEditor = .vscode
+        var notifications: NotificationPrefs = NotificationPrefs()
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -19,12 +20,16 @@ final class SettingsStore: ObservableObject {
     /// Extra CLI arguments appended to the agent launch command, per provider.
     @Published var extraArguments: [String: String] = [:]
     @Published var preferredEditor: PreferredEditor = .vscode
+    @Published var notifications = NotificationPrefs()
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
     @Published var cliUpdating: Set<String> = []
     /// Last update-run output per provider.
     @Published var cliUpdateResult: [String: String] = [:]
+    /// Latest published versions from the registry.
+    @Published var cliLatest: [String: String] = [:]
+    @Published var cliChecking = false
 
     private let fileURL: URL
     private let profilesRoot: URL
@@ -95,22 +100,53 @@ final class SettingsStore: ObservableObject {
         save()
     }
 
-    /// Logged-in identity for a Claude profile, read from the provider's own
-    /// config file. Returns nil when nobody is logged in.
+    /// Logged-in identity for a profile, read from the provider's own config
+    /// files. Returns nil when nobody is logged in.
     nonisolated func loggedInEmail(for profile: AccountProfile, profilesRoot: URL) -> String? {
-        let configFile: URL
-        if let dir = profile.configDirectory(profilesRoot: profilesRoot) {
-            configFile = dir.appendingPathComponent(".claude.json")
-        } else {
-            configFile = FileManager.default.homeDirectoryForCurrentUser
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        switch profile.provider {
+        case .claude:
+            let configFile = profile.configDirectory(profilesRoot: profilesRoot)?
                 .appendingPathComponent(".claude.json")
+                ?? home.appendingPathComponent(".claude.json")
+            guard
+                let data = try? Data(contentsOf: configFile),
+                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let oauth = object["oauthAccount"] as? [String: Any]
+            else { return nil }
+            return oauth["emailAddress"] as? String
+
+        case .codex:
+            // Codex stores auth at CODEX_HOME/auth.json (default ~/.codex).
+            let authFile = profile.configDirectory(profilesRoot: profilesRoot)?
+                .appendingPathComponent("auth.json")
+                ?? home.appendingPathComponent(".codex/auth.json")
+            guard
+                let data = try? Data(contentsOf: authFile),
+                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return nil }
+            // Best effort: pull the email out of the id_token JWT payload.
+            let idToken = (object["tokens"] as? [String: Any])?["id_token"] as? String
+                ?? object["id_token"] as? String
+            if let idToken {
+                let parts = idToken.split(separator: ".")
+                if parts.count >= 2 {
+                    var payload = String(parts[1])
+                        .replacingOccurrences(of: "-", with: "+")
+                        .replacingOccurrences(of: "_", with: "/")
+                    while payload.count % 4 != 0 { payload += "=" }
+                    if let decoded = Data(base64Encoded: payload),
+                       let claims = try? JSONSerialization.jsonObject(with: decoded) as? [String: Any],
+                       let email = claims["email"] as? String {
+                        return email
+                    }
+                }
+            }
+            return "bağlı"  // auth file exists but no readable identity
+
+        case .terminal:
+            return nil
         }
-        guard
-            let data = try? Data(contentsOf: configFile),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let oauth = object["oauthAccount"] as? [String: Any]
-        else { return nil }
-        return oauth["emailAddress"] as? String
     }
 
     // MARK: - Binary resolution
@@ -153,6 +189,25 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    func updateAvailable(for provider: AgentProvider) -> Bool {
+        CLIToolService.isNewer(
+            cliLatest[provider.rawValue],
+            than: cliVersions[provider.rawValue]
+        )
+    }
+
+    /// Refreshes installed versions and checks the registry for updates.
+    func checkCLIUpdates() async {
+        cliChecking = true
+        await refreshCLIVersions()
+        for provider in [AgentProvider.claude, .codex] {
+            if let latest = await CLIToolService.latestVersion(provider: provider) {
+                cliLatest[provider.rawValue] = latest
+            }
+        }
+        cliChecking = false
+    }
+
     func updateCLI(_ provider: AgentProvider) async {
         guard !cliUpdating.contains(provider.rawValue) else { return }
         let source = binaryPath(for: provider).map {
@@ -174,7 +229,7 @@ final class SettingsStore: ObservableObject {
         // Path may have changed (e.g. npm relink); re-resolve then re-read.
         resolvedBinaries[provider.rawValue] = nil
         await resolveBinaries()
-        await refreshCLIVersions()
+        await checkCLIUpdates()
     }
 
     nonisolated private static func which(_ command: String) -> String? {
@@ -233,6 +288,7 @@ final class SettingsStore: ObservableObject {
         resolvedBinaries = decoded.resolvedBinaries
         extraArguments = decoded.extraArguments
         preferredEditor = decoded.preferredEditor
+        notifications = decoded.notifications
     }
 
     func save() {
@@ -242,7 +298,8 @@ final class SettingsStore: ObservableObject {
             defaultProvider: defaultProvider,
             resolvedBinaries: resolvedBinaries,
             extraArguments: extraArguments,
-            preferredEditor: preferredEditor
+            preferredEditor: preferredEditor,
+            notifications: notifications
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

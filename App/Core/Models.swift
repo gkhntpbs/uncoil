@@ -169,6 +169,8 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     var providerSessionID: String?
     /// Pinned sessions sort to the top of their project.
     var isPinned: Bool?
+    /// Manual drag-order within the project; nil = never manually ordered.
+    var sortIndex: Double?
     /// When set, the session runs inside this worktree instead of the
     /// project root.
     var worktreePath: String?
@@ -194,6 +196,18 @@ struct SessionRecord: Identifiable, Codable, Equatable {
 
     func workingDirectory(in project: Project) -> String {
         worktreePath ?? project.rootPath
+    }
+
+    /// Sidebar/dashboard title: the provider prefix ("claude: ") is
+    /// redundant next to the provider mark, so it is stripped for display.
+    var displayTitle: String {
+        for provider in AgentProvider.allCases {
+            let prefix = "\(provider.rawValue): "
+            if title.hasPrefix(prefix) {
+                return String(title.dropFirst(prefix.count))
+            }
+        }
+        return title
     }
 
     /// Default titles get replaced by the first real prompt.

@@ -151,6 +151,12 @@ struct MainWindow: View {
                 touchSession: { id in
                     projects.updateSession(id) { $0.lastActivityAt = .now }
                 },
+                notificationPrefs: { [weak settings] in
+                    settings?.notifications ?? NotificationPrefs()
+                },
+                sessionTitle: { id in
+                    projects.sessions.first(where: { $0.id == id })?.displayTitle
+                },
                 applyMeta: { id, providerSessionID, titleCandidate in
                     projects.updateSession(id) { record in
                         if let providerSessionID {

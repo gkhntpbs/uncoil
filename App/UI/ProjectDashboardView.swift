@@ -379,7 +379,7 @@ private struct SessionCard: View {
                 ProviderMark(provider: record.provider, size: 12)
                     .opacity(status == .terminated ? 0.4 : 1)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(record.title)
+                    Text(record.displayTitle)
                         .font(Theme.mono(12, .medium))
                         .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
                         .lineLimit(1)

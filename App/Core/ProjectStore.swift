@@ -64,8 +64,36 @@ final class ProjectStore: ObservableObject {
                 let leftPinned = $0.isPinned ?? false
                 let rightPinned = $1.isPinned ?? false
                 if leftPinned != rightPinned { return leftPinned }
-                return $0.lastActivityAt > $1.lastActivityAt
+                switch ($0.sortIndex, $1.sortIndex) {
+                case let (left?, right?): return left < right
+                case (.some, nil): return true
+                case (nil, .some): return false
+                case (nil, nil): return $0.lastActivityAt > $1.lastActivityAt
+                }
             }
+    }
+
+    /// Drag-reorder: places `draggedID` before `targetID` in its project.
+    /// The first manual move freezes the current display order into indexes.
+    func moveSession(_ draggedID: UUID, before targetID: UUID) {
+        guard draggedID != targetID,
+              let dragged = sessions.first(where: { $0.id == draggedID }) else { return }
+        var ordered = sessions(for: dragged.projectID)
+        guard let from = ordered.firstIndex(where: { $0.id == draggedID }),
+              var to = ordered.firstIndex(where: { $0.id == targetID }) else { return }
+        let moved = ordered.remove(at: from)
+        if from < to { to -= 1 }
+        ordered.insert(moved, at: to)
+        for (index, record) in ordered.enumerated() {
+            updateSessionQuietly(record.id) { $0.sortIndex = Double(index) }
+        }
+        save()
+        objectWillChange.send()
+    }
+
+    private func updateSessionQuietly(_ id: UUID, mutate: (inout SessionRecord) -> Void) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&sessions[index])
     }
 
     func togglePin(_ id: UUID) {
@@ -132,6 +160,8 @@ final class SessionStore: ObservableObject {
     @Published private(set) var statuses: [UUID: AgentSessionStatus] = [:]
     @Published private(set) var details: [UUID: String] = [:]
     var hookServer: HookServer?
+    /// Once-per-state notification dedup keys ("<sessionID>-permission" …).
+    var sentNotificationKeys: Set<String> = []
 
     func status(of recordID: UUID) -> AgentSessionStatus {
         statuses[recordID] ?? .terminated

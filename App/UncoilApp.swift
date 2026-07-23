@@ -34,6 +34,7 @@ struct UncoilApp: App {
         Window("Uncoil Ayarları", id: "settings") {
             SettingsView()
                 .environmentObject(settings)
+                .environmentObject(projectStore)
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)

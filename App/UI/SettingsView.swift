@@ -22,6 +22,7 @@ struct SettingsView: View {
                 defaultsSection
                 cliToolsSection
                 launchArgsSection
+                notificationsSection
                 githubSection
                 hooksSection
             }
@@ -205,7 +206,7 @@ struct SettingsView: View {
             }
             .panel()
         }
-        .task { await settings.refreshCLIVersions() }
+        .task { await settings.checkCLIUpdates() }
     }
 
     // MARK: - Launch arguments
@@ -249,6 +250,12 @@ struct SettingsView: View {
             .panel()
             .onDisappear { settings.save() }
         }
+    }
+
+    // MARK: - Notifications
+
+    private var notificationsSection: some View {
+        NotificationSettingsSection()
     }
 
     // MARK: - GitHub
@@ -371,16 +378,28 @@ private struct CLIToolRow: View {
                     Text("güncelleniyor…")
                         .font(Theme.mono(10.5))
                         .foregroundStyle(Theme.textDim)
-                } else {
-                    Button("Kontrol Et") {
-                        Task { await settings.refreshCLIVersions() }
-                    }
-                    .buttonStyle(GhostButtonStyle())
+                } else if settings.cliChecking {
+                    ProgressView().controlSize(.small)
+                } else if settings.updateAvailable(for: provider) {
+                    Text(settings.cliLatest[provider.rawValue].map { "yeni: \($0)" } ?? "")
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.warn)
                     Button("Güncelle") {
                         Task { await settings.updateCLI(provider) }
                     }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(path == nil)
+                } else {
+                    HStack(spacing: 5) {
+                        Circle().fill(Theme.ok).frame(width: 6, height: 6)
+                        Text("güncel")
+                            .font(Theme.mono(10.5))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    Button("Kontrol Et") {
+                        Task { await settings.checkCLIUpdates() }
+                    }
+                    .buttonStyle(GhostButtonStyle())
                 }
             }
             if let result = settings.cliUpdateResult[provider.rawValue] {
@@ -456,7 +475,7 @@ private struct AccountRow: View {
             }
         }
         .task(id: "\(profile.id)-\(refreshToken)") {
-            guard profile.provider == .claude else { return }
+            guard profile.provider != .terminal else { return }
             let root = settings.profilesRootURL
             let store = settings
             let value = await Task.detached(priority: .utility) {
@@ -653,5 +672,193 @@ struct GitHubLoginView: View {
                 }
             }
         }
+    }
+}
+
+
+// MARK: - Notification settings
+
+private struct NotificationSettingsSection: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var projectStore: ProjectStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Bildirimler")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Her durum değişimi için yalnızca bir bildirim gönderilir.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            VStack(spacing: 0) {
+                toggleRow("Bildirimler açık", binding(\.enabled))
+                Divider().overlay(Theme.border)
+                toggleRow("İzin beklerken", binding(\.notifyPermission))
+                toggleRow("Girdi beklerken", binding(\.notifyInput))
+                toggleRow("Tur tamamlanınca", binding(\.notifyTurnCompleted))
+                Divider().overlay(Theme.border)
+
+                HStack {
+                    Text("Öncelik")
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.textDim)
+                    Spacer()
+                    priorityPicker(
+                        current: settings.notifications.priority
+                    ) { newValue in
+                        settings.notifications.priority = newValue
+                        settings.save()
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+
+                HStack {
+                    Text("Ses")
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.textDim)
+                    Spacer()
+                    soundPicker(
+                        current: settings.notifications.sound
+                    ) { newValue in
+                        settings.notifications.sound = newValue
+                        settings.save()
+                        NotificationPrefs.preview(sound: newValue)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+            }
+            .panel()
+
+            if !projectStore.projects.isEmpty {
+                Text("Proje bazında")
+                    .font(Theme.mono(11, .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .padding(.top, 4)
+                VStack(spacing: 0) {
+                    ForEach(projectStore.projects) { project in
+                        ProjectNotificationRow(project: project)
+                        if project.id != projectStore.projects.last?.id {
+                            Divider().overlay(Theme.border)
+                        }
+                    }
+                }
+                .panel()
+            }
+        }
+    }
+
+    private func binding(_ keyPath: WritableKeyPath<NotificationPrefs, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { settings.notifications[keyPath: keyPath] },
+            set: { newValue in
+                settings.notifications[keyPath: keyPath] = newValue
+                settings.save()
+            }
+        )
+    }
+
+    private func toggleRow(_ title: String, _ isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.textDim)
+            Spacer()
+            Toggle("", isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+    }
+}
+
+func priorityPicker(
+    current: NotificationPrefs.Priority,
+    onPick: @escaping (NotificationPrefs.Priority) -> Void
+) -> some View {
+    Menu {
+        ForEach(NotificationPrefs.Priority.allCases) { priority in
+            Button(priority.label) { onPick(priority) }
+        }
+    } label: {
+        Text(current.label)
+            .font(Theme.mono(11, .medium))
+            .foregroundStyle(Theme.text)
+    }
+    .menuStyle(.borderlessButton)
+    .fixedSize()
+}
+
+func soundPicker(
+    current: String,
+    onPick: @escaping (String) -> Void
+) -> some View {
+    Menu {
+        Button("Varsayılan") { onPick("default") }
+        Button("Sessiz") { onPick("none") }
+        Divider()
+        ForEach(NotificationPrefs.systemSounds, id: \.self) { name in
+            Button(name) { onPick(name) }
+        }
+    } label: {
+        Text(current == "default" ? "Varsayılan" : current == "none" ? "Sessiz" : current)
+            .font(Theme.mono(11, .medium))
+            .foregroundStyle(Theme.text)
+    }
+    .menuStyle(.borderlessButton)
+    .fixedSize()
+}
+
+private struct ProjectNotificationRow: View {
+    let project: Project
+    @EnvironmentObject private var settings: SettingsStore
+
+    private var override: NotificationPrefs.ProjectOverride {
+        settings.notifications.perProject[project.id] ?? .init()
+    }
+
+    private func mutate(_ change: (inout NotificationPrefs.ProjectOverride) -> Void) {
+        var value = override
+        change(&value)
+        settings.notifications.perProject[project.id] = value
+        settings.save()
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ProjectIcon(project: project, size: 11)
+            Text(project.name)
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.text)
+                .lineLimit(1)
+            Spacer()
+
+            priorityPicker(
+                current: override.priority ?? settings.notifications.priority
+            ) { newValue in
+                mutate { $0.priority = newValue }
+            }
+
+            soundPicker(
+                current: override.sound ?? settings.notifications.sound
+            ) { newValue in
+                mutate { $0.sound = newValue }
+                NotificationPrefs.preview(sound: newValue)
+            }
+
+            Toggle("", isOn: Binding(
+                get: { override.enabled ?? true },
+                set: { newValue in mutate { $0.enabled = newValue } }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 }

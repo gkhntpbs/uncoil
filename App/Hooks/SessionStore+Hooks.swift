@@ -8,6 +8,8 @@ extension SessionStore {
         projectResolver: @escaping @MainActor (String) -> Project?,
         sessionResolver: @escaping @MainActor (UUID) -> UUID?,
         touchSession: @escaping @MainActor (UUID) -> Void,
+        notificationPrefs: @escaping @MainActor () -> NotificationPrefs = { NotificationPrefs() },
+        sessionTitle: @escaping @MainActor (UUID) -> String? = { _ in nil },
         applyMeta: @escaping @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
     ) {
         let server = HookServer(socketPath: HookInstaller.socketPath)
@@ -18,6 +20,8 @@ extension SessionStore {
                     projectResolver: projectResolver,
                     sessionResolver: sessionResolver,
                     touchSession: touchSession,
+                    notificationPrefs: notificationPrefs,
+                    sessionTitle: sessionTitle,
                     applyMeta: applyMeta
                 )
             }
@@ -43,6 +47,8 @@ extension SessionStore {
         projectResolver: @MainActor (String) -> Project?,
         sessionResolver: @MainActor (UUID) -> UUID?,
         touchSession: @MainActor (UUID) -> Void,
+        notificationPrefs: @MainActor () -> NotificationPrefs = { NotificationPrefs() },
+        sessionTitle: @MainActor (UUID) -> String? = { _ in nil },
         applyMeta: @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
     ) {
         guard
@@ -54,11 +60,17 @@ extension SessionStore {
         touchSession(sessionID)
         applyMeta(sessionID, event.sessionID, Self.titleCandidate(from: event))
 
+        let prefs = notificationPrefs()
+        let sessionTitle = sessionTitle(sessionID) ?? "oturum"
+
         switch event.kind {
         case .sessionStart:
             setStatus(.idle, for: sessionID)
+            clearNotificationDedup(sessionID)
         case .userPromptSubmit:
             setStatus(.thinking, for: sessionID)
+            // New turn started: allow the next attention/completion ping.
+            clearNotificationDedup(sessionID)
         case .preToolUse:
             setStatus(.running, detail: event.toolName.map { "araç: \($0)" }, for: sessionID)
         case .postToolUse:
@@ -67,18 +79,66 @@ extension SessionStore {
             let message = event.message ?? ""
             if message.localizedCaseInsensitiveContains("permission") {
                 setStatus(.waitingForPermission, detail: message, for: sessionID)
-                notifyAttention(title: project.name, body: "Claude izin bekliyor")
+                if prefs.notifyPermission {
+                    notifyOnce(
+                        key: "\(sessionID)-permission",
+                        title: project.name,
+                        body: "İzin bekliyor · \(sessionTitle)",
+                        projectID: project.id,
+                        prefs: prefs
+                    )
+                }
             } else if message.localizedCaseInsensitiveContains("waiting") {
                 setStatus(.waitingForInput, detail: message, for: sessionID)
-                notifyAttention(title: project.name, body: "Claude yanıtını bekliyor")
+                if prefs.notifyInput {
+                    notifyOnce(
+                        key: "\(sessionID)-input",
+                        title: project.name,
+                        body: "Girdi bekliyor · \(sessionTitle)",
+                        projectID: project.id,
+                        prefs: prefs
+                    )
+                }
             } else {
                 setStatus(.thinking, detail: message.isEmpty ? nil : message, for: sessionID)
             }
         case .stop:
             // Turn finished — the agent now idles waiting for the human.
             setStatus(.idle, for: sessionID)
+            if prefs.notifyTurnCompleted {
+                notifyOnce(
+                    key: "\(sessionID)-completed",
+                    title: project.name,
+                    body: "Tur tamamlandı · \(sessionTitle)",
+                    projectID: project.id,
+                    prefs: prefs
+                )
+            }
         case .sessionEnd:
             setStatus(.terminated, for: sessionID)
+            clearNotificationDedup(sessionID)
+        }
+    }
+
+    // MARK: - Once-per-state notifications
+
+    @MainActor
+    private func notifyOnce(
+        key: String,
+        title: String,
+        body: String,
+        projectID: UUID,
+        prefs: NotificationPrefs
+    ) {
+        guard !sentNotificationKeys.contains(key) else { return }
+        sentNotificationKeys.insert(key)
+        AttentionNotifier.post(title: title, body: body, projectID: projectID, prefs: prefs)
+    }
+
+    @MainActor
+    private func clearNotificationDedup(_ sessionID: UUID) {
+        sentNotificationKeys = sentNotificationKeys.filter {
+            !$0.hasPrefix(sessionID.uuidString)
         }
     }
 
@@ -94,22 +154,4 @@ extension SessionStore {
         return firstLine.count > 42 ? String(firstLine.prefix(41)) + "…" : firstLine
     }
 
-    // MARK: - Attention notifications
-
-    private func notifyAttention(title: String, body: String) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = title
-            content.body = body
-            content.sound = .default
-            let request = UNNotificationRequest(
-                identifier: "attention-\(title)-\(body)",
-                content: content,
-                trigger: nil
-            )
-            center.add(request)
-        }
-    }
 }

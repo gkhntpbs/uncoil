@@ -47,6 +47,49 @@ enum CLIToolService {
         }
     }
 
+    static func npmPackage(for provider: AgentProvider) -> String {
+        switch provider {
+        case .claude: "@anthropic-ai/claude-code"
+        case .codex: "@openai/codex"
+        case .terminal: ""
+        }
+    }
+
+    /// Latest published version from the npm registry (both CLIs publish
+    /// there regardless of how they were installed locally).
+    static func latestVersion(provider: AgentProvider) async -> String? {
+        let package = npmPackage(for: provider)
+        guard !package.isEmpty,
+              let url = URL(string: "https://registry.npmjs.org/\(package)/latest") else {
+            return nil
+        }
+        guard let (data, response) = try? await URLSession.shared.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return object["version"] as? String
+    }
+
+    /// First x.y.z found in a version string ("2.1.218 (Claude Code)" -> 2.1.218).
+    static func semver(_ string: String?) -> [Int]? {
+        guard let string,
+              let range = string.range(of: #"[0-9]+\.[0-9]+\.[0-9]+"#, options: .regularExpression) else {
+            return nil
+        }
+        return string[range].split(separator: ".").compactMap { Int($0) }
+    }
+
+    static func isNewer(_ latest: String?, than installed: String?) -> Bool {
+        guard let latestParts = semver(latest), let installedParts = semver(installed) else {
+            return false
+        }
+        for (l, i) in zip(latestParts, installedParts) where l != i {
+            return l > i
+        }
+        return false
+    }
+
     /// Blocking; call from a background task.
     static func version(binaryPath: String) -> String? {
         runLoginShell("\"\(binaryPath)\" --version 2>/dev/null | head -1", timeout: 20)?
