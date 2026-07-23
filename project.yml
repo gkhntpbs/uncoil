@@ -28,23 +28,40 @@ targets:
         PRODUCT_NAME: uncoil-hook
         SKIP_INSTALL: true
 
+  uncoil-runtimed:
+    type: tool
+    platform: macOS
+    sources:
+      - path: RuntimeHelper
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: uncoil-runtimed
+        SKIP_INSTALL: true
+
   Uncoil:
     type: application
     platform: macOS
     sources:
       - path: App
+      - path: Shared
     dependencies:
       - package: SwiftTerm
       - target: uncoil-hook
+        embed: false
+      - target: uncoil-runtimed
         embed: false
     postBuildScripts:
       - name: Embed uncoil-hook helper
         script: |
           cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-hook"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-runtimed"
         inputFiles:
           - $(BUILT_PRODUCTS_DIR)/uncoil-hook
+          - $(BUILT_PRODUCTS_DIR)/uncoil-runtimed
         outputFiles:
           - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-hook
+          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-runtimed
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil

@@ -12,6 +12,14 @@ struct UncoilApp: App {
     init() {
         LaunchConfig.shared.prepareEnvironment()
         TablerIcons.register()
+        // Connect (or spawn) the runtime daemon early so reattach info is
+        // ready before the first session view appears.
+        // UI tests stay deterministic with in-process PTYs unless the run
+        // opts in with -runtime (used for manual persistence verification).
+        if !LaunchConfig.shared.isUITesting
+            || ProcessInfo.processInfo.arguments.contains("-runtime") {
+            RuntimeClient.shared.start()
+        }
         // Window state restoration can come back as "zero windows" once a
         // value-presented WindowGroup exists; sessions are persisted by our
         // own stores, so native window restoration is disabled entirely.

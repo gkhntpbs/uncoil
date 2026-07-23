@@ -2,14 +2,15 @@ import AppKit
 import SwiftUI
 import SwiftTerm
 
-/// One live PTY per session record. Terminals survive sidebar navigation;
-/// they die with the app (persistent runtime comes later).
+/// One live terminal per session record. PTYs are owned by uncoil-runtimed
+/// (RuntimeClient) so agents survive app restarts; if the daemon is
+/// unreachable we fall back to an in-process PTY that dies with the app.
 @MainActor
 final class TerminalRegistry {
     static let shared = TerminalRegistry()
 
-    private var terminals: [UUID: LocalProcessTerminalView] = [:]
-    private var delegates: [UUID: SessionProcessDelegate] = [:]
+    private var terminals: [UUID: TerminalView] = [:]
+    private var delegates: [UUID: AnyObject] = [:]
     /// Sessions whose process exited; the next request recreates the terminal
     /// (auto-relaunch — the user never sees a "restart" screen).
     private var deadSessions: Set<UUID> = []
@@ -28,57 +29,23 @@ final class TerminalRegistry {
         account: AccountProfile?,
         settings: SettingsStore,
         sessionStore: SessionStore
-    ) -> LocalProcessTerminalView {
+    ) -> TerminalView {
         if let existing = terminals[record.id], !deadSessions.contains(record.id) {
             return existing
         }
         deadSessions.remove(record.id)
 
-        let view = LocalProcessTerminalView(frame: .zero)
-        let palette = ThemeStore.shared.palette
-        view.nativeBackgroundColor = NSColor(Color(hex: palette.terminalBg))
-        view.nativeForegroundColor = NSColor(Color(hex: palette.terminalFg))
-
-        var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
-        env.append("LANG=en_US.UTF-8")
-        // SwiftTerm's helper env has no HOME/USER/PATH — without HOME the
-        // login shell never reads ~/.zprofile and user-installed CLIs
-        // (~/.local/bin/claude) are not on PATH.
-        let processEnv = ProcessInfo.processInfo.environment
-        for key in ["HOME", "USER", "LOGNAME", "SHELL", "PATH", "TMPDIR"] {
-            if let value = processEnv[key] {
-                env.append("\(key)=\(value)")
-            }
+        let view: TerminalView
+        // Runtime path only when the daemon was actually started (not in UI
+        // tests) and hasn't failed; anything else uses the in-process PTY.
+        let runtimePhase = RuntimeClient.shared.phase
+        if runtimePhase == .connecting || runtimePhase == .ready {
+            view = makeRuntimeTerminal(record: record, project: project, account: account,
+                                       settings: settings, sessionStore: sessionStore)
+        } else {
+            view = makeInProcessTerminal(record: record, project: project, account: account,
+                                         settings: settings, sessionStore: sessionStore)
         }
-        if let account,
-           let key = account.isolationEnvironmentKey,
-           let dir = account.configDirectory(profilesRoot: settings.profilesRootURL) {
-            env.append("\(key)=\(dir.path)")
-        }
-
-        let shell = processEnv["SHELL"] ?? "/bin/zsh"
-        var args: [String] = ["-l"]
-        if let command = Self.launchCommand(
-            for: record,
-            binaryPath: settings.binaryPath(for: record.provider),
-            extraArguments: settings.extraArguments[record.provider.rawValue]
-        ) {
-            // `exec` replaces the shell with the agent: the user never sees
-            // a typed command, and closing the agent closes the session.
-            // -i: also source ~/.zshrc, for users whose PATH is set there.
-            args = ["-l", "-i", "-c", "exec \(command)"]
-        }
-        view.startProcess(
-            executable: shell,
-            args: args,
-            environment: env,
-            execName: nil,
-            currentDirectory: record.workingDirectory(in: project)
-        )
-
-        let delegate = SessionProcessDelegate(recordID: record.id, sessionStore: sessionStore)
-        view.processDelegate = delegate
-        delegates[record.id] = delegate
         terminals[record.id] = view
 
         // The agent starts ready-and-waiting; hooks flip it to thinking/
@@ -91,7 +58,116 @@ final class TerminalRegistry {
         return view
     }
 
+    /// PTY environment: SwiftTerm's helper env has no HOME/USER/PATH —
+    /// without HOME the login shell never reads ~/.zprofile and
+    /// user-installed CLIs (~/.local/bin/claude) are not on PATH.
+    private func environment(for account: AccountProfile?, settings: SettingsStore) -> [String] {
+        var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
+        env.append("LANG=en_US.UTF-8")
+        let processEnv = ProcessInfo.processInfo.environment
+        for key in ["HOME", "USER", "LOGNAME", "SHELL", "PATH", "TMPDIR"] {
+            if let value = processEnv[key] {
+                env.append("\(key)=\(value)")
+            }
+        }
+        if let account,
+           let key = account.isolationEnvironmentKey,
+           let dir = account.configDirectory(profilesRoot: settings.profilesRootURL) {
+            env.append("\(key)=\(dir.path)")
+        }
+        return env
+    }
+
+    /// Shell arguments launching the agent. `exec` replaces the shell so the
+    /// user never sees a typed command and closing the agent ends the session.
+    /// -i: also source ~/.zshrc, for users whose PATH is set there.
+    private func shellArguments(for record: SessionRecord, settings: SettingsStore) -> (shell: String, args: [String]) {
+        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        var args: [String] = ["-l"]
+        if let command = Self.launchCommand(
+            for: record,
+            binaryPath: settings.binaryPath(for: record.provider),
+            extraArguments: settings.extraArguments[record.provider.rawValue]
+        ) {
+            args = ["-l", "-i", "-c", "exec \(command)"]
+        }
+        return (shell, args)
+    }
+
+    private func applyTheme(_ view: TerminalView) {
+        let palette = ThemeStore.shared.palette
+        view.nativeBackgroundColor = NSColor(Color(hex: palette.terminalBg))
+        view.nativeForegroundColor = NSColor(Color(hex: palette.terminalFg))
+    }
+
+    // MARK: - Daemon-backed terminal
+
+    private func makeRuntimeTerminal(
+        record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore
+    ) -> TerminalView {
+        let view = TerminalView(frame: .zero)
+        applyTheme(view)
+
+        let (shell, args) = shellArguments(for: record, settings: settings)
+        let spec = RuntimeClient.LaunchSpec(
+            shell: shell,
+            args: args,
+            env: environment(for: account, settings: settings),
+            cwd: record.workingDirectory(in: project)
+        )
+
+        let delegate = RuntimeTerminalDelegate(recordID: record.id)
+        view.terminalDelegate = delegate
+        delegates[record.id] = delegate
+
+        let recordID = record.id
+        RuntimeClient.shared.open(
+            sid: record.id,
+            spec: spec,
+            cols: view.getTerminal().cols,
+            rows: view.getTerminal().rows,
+            onData: { [weak view] data in
+                view?.feed(byteArray: ArraySlice([UInt8](data)))
+            },
+            onExit: { [weak sessionStore] _ in
+                sessionStore?.setStatus(.terminated, for: recordID)
+                TerminalRegistry.shared.markDead(recordID)
+            }
+        )
+        return view
+    }
+
+    // MARK: - In-process fallback (daemon unreachable)
+
+    private func makeInProcessTerminal(
+        record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore
+    ) -> TerminalView {
+        let view = LocalProcessTerminalView(frame: .zero)
+        applyTheme(view)
+        let (shell, args) = shellArguments(for: record, settings: settings)
+        view.startProcess(
+            executable: shell,
+            args: args,
+            environment: environment(for: account, settings: settings),
+            execName: nil,
+            currentDirectory: record.workingDirectory(in: project)
+        )
+        let delegate = SessionProcessDelegate(recordID: record.id, sessionStore: sessionStore)
+        view.processDelegate = delegate
+        delegates[record.id] = delegate
+        return view
+    }
+
     func closeTerminal(for recordID: UUID) {
+        RuntimeClient.shared.kill(sid: recordID)
         terminals[recordID] = nil
         delegates[recordID] = nil
         deadSessions.remove(recordID)
@@ -118,7 +194,40 @@ final class TerminalRegistry {
     }
 }
 
-/// Marks the session terminated when its process exits.
+/// Routes terminal-view events to the runtime daemon.
+final class RuntimeTerminalDelegate: TerminalViewDelegate {
+    private let recordID: UUID
+
+    init(recordID: UUID) {
+        self.recordID = recordID
+    }
+
+    func send(source: TerminalView, data: ArraySlice<UInt8>) {
+        RuntimeClient.shared.sendInput(Data(data), sid: recordID)
+    }
+
+    func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
+        RuntimeClient.shared.resize(sid: recordID, cols: newCols, rows: newRows)
+    }
+
+    func setTerminalTitle(source: TerminalView, title: String) {}
+    func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
+    func scrolled(source: TerminalView, position: Double) {}
+    func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
+        if let url = URL(string: link) { NSWorkspace.shared.open(url) }
+    }
+    func clipboardCopy(source: TerminalView, content: Data) {
+        if let text = String(data: content, encoding: .utf8) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+    func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
+    func bell(source: TerminalView) {}
+    func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) {}
+}
+
+/// Marks the session terminated when its in-process fallback PTY exits.
 final class SessionProcessDelegate: LocalProcessTerminalViewDelegate {
     private let recordID: UUID
     private weak var sessionStore: SessionStore?
@@ -150,7 +259,7 @@ struct TerminalHostView: NSViewRepresentable {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
 
-    func makeNSView(context: Context) -> LocalProcessTerminalView {
+    func makeNSView(context: Context) -> TerminalView {
         TerminalRegistry.shared.terminal(
             for: record,
             project: project,
@@ -160,5 +269,5 @@ struct TerminalHostView: NSViewRepresentable {
         )
     }
 
-    func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {}
+    func updateNSView(_ nsView: TerminalView, context: Context) {}
 }
