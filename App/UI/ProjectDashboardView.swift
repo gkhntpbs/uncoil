@@ -38,6 +38,8 @@ struct ProjectDashboardView: View {
             .padding(16)
             .uncoilScrollers()
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard.container")
         .task(id: project.id) { await refreshGit() }
     }
 
@@ -111,6 +113,7 @@ struct ProjectDashboardView: View {
 
             HStack(spacing: 8) {
                 TextField("Yeni worktree adı (izole görev dalı)", text: $newWorktreeName)
+                    .accessibilityIdentifier("dashboard.worktrees.nameField")
                     .textFieldStyle(.plain)
                     .font(Theme.mono(11.5))
                     .foregroundStyle(Theme.text)
@@ -123,6 +126,7 @@ struct ProjectDashboardView: View {
                     )
                     .onSubmit { createWorktree() }
                 Button(creatingWorktree ? "Oluşturuluyor…" : "Oluştur") { createWorktree() }
+                    .accessibilityIdentifier("dashboard.worktrees.createButton")
                     .buttonStyle(GhostButtonStyle())
                     .disabled(creatingWorktree || newWorktreeName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -400,6 +404,7 @@ private struct SessionCard: View {
             .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("dashboard.session.\(record.title)")
         .onHover { hovering = $0 }
     }
 }

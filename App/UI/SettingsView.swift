@@ -27,9 +27,11 @@ struct SettingsView: View {
             }
             .padding(20)
             .uncoilScrollers()
+            .accessibilityIdentifier("settings.container")
         }
         .frame(width: 480, height: 640)
         .background(Theme.bg)
+        .accessibilityIdentifier("settings.container")
     }
 
     // MARK: - Accounts

@@ -71,6 +71,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.tests
         GENERATE_INFOPLIST_FILE: true
 
+  UncoilUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: Uncoil
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.uitests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: Uncoil
+
 schemes:
   Uncoil:
     build:
@@ -82,3 +95,12 @@ schemes:
       config: Debug
       targets:
         - UncoilTests
+
+  UncoilUI:
+    build:
+      targets:
+        Uncoil: all
+    test:
+      config: Debug
+      targets:
+        - UncoilUITests

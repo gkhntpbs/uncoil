@@ -9,6 +9,7 @@ struct UncoilApp: App {
     @AppStorage("sidebarVisible") private var sidebarVisible = true
 
     init() {
+        LaunchConfig.shared.prepareEnvironment()
         TablerIcons.register()
     }
 

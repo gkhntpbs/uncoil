@@ -18,7 +18,10 @@ final class ProjectStore: ObservableObject {
     }
 
     nonisolated static func defaultDirectory() -> URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        if let override = LaunchConfig.shared.dataDirectoryOverride {
+            return override
+        }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Uncoil", isDirectory: true)
     }
 

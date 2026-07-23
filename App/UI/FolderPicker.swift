@@ -108,12 +108,14 @@ struct FolderPickerSheet: View {
             HStack {
                 Button("Vazgeç") { dismiss() }
                     .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("folderPicker.cancelButton")
                 Spacer()
                 Button("Bu Klasörü Ekle") {
                     onPick(currentURL)
                     dismiss()
                 }
                 .buttonStyle(AccentButtonStyle())
+                .accessibilityIdentifier("folderPicker.addButton")
             }
             .padding(12)
         }

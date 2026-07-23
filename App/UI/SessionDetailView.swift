@@ -30,6 +30,8 @@ struct SessionDetailView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 10)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("session.container")
     }
 
     // MARK: - Header card
@@ -50,6 +52,7 @@ struct SessionDetailView: View {
                     )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("session.backButton")
             .help("Proje panosuna dön")
             .padding(.top, 2)
 
@@ -126,6 +129,7 @@ struct EmptyDetailView: View {
                 .foregroundStyle(Theme.textFaint)
             Button("Proje Ekle") { showFolderPicker = true }
                 .buttonStyle(AccentButtonStyle())
+                .accessibilityIdentifier("empty.addProjectButton")
                 .padding(.top, 6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

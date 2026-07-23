@@ -35,15 +35,19 @@ struct SidebarView: View {
                 .padding(.horizontal, 8)
                 .uncoilScrollers()
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("sidebar.container")
 
             // Bottom rail: settings gear + add project
             HStack(spacing: 10) {
                 RailButton(iconName: "settings") {
                     openWindow(id: "settings")
                 }
+                .accessibilityIdentifier("sidebar.settingsButton")
                 RailButton(iconName: "plus") {
                     showFolderPicker = true
                 }
+                .accessibilityIdentifier("sidebar.addProjectButton")
                 Spacer()
             }
             .padding(.horizontal, 14)
@@ -131,8 +135,12 @@ private struct ProjectSection: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: 7))
             .onTapGesture { selection = .project(project.id) }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("sidebar.project.\(project.name)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { selection = .project(project.id) }
             .onHover { value in
-                withAnimation(.easeOut(duration: 0.12)) { hovering = value }
+                withAnimation(uncoilAnimation(.easeOut(duration: 0.12))) { hovering = value }
             }
             .contextMenu {
                 Button("Özelleştir…") { showCustomize = true }
@@ -167,7 +175,7 @@ private struct ProjectSection: View {
     }
 
     private func toggleCollapsed() {
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
             sessionsCollapsed.toggle()
         }
         CollapsedProjects.set(project.id, collapsed: sessionsCollapsed)
@@ -243,6 +251,7 @@ private struct LauncherButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .accessibilityIdentifier("launcher.\(provider.rawValue)")
         .help("\(provider.displayName) başlat")
     }
 }
@@ -291,6 +300,7 @@ private struct SessionRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .accessibilityIdentifier("sidebar.session.\(record.title)")
         .contextMenu {
             Button("Oturumu Sil", role: .destructive) {
                 TerminalRegistry.shared.closeTerminal(for: record.id)

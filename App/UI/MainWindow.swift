@@ -82,10 +82,10 @@ struct MainWindow: View {
             }
         }
         .onAppear {
+            LaunchConfig.shared.seedFixture(projectStore: projectStore)
             startServices()
-            if selection == nil, let first = projectStore.projects.first {
-                selection = .project(first.id)
-            }
+            applyLaunchRoute()
+            applyFixedWindowFrame()
         }
     }
 
@@ -109,6 +109,29 @@ struct MainWindow: View {
             }
         case nil:
             EmptyDetailView(showFolderPicker: $showFolderPicker)
+        }
+    }
+
+    private func applyLaunchRoute() {
+        let config = LaunchConfig.shared
+        if config.route == "session",
+           let record = projectStore.sessions.first {
+            selection = .session(record.id)
+            return
+        }
+        if selection == nil, let first = projectStore.projects.first {
+            selection = .project(first.id)
+        }
+    }
+
+    /// Deterministic window frame for visual testing (-window-width/-height).
+    private func applyFixedWindowFrame() {
+        let config = LaunchConfig.shared
+        guard let width = config.windowWidth, let height = config.windowHeight else { return }
+        // The window may not be visible yet at onAppear; defer one runloop turn.
+        DispatchQueue.main.async {
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            window.setFrame(NSRect(x: 80, y: 120, width: width, height: height), display: true)
         }
     }
 
