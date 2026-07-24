@@ -1,63 +1,152 @@
 import SwiftUI
 
-/// Settings → İzinler: a full permission manager for the MCP control plane.
-///
-/// - **Oturum Yetkileri** — proactively grant/revoke capability keys on a
-///   session (writes `SessionRecord.capabilities`; the PolicyEngine reads this
-///   live on the session's next call, so no agent request is needed).
-/// - **Bekleyen İstekler** — approve/deny agent-triggered directional requests,
-///   optionally persisting the grant onto the target session.
-/// - **Verilen İzinler** — list/revoke directional grants.
-/// - **İzin Ekle** — pre-authorize an A→B directional grant before any ask.
-/// - **Test isteği** — inject a sample pending request to exercise the UI.
-///
-/// All PermissionService/ProjectStore mutations happen in button/toggle actions
-/// or `.task`, never in `body` — publishing during a view update crashes.
 struct PermissionsSettingsSection: View {
     @ObservedObject var service: PermissionService
     @EnvironmentObject private var projectStore: ProjectStore
-
     @State private var selectedSessionID: UUID?
-    @State private var persistOnApprove = false
-    @State private var showAddGrant = false
-    @State private var addFrom: UUID?
-    @State private var addTarget: UUID?
-    @State private var addKey: String = "sessions.control_children"
+    @State private var showDrivers = false
+    @State private var showAdvanced = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sessionCapabilitiesSection
-            pendingSection
-            grantedSection
-            addGrantSection
-            testSection
-        }
-        .task { service.pruneExpiredIfNeeded() }
-        .onAppear {
-            if selectedSessionID == nil { selectedSessionID = projectStore.sessions.first?.id }
-        }
+    private struct AccessGroup: Identifiable {
+        let id: String
+        let title: String
+        let detail: String
+        let icon: String
+        let keys: Set<String>
+        let requiresApproval: Bool
     }
 
-    // MARK: - (a) Session capability grants
+    private var accessGroups: [AccessGroup] {
+        [
+            AccessGroup(
+                id: "projects",
+                title: "Projeler ve Dosyalar",
+                detail: "Projeleri, worktree'leri ve artifact'ları yönetir.",
+                icon: "folders",
+                keys: [
+                    "projects.read", "worktrees.read", "worktrees.create",
+                    "artifacts.read", "artifacts.write",
+                ],
+                requiresApproval: false
+            ),
+            AccessGroup(
+                id: "sessions",
+                title: "Oturum Yönetimi",
+                detail: "Oturumları görür, düzenler, gruplar ve alt agent başlatır.",
+                icon: "messages",
+                keys: [
+                    "sessions.read", "sessions.read_all", "sessions.control_children",
+                    "sessions.control_all", "sessions.create_children",
+                    "sessions.cross_project", "sessions.organize",
+                ],
+                requiresApproval: false
+            ),
+            AccessGroup(
+                id: "browser",
+                title: "Agent Browser",
+                detail: "Yönetilen Chromium tarayıcısını ve kalıcı durumunu kullanır.",
+                icon: "world",
+                keys: ["browser.use", "browser.persistent_state"],
+                requiresApproval: false
+            ),
+            AccessGroup(
+                id: "computer",
+                title: "Computer Use",
+                detail: "Mac ekranını görür, fare ve klavyeyi kontrol eder.",
+                icon: "device-desktop",
+                keys: [
+                    "computer.inspect", "computer.background_control",
+                    "computer.foreground_control",
+                ],
+                requiresApproval: true
+            ),
+        ]
+    }
 
     private var selectedSession: SessionRecord? {
         projectStore.sessions.first { $0.id == selectedSessionID }
     }
 
-    private func effectiveGrants(_ record: SessionRecord) -> Set<String> {
-        PolicyEngine.grants(for: record)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            overview
+            if !service.pending().isEmpty {
+                pendingRequests
+            }
+            sessionAccess
+            drivers
+            advanced
+        }
+        .task {
+            service.pruneExpiredIfNeeded()
+            if selectedSessionID == nil {
+                selectedSessionID = projectStore.sessions.first?.id
+            }
+        }
     }
 
-    private var sessionCapabilitiesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header("Oturum Yetkileri", "Ajan istemeden, oturuma doğrudan yetki ver.")
+    private var overview: some View {
+        HStack(alignment: .top, spacing: 12) {
+            TablerIcon(name: "shield-check", size: 20, color: Theme.ok)
+                .frame(width: 28, height: 28)
+                .background(Theme.ok.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Güvenli otomasyon hazır")
+                    .font(Theme.mono(13, .semibold))
+                    .foregroundStyle(Theme.text)
+                Text("Proje, oturum, artifact ve Agent Browser yeni oturumlarda otomatik açıktır. Computer Use her oturum için sen açana kadar kapalı kalır.")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .background(Theme.ok.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Theme.ok.opacity(0.22), lineWidth: 1)
+        )
+        .accessibilityIdentifier("settings.permissions.overview")
+    }
 
+    private var sessionAccess: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            sectionHeader(
+                "Oturum Erişimi",
+                "Bir oturum seç; yaygın izinleri tek yerden yönet."
+            )
             if projectStore.sessions.isEmpty {
-                emptyLine("Henüz oturum yok.")
+                emptyLine("İzin verilecek bir oturum henüz yok.")
             } else {
                 sessionPicker
                 if let record = selectedSession {
-                    capabilityToggles(for: record)
+                    VStack(spacing: 0) {
+                        ForEach(Array(accessGroups.enumerated()), id: \.element.id) { index, group in
+                            accessRow(group, record: record)
+                            if index != accessGroups.count - 1 {
+                                Divider().overlay(Theme.border)
+                            }
+                        }
+                    }
+                    .panel(radius: 10)
+
+                    HStack {
+                        Text(record.capabilities == nil
+                             ? "Varsayılan profil kullanılıyor"
+                             : "Bu oturum için özelleştirildi")
+                            .font(Theme.mono(9.5))
+                            .foregroundStyle(Theme.textFaint)
+                        Spacer()
+                        if record.capabilities != nil {
+                            Button("Varsayılana Dön") {
+                                projectStore.updateSession(record.id) {
+                                    $0.capabilities = nil
+                                }
+                            }
+                            .buttonStyle(GhostButtonStyle())
+                            .accessibilityIdentifier("settings.permissions.reset")
+                        }
+                    }
                 }
             }
         }
@@ -65,11 +154,16 @@ struct PermissionsSettingsSection: View {
 
     private var sessionPicker: some View {
         Menu {
-            ForEach(projectStore.sessions) { session in
-                Button {
-                    selectedSessionID = session.id
-                } label: {
-                    Text(sessionLabel(session))
+            ForEach(projectStore.projects) { project in
+                let sessions = projectStore.sessions(for: project.id)
+                if !sessions.isEmpty {
+                    Section(project.name) {
+                        ForEach(sessions) { session in
+                            Button(session.displayTitle) {
+                                selectedSessionID = session.id
+                            }
+                        }
+                    }
                 }
             }
         } label: {
@@ -78,316 +172,285 @@ struct PermissionsSettingsSection: View {
                     .font(Theme.mono(11.5, .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
+                if let selectedSession {
+                    ProviderMark(provider: selectedSession.provider, size: 11)
+                }
                 Spacer()
                 TablerIcon(name: "selector", size: 12, color: Theme.textDim)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .frame(minWidth: 260, maxWidth: 360, alignment: .leading)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border, lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Theme.border, lineWidth: 1)
+        )
+        .accessibilityIdentifier("settings.permissions.sessionPicker")
     }
 
-    private func capabilityToggles(for record: SessionRecord) -> some View {
-        let grants = effectiveGrants(record)
-        return VStack(alignment: .leading, spacing: 12) {
-            ForEach(CapabilityCatalog.grouped(), id: \.domain.id) { group in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        TablerIcon(name: group.domain.iconName, size: 11, color: Theme.textFaint)
-                        Text(group.domain.title.uppercased())
-                            .font(Theme.mono(9.5, .semibold))
-                            .foregroundStyle(Theme.textFaint)
-                            .kerning(0.6)
+    private func accessRow(
+        _ group: AccessGroup,
+        record: SessionRecord
+    ) -> some View {
+        let grants = PolicyEngine.grants(for: record)
+        let isOn = group.keys.isSubset(of: grants)
+        return HStack(alignment: .center, spacing: 11) {
+            TablerIcon(
+                name: group.icon,
+                size: 15,
+                color: group.requiresApproval ? Theme.warn : Theme.textDim
+            )
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 7) {
+                    Text(group.title)
+                        .font(Theme.mono(11.5, .semibold))
+                        .foregroundStyle(Theme.text)
+                    if group.requiresApproval {
+                        Text("ONAY GEREKİR")
+                            .font(Theme.mono(8, .bold))
+                            .foregroundStyle(Theme.warn)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Theme.warn.opacity(0.12), in: Capsule())
                     }
+                }
+                Text(group.detail)
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 10)
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { set(group.keys, enabled: $0, sessionID: record.id) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
+            .accessibilityIdentifier("settings.permissions.group.\(group.id)")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    private var pendingRequests: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            sectionHeader(
+                "Onay Bekleyenler",
+                "Agent tarafından şu anda istenen yönlü izinler."
+            )
+            VStack(spacing: 0) {
+                ForEach(Array(service.pending().enumerated()), id: \.element.id) { index, request in
+                    requestRow(request) {
+                        Button("Onayla") { service.grant(id: request.id) }
+                            .foregroundStyle(Theme.ok)
+                        Button("Reddet") { service.deny(id: request.id) }
+                            .foregroundStyle(Theme.warn)
+                    }
+                    if index != service.pending().count - 1 {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel(radius: 10)
+        }
+        .accessibilityIdentifier("settings.permissions.pending")
+    }
+
+    private var drivers: some View {
+        DisclosureGroup(isExpanded: $showDrivers) {
+            VStack(alignment: .leading, spacing: 16) {
+                AgentBrowserSetupSection()
+                CuaDriverSetupSection()
+            }
+            .padding(.top, 12)
+        } label: {
+            disclosureLabel(
+                "Sürücü Kurulumu",
+                "Agent Browser ve Computer Use bağlantılarını kur ve doğrula.",
+                icon: "settings-automation"
+            )
+        }
+        .accessibilityIdentifier("settings.permissions.drivers")
+    }
+
+    private var advanced: some View {
+        DisclosureGroup(isExpanded: $showAdvanced) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let record = selectedSession {
+                    ForEach(CapabilityCatalog.grouped(), id: \.domain.id) { group in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(group.domain.title.uppercased())
+                                .font(Theme.mono(9, .semibold))
+                                .foregroundStyle(Theme.textFaint)
+                                .kerning(0.5)
+                            VStack(spacing: 0) {
+                                ForEach(Array(group.entries.enumerated()), id: \.element.id) { index, entry in
+                                    capabilityRow(entry, record: record)
+                                    if index != group.entries.count - 1 {
+                                        Divider().overlay(Theme.border)
+                                    }
+                                }
+                            }
+                            .panel(radius: 9)
+                        }
+                    }
+                }
+
+                let granted = service.granted()
+                if !granted.isEmpty {
+                    sectionHeader(
+                        "Yönlü İzinler",
+                        "Belirli bir kaynak oturumdan hedef oturuma verilmiş izinler."
+                    )
                     VStack(spacing: 0) {
-                        ForEach(Array(group.entries.enumerated()), id: \.element.id) { index, entry in
-                            capabilityRow(entry, record: record, isOn: grants.contains(entry.key))
-                            if index != group.entries.count - 1 {
+                        ForEach(Array(granted.enumerated()), id: \.element.id) { index, request in
+                            requestRow(request) {
+                                Button("İptal") { service.revoke(id: request.id) }
+                                    .foregroundStyle(Theme.textDim)
+                            }
+                            if index != granted.count - 1 {
                                 Divider().overlay(Theme.border)
                             }
                         }
                     }
-                    .panel()
+                    .panel(radius: 9)
                 }
             }
+            .padding(.top, 12)
+        } label: {
+            disclosureLabel(
+                "Gelişmiş İzinler",
+                "Tek tek yetkileri ve yönlü agent izinlerini yönet.",
+                icon: "adjustments"
+            )
         }
-        .accessibilityIdentifier("settings.permissions.session.\(record.id.uuidString)")
+        .accessibilityIdentifier("settings.permissions.advanced")
     }
 
-    private func capabilityRow(_ entry: CapabilityCatalog.Entry, record: SessionRecord, isOn: Bool) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+    private func capabilityRow(
+        _ entry: CapabilityCatalog.Entry,
+        record: SessionRecord
+    ) -> some View {
+        let isOn = PolicyEngine.grants(for: record).contains(entry.key)
+        return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(entry.label)
-                        .font(Theme.mono(12, .medium))
-                        .foregroundStyle(Theme.text)
-                    if entry.risky {
-                        Text("riskli")
-                            .font(Theme.mono(8.5, .semibold))
-                            .foregroundStyle(Theme.warn)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(Theme.warn.opacity(0.14), in: Capsule())
-                    }
-                }
+                Text(entry.label)
+                    .font(Theme.mono(11, .medium))
+                    .foregroundStyle(Theme.text)
                 Text(entry.detail)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
+            Spacer()
             Toggle("", isOn: Binding(
                 get: { isOn },
-                set: { newValue in setGrant(entry.key, on: newValue, for: record.id) }
+                set: { set([entry.key], enabled: $0, sessionID: record.id) }
             ))
             .toggleStyle(.switch)
             .controlSize(.mini)
             .labelsHidden()
             .accessibilityIdentifier("settings.permissions.grant.\(entry.key)")
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 11)
         .padding(.vertical, 8)
     }
 
-    /// Adds/removes a capability grant on a session. Materializes the effective
-    /// grant set into an explicit array so toggling a *default* grant off (or an
-    /// optional grant on) persists exactly. Effect is live on the next MCP call.
-    private func setGrant(_ key: String, on: Bool, for sessionID: UUID) {
-        projectStore.updateSession(sessionID) { record in
-            var grants = PolicyEngine.grants(for: record)
-            if on { grants.insert(key) } else { grants.remove(key) }
-            record.capabilities = grants.sorted()
-        }
-    }
-
-    // MARK: - (b) Pending requests
-
-    private var pendingSection: some View {
-        let records = service.pending()
-        return VStack(alignment: .leading, spacing: 8) {
-            header("Bekleyen İstekler", "Ajanların tetiklediği izin istekleri.")
-            Toggle(isOn: $persistOnApprove) {
-                Text("Onaylarken hedef oturuma kalıcı ver")
-                    .font(Theme.mono(10.5))
-                    .foregroundStyle(Theme.textDim)
-            }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-
-            if records.isEmpty {
-                emptyLine("Bekleyen izin isteği yok.")
-            } else {
-                VStack(spacing: 1) {
-                    ForEach(records) { record in
-                        recordRow(record) {
-                            HStack(spacing: 8) {
-                                Button("Onayla") { approve(record) }
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(Theme.ok)
-                                Button("Reddet") { service.deny(id: record.id) }
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(Theme.warn)
-                            }
-                            .font(Theme.mono(11))
-                        }
-                    }
-                }
-                .panel()
-            }
-        }
-    }
-
-    private func approve(_ record: PermissionRequest) {
-        service.grant(id: record.id)
-        guard persistOnApprove,
-              let raw = record.targetSessionID, let uuid = UUID(uuidString: raw),
-              projectStore.sessions.contains(where: { $0.id == uuid }) else { return }
-        setGrant(record.grantKey, on: true, for: uuid)
-    }
-
-    // MARK: - (c) Granted directional permissions
-
-    private var grantedSection: some View {
-        let records = service.granted()
-        return VStack(alignment: .leading, spacing: 8) {
-            header("Verilen İzinler", "Yönlü (kaynak → hedef) izinler.")
-            if records.isEmpty {
-                emptyLine("Verilmiş izin yok.")
-            } else {
-                VStack(spacing: 1) {
-                    ForEach(records) { record in
-                        recordRow(record) {
-                            Button("İptal") { service.revoke(id: record.id) }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(Theme.textDim)
-                                .font(Theme.mono(11))
-                        }
-                    }
-                }
-                .panel()
-            }
-        }
-    }
-
-    // MARK: - (d) Proactive directional grant
-
-    private var addGrantSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                header("İzin Ekle", "A→B kontrolünü önceden yetkilendir.")
-                Spacer()
-                Button(showAddGrant ? "Kapat" : "İzin Ekle") {
-                    if !showAddGrant {
-                        addFrom = addFrom ?? projectStore.sessions.first?.id
-                        addTarget = addTarget ?? projectStore.sessions.dropFirst().first?.id
-                    }
-                    showAddGrant.toggle()
-                }
-                .buttonStyle(GhostButtonStyle())
-                .accessibilityIdentifier("settings.permissions.addGrant")
-            }
-
-            if showAddGrant {
-                VStack(spacing: 0) {
-                    pickerRow("Kaynak", selection: $addFrom)
-                    Divider().overlay(Theme.border)
-                    pickerRow("Hedef", selection: $addTarget)
-                    Divider().overlay(Theme.border)
-                    grantKeyPickerRow
-                    Divider().overlay(Theme.border)
-                    HStack {
-                        Spacer()
-                        Button("Ver") {
-                            guard let from = addFrom else { return }
-                            service.addGrant(
-                                grantKey: addKey,
-                                from: from.uuidString,
-                                target: addTarget?.uuidString)
-                            showAddGrant = false
-                        }
-                        .buttonStyle(AccentButtonStyle())
-                        .disabled(addFrom == nil)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
-                .panel()
-            }
-        }
-    }
-
-    private func pickerRow(_ title: String, selection: Binding<UUID?>) -> some View {
-        HStack {
-            Text(title)
-                .font(Theme.mono(12))
-                .foregroundStyle(Theme.textDim)
-            Spacer()
-            Menu {
-                ForEach(projectStore.sessions) { session in
-                    Button(sessionLabel(session)) { selection.wrappedValue = session.id }
-                }
-            } label: {
-                Text(projectStore.sessions.first { $0.id == selection.wrappedValue }
-                    .map(sessionLabel) ?? "Seç")
-                    .font(Theme.mono(11, .medium))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(1)
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private var grantKeyPickerRow: some View {
-        HStack {
-            Text("Yetki")
-                .font(Theme.mono(12))
-                .foregroundStyle(Theme.textDim)
-            Spacer()
-            Menu {
-                ForEach(CapabilityCatalog.all) { entry in
-                    Button("\(entry.domain.title) · \(entry.label)") { addKey = entry.key }
-                }
-            } label: {
-                Text(CapabilityCatalog.entry(for: addKey)?.label ?? addKey)
-                    .font(Theme.mono(11, .medium))
-                    .foregroundStyle(Theme.text)
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - Test affordance
-
-    private var testSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            header("Test", "Canlı ajan olmadan izin akışını dene.")
-            Button("Test isteği oluştur") {
-                let sessions = projectStore.sessions
-                service.injectTestRequest(
-                    from: sessions.first?.id.uuidString,
-                    target: sessions.dropFirst().first?.id.uuidString)
-            }
-            .buttonStyle(GhostButtonStyle())
-            .accessibilityIdentifier("settings.permissions.testRequest")
-        }
-    }
-
-    // MARK: - Shared bits
-
-    @ViewBuilder
-    private func recordRow(
-        _ record: PermissionRequest, @ViewBuilder actions: () -> some View
+    private func requestRow(
+        _ request: PermissionRequest,
+        @ViewBuilder actions: () -> some View
     ) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(CapabilityCatalog.entry(for: record.grantKey)?.label ?? record.grantKey)
+                Text(CapabilityCatalog.entry(for: request.grantKey)?.label
+                     ?? request.grantKey)
                     .font(Theme.mono(11.5, .medium))
                     .foregroundStyle(Theme.text)
-                Text("kaynak \(short(record.fromSessionID)) → hedef \(short(record.targetSessionID))")
-                    .font(Theme.mono(10))
+                Text("\(short(request.fromSessionID)) → \(short(request.targetSessionID))")
+                    .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
-            actions()
+            HStack(spacing: 9) {
+                actions()
+            }
+            .buttonStyle(.plain)
+            .font(Theme.mono(10.5, .medium))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 9)
     }
 
-    private func header(_ title: String, _ subtitle: String) -> some View {
+    private func disclosureLabel(
+        _ title: String,
+        _ detail: String,
+        icon: String
+    ) -> some View {
+        HStack(spacing: 10) {
+            TablerIcon(name: icon, size: 15, color: Theme.textDim)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.mono(12, .semibold))
+                    .foregroundStyle(Theme.text)
+                Text(detail)
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textFaint)
+            }
+        }
+    }
+
+    private func sectionHeader(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(Theme.mono(12, .semibold))
                 .foregroundStyle(Theme.text)
-            Text(subtitle)
-                .font(Theme.mono(10))
+            Text(detail)
+                .font(Theme.mono(9.5))
                 .foregroundStyle(Theme.textFaint)
         }
     }
 
     private func emptyLine(_ text: String) -> some View {
         Text(text)
-            .font(Theme.mono(11.5))
+            .font(Theme.mono(11))
             .foregroundStyle(Theme.textFaint)
     }
 
+    private func set(
+        _ keys: Set<String>,
+        enabled: Bool,
+        sessionID: UUID
+    ) {
+        projectStore.updateSession(sessionID) { record in
+            var grants = PolicyEngine.grants(for: record)
+            if enabled {
+                grants.formUnion(keys)
+            } else {
+                grants.subtract(keys)
+            }
+            record.capabilities = grants.sorted()
+        }
+    }
+
     private func sessionLabel(_ session: SessionRecord) -> String {
-        let project = projectStore.projects.first { $0.id == session.projectID }
-        let prefix = project.map { "\($0.name) · " } ?? ""
-        return prefix + session.displayTitle
+        let projectName = projectStore.projects.first {
+            $0.id == session.projectID
+        }?.name
+        return [projectName, session.displayTitle]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     private func short(_ id: String?) -> String {
         guard let id, !id.isEmpty else { return "—" }
+        if let uuid = UUID(uuidString: id),
+           let session = projectStore.sessions.first(where: { $0.id == uuid }) {
+            return session.displayTitle
+        }
         return String(id.prefix(8))
     }
 }
