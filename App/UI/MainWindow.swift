@@ -269,6 +269,8 @@ struct MainWindow: View {
                         .frame(minWidth: 320)
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("session.splitGroup")
             } else {
                 EmptyDetailView(showFolderPicker: $showFolderPicker)
             }

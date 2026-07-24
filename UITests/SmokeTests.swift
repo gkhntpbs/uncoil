@@ -36,7 +36,7 @@ final class SmokeTests: XCTestCase {
 
         // 3. Open the (harmless, plain-shell) terminal session.
         sessionCard.click()
-        let terminal = app.descendants(matching: .any)["session.container"]
+        let terminal = app.descendants(matching: .any)["session.splitGroup"]
         XCTAssertTrue(terminal.waitForExistence(timeout: 10), "Terminal did not appear")
 
         // 4. Back to the dashboard.
@@ -45,8 +45,7 @@ final class SmokeTests: XCTestCase {
         backButton.click()
         XCTAssertTrue(dashboard.waitForExistence(timeout: 5), "Back navigation failed")
 
-        // 5. Sidebar session row selects the session too.
-        let sessionRow = app.descendants(matching: .any)["sidebar.session.terminal"]
+        let sessionRow = app.descendants(matching: .any)["dashboard.session.claude: demo görev"]
         XCTAssertTrue(sessionRow.waitForExistence(timeout: 5))
         sessionRow.click()
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
@@ -58,5 +57,33 @@ final class SmokeTests: XCTestCase {
         settingsButton.click()
         let settings = app.descendants(matching: .any)["settings.container"]
         XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings window did not open")
+    }
+
+    func testSessionPopoutFromContextMenu() {
+        let sessionRow = app.descendants(matching: .any)["sidebar.session.terminal"]
+        XCTAssertTrue(sessionRow.waitForExistence(timeout: 10))
+        sessionRow.rightClick()
+        let popoutAction = app.menuItems["Yeni Pencerede Aç"]
+        XCTAssertTrue(popoutAction.waitForExistence(timeout: 5))
+        popoutAction.click()
+
+        let popout = app.windows["Oturum"]
+        XCTAssertTrue(popout.waitForExistence(timeout: 10), "Session popout window did not appear")
+    }
+
+    func testDragSessionCreatesSplitPane() {
+        let primary = app.descendants(matching: .any)["dashboard.session.terminal"]
+        XCTAssertTrue(primary.waitForExistence(timeout: 10))
+        primary.click()
+
+        let container = app.descendants(matching: .any)["session.splitGroup"]
+        XCTAssertTrue(container.waitForExistence(timeout: 10))
+
+        let secondary = app.descendants(matching: .any)["sidebar.drag.claude: demo görev"]
+        XCTAssertTrue(secondary.waitForExistence(timeout: 5))
+        secondary.press(forDuration: 0.5, thenDragTo: container)
+
+        let splitPane = app.descendants(matching: .any)["session.splitPane"]
+        XCTAssertTrue(splitPane.waitForExistence(timeout: 10), "Split session pane did not appear")
     }
 }
