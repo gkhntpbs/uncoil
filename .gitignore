@@ -1,4 +1,5 @@
 .build-cache/
+.uncoil-worktrees/
 .DS_Store
 DerivedData/
 *.xcodeproj
