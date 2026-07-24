@@ -35,8 +35,9 @@ final class PaletteModelTests: XCTestCase {
     }
 
     func testGlobalCommandsAlwaysPresent() {
-        let groups = PaletteEngine.compute(baseContext(query: "proje ekle", projects: []))
+        let groups = PaletteEngine.compute(baseContext(query: "", projects: []))
         XCTAssertTrue(items(groups).contains { $0.action == .addProject })
+        XCTAssertTrue(items(groups).contains { $0.action == .createTestWorkspace })
     }
 
     func testSessionsRankedByAttention() {

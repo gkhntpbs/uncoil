@@ -17,6 +17,7 @@ struct MainWindow: View {
     /// Secondary session shown side-by-side (drop a session onto the view).
     @State private var splitSessionID: UUID?
     @State private var showFolderPicker = false
+    @State private var testWorkspaceError: String?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
     @State private var dragStartWidth: Double?
@@ -34,6 +35,17 @@ struct MainWindow: View {
         .onChange(of: selection) { _, _ in syncPaletteSelection() }
         .onChange(of: palette.pendingAction) { _, action in
             if let action { perform(action); palette.pendingAction = nil }
+        }
+        .alert(
+            "Test Workspace Oluşturulamadı",
+            isPresented: Binding(
+                get: { testWorkspaceError != nil },
+                set: { if !$0 { testWorkspaceError = nil } }
+            )
+        ) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(testWorkspaceError ?? "")
         }
     }
 
@@ -146,6 +158,16 @@ struct MainWindow: View {
         switch action {
         case .addProject:
             showFolderPicker = true
+        case .createTestWorkspace:
+            do {
+                let url = try TestWorkspaceService().create()
+                projectStore.addProject(at: url)
+                if let project = projectStore.projects.first(where: { $0.rootPath == url.path }) {
+                    selection = .project(project.id)
+                }
+            } catch {
+                testWorkspaceError = error.localizedDescription
+            }
         case .openProject(let id):
             selection = .project(id)
         case .focusSession(let id):
