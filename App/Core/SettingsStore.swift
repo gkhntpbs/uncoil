@@ -1,5 +1,28 @@
 import Foundation
 
+enum SessionQuitBehavior: String, Codable, CaseIterable, Identifiable {
+    case keepSessionsRunning
+    case terminateAllAgents
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .keepSessionsRunning: "Keep sessions running"
+        case .terminateAllAgents: "Terminate all agents on quit"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .keepSessionsRunning:
+            "Uncoil kapansa da agent’lar runtime daemon içinde çalışmaya devam eder."
+        case .terminateAllAgents:
+            "Uncoil’den çıkarken çalışan tüm agent ve terminal süreçleri kapatılır."
+        }
+    }
+}
+
 /// User settings: account profiles, defaults, resolved binary paths.
 @MainActor
 final class SettingsStore: ObservableObject {
@@ -20,6 +43,7 @@ final class SettingsStore: ObservableObject {
         /// Command-palette hotkey. Optional for backward compatibility with
         /// settings.json written before it was configurable; nil ⇒ ⌘K.
         var commandPaletteHotkey: HotkeyBinding? = nil
+        var sessionQuitBehavior: SessionQuitBehavior? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -36,6 +60,7 @@ final class SettingsStore: ObservableObject {
     @Published var providerBehaviors: [String: ProviderBehavior] = [:]
     /// The hotkey that toggles the command palette. Defaults to ⌘K.
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
+    @Published private(set) var sessionQuitBehavior: SessionQuitBehavior = .keepSessionsRunning
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -55,6 +80,7 @@ final class SettingsStore: ObservableObject {
         fileURL = base.appendingPathComponent("settings.json")
         profilesRoot = base.appendingPathComponent("profiles", isDirectory: true)
         load()
+        ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
         ensureDefaultAccounts()
     }
 
@@ -120,6 +146,12 @@ final class SettingsStore: ObservableObject {
 
     func resetCommandPaletteHotkey() {
         setCommandPaletteHotkey(.commandPaletteDefault)
+    }
+
+    func setSessionQuitBehavior(_ behavior: SessionQuitBehavior) {
+        sessionQuitBehavior = behavior
+        ApplicationLifecycle.shared.sessionQuitBehavior = behavior
+        save()
     }
 
     // MARK: - Accounts
@@ -372,6 +404,8 @@ final class SettingsStore: ObservableObject {
         configuredPresets = decoded.presets
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
+        sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
+        ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
 
     func save() {
@@ -386,7 +420,9 @@ final class SettingsStore: ObservableObject {
             presets: configuredPresets,
             providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors,
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
-                ? nil : commandPaletteHotkey
+                ? nil : commandPaletteHotkey,
+            sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
+                ? nil : sessionQuitBehavior
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

@@ -1,6 +1,6 @@
 # Uncoil — Durum ve Yol Haritası
 
-> Son güncelleme: 2026-07-25 · Testler: 178 geçti + 9 koşullu skipped + 4/4 UI + Computer Use kabul akışı
+> Son güncelleme: 2026-07-25 · Testler: 190/190 unit+entegrasyon + 6/6 UI + Computer Use kabul akışı
 > `docs/roadmap/FOUNDATION_PLAN.md` belgesinin güncel gerçeklik karşılığı budur.
 > Yeni oturumlar önce bu dosyayı, ardından ilgili ajan yönergesini okumalı.
 
@@ -31,13 +31,21 @@
 - App: `RuntimeClient` heartbeat, sınırlı exponential crash restart ve sleep/wake reconnect uygular; `TerminalRegistry` daemon destekli `TerminalView` kullanır. Daemon ulaşılamazsa eski in-process PTY'ye düşer. UI testlerinde determinizm için kapalı (`-runtime` arg'ı ile açılır)
 - Doğrulama: gerçek uygulamada terminal persistence/replay akışı; gerçek `uncoil-runtimed` binary’siyle handshake, heartbeat, version mismatch, graceful upgrade, tek-instance, crash restart, child reaping, replay disk limiti, log rotation ve sleep/wake reconnect entegrasyon testleri; runtime mismatch uyarısı Computer Use kabul testi
 
+### Uygulama lifecycle
+- **Çıkış politikası** — Ayarlar → Agent Ayarları altında kalıcı “Keep sessions running” ve “Terminate all agents on quit” seçenekleri; varsayılan güvenli davranış oturumları daemon içinde yaşatır
+- App termination kararı runtime kuyruğuna senkron iletilir; terminate seçimi daemon’ı ve tüm process gruplarını kapatır, keep seçimi yalnız app bağlantısını bırakır
+- Runtime daemon socket başına `flock` ile tek instance kalır; ikinci daemon canlı soketi değiştiremez
+- Ana pencere kapalıyken Dock/ikinci açılış olayı SwiftUI `WindowGroup` sahnesini yeniden üretir; ⌘N aynı güvenilir yolu kullanır
+- Ana pencere konumu/boyutu AppKit frame autosave ile, son proje/grup/oturum seçimi geçerli kayıt kontrolüyle restore edilir; UI fixture’ları gerçek kullanıcı restorasyon durumunu değiştirmez
+- Doğrulama: gerçek daemon ile iki quit-policy testi, daemon single-instance testi, 6/6 XCUITest ve Computer Use ile kapatılan `main-AppWindow-1` penceresinin `main-AppWindow-2` olarak yeniden oluşturulması
+
 ### MCP kontrol düzlemi (plan §16–17 — ajan işbirliği)
 - **Altı MCP aracı** ajanlara sınırlı bir yüzey açar: `uncoil_projects / uncoil_sessions / uncoil_artifacts / uncoil_system / uncoil_browser / uncoil_computer`. Her oturuma pakete gömülü `uncoil-mcp` stdio sunucusu kaydedilir; app içi kontrol düzlemine `control.sock` (0600 + euid kontrolü) üzerinden satır-JSON ile ulaşır. Tel biçimleri tek yerde (`Shared/ControlProtocol.swift`), hem app hem `uncoil-mcp` derler
 - **Katmanlar:** `ControlPlaneServer` → `CapabilityRouter` → saf `PolicyEngine` (izin/ilişki kararları) + `PermissionService` (yönlü kullanıcı izinleri) + handler'lar; her istek denetim günlüğüne (`audit/*.jsonl`, yalnız arg anahtarları) yazılır
 - **Orkestrasyon (M5):** `create_child` ham shell KABUL ETMEZ — yalnız adlandırılmış `SessionPreset`'ler (yerleşik `claude-worker` / `codex-reviewer`); yetenekler kesişimle daraltılır (preset ∩ çağıran, asla yükseltmez), idempotency_key ile tekrar-üretim engellenir. Çocuk oturum kenar çubuğunda normal oturum gibi görünür. Çocuk koordinasyonu: `inspect_child`, `wait_for_children` (settled durum bekleme + TIMEOUT), `summarize_children` (durum + çıktı kuyruğu + artefakt sayısı), tek yönlü `report_to_parent` / `read_reports` (parent inbox.jsonl; `pending_reports` inspect'te)
 - **İzin akışı:** kardeş/ilgisiz kontrol → `PERMISSION_REQUIRED`; ajan `uncoil_system request_permission` çağırır, kullanıcı **Ayarlar → İzinler**'de onaylar/reddeder/iptal eder. İzinler yönlü (A→B, C→B'yi kapsamaz), iptal edilebilir, her çağrıda yeniden kontrol edilir (önbelleksiz), bekleyenler 10 dk sonra düşer. `permissions.json` atomik yazılır
 - **Sağlamlaştırma (M6):** wait'ler sokete engel olmaz (her istek ayrı `Task { @MainActor }`, `Task.sleep` aktörü serbest bırakır); `permissions.json` / `artifacts.json` write-temp-rename (`AtomicFile`)
-- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). `UncoilTests` paketinde 178 test geçti, 9 ortam-koşullu test skipped; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
+- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). `UncoilTests` paketinde 190/190 test geçti; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
 
 ### Çoklu hesap
 - Profil başına izole config kökü: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (profiles/<provider>/<ad>)
@@ -67,13 +75,13 @@
 ### Geliştirme altyapısı
 - XcodeBuildMCP (build/test/launch) + Computer Use (görsel kabul ve kullanıcı akışları)
 - Deterministik başlatma: `-ui-testing -reset-state -fixture demo -route -window-width/height -disable-animations` (durum `$TMPDIR/UncoilUITest`)
-- Hiyerarşik accessibility kimlikleri; `UncoilUI` şemasında 4 UI testi
+- Hiyerarşik accessibility kimlikleri; `UncoilUI` şemasında 6 UI testi
 - Komut paletinden tek tıkla oluşturulan geçici kabul workspace'i; Swift ve JavaScript örnekleri, başarılı/başarısız/uzun/büyük çıktı/crash process fixture'ları ve izin sınıflandırmalı sahte MCP araçları
 - Computer Use ile tamamlanan guided acceptance akışı; Claude/Codex session, grup ve toplu işlemler, ayrı pencere, yeniden başlatma/reconnect/replay, worktree, MCP, Browser, Computer Use izin reddi/onayı, harici process sonlandırma/recovery ve session artifact sonucu
 - Codex oturumları bundled `uncoil-mcp` komutu ve oturuma özel kontrol-plane environment override'larıyla başlatılıyor; global Codex config değiştirilmiyor
 - Komut paletinden Debug Bundle export; scoped app/runtime logları, agent sürümleri, yapısal olarak sanitize edilmiş config’ler, MCP/permission/crash/acceptance/system bilgileri ve ZIP manifesti
 - Debug Bundle güvenliği; terminal replay ve prompt içeriği dışlanır, JSON prompt/history/message alanları yapısal silinir, token/secret/CLI secret argümanları ile home/temp/project/dış disk yolları maskelenir
-- Kritik ders: AppKit pencere restorasyonu ikinci örnek varken sıfır pencereyle açtırıyordu → `ApplePersistenceIgnoreState` ile tamamen kapalı
+- Kritik ders: AppKit pencere restorasyonu ikinci örnek varken sıfır pencereyle açtırıyordu → native state restoration kapalı; ana scene, frame ve seçim restorasyonu uygulama tarafından deterministik yönetiliyor
 
 ## Kalanlar
 
@@ -82,6 +90,4 @@ Güncel ve öncelikli iş listesi kök dizindeki `TODO.md` belgesinde tutulur.
 ## Bilinen kısıtlar
 
 - Persistent runtime v1: daemon'a ulaşılamazsa in-process PTY'ye düşülür (o durumda terminaller app ile ölür); oturumlar reboot'ta her hâlükârda ölür (kayıtlar kalır, Claude resume ile döner)
-- Uygulamadan çıkmak agent'ları artık KAPATMAZ (daemon sahipleniyor) — "çıkarken kapat" tercihi henüz yok
-- `UncoilUI` koşucusu fixture penceresindeki AX kimliklerini bulamıyor; aynı akış Computer Use ile doğrulanıyor ve takip işi `TODO.md` içinde
 - Xcode'dan çalıştırırken DerivedData dahili diskte (Xcode ayarından `.build-cache`'e yönlendirilebilir); launch args yalnız taze süreçte etkili

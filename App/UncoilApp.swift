@@ -9,6 +9,7 @@ import AppKit
 
 @main
 struct UncoilApp: App {
+    @NSApplicationDelegateAdaptor(UncoilApplicationDelegate.self) private var appDelegate
     @StateObject private var projectStore = ProjectStore()
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
@@ -46,7 +47,7 @@ struct UncoilApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             MainWindow()
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
@@ -61,8 +62,10 @@ struct UncoilApp: App {
                 }
                 .frame(minWidth: 940, minHeight: 600)
         }
+        .defaultPosition(.center)
         .windowStyle(.hiddenTitleBar)
         .commands {
+            MainWindowCommands()
             CommandGroup(after: .toolbar) {
                 Button(sidebarVisible ? "Kenar Çubuğunu Gizle" : "Kenar Çubuğunu Göster") {
                     sidebarVisible.toggle()
@@ -120,4 +123,17 @@ struct UncoilApp: App {
         }
     }
 
+}
+
+struct MainWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("Yeni Uncoil Penceresi") {
+                openWindow(id: "main")
+            }
+            .keyboardShortcut("n", modifiers: .command)
+        }
+    }
 }

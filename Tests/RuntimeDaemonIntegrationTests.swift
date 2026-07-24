@@ -41,6 +41,80 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         }
     }
 
+    func testKeepSessionsRunningDisconnectsWithoutStoppingDaemon() throws {
+        try withDaemon { socketPath, process in
+            let client = RuntimeClient(
+                socketPath: socketPath,
+                daemonURL: try daemonURL(),
+                observesWorkspaceNotifications: false
+            )
+            client.start()
+            XCTAssertTrue(waitUntil(timeout: 3) { client.phase == .ready })
+
+            let sessionFD = try connect(to: socketPath)
+            defer { close(sessionFD) }
+            try send(RuntimeCommand.hello(), to: sessionFD)
+            XCTAssertEqual(try receive(from: sessionFD).ev, "hello")
+            let sid = UUID().uuidString
+            try send(RuntimeCommand(
+                cmd: "launch",
+                sid: sid,
+                shell: "/bin/sleep",
+                args: ["20"],
+                env: [],
+                cwd: URL(fileURLWithPath: socketPath).deletingLastPathComponent().path,
+                cols: 80,
+                rows: 24
+            ), to: sessionFD)
+
+            client.prepareForApplicationTermination(terminateSessions: false)
+            XCTAssertTrue(process.isRunning)
+
+            let verifier = try connect(to: socketPath)
+            defer { close(verifier) }
+            try send(RuntimeCommand.hello(), to: verifier)
+            XCTAssertEqual(try receive(from: verifier).ev, "hello")
+            try send(RuntimeCommand(cmd: "list"), to: verifier)
+            let sessions = try receive(from: verifier)
+            XCTAssertTrue((sessions.sids ?? []).contains(sid))
+
+            try send(RuntimeCommand(cmd: "shutdown"), to: verifier)
+            XCTAssertTrue(waitForExit(process, timeout: 3))
+        }
+    }
+
+    func testTerminateAllAgentsOnQuitStopsDaemon() throws {
+        try withDaemon { socketPath, process in
+            let client = RuntimeClient(
+                socketPath: socketPath,
+                daemonURL: try daemonURL(),
+                observesWorkspaceNotifications: false
+            )
+            client.start()
+            XCTAssertTrue(waitUntil(timeout: 3) { client.phase == .ready })
+
+            let sessionFD = try connect(to: socketPath)
+            defer { close(sessionFD) }
+            try send(RuntimeCommand.hello(), to: sessionFD)
+            XCTAssertEqual(try receive(from: sessionFD).ev, "hello")
+            try send(RuntimeCommand(
+                cmd: "launch",
+                sid: UUID().uuidString,
+                shell: "/bin/sleep",
+                args: ["20"],
+                env: [],
+                cwd: URL(fileURLWithPath: socketPath).deletingLastPathComponent().path,
+                cols: 80,
+                rows: 24
+            ), to: sessionFD)
+
+            client.prepareForApplicationTermination(terminateSessions: true)
+
+            XCTAssertTrue(waitForExit(process, timeout: 3))
+            XCTAssertEqual(process.terminationStatus, 0)
+        }
+    }
+
     func testVersionMismatchIsExplicitAndDaemonRemainsAvailable() throws {
         try withDaemon { socketPath, process in
             let rejectedFD = try connect(to: socketPath)
@@ -290,20 +364,65 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
 
     private func daemonURL() throws -> URL {
         let environment = ProcessInfo.processInfo.environment
-        if let products = environment["BUILT_PRODUCTS_DIR"] {
-            let url = URL(fileURLWithPath: products)
-                .appendingPathComponent("Uncoil.app/Contents/Helpers/uncoil-runtimed")
-            if FileManager.default.isExecutableFile(atPath: url.path) {
-                return url
-            }
+        var candidates: [URL] = []
+        if let testHost = environment["TEST_HOST"] {
+            let app = URL(fileURLWithPath: testHost)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+            candidates.append(
+                app.appendingPathComponent("Contents/Helpers/uncoil-runtimed")
+            )
         }
-        let url = Bundle(for: Self.self).bundleURL
+        if let products = environment["BUILT_PRODUCTS_DIR"] {
+            candidates.append(
+                URL(fileURLWithPath: products)
+                    .appendingPathComponent("Uncoil.app/Contents/Helpers/uncoil-runtimed")
+            )
+        }
+        candidates.append(
+            Bundle(for: Self.self).bundleURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("Uncoil.app/Contents/Helpers/uncoil-runtimed")
+        )
+        let sourceRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
-            .appendingPathComponent("Uncoil.app/Contents/Helpers/uncoil-runtimed")
-        guard FileManager.default.isExecutableFile(atPath: url.path) else {
+            .deletingLastPathComponent()
+        candidates.append(
+            sourceRoot.appendingPathComponent(
+                ".build-cache/DerivedData/Build/Products/Debug/"
+                    + "Uncoil.app/Contents/Helpers/uncoil-runtimed"
+            )
+        )
+        guard let source = candidates.first(where: {
+            FileManager.default.isExecutableFile(atPath: $0.path)
+        }) else {
             throw XCTSkip("uncoil-runtimed bulunamadı")
         }
-        return url
+        let stagingRoot = sourceRoot
+            .appendingPathComponent(".build-cache/rt-bin", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: stagingRoot,
+            withIntermediateDirectories: true
+        )
+        let executable = stagingRoot.appendingPathComponent(
+            "uncoil-runtimed-\(UUID().uuidString.prefix(8))"
+        )
+        try FileManager.default.copyItem(at: source, to: executable)
+        let signer = Process()
+        signer.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        signer.arguments = ["--force", "--sign", "-", executable.path]
+        signer.standardOutput = Pipe()
+        signer.standardError = Pipe()
+        try signer.run()
+        signer.waitUntilExit()
+        guard signer.terminationStatus == 0 else {
+            throw POSIXError(.EPERM)
+        }
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: executable)
+        }
+        return executable
     }
 
     private func testRoot() throws -> URL {
@@ -311,8 +430,11 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let root = sourceRoot
-            .appendingPathComponent(".build-cache/RuntimeIntegrationTests", isDirectory: true)
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent(".build-cache/rt", isDirectory: true)
+            .appendingPathComponent(
+                String(UUID().uuidString.prefix(8)),
+                isDirectory: true
+            )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }

@@ -300,6 +300,20 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
+    func testSessionQuitBehaviorDefaultsToKeepRunningAndPersists() {
+        let store = SettingsStore(directory: tempDir)
+        XCTAssertEqual(store.sessionQuitBehavior, .keepSessionsRunning)
+
+        store.setSessionQuitBehavior(.terminateAllAgents)
+
+        let reloaded = SettingsStore(directory: tempDir)
+        XCTAssertEqual(reloaded.sessionQuitBehavior, .terminateAllAgents)
+        XCTAssertEqual(
+            ApplicationLifecycle.shared.sessionQuitBehavior,
+            .terminateAllAgents
+        )
+    }
+
     func testUnsupportedWorkingModeIsIgnored() {
         let store = SettingsStore(directory: tempDir)
         store.setWorkingMode(.plan, for: .codex)

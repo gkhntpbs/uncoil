@@ -545,4 +545,16 @@ final class RuntimeClient: @unchecked Sendable {
             sendCommand(RuntimeCommand(cmd: "upgrade"))
         }
     }
+
+    func prepareForApplicationTermination(terminateSessions: Bool) {
+        queue.sync { [self] in
+            reconnectWorkItem?.cancel()
+            reconnectWorkItem = nil
+            isSystemSleeping = true
+            if terminateSessions, phase == .ready {
+                sendCommand(RuntimeCommand(cmd: "shutdown"))
+            }
+            disconnect(restart: false, notifyHandlers: false)
+        }
+    }
 }

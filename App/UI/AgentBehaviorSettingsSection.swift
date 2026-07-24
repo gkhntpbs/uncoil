@@ -13,12 +13,69 @@ struct AgentBehaviorSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            quitBehavior
             workingModes
             keyboardBehavior
             hotkeySection
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.agentBehavior.container")
+    }
+
+    private var quitBehavior: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Uygulama kapanışı")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Uncoil’den çıkıldığında çalışan oturumlara ne olacağını seç.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            VStack(spacing: 0) {
+                ForEach(Array(SessionQuitBehavior.allCases.enumerated()), id: \.element) {
+                    index,
+                    behavior in
+                    Button {
+                        settings.setSessionQuitBehavior(behavior)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: settings.sessionQuitBehavior == behavior
+                                ? "largecircle.fill.circle"
+                                : "circle")
+                                .font(.system(size: 13))
+                                .foregroundStyle(
+                                    settings.sessionQuitBehavior == behavior
+                                        ? Theme.claude : Theme.textFaint
+                                )
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(behavior.title)
+                                    .font(Theme.mono(12, .medium))
+                                    .foregroundStyle(Theme.text)
+                                Text(behavior.detail)
+                                    .font(Theme.mono(10))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(
+                        "settings.agentBehavior.quit.\(behavior.rawValue)"
+                    )
+                    .accessibilityValue(
+                        settings.sessionQuitBehavior == behavior ? "selected" : "not selected"
+                    )
+                    if index != SessionQuitBehavior.allCases.count - 1 {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel()
+        }
     }
 
     private var workingModes: some View {

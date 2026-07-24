@@ -10,6 +10,8 @@ All notable changes to Uncoil are recorded here.
 - Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
 - Added command-palette Debug Bundle export with scoped app/runtime logs, agent versions, sanitized configs, MCP diagnostics, permission decisions, crash reports, acceptance results, and system information.
 - Added runtime protocol negotiation, heartbeat, crash recovery, sleep/wake reconnect, graceful upgrade drain, bounded replay storage, log rotation, process limits, and real daemon integration tests.
+- Added persisted quit behavior with “Keep sessions running” and “Terminate all agents on quit” choices.
+- Added explicit main-window recreation, frame autosave, and project/group/session selection restoration.
 
 ### Changed
 
@@ -26,10 +28,8 @@ All notable changes to Uncoil are recorded here.
 - Disabled project-scoped tooling for Claude Code.
 - Embedded executable helpers under `Contents/Helpers` so macOS accepts their code signatures.
 - Added an explicit runtime protocol mismatch alert and hardened daemon single-instance and child cleanup behavior.
-
-### Fixed
-
 - Restored daemon-backed session persistence, reconnect, and terminal replay across app restarts.
+- Fixed running-app reopen events producing no visible main window.
 
 ### Removed
 

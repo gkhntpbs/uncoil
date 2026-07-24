@@ -59,6 +59,42 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings window did not open")
     }
 
+    func testQuitBehaviorOptionsAreAvailable() {
+        let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.click()
+
+        let agentBehavior = app.descendants(matching: .any)["settings.pane.agentBehavior"]
+        XCTAssertTrue(agentBehavior.waitForExistence(timeout: 10))
+        agentBehavior.click()
+
+        let keepRunning = app.descendants(matching: .any)[
+            "settings.agentBehavior.quit.keepSessionsRunning"
+        ]
+        let terminateAll = app.descendants(matching: .any)[
+            "settings.agentBehavior.quit.terminateAllAgents"
+        ]
+        XCTAssertTrue(keepRunning.waitForExistence(timeout: 5))
+        XCTAssertTrue(terminateAll.waitForExistence(timeout: 5))
+        XCTAssertEqual(keepRunning.value as? String, "selected")
+        terminateAll.click()
+        XCTAssertEqual(terminateAll.value as? String, "selected")
+    }
+
+    func testNewWindowCommandRestoresClosedMainWindow() {
+        let mainWindow = app.windows["Uncoil"]
+        XCTAssertTrue(mainWindow.waitForExistence(timeout: 10))
+        mainWindow.buttons[XCUIIdentifierCloseWindow].click()
+        XCTAssertTrue(mainWindow.waitForNonExistence(timeout: 5))
+
+        app.typeKey("n", modifierFlags: .command)
+
+        XCTAssertTrue(
+            app.windows["Uncoil"].waitForExistence(timeout: 10),
+            "The new-window command did not recreate the main window"
+        )
+    }
+
     func testSessionPopoutFromContextMenu() {
         let sessionRow = app.descendants(matching: .any)["sidebar.session.terminal"]
         XCTAssertTrue(sessionRow.waitForExistence(timeout: 10))

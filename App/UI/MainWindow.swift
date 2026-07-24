@@ -23,6 +23,8 @@ struct MainWindow: View {
     @State private var runtimeCompatibilityError: String?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
+    @AppStorage("mainSelectionKind") private var persistedSelectionKind = ""
+    @AppStorage("mainSelectionID") private var persistedSelectionID = ""
     @State private var dragStartWidth: Double?
 
     static let maxSidebarWidth: Double = 252
@@ -35,7 +37,10 @@ struct MainWindow: View {
                 CommandPaletteOverlay(model: palette)
             }
         }
-        .onChange(of: selection) { _, _ in syncPaletteSelection() }
+        .onChange(of: selection) { _, _ in
+            syncPaletteSelection()
+            persistSelection()
+        }
         .onChange(of: palette.pendingAction) { _, action in
             if let action { perform(action); palette.pendingAction = nil }
         }
@@ -158,7 +163,7 @@ struct MainWindow: View {
                 LaunchConfig.shared.seedFixture(projectStore: projectStore)
                 startServices()
                 applyLaunchRoute()
-                applyFixedWindowFrame()
+                applyWindowFrame()
                 setupPalette()
             }
         }
@@ -384,19 +389,61 @@ struct MainWindow: View {
             selection = .session(record.id)
             return
         }
+        if !config.isUITesting, let restored = restoredSelection() {
+            selection = restored
+            return
+        }
         if selection == nil, let first = projectStore.projects.first {
             selection = .project(first.id)
         }
     }
 
-    /// Deterministic window frame for visual testing (-window-width/-height).
-    private func applyFixedWindowFrame() {
+    private func persistSelection() {
+        guard !LaunchConfig.shared.isUITesting else { return }
+        switch selection {
+        case .project(let id):
+            persistedSelectionKind = "project"
+            persistedSelectionID = id.uuidString
+        case .group(let id):
+            persistedSelectionKind = "group"
+            persistedSelectionID = id.uuidString
+        case .session(let id):
+            persistedSelectionKind = "session"
+            persistedSelectionID = id.uuidString
+        case nil:
+            persistedSelectionKind = ""
+            persistedSelectionID = ""
+        }
+    }
+
+    private func restoredSelection() -> MainSelection? {
+        guard let id = UUID(uuidString: persistedSelectionID) else { return nil }
+        switch persistedSelectionKind {
+        case "project":
+            return projectStore.projects.contains { $0.id == id } ? .project(id) : nil
+        case "group":
+            return projectStore.sessionGroups.contains { $0.id == id } ? .group(id) : nil
+        case "session":
+            return projectStore.sessions.contains { $0.id == id } ? .session(id) : nil
+        default:
+            return nil
+        }
+    }
+
+    private func applyWindowFrame() {
         let config = LaunchConfig.shared
-        guard let width = config.windowWidth, let height = config.windowHeight else { return }
-        // The window may not be visible yet at onAppear; defer one runloop turn.
         DispatchQueue.main.async {
             guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
-            window.setFrame(NSRect(x: 80, y: 120, width: width, height: height), display: true)
+            if let width = config.windowWidth, let height = config.windowHeight {
+                window.setFrame(
+                    NSRect(x: 80, y: 120, width: width, height: height),
+                    display: true
+                )
+                return
+            } else {
+                _ = window.setFrameUsingName("UncoilMainWindow", force: true)
+            }
+            window.setFrameAutosaveName("UncoilMainWindow")
         }
     }
 
