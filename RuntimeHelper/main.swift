@@ -232,7 +232,14 @@ final class RuntimeDaemon {
             if let sid = command.sid, let cols = command.cols, let rows = command.rows,
                let session = sessions[sid], cols > 0, rows > 0 {
                 var size = winsize(ws_row: UInt16(rows), ws_col: UInt16(cols), ws_xpixel: 0, ws_ypixel: 0)
-                _ = ioctl(session.masterFD, TIOCSWINSZ, &size)
+                if ioctl(session.masterFD, TIOCSWINSZ, &size) == 0 {
+                    let foregroundGroup = tcgetpgrp(session.masterFD)
+                    if foregroundGroup > 0 {
+                        _ = Darwin.kill(-foregroundGroup, SIGWINCH)
+                    } else {
+                        _ = Darwin.kill(-session.pid, SIGWINCH)
+                    }
+                }
             }
         case "peek":
             // Return the replay buffer WITHOUT attaching (control-plane read).
