@@ -17,6 +17,7 @@ final class SmokeTests: XCTestCase {
             "-disable-animations",
         ]
         app.launch()
+        app.activate()
     }
 
     override func tearDown() {
