@@ -89,7 +89,7 @@ final class ControlPlaneServer: @unchecked Sendable {
     func stop() {
         acceptSource?.cancel()
         acceptSource = nil
-        for (fd, source) in clientSources { source.cancel(); close(fd) }
+        for source in clientSources.values { source.cancel() }
         clientSources.removeAll()
         clientBuffers.removeAll()
         if listenFD >= 0 { close(listenFD) }
