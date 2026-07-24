@@ -4,9 +4,18 @@ All notable changes to Uncoil are recorded here.
 
 ## Unreleased
 
+### Added
+
+- Added a one-click acceptance workspace with Swift and JavaScript samples, deterministic process fixtures, and permission-classified fake MCP tools.
+- Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
+
 ### Changed
 
 - Reorganized active product, MCP, and historical reference documentation.
+
+### Fixed
+
+- Injected the bundled Uncoil MCP server and session-scoped control-plane environment into Codex launches without modifying the user's global Codex configuration.
 - Moved the foundation plan to `docs/roadmap/FOUNDATION_PLAN.md`.
 - Established `TODO.md` as the canonical implementation backlog.
 - Replaced the legacy UI-control MCP with Computer Use for Codex.
