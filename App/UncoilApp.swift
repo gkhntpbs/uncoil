@@ -47,12 +47,6 @@ struct UncoilApp: App {
                 .environmentObject(settings)
                 .environmentObject(theme)
                 .preferredColorScheme(theme.palette.isLight ? .light : .dark)
-                .onAppear {
-                    updateAppIcon()
-                }
-                .onChange(of: theme.palette.isLight) {
-                    updateAppIcon()
-                }
                 .frame(minWidth: 940, minHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
@@ -90,8 +84,4 @@ struct UncoilApp: App {
         .windowResizability(.contentSize)
     }
 
-    private func updateAppIcon() {
-        let name = theme.palette.isLight ? "AppIconLight" : "AppIconDark"
-        NSApplication.shared.applicationIconImage = NSImage(named: name)
-    }
 }
