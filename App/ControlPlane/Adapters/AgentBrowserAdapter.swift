@@ -22,20 +22,163 @@ import Foundation
 /// ever passed through a shell.
 final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
     static let binaryName = "agent-browser"
-    static let installRemedy = "npm install -g agent-browser (then `agent-browser install` to fetch browser binaries)"
+    static let installRemedy = "Open Uncoil Settings → Permissions → Agent Browser Setup"
+    static let executablePreferenceKey = "agentBrowserExecutablePath"
+
+    struct BrowserChoice: Identifiable, Equatable {
+        let id: String
+        let name: String
+        let executablePath: String?
+    }
 
     private let resolveBinary: () -> String?
     private let navigationTimeout: TimeInterval
     private let defaultTimeout: TimeInterval
+    private let browserDirectory: URL
+    private let resolveSelectedExecutable: () -> String?
 
-    /// `resolver` is injected so tests/other callers can stub binary lookup;
-    /// production uses `SettingsStore.which`.
     init(resolver: @escaping () -> String? = { SettingsStore.which(AgentBrowserAdapter.binaryName) },
+         browserDirectory: URL = AgentBrowserAdapter.defaultBrowserDirectory,
          defaultTimeout: TimeInterval = 30,
-         navigationTimeout: TimeInterval = 60) {
+         navigationTimeout: TimeInterval = 60,
+         selectedExecutable: @escaping () -> String? = {
+             AgentBrowserAdapter.selectedExecutablePath
+         }) {
         self.resolveBinary = resolver
+        self.browserDirectory = browserDirectory
         self.defaultTimeout = defaultTimeout
         self.navigationTimeout = navigationTimeout
+        self.resolveSelectedExecutable = selectedExecutable
+    }
+
+    static var defaultBrowserDirectory: URL {
+        ProjectStore.defaultDirectory()
+            .appendingPathComponent("Drivers", isDirectory: true)
+            .appendingPathComponent("agent-browser", isDirectory: true)
+    }
+
+    static func runtimeEnvironment(
+        browserDirectory: URL = defaultBrowserDirectory,
+        nodePath: String? = SettingsStore.which("node"),
+        temporaryDirectory: String? = ProcessInfo.processInfo.environment["TMPDIR"],
+        executablePath: String? = selectedExecutablePath
+    ) -> [String: String] {
+        var environment = ["PLAYWRIGHT_BROWSERS_PATH": browserDirectory.path]
+        if let nodePath {
+            let basePath = ProcessInfo.processInfo.environment["PATH"]
+                ?? "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            environment["PATH"] = URL(fileURLWithPath: nodePath)
+                .deletingLastPathComponent().path + ":" + basePath
+        }
+        if let temporaryDirectory {
+            environment["TMPDIR"] = temporaryDirectory
+        }
+        if let executablePath,
+           FileManager.default.isExecutableFile(atPath: executablePath) {
+            environment["AGENT_BROWSER_EXECUTABLE_PATH"] = executablePath
+        }
+        return environment
+    }
+
+    static var selectedExecutablePath: String? {
+        let value = UserDefaults.standard.string(forKey: executablePreferenceKey)
+        return value?.isEmpty == false ? value : nil
+    }
+
+    static func installedBrowserChoices() -> [BrowserChoice] {
+        let candidates = [
+            BrowserChoice(
+                id: "chrome",
+                name: "Google Chrome",
+                executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            ),
+            BrowserChoice(
+                id: "arc",
+                name: "Arc",
+                executablePath: "/Applications/Arc.app/Contents/MacOS/Arc"
+            ),
+            BrowserChoice(
+                id: "edge",
+                name: "Microsoft Edge",
+                executablePath: "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+            ),
+            BrowserChoice(
+                id: "brave",
+                name: "Brave Browser",
+                executablePath: "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+            ),
+            BrowserChoice(
+                id: "vivaldi",
+                name: "Vivaldi",
+                executablePath: "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi"
+            ),
+            BrowserChoice(
+                id: "chromium",
+                name: "Chromium",
+                executablePath: "/Applications/Chromium.app/Contents/MacOS/Chromium"
+            ),
+        ]
+        return [
+            BrowserChoice(id: "managed", name: "Uncoil Chromium", executablePath: nil)
+        ] + candidates.filter { candidate in
+            guard let path = candidate.executablePath else { return false }
+            return FileManager.default.isExecutableFile(atPath: path)
+        }
+    }
+
+    static func nodePath(binary: String) -> String? {
+        let sibling = URL(fileURLWithPath: binary)
+            .deletingLastPathComponent()
+            .appendingPathComponent("node").path
+        if FileManager.default.isExecutableFile(atPath: sibling) {
+            return sibling
+        }
+        return SettingsStore.which("node")
+    }
+
+    static func packageRoot(binary: String) -> URL {
+        URL(fileURLWithPath: binary)
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+
+    static func playwrightCLI(binary: String) -> String? {
+        let path = packageRoot(binary: binary)
+            .appendingPathComponent("node_modules/playwright-core/cli.js").path
+        return FileManager.default.isReadableFile(atPath: path) ? path : nil
+    }
+
+    static func runtimeRevision(binary: String) -> String? {
+        struct Manifest: Decodable {
+            struct Browser: Decodable {
+                var name: String
+                var revision: String
+            }
+            var browsers: [Browser]
+        }
+
+        let url = packageRoot(binary: binary)
+            .appendingPathComponent("node_modules/playwright-core/browsers.json")
+        guard let data = try? Data(contentsOf: url),
+              let manifest = try? JSONDecoder().decode(Manifest.self, from: data)
+        else { return nil }
+        return manifest.browsers.first { $0.name == "chromium-headless-shell" }?.revision
+    }
+
+    static func runtimeInstalled(binary: String, browserDirectory: URL = defaultBrowserDirectory) -> Bool {
+        guard let revision = runtimeRevision(binary: binary) else { return false }
+        return FileManager.default.fileExists(
+            atPath: browserDirectory
+                .appendingPathComponent("chromium_headless_shell-\(revision)", isDirectory: true).path
+        )
+    }
+
+    static func installInvocation(binary: String) -> (executable: String, arguments: [String])? {
+        guard let node = SettingsStore.which("node"),
+              let cli = playwrightCLI(binary: binary)
+        else { return nil }
+        return (node, [cli, "install", "chromium"])
     }
 
     func probe() -> DependencyInfo {
@@ -44,15 +187,22 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
                                   version: nil, detail: "binary not found on PATH",
                                   remedy: Self.installRemedy)
         }
-        // agent-browser has no `--version`; report installed + path. Attempt a
-        // cheap `session` call to confirm it executes.
-        let result = ProcessRunner.run(executable: path, arguments: ["--json", "session"],
-                                       timeout: 8)
-        let ok = result.launched
-        return DependencyInfo(name: Self.binaryName, installed: true, path: path,
-                              version: nil,
-                              detail: ok ? "responds to `session`" : (result.launchError ?? "did not execute"),
-                              remedy: ok ? nil : Self.installRemedy)
+        let revision = Self.runtimeRevision(binary: path)
+        let selected = resolveSelectedExecutable()
+        let selectedReady = selected.map {
+            FileManager.default.isExecutableFile(atPath: $0)
+        } ?? false
+        let ready = selectedReady || Self.runtimeInstalled(binary: path, browserDirectory: browserDirectory)
+        return DependencyInfo(
+            name: Self.binaryName,
+            installed: ready,
+            path: path,
+            version: revision.map { "Playwright Chromium \($0)" },
+            detail: ready
+                ? (selectedReady ? "CLI and selected Chromium browser are ready" : "CLI and Chromium runtime are ready")
+                : "CLI found; compatible Chromium runtime is missing",
+            remedy: ready ? nil : Self.installRemedy
+        )
     }
 
     func perform(_ command: BrowserCommand, session: String, profileDir: String?)
@@ -76,7 +226,7 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
         args.append(contentsOf: verb)
 
         let result = ProcessRunner.run(executable: binary, arguments: args,
-                                       extraEnv: profileEnv(profileDir),
+                                       extraEnv: profileEnv(profileDir, binary: binary),
                                        timeout: timeout)
         if result.timedOut {
             return .failure(EngineError(.timeout,
@@ -155,10 +305,11 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
         }
     }
 
-    private func profileEnv(_ profileDir: String?) -> [String: String] {
-        // Reserved hook for persistent profiles; kept explicit so no personal
-        // Chrome profile can ever be selected implicitly.
-        [:]
+    private func profileEnv(_ profileDir: String?, binary: String) -> [String: String] {
+        Self.runtimeEnvironment(
+            browserDirectory: browserDirectory,
+            nodePath: Self.nodePath(binary: binary)
+        )
     }
 
     // MARK: - Output parsing

@@ -42,7 +42,7 @@ extension CapabilityRouter {
         let info = await Task.detached { engine.probe() }.value
         if !info.installed {
             return .failure(request, code: .browserUnavailable,
-                message: "agent-browser is not installed",
+                message: "agent-browser runtime is not ready",
                 details: .object([
                     "remedy": .string(info.remedy ?? AgentBrowserAdapter.installRemedy),
                     "diagnostics": info.asJSON(),
