@@ -1,6 +1,6 @@
 # Uncoil — Durum ve Yol Haritası
 
-> Son güncelleme: 2026-07-25 · Testler: 171/171 birim + 4/4 UI + Computer Use kabul akışı
+> Son güncelleme: 2026-07-25 · Testler: 173/173 birim + 4/4 UI + Computer Use kabul akışı
 > `docs/roadmap/FOUNDATION_PLAN.md` belgesinin güncel gerçeklik karşılığı budur.
 > Yeni oturumlar önce bu dosyayı, ardından ilgili ajan yönergesini okumalı.
 
@@ -71,6 +71,8 @@
 - Komut paletinden tek tıkla oluşturulan geçici kabul workspace'i; Swift ve JavaScript örnekleri, başarılı/başarısız/uzun/büyük çıktı/crash process fixture'ları ve izin sınıflandırmalı sahte MCP araçları
 - Computer Use ile tamamlanan guided acceptance akışı; Claude/Codex session, grup ve toplu işlemler, ayrı pencere, yeniden başlatma/reconnect/replay, worktree, MCP, Browser, Computer Use izin reddi/onayı, harici process sonlandırma/recovery ve session artifact sonucu
 - Codex oturumları bundled `uncoil-mcp` komutu ve oturuma özel kontrol-plane environment override'larıyla başlatılıyor; global Codex config değiştirilmiyor
+- Komut paletinden Debug Bundle export; scoped app/runtime logları, agent sürümleri, yapısal olarak sanitize edilmiş config’ler, MCP/permission/crash/acceptance/system bilgileri ve ZIP manifesti
+- Debug Bundle güvenliği; terminal replay ve prompt içeriği dışlanır, JSON prompt/history/message alanları yapısal silinir, token/secret/CLI secret argümanları ile home/temp/project/dış disk yolları maskelenir
 - Kritik ders: AppKit pencere restorasyonu ikinci örnek varken sıfır pencereyle açtırıyordu → `ApplePersistenceIgnoreState` ile tamamen kapalı
 
 ## Kalanlar

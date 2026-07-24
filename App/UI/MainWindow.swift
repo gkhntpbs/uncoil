@@ -18,6 +18,8 @@ struct MainWindow: View {
     @State private var splitSessionID: UUID?
     @State private var showFolderPicker = false
     @State private var testWorkspaceError: String?
+    @State private var debugBundleMessage: String?
+    @State private var debugBundleURL: URL?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
     @State private var dragStartWidth: Double?
@@ -46,6 +48,22 @@ struct MainWindow: View {
             Button("Tamam", role: .cancel) {}
         } message: {
             Text(testWorkspaceError ?? "")
+        }
+        .alert(
+            "Debug Bundle",
+            isPresented: Binding(
+                get: { debugBundleMessage != nil },
+                set: { if !$0 { debugBundleMessage = nil } }
+            )
+        ) {
+            if let debugBundleURL {
+                Button("Finder’da Göster") {
+                    NSWorkspace.shared.activateFileViewerSelecting([debugBundleURL])
+                }
+            }
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(debugBundleMessage ?? "")
         }
     }
 
@@ -167,6 +185,15 @@ struct MainWindow: View {
                 }
             } catch {
                 testWorkspaceError = error.localizedDescription
+            }
+        case .createDebugBundle:
+            do {
+                let result = try DebugBundleService().create()
+                debugBundleURL = result.bundleURL
+                debugBundleMessage = "Oluşturuldu: \(result.bundleURL.path)"
+            } catch {
+                debugBundleURL = nil
+                debugBundleMessage = error.localizedDescription
             }
         case .openProject(let id):
             selection = .project(id)

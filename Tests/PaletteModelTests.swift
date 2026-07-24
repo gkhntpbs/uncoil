@@ -38,6 +38,7 @@ final class PaletteModelTests: XCTestCase {
         let groups = PaletteEngine.compute(baseContext(query: "", projects: []))
         XCTAssertTrue(items(groups).contains { $0.action == .addProject })
         XCTAssertTrue(items(groups).contains { $0.action == .createTestWorkspace })
+        XCTAssertTrue(items(groups).contains { $0.action == .createDebugBundle })
     }
 
     func testSessionsRankedByAttention() {

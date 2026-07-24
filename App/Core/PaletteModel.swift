@@ -8,6 +8,7 @@ import SwiftUI
 enum PaletteAction: Equatable {
     case addProject
     case createTestWorkspace
+    case createDebugBundle
     case openProject(UUID)
     case focusSession(UUID)
     case newSession(UUID, AgentProvider)
@@ -181,6 +182,8 @@ enum PaletteEngine {
                         iconName: "folder-plus", kind: .command, action: .addProject),
             PaletteItem(id: "cmd.testWorkspace", title: "Test Workspace Oluştur",
                         iconName: "flask", kind: .command, action: .createTestWorkspace),
+            PaletteItem(id: "cmd.debugBundle", title: "Debug Bundle Oluştur",
+                        iconName: "package-export", kind: .command, action: .createDebugBundle),
             PaletteItem(id: "cmd.settings", title: "Ayarlar",
                         iconName: "settings", kind: .command, action: .openSettings(nil)),
         ]
