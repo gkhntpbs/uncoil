@@ -138,6 +138,11 @@ struct WindowTarget: Equatable {
     var title: String
 }
 
+enum ComputerActionTarget: Equatable {
+    case point(x: Int, y: Int)
+    case element(index: Int)
+}
+
 enum ComputerCommand {
     case doctor
     case permissions
@@ -146,10 +151,10 @@ enum ComputerCommand {
     case listWindows(bundleID: String?)
     case inspectWindow(bundleID: String, windowID: Int?)
     case snapshot(window: WindowTarget)
-    case click(window: WindowTarget, x: Int, y: Int)
-    case doubleClick(window: WindowTarget, x: Int, y: Int)
-    case rightClick(window: WindowTarget, x: Int, y: Int)
-    case type(window: WindowTarget, text: String)
+    case click(window: WindowTarget, target: ComputerActionTarget)
+    case doubleClick(window: WindowTarget, target: ComputerActionTarget)
+    case rightClick(window: WindowTarget, target: ComputerActionTarget)
+    case type(window: WindowTarget, text: String, target: ComputerActionTarget?)
     case press(window: WindowTarget, keys: String)
     case hotkey(window: WindowTarget, keys: String)
     case scroll(window: WindowTarget, direction: String, amount: Int?)

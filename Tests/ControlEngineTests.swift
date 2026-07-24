@@ -343,6 +343,25 @@ final class ComputerHandlerTests: XCTestCase {
         XCTAssertTrue(click.ok)
     }
 
+    func testElementIndexTakesPriorityOverCoordinates() {
+        let target = CapabilityRouter.computerActionTarget([
+            "element_index": .string("11"),
+            "x": .int(5),
+            "y": .int(6),
+        ])
+
+        XCTAssertEqual(target, .element(index: 11))
+    }
+
+    func testCoordinateTargetAcceptsNumericStrings() {
+        let target = CapabilityRouter.computerActionTarget([
+            "x": .string("5"),
+            "y": .string("6"),
+        ])
+
+        XCTAssertEqual(target, .point(x: 5, y: 6))
+    }
+
     func testMutatingWithoutBindingIsStale() async {
         grant(["computer.background_control"])
         let env = await router.handle(req("click", ["x": .int(1), "y": .int(2)]))

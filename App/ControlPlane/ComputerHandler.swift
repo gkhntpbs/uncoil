@@ -109,14 +109,15 @@ extension CapabilityRouter {
             return await establishAndRun(request: request, caller: caller, snapshot: action == "snapshot")
 
         case "click", "double_click", "right_click":
-            guard let x = request.args["x"]?.intValue, let y = request.args["y"]?.intValue else {
-                return .failure(request, code: .invalidArgument, message: "'x' and 'y' are required",
+            guard let target = Self.computerActionTarget(request.args) else {
+                return .failure(request, code: .invalidArgument,
+                                message: "'element_index' or both 'x' and 'y' are required",
                                 target_session_id: caller.id.uuidString)
             }
             let w = computerBindings[caller.id]!.target
-            let command: ComputerCommand = action == "click" ? .click(window: w, x: x, y: y)
-                : action == "double_click" ? .doubleClick(window: w, x: x, y: y)
-                : .rightClick(window: w, x: x, y: y)
+            let command: ComputerCommand = action == "click" ? .click(window: w, target: target)
+                : action == "double_click" ? .doubleClick(window: w, target: target)
+                : .rightClick(window: w, target: target)
             return await runComputer(command, request: request, caller: caller)
 
         case "type":
@@ -124,7 +125,11 @@ extension CapabilityRouter {
                 return .failure(request, code: .invalidArgument, message: "'text' is required",
                                 target_session_id: caller.id.uuidString)
             }
-            return await runComputer(.type(window: computerBindings[caller.id]!.target, text: text),
+            return await runComputer(.type(
+                window: computerBindings[caller.id]!.target,
+                text: text,
+                target: Self.computerActionTarget(request.args)
+            ),
                                      request: request, caller: caller)
         case "press":
             guard let keys = request.args["keys"]?.stringValue else {
@@ -276,6 +281,20 @@ extension CapabilityRouter {
         let bundle = win["bundle_id"]?.stringValue ?? fallbackBundle
         let title = win["title"]?.stringValue ?? ""
         return WindowTarget(bundleID: bundle, pid: pid, windowID: windowID, title: title)
+    }
+
+    nonisolated static func computerActionTarget(_ args: [String: JSONValue]) -> ComputerActionTarget? {
+        if let index = numericArgument(args["element_index"]) {
+            return .element(index: index)
+        }
+        guard let x = numericArgument(args["x"]), let y = numericArgument(args["y"]) else {
+            return nil
+        }
+        return .point(x: x, y: y)
+    }
+
+    nonisolated static func numericArgument(_ value: JSONValue?) -> Int? {
+        value?.intValue ?? value?.stringValue.flatMap(Int.init)
     }
 
     func bindingJSON(_ binding: WindowBinding) -> JSONValue {
