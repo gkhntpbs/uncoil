@@ -153,43 +153,92 @@ struct PermissionsSettingsSection: View {
     }
 
     private var sessionPicker: some View {
-        Menu {
-            ForEach(projectStore.projects) { project in
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(projectStore.projects) { project in
                 let sessions = projectStore.sessions(for: project.id)
                 if !sessions.isEmpty {
-                    Section(project.name) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 7) {
+                                TablerIcon(name: "folder", size: 11, color: Theme.textFaint)
+                                Text(project.name.uppercased())
+                                    .font(Theme.mono(9, .semibold))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .kerning(0.5)
+                                Spacer()
+                                Text("\(sessions.count)")
+                                    .font(Theme.mono(9))
+                                    .foregroundStyle(Theme.textFaint)
+                            }
+                            .padding(.horizontal, 4)
+
+                            VStack(spacing: 4) {
                         ForEach(sessions) { session in
-                            Button(session.displayTitle) {
-                                selectedSessionID = session.id
+                                    sessionChoiceRow(session)
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+        .frame(maxHeight: 210)
+        .padding(8)
+        .panel(radius: 10)
+        .accessibilityIdentifier("settings.permissions.sessionPicker")
+    }
+
+    private func sessionChoiceRow(_ session: SessionRecord) -> some View {
+        let isSelected = selectedSessionID == session.id
+        return Button {
+            selectedSessionID = session.id
         } label: {
-            HStack(spacing: 8) {
-                Text(selectedSession.map(sessionLabel) ?? "Oturum seç")
-                    .font(Theme.mono(11.5, .medium))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(1)
-                if let selectedSession {
-                    ProviderMark(provider: selectedSession.provider, size: 11)
+            HStack(spacing: 10) {
+                ProviderMark(provider: session.provider, size: 12)
+                    .frame(width: 18, height: 18)
+                    .background(
+                        (isSelected ? Theme.codex : Theme.panelHover).opacity(0.14),
+                        in: RoundedRectangle(cornerRadius: 5)
+                    )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.displayTitle)
+                        .font(Theme.mono(11.5, .semibold))
+                        .foregroundStyle(Theme.text)
+                        .lineLimit(1)
+                    Text(session.provider.displayName)
+                        .font(Theme.mono(9))
+                        .foregroundStyle(Theme.textFaint)
                 }
                 Spacer()
-                TablerIcon(name: "selector", size: 12, color: Theme.textDim)
+                if session.capabilities != nil {
+                    Text("ÖZEL")
+                        .font(Theme.mono(8, .bold))
+                        .foregroundStyle(Theme.warn)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Theme.warn.opacity(0.1), in: Capsule())
+                }
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(isSelected ? Theme.codex : Theme.textFaint)
             }
-            .padding(.horizontal, 11)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .frame(minWidth: 260, maxWidth: 360, alignment: .leading)
+            .background(
+                isSelected ? Theme.codex.opacity(0.09) : Theme.panel.opacity(0.65),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(
+                        isSelected ? Theme.codex.opacity(0.45) : Theme.border,
+                        lineWidth: 1
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8))
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        )
-        .accessibilityIdentifier("settings.permissions.sessionPicker")
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.permissions.session.\(session.id.uuidString)")
     }
 
     private func accessRow(
