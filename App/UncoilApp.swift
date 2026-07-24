@@ -48,7 +48,10 @@ struct UncoilApp: App {
                 .environmentObject(theme)
                 .preferredColorScheme(theme.palette.isLight ? .light : .dark)
                 .onAppear {
-                    applyBundledApplicationIcon()
+                    applyApplicationIcon()
+                }
+                .onChange(of: theme.palette.isLight) {
+                    applyApplicationIcon()
                 }
                 .frame(minWidth: 940, minHeight: 600)
         }
@@ -87,12 +90,28 @@ struct UncoilApp: App {
         .windowResizability(.contentSize)
     }
 
-    private func applyBundledApplicationIcon() {
-        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-              let image = NSImage(contentsOf: url) else {
-            return
+    private func applyApplicationIcon() {
+        if theme.palette.isLight {
+            guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+                  let image = NSImage(contentsOf: url) else {
+                return
+            }
+            NSApplication.shared.applicationIconImage = image
+        } else {
+            guard let image = NSImage(named: "AppIconDark") else {
+                return
+            }
+            let canvas = NSImage(size: NSSize(width: 1024, height: 1024))
+            canvas.lockFocus()
+            image.draw(
+                in: NSRect(x: 96, y: 96, width: 832, height: 832),
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1
+            )
+            canvas.unlockFocus()
+            NSApplication.shared.applicationIconImage = canvas
         }
-        NSApplication.shared.applicationIconImage = image
     }
 
 }
