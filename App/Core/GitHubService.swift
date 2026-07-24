@@ -299,7 +299,7 @@ enum KeychainStore {
             let context = LAContext()
             context.interactionNotAllowed = true
             query[kSecUseAuthenticationContext as String] = context
-            query["u_AuthUI"] = "u_AuthUIF"
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
         }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
@@ -308,10 +308,14 @@ enum KeychainStore {
     }
 
     static func delete(key: String) {
+        let context = LAContext()
+        context.interactionNotAllowed = true
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
+            kSecUseAuthenticationContext as String: context,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
         ]
         SecItemDelete(query as CFDictionary)
     }
