@@ -61,6 +61,11 @@ Inspect sessions, read output, spawn/coordinate children, control direct childre
 | `summarize_children` | sessions.read | — | per child `{id,title,status,output_tail(≤2KB),artifact_count}` |
 | `report_to_parent` | (child→parent) | `message` (≤8KB), `data?` | appends to parent inbox; `INVALID_RELATIONSHIP` if no parent |
 | `read_reports` | (own inbox) | `clear?` | `reports:[{ts,from_session,message,data?}]`, `count` |
+| `list_groups` | sessions.read | `project_id?` | project groups, their session ids, and ungrouped session ids |
+| `create_group` | **sessions.organize** | `name`, `project_id?` | creates a project session group |
+| `rename_group` | **sessions.organize** | `group_id`, `name`, `project_id?` | renames a group |
+| `assign_group` | **sessions.organize** | `session_ids`, `group_id?`, `project_id?` | moves sessions into a group; omit `group_id` to ungroup |
+| `delete_group` | **sessions.organize** | `group_id`, `project_id?` | deletes the group and leaves its sessions ungrouped |
 
 Settled statuses for `wait_for_children`: `idle`, `waitingForInput`,
 `waitingForPermission`, `completed`, `terminated`.
@@ -100,3 +105,7 @@ Optional, external-CLI-backed. `uncoil_browser` needs `browser.use`
 (`computer.foreground_control`). Full action lists in `HelpRegistry.swift`. Both return
 page/app content under `external_content` (untrusted) and degrade to
 `BROWSER_UNAVAILABLE` / `COMPUTER_UNAVAILABLE` when the CLI is missing.
+
+Browser grants are enabled by default. Computer grants are disabled by default and
+must be explicitly enabled by the user. Agent Browser can use Uncoil Chromium or an
+installed Chromium-family browser selected in Settings.

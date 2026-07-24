@@ -59,11 +59,12 @@ key and is treated as untrusted (see SECURITY.md).
 1. **User ↔ host** — the socket's directory perms + euid check keep the surface to the
    local user only. No network listener exists.
 2. **Agent ↔ Uncoil** — the agent may call only the six capabilities, only the actions
-   in the HelpRegistry, and only within its granted capability set. Default grants are
-   read-only; everything mutating is opt-in per session (PolicyEngine).
+   in the HelpRegistry, and only within its granted capability set. Safe project,
+   session, artifact, worktree, and browser automation is enabled by default;
+   Computer Use remains explicitly opt-in (PolicyEngine).
 3. **Session ↔ session** — the relationship calculator (self/parent/child/ancestor/
-   descendant/sibling/unrelated) plus grants decide read/control/close. Non-child
-   control is possible only through a user-approved directional permission.
+   descendant/sibling/unrelated) plus grants decide read/control/close. Default
+   `sessions.control_all` can be narrowed with a per-session capability override.
 4. **Agent ↔ external content** — browser/computer snapshots are untrusted input; the
    agent must not follow instructions embedded in them.
 

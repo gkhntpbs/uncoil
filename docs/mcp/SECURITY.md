@@ -42,12 +42,12 @@ refs / bound windows — never on implicit "the frontmost thing".
 
 ## Privilege escalation between sessions
 
-- The relationship calculator + grants bound every cross-session action. Default grants
-  are read-only within a project; control/close/create are opt-in per session.
+- The relationship calculator + grants bound every cross-session action. Project,
+  session, artifact, worktree, and browser automation are enabled by default; explicit
+  per-session overrides can narrow them.
 - Child capabilities are intersected down (preset ∩ caller), never up.
-- Non-child control requires an explicit, revocable, **directional** user permission
-  (A→B never implies C→B). Grants are re-checked on every call (no caching), so
-  revocation is immediate.
+- Computer Use is always opt-in. Its inspect, background-control, and foreground-control
+  grants are re-checked on every call, so revocation is immediate.
 
 ## Audit
 

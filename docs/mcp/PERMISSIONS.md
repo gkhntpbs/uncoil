@@ -12,19 +12,16 @@ Two distinct mechanisms gate the control surface:
 Default grants (every session, unless its record overrides `capabilities`):
 
 ```
-projects.read  worktrees.read  sessions.read  artifacts.read  artifacts.write
+projects.read  worktrees.read  worktrees.create
+sessions.read  sessions.read_all  sessions.control_children  sessions.control_all
+sessions.create_children  sessions.cross_project  sessions.organize
+artifacts.read  artifacts.write
+browser.use  browser.persistent_state
 ```
 
-Opt-in grants (OFF by default; must be listed explicitly on the session):
+Computer Use grants are OFF by default and must be enabled explicitly:
 
 ```
-sessions.read_all          read/list across projects
-sessions.control_children  send_text / interrupt / stop a DIRECT child
-sessions.create_children   create_child
-sessions.cross_project     create a child in another project
-worktrees.create           create_worktree
-browser.use                uncoil_browser
-browser.persistent_state   persistent browser profiles + save_state
 computer.inspect           read-only uncoil_computer
 computer.background_control mutating uncoil_computer (bound window)
 computer.foreground_control bring_to_front (focus steal)
@@ -43,8 +40,8 @@ shell path.
 
 ## User permissions (PermissionService)
 
-When policy would deny an action that a human could reasonably authorize — controlling
-a sibling/unrelated session, cross-project reads, `bring_to_front` — the handler returns
+When policy would deny an action that a human could reasonably authorize — most notably
+Computer Use and `bring_to_front` — the handler returns
 `PERMISSION_REQUIRED` with `details:{grant_key, target}` instead of a hard denial.
 
 - The agent calls `uncoil_system request_permission {grant_key, target_session_id?}`.
@@ -65,8 +62,8 @@ a sibling/unrelated session, cross-project reads, `bring_to_front` — the handl
 
 | key | lifts |
 |---|---|
-| `sessions.control` | send_text / interrupt on a non-child session |
-| `sessions.close` | stop on a non-child session |
+| `computer.inspect` | inspect the bound application window |
+| `computer.background_control` | interact with the bound window without focus stealing |
+| `computer.foreground_control` | bring the bound window to the foreground |
 
-(Additional keys — cross-project read, `computer.foreground_control` — follow the same
-directional model.)
+Explicit per-session capability overrides can still disable any default grant.
