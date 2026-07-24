@@ -159,6 +159,21 @@ final class ProjectStoreTests: XCTestCase {
             ),
             "\"/Users/x/.local/bin/claude\" --resume abc-1"
         )
+        let codex = SessionRecord(projectID: UUID(), provider: .codex, accountID: nil, title: "c")
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: codex,
+                binaryPath: "/opt/homebrew/bin/codex",
+                mcpBinaryPath: "/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp",
+                mcpEnvironment: [
+                    "UNCOIL_SESSION_ID": "session-1",
+                    "UNCOIL_PROJECT_ID": "project-1",
+                    "UNCOIL_CONTROL_SOCKET": "/tmp/uncoil.sock",
+                ],
+                extraArguments: nil
+            ),
+            "\"/opt/homebrew/bin/codex\" -c 'mcp_servers.uncoil.command=\"/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp\"' -c 'mcp_servers.uncoil.env.UNCOIL_CONTROL_SOCKET=\"/tmp/uncoil.sock\"' -c 'mcp_servers.uncoil.env.UNCOIL_PROJECT_ID=\"project-1\"' -c 'mcp_servers.uncoil.env.UNCOIL_SESSION_ID=\"session-1\"'"
+        )
         let shell = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "sh")
         XCTAssertNil(TerminalRegistry.launchCommand(for: shell, extraArguments: "x"))
     }

@@ -97,14 +97,17 @@ final class TerminalRegistry {
     /// Writes a per-session MCP config registering the bundled `uncoil-mcp`
     /// server, and returns its path. We never touch the user's ~/.claude.json;
     /// Claude Code merges this file via `--mcp-config` (additive, not strict).
-    private func writeMCPConfig(for record: SessionRecord) -> String? {
-        let mcpBinary = Bundle.main.bundleURL
+    private func bundledMCPBinaryPath() -> String? {
+        let binary = Bundle.main.bundleURL
             .appendingPathComponent("Contents/Helpers/uncoil-mcp")
-        guard FileManager.default.isExecutableFile(atPath: mcpBinary.path) else { return nil }
+        return FileManager.default.isExecutableFile(atPath: binary.path) ? binary.path : nil
+    }
+
+    private func writeMCPConfig(for record: SessionRecord, binaryPath: String) -> String? {
         let config: [String: Any] = [
             "mcpServers": [
                 "uncoil": [
-                    "command": mcpBinary.path,
+                    "command": binaryPath,
                     "env": [
                         "UNCOIL_SESSION_ID": record.id.uuidString,
                         "UNCOIL_PROJECT_ID": record.projectID.uuidString,
@@ -129,13 +132,21 @@ final class TerminalRegistry {
     private func shellArguments(for record: SessionRecord, settings: SettingsStore) -> (shell: String, args: [String]) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
-        // Register the uncoil MCP server for Claude Code (additive config,
-        // never touching ~/.claude.json). Codex auto-injection is deferred.
-        let mcpConfigPath = record.provider == .claude ? writeMCPConfig(for: record) : nil
+        let mcpBinaryPath = record.provider == .terminal ? nil : bundledMCPBinaryPath()
+        let mcpConfigPath = record.provider == .claude
+            ? mcpBinaryPath.flatMap { writeMCPConfig(for: record, binaryPath: $0) }
+            : nil
+        let mcpEnvironment = [
+            "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
+            "UNCOIL_PROJECT_ID": record.projectID.uuidString,
+            "UNCOIL_SESSION_ID": record.id.uuidString,
+        ]
         if let command = Self.launchCommand(
             for: record,
             binaryPath: settings.binaryPath(for: record.provider),
             mcpConfigPath: mcpConfigPath,
+            mcpBinaryPath: mcpBinaryPath,
+            mcpEnvironment: mcpEnvironment,
             extraArguments: settings.extraArguments[record.provider.rawValue],
             presetArguments: record.extraArguments,
             modeArguments: settings.workingModeArguments(for: record.provider)
@@ -240,6 +251,8 @@ final class TerminalRegistry {
         for record: SessionRecord,
         binaryPath: String? = nil,
         mcpConfigPath: String? = nil,
+        mcpBinaryPath: String? = nil,
+        mcpEnvironment: [String: String] = [:],
         extraArguments: String?,
         presetArguments: [String]? = nil,
         modeArguments: [String] = []
@@ -251,6 +264,23 @@ final class TerminalRegistry {
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""
+        }
+        if record.provider == .codex, let mcpBinaryPath {
+            let escaped = mcpBinaryPath
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            let override = "mcp_servers.uncoil.command=\"\(escaped)\""
+                .replacingOccurrences(of: "'", with: "'\"'\"'")
+            command += " -c '\(override)'"
+            for key in mcpEnvironment.keys.sorted() {
+                guard let value = mcpEnvironment[key] else { continue }
+                let escapedValue = value
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "\"", with: "\\\"")
+                let environmentOverride = "mcp_servers.uncoil.env.\(key)=\"\(escapedValue)\""
+                    .replacingOccurrences(of: "'", with: "'\"'\"'")
+                command += " -c '\(environmentOverride)'"
+            }
         }
         if !modeArguments.isEmpty {
             command += " " + modeArguments.joined(separator: " ")
