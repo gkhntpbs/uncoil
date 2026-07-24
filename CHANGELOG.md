@@ -7,7 +7,7 @@ All notable changes to Uncoil are recorded here.
 ### Changed
 
 - Reorganized active product, MCP, and historical reference documentation.
-- Moved the foundation plan to `docs/product/FOUNDATION_PLAN.md`.
+- Moved the foundation plan to `docs/roadmap/FOUNDATION_PLAN.md`.
 - Established `TODO.md` as the canonical implementation backlog.
 - Replaced the legacy UI-control MCP with Computer Use for Codex.
 - Disabled project-scoped tooling for Claude Code.
