@@ -231,6 +231,47 @@ final class WorktreeNameTests: XCTestCase {
     }
 }
 
+@MainActor
+final class ControlPlaneServerTests: XCTestCase {
+    func testSecondServerCannotReplaceLiveSocket() throws {
+        var projectRoot = URL(fileURLWithPath: #filePath)
+        while projectRoot.path != "/" {
+            let gitPath = projectRoot.appendingPathComponent(".git").path
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: gitPath, isDirectory: &isDirectory),
+               isDirectory.boolValue {
+                break
+            }
+            projectRoot.deleteLastPathComponent()
+        }
+        let directory = projectRoot
+            .appendingPathComponent(".build-cache/s", isDirectory: true)
+            .appendingPathComponent(String(UUID().uuidString.prefix(4)), isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let projectStore = ProjectStore(directory: directory)
+        let sessionStore = SessionStore()
+        let router = CapabilityRouter(
+            projectStore: projectStore,
+            sessionStore: sessionStore,
+            audit: AuditLog(dataDirectory: directory),
+            dataDirectory: directory
+        )
+        let path = directory.appendingPathComponent("control.sock").path
+        let first = ControlPlaneServer(socketPath: path, router: router)
+        let second = ControlPlaneServer(socketPath: path, router: router)
+        try first.start()
+        defer { first.stop() }
+
+        XCTAssertThrowsError(try second.start()) { error in
+            XCTAssertEqual((error as? POSIXError)?.code, .EADDRINUSE)
+        }
+        second.stop()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+    }
+}
+
 // MARK: - Router integration (socket-free)
 
 @MainActor

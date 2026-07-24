@@ -13,6 +13,7 @@ final class ControlPlaneServer: @unchecked Sendable {
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
+    private var ownsSocket = false
     private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.control-server")
 
     init(socketPath: String, router: CapabilityRouter) {
@@ -25,10 +26,35 @@ final class ControlPlaneServer: @unchecked Sendable {
     }
 
     func start() throws {
-        unlink(socketPath)
         listenFD = socket(AF_UNIX, SOCK_STREAM, 0)
         guard listenFD >= 0 else { throw POSIXError(.EMFILE) }
 
+        var address = try socketAddress()
+        var bindResult = bindSocket(listenFD, address: &address)
+        if bindResult != 0, errno == EADDRINUSE {
+            if existingServerIsReachable(address: &address) {
+                close(listenFD)
+                listenFD = -1
+                throw POSIXError(.EADDRINUSE)
+            }
+            unlink(socketPath)
+            bindResult = bindSocket(listenFD, address: &address)
+        }
+        guard bindResult == 0, listen(listenFD, 16) == 0 else {
+            close(listenFD)
+            listenFD = -1
+            throw POSIXError(.EADDRINUSE)
+        }
+        chmod(socketPath, 0o600)
+        ownsSocket = true
+
+        let source = DispatchSource.makeReadSource(fileDescriptor: listenFD, queue: queue)
+        source.setEventHandler { [weak self] in self?.acceptClient() }
+        source.resume()
+        acceptSource = source
+    }
+
+    private func socketAddress() throws -> sockaddr_un {
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         let pathBytes = socketPath.utf8CString
@@ -38,21 +64,26 @@ final class ControlPlaneServer: @unchecked Sendable {
         withUnsafeMutableBytes(of: &address.sun_path) { raw in
             pathBytes.withUnsafeBytes { raw.copyMemory(from: $0) }
         }
-        let bindResult = withUnsafePointer(to: &address) { pointer in
+        return address
+    }
+
+    private func bindSocket(_ fd: Int32, address: inout sockaddr_un) -> Int32 {
+        withUnsafePointer(to: &address) { pointer in
             pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                bind(listenFD, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+                bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        guard bindResult == 0, listen(listenFD, 16) == 0 else {
-            close(listenFD)
-            throw POSIXError(.EADDRINUSE)
-        }
-        chmod(socketPath, 0o600)
+    }
 
-        let source = DispatchSource.makeReadSource(fileDescriptor: listenFD, queue: queue)
-        source.setEventHandler { [weak self] in self?.acceptClient() }
-        source.resume()
-        acceptSource = source
+    private func existingServerIsReachable(address: inout sockaddr_un) -> Bool {
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else { return true }
+        defer { close(fd) }
+        return withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) == 0
+            }
+        }
     }
 
     func stop() {
@@ -62,7 +93,11 @@ final class ControlPlaneServer: @unchecked Sendable {
         clientSources.removeAll()
         clientBuffers.removeAll()
         if listenFD >= 0 { close(listenFD) }
-        unlink(socketPath)
+        listenFD = -1
+        if ownsSocket {
+            unlink(socketPath)
+            ownsSocket = false
+        }
     }
 
     private func acceptClient() {
