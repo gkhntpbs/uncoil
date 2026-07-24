@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 import AppKit
 
@@ -286,14 +287,19 @@ enum KeychainStore {
         SecItemAdd(query as CFDictionary, nil)
     }
 
-    static func read(key: String) -> String? {
-        let query: [String: Any] = [
+    static func read(key: String, allowingUserInteraction: Bool = false) -> String? {
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
+        if !allowingUserInteraction {
+            let context = LAContext()
+            context.interactionNotAllowed = true
+            query[kSecUseAuthenticationContext as String] = context
+        }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
               let data = item as? Data else { return nil }
