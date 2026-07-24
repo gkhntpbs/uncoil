@@ -67,7 +67,7 @@ struct SettingsView: View {
             case .defaults: "varsayılan default editör editor agent cli yol path"
             case .cliTools: "cli güncelle update sürüm version brew npm"
             case .launchArgs: "parametre argüman argument model flag"
-            case .agentBehavior: "agent davranış behavior shift enter newline satır klavye keyboard"
+            case .agentBehavior: "agent davranış behavior mod mode auto plan shift enter newline satır klavye keyboard"
             case .notifications: "bildirim notification ses sound öncelik priority"
             case .theme: "tema theme renk color açık koyu light dark terminal"
             case .github: "github token pr pull request giriş login"

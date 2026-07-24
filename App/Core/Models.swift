@@ -57,6 +57,114 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
+    case providerDefault
+    case auto
+    case plan
+    case manual
+    case acceptEdits
+    case dangerouslySkipPermissions
+    case askForApproval
+    case approveForMe
+    case fullAccess
+    case dontAsk
+    case onRequest
+    case readOnly
+
+    var id: String { rawValue }
+
+    static func options(for provider: AgentProvider) -> [AgentWorkingMode] {
+        switch provider {
+        case .claude:
+            [.manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
+        case .codex:
+            [.askForApproval, .approveForMe, .fullAccess]
+        case .terminal:
+            [.providerDefault]
+        }
+    }
+
+    func label(for provider: AgentProvider) -> String {
+        switch self {
+        case .providerDefault: "Provider varsayılanı"
+        case .auto: "Auto"
+        case .plan: "Plan"
+        case .manual: "Manual"
+        case .acceptEdits: "Accept Edits"
+        case .dangerouslySkipPermissions: "Dangerously Skip Permissions"
+        case .askForApproval: "Ask for Approval"
+        case .approveForMe: "Approve for Me"
+        case .fullAccess: "Full Access"
+        case .dontAsk: "Don't Ask"
+        case .onRequest: "On Request"
+        case .readOnly: "Salt Okunur"
+        }
+    }
+
+    func detail(for provider: AgentProvider) -> String {
+        switch (provider, self) {
+        case (_, .providerDefault):
+            "CLI kendi varsayılan davranışıyla başlar."
+        case (.claude, .auto):
+            "Claude gerekli izinleri bağlama göre otomatik yönetir."
+        case (.claude, .plan):
+            "Claude uygulama yapmadan önce planlama modunda başlar."
+        case (.claude, .manual):
+            "Claude her işlem için manuel kontrolle başlar."
+        case (.claude, .acceptEdits):
+            "Dosya düzenlemeleri otomatik kabul edilir."
+        case (.claude, .dangerouslySkipPermissions):
+            "Claude tüm izin kontrollerini atlayarak başlar."
+        case (.codex, .askForApproval):
+            "Codex gerektiğinde senden işlem onayı ister."
+        case (.codex, .approveForMe):
+            "Codex workspace sınırları içinde onay istemeden çalışır."
+        case (.codex, .fullAccess):
+            "Codex onay ve sandbox kısıtlamaları olmadan çalışır."
+        default:
+            "CLI kendi varsayılan davranışıyla başlar."
+        }
+    }
+
+    func launchArguments(for provider: AgentProvider) -> [String] {
+        switch (provider, self) {
+        case (_, .providerDefault):
+            []
+        case (.claude, .auto):
+            ["--permission-mode", "auto"]
+        case (.claude, .plan):
+            ["--permission-mode", "plan"]
+        case (.claude, .manual):
+            ["--permission-mode", "manual"]
+        case (.claude, .acceptEdits):
+            ["--permission-mode", "acceptEdits"]
+        case (.claude, .dangerouslySkipPermissions):
+            ["--dangerously-skip-permissions"]
+        case (.codex, .askForApproval):
+            ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"]
+        case (.codex, .approveForMe):
+            ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
+        case (.codex, .fullAccess):
+            ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+        default:
+            []
+        }
+    }
+
+    func normalized(for provider: AgentProvider) -> AgentWorkingMode {
+        switch (provider, self) {
+        case (.claude, .providerDefault), (.claude, .dontAsk):
+            .manual
+        case (.codex, .providerDefault), (.codex, .onRequest), (.codex, .readOnly):
+            .askForApproval
+        case (.codex, .auto):
+            .approveForMe
+        default:
+            self
+        }
+    }
+}
+
 // MARK: - Per-provider behavior
 
 /// User-tunable per-provider terminal behavior. All fields optional so a value
@@ -66,6 +174,7 @@ struct ProviderBehavior: Codable, Equatable {
     /// When true, Shift+Enter (and Option+Enter) sends a literal newline
     /// (backslash + carriage return) to the agent instead of submitting.
     var shiftEnterNewline: Bool?
+    var workingMode: AgentWorkingMode?
 }
 
 // MARK: - Account profile

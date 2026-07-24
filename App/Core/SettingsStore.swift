@@ -86,6 +86,31 @@ final class SettingsStore: ObservableObject {
         save()
     }
 
+    func workingMode(for provider: AgentProvider) -> AgentWorkingMode {
+        let fallback: AgentWorkingMode = switch provider {
+        case .claude: .manual
+        case .codex: .askForApproval
+        case .terminal: .providerDefault
+        }
+        let mode = (providerBehaviors[provider.rawValue]?.workingMode ?? fallback)
+            .normalized(for: provider)
+        return AgentWorkingMode.options(for: provider).contains(mode)
+            ? mode
+            : fallback
+    }
+
+    func setWorkingMode(_ mode: AgentWorkingMode, for provider: AgentProvider) {
+        guard AgentWorkingMode.options(for: provider).contains(mode) else { return }
+        var behavior = providerBehaviors[provider.rawValue] ?? ProviderBehavior()
+        behavior.workingMode = mode
+        providerBehaviors[provider.rawValue] = behavior
+        save()
+    }
+
+    func workingModeArguments(for provider: AgentProvider) -> [String] {
+        workingMode(for: provider).launchArguments(for: provider)
+    }
+
     // MARK: - Command palette hotkey
 
     func setCommandPaletteHotkey(_ binding: HotkeyBinding) {

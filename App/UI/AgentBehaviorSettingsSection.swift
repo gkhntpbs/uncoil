@@ -13,11 +13,33 @@ struct AgentBehaviorSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            workingModes
             keyboardBehavior
             hotkeySection
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.agentBehavior.container")
+    }
+
+    private var workingModes: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Varsayılan agent modu")
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.text)
+            Text("Her agent kendi desteklediği modlarla gösterilir. Yeni oturumlar seçilen modda başlar.")
+                .font(Theme.mono(10.5))
+                .foregroundStyle(Theme.textFaint)
+
+            VStack(spacing: 0) {
+                ForEach(Array(providers.enumerated()), id: \.element) { index, provider in
+                    workingModeRow(provider)
+                    if index != providers.count - 1 {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel()
+        }
     }
 
     private var keyboardBehavior: some View {
@@ -104,6 +126,37 @@ struct AgentBehaviorSettingsSection: View {
             .controlSize(.mini)
             .labelsHidden()
             .accessibilityIdentifier("settings.agentBehavior.shiftEnter.\(provider.rawValue)")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    private func workingModeRow(_ provider: AgentProvider) -> some View {
+        let selected = settings.workingMode(for: provider)
+        return HStack(spacing: 10) {
+            ProviderMark(provider: provider, size: 12)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(provider.displayName)
+                    .font(Theme.mono(12, .medium))
+                    .foregroundStyle(Theme.text)
+                Text(selected.detail(for: provider))
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Picker("", selection: Binding(
+                get: { settings.workingMode(for: provider) },
+                set: { settings.setWorkingMode($0, for: provider) }
+            )) {
+                ForEach(AgentWorkingMode.options(for: provider)) { mode in
+                    Text(mode.label(for: provider)).tag(mode)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 220)
+            .accessibilityIdentifier("settings.agentBehavior.workingMode.\(provider.rawValue)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

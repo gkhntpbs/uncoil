@@ -145,6 +145,16 @@ final class ProjectStoreTests: XCTestCase {
             TerminalRegistry.launchCommand(
                 for: record,
                 binaryPath: "/Users/x/.local/bin/claude",
+                extraArguments: nil,
+                presetArguments: ["--model", "sonnet"],
+                modeArguments: ["--permission-mode", "auto"]
+            ),
+            "\"/Users/x/.local/bin/claude\" --resume abc-1 --permission-mode auto --model sonnet"
+        )
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: record,
+                binaryPath: "/Users/x/.local/bin/claude",
                 extraArguments: nil
             ),
             "\"/Users/x/.local/bin/claude\" --resume abc-1"
@@ -226,6 +236,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.accounts(for: .claude).count, 1)
         XCTAssertEqual(store.accounts(for: .codex).count, 1)
         XCTAssertNil(store.accounts(for: .claude)[0].directoryName)
+        XCTAssertEqual(store.workingMode(for: .claude), .manual)
+        XCTAssertEqual(store.workingMode(for: .codex), .askForApproval)
     }
 
     func testAddedAccountGetsIsolatedConfigDirAndPersists() {
@@ -253,5 +265,56 @@ final class SettingsStoreTests: XCTestCase {
         let base = store.accounts(for: .claude)[0]
         store.removeAccount(base)
         XCTAssertEqual(store.accounts(for: .claude).count, 1)
+    }
+
+    func testWorkingModesPersistPerProvider() {
+        let store = SettingsStore(directory: tempDir)
+        store.setWorkingMode(.auto, for: .claude)
+        store.setWorkingMode(.fullAccess, for: .codex)
+
+        let reloaded = SettingsStore(directory: tempDir)
+        XCTAssertEqual(reloaded.workingMode(for: .claude), .auto)
+        XCTAssertEqual(reloaded.workingMode(for: .codex), .fullAccess)
+        XCTAssertEqual(
+            reloaded.workingModeArguments(for: .claude),
+            ["--permission-mode", "auto"]
+        )
+        XCTAssertEqual(
+            reloaded.workingModeArguments(for: .codex),
+            ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+        )
+    }
+
+    func testUnsupportedWorkingModeIsIgnored() {
+        let store = SettingsStore(directory: tempDir)
+        store.setWorkingMode(.plan, for: .codex)
+        XCTAssertEqual(store.workingMode(for: .codex), .askForApproval)
+    }
+
+    func testWorkingModeOptionsAndArgumentsMatchProviders() {
+        XCTAssertEqual(
+            AgentWorkingMode.options(for: .claude),
+            [.manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
+        )
+        XCTAssertEqual(
+            AgentWorkingMode.options(for: .codex),
+            [.askForApproval, .approveForMe, .fullAccess]
+        )
+        XCTAssertEqual(
+            AgentWorkingMode.dangerouslySkipPermissions.launchArguments(for: .claude),
+            ["--dangerously-skip-permissions"]
+        )
+        XCTAssertEqual(
+            AgentWorkingMode.askForApproval.launchArguments(for: .codex),
+            ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"]
+        )
+        XCTAssertEqual(
+            AgentWorkingMode.approveForMe.launchArguments(for: .codex),
+            ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
+        )
+        XCTAssertEqual(
+            AgentWorkingMode.fullAccess.launchArguments(for: .codex),
+            ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+        )
     }
 }
