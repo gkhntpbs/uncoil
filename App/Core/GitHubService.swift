@@ -299,6 +299,7 @@ enum KeychainStore {
             let context = LAContext()
             context.interactionNotAllowed = true
             query[kSecUseAuthenticationContext as String] = context
+            query["u_AuthUI"] = "u_AuthUIF"
         }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
