@@ -47,7 +47,8 @@ final class RuntimeClient {
     }
 
     private static var daemonURL: URL? {
-        Bundle.main.url(forResource: "uncoil-runtimed", withExtension: nil)
+        Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Helpers/uncoil-runtimed")
     }
 
     // MARK: - Lifecycle

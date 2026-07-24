@@ -11,6 +11,11 @@ All notable changes to Uncoil are recorded here.
 - Established `TODO.md` as the canonical implementation backlog.
 - Replaced the legacy UI-control MCP with Computer Use for Codex.
 - Disabled project-scoped tooling for Claude Code.
+- Embedded executable helpers under `Contents/Helpers` so macOS accepts their code signatures.
+
+### Fixed
+
+- Restored daemon-backed session persistence, reconnect, and terminal replay across app restarts.
 
 ### Removed
 

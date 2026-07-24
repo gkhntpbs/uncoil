@@ -98,9 +98,9 @@ final class TerminalRegistry {
     /// server, and returns its path. We never touch the user's ~/.claude.json;
     /// Claude Code merges this file via `--mcp-config` (additive, not strict).
     private func writeMCPConfig(for record: SessionRecord) -> String? {
-        guard let mcpBinary = Bundle.main.url(forResource: "uncoil-mcp", withExtension: nil) else {
-            return nil
-        }
+        let mcpBinary = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Helpers/uncoil-mcp")
+        guard FileManager.default.isExecutableFile(atPath: mcpBinary.path) else { return nil }
         let config: [String: Any] = [
             "mcpServers": [
                 "uncoil": [

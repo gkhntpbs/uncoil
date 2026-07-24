@@ -93,7 +93,9 @@ final class RuntimeDaemon {
     func start(socketPath: String) throws {
         unlink(socketPath)
         listenFD = socket(AF_UNIX, SOCK_STREAM, 0)
-        guard listenFD >= 0 else { throw POSIXError(.EMFILE) }
+        guard listenFD >= 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EMFILE)
+        }
 
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
@@ -109,9 +111,15 @@ final class RuntimeDaemon {
                 bind(listenFD, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
             }
         }
-        guard bindResult == 0, listen(listenFD, 16) == 0 else {
+        guard bindResult == 0 else {
+            let code = errno
             close(listenFD)
-            throw POSIXError(.EADDRINUSE)
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EADDRINUSE)
+        }
+        guard listen(listenFD, 16) == 0 else {
+            let code = errno
+            close(listenFD)
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EINVAL)
         }
         chmod(socketPath, 0o600)
 
@@ -349,7 +357,7 @@ let daemon = RuntimeDaemon()
 do {
     try daemon.start(socketPath: socketPath)
 } catch {
-    FileHandle.standardError.write(Data("uncoil-runtimed: bind failed on \(socketPath)\n".utf8))
+    FileHandle.standardError.write(Data("uncoil-runtimed: \(error.localizedDescription) (\(socketPath))\n".utf8))
     exit(1)
 }
 dispatchMain()

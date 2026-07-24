@@ -67,17 +67,19 @@ targets:
     postBuildScripts:
       - name: Embed uncoil-hook helper
         script: |
-          cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-hook"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-runtimed"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-mcp" "$BUILT_PRODUCTS_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/uncoil-mcp"
+          HELPERS_DIR="$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Helpers"
+          mkdir -p "$HELPERS_DIR"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$HELPERS_DIR/uncoil-hook"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$HELPERS_DIR/uncoil-runtimed"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-mcp" "$HELPERS_DIR/uncoil-mcp"
         inputFiles:
           - $(BUILT_PRODUCTS_DIR)/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/uncoil-runtimed
           - $(BUILT_PRODUCTS_DIR)/uncoil-mcp
         outputFiles:
-          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-hook
-          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-runtimed
-          - $(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/uncoil-mcp
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-hook
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-runtimed
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-mcp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil

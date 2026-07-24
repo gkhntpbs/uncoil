@@ -45,7 +45,9 @@ enum HookInstaller {
     }
 
     static var helperURL: URL? {
-        Bundle.main.url(forResource: helperName, withExtension: nil)
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Helpers/\(helperName)")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
 
     static var socketPath: String {
