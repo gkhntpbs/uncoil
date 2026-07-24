@@ -105,6 +105,30 @@ final class ControlIdentityTests: XCTestCase {
     }
 }
 
+final class RuntimeInputTests: XCTestCase {
+    func testTerminalSubmissionUsesCarriageReturn() {
+        XCTAssertEqual(
+            RuntimeClient.submissionParts("status", provider: .terminal),
+            [
+                Data([0x73, 0x74, 0x61, 0x74, 0x75, 0x73]),
+                Data([0x0D]),
+            ]
+        )
+    }
+
+    func testAgentSubmissionUsesKittyEnter() {
+        for provider in [AgentProvider.claude, .codex] {
+            XCTAssertEqual(
+                RuntimeClient.submissionParts("status", provider: provider),
+                [
+                    Data([0x73, 0x74, 0x61, 0x74, 0x75, 0x73]),
+                    Data([0x1B, 0x5B, 0x31, 0x33, 0x75]),
+                ]
+            )
+        }
+    }
+}
+
 // MARK: - ProcessRunner
 
 final class ProcessRunnerTests: XCTestCase {

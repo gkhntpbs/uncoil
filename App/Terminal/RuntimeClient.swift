@@ -6,6 +6,13 @@ import Foundation
 final class RuntimeClient {
     static let shared = RuntimeClient()
 
+    static func submissionParts(_ text: String, provider: AgentProvider) -> [Data] {
+        let enter = provider == .terminal
+            ? Data([0x0D])
+            : Data([0x1B, 0x5B, 0x31, 0x33, 0x75])
+        return [Data(text.utf8), enter]
+    }
+
     enum Phase { case idle, connecting, ready, failed }
 
     struct LaunchSpec {
@@ -293,6 +300,48 @@ final class RuntimeClient {
     /// Sends raw bytes to a live session's PTY (control-plane send_text).
     func sendText(_ data: Data, sid: UUID) {
         sendInput(data, sid: sid)
+    }
+
+    func submitText(_ text: String, sid: UUID, provider: AgentProvider) async {
+        let parts = Self.submissionParts(text, provider: provider)
+        sendInput(parts[0], sid: sid)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        sendInput(parts[1], sid: sid)
+    }
+
+    func waitUntilInputReady(
+        sid: UUID,
+        provider: AgentProvider,
+        timeout: TimeInterval = 12
+    ) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        var lastSize = -1
+        var stableSince = Date()
+        var firstOutputAt: Date?
+
+        while Date() < deadline {
+            if let buffer = await peek(sid: sid, timeout: 1), !buffer.isEmpty {
+                let now = Date()
+                if firstOutputAt == nil {
+                    firstOutputAt = now
+                }
+                if provider == .claude,
+                   String(decoding: buffer, as: UTF8.self).contains("manual mode on") {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    return
+                }
+                if buffer.count != lastSize {
+                    lastSize = buffer.count
+                    stableSince = now
+                } else if let firstOutputAt,
+                          now.timeIntervalSince(stableSince) >= 1,
+                          now.timeIntervalSince(firstOutputAt) >= 2 {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    return
+                }
+            }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+        }
     }
 
     /// Sends Ctrl-C (0x03) to a live session.

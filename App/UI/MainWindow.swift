@@ -210,7 +210,10 @@ struct MainWindow: View {
             while Date() < deadline, sessionStore.status(of: sid) == .terminated {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
-            RuntimeClient.shared.sendText(Data((prompt + "\n").utf8), sid: sid)
+            await RuntimeClient.shared.waitUntilInputReady(
+                sid: sid, provider: record.provider)
+            await RuntimeClient.shared.submitText(
+                prompt, sid: sid, provider: record.provider)
         }
     }
 
@@ -404,7 +407,10 @@ struct MainWindow: View {
                 while Date() < deadline, sessionStore.status(of: sid) == .terminated {
                     try? await Task.sleep(nanoseconds: 200_000_000)
                 }
-                RuntimeClient.shared.sendText(Data((prompt + "\n").utf8), sid: sid)
+                await RuntimeClient.shared.waitUntilInputReady(
+                    sid: sid, provider: record.provider)
+                await RuntimeClient.shared.submitText(
+                    prompt, sid: sid, provider: record.provider)
             }
         }
 

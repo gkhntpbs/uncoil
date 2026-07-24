@@ -83,9 +83,18 @@ extension CapabilityRouter {
                                     target_session_id: target.id.uuidString)
                 }
                 let raw = request.args["raw"]?.boolValue ?? false
-                let payload = raw ? text : text + "\n"
-                RuntimeClient.shared.sendText(Data(payload.utf8), sid: target.id)
-                return .success(request, data: .object(["sent_bytes": .int(payload.utf8.count)]),
+                let sentBytes: Int
+                if raw {
+                    let payload = Data(text.utf8)
+                    RuntimeClient.shared.sendText(payload, sid: target.id)
+                    sentBytes = payload.count
+                } else {
+                    let parts = RuntimeClient.submissionParts(text, provider: target.provider)
+                    await RuntimeClient.shared.submitText(
+                        text, sid: target.id, provider: target.provider)
+                    sentBytes = parts.reduce(0) { $0 + $1.count }
+                }
+                return .success(request, data: .object(["sent_bytes": .int(sentBytes)]),
                                 project_id: target.projectID.uuidString,
                                 target_session_id: target.id.uuidString)
             }
@@ -168,7 +177,7 @@ extension CapabilityRouter {
         caller: SessionRecord,
         all: [UUID: SessionRecord],
         grants: Set<String>,
-        _ body: (SessionRecord) -> ControlEnvelope
+        _ body: (SessionRecord) async -> ControlEnvelope
     ) async -> ControlEnvelope {
         guard let raw = request.args["session_id"]?.stringValue, let target = session(id: raw) else {
             return .failure(request, code: .unknownSession, message: "'session_id' is required and must exist")
@@ -188,7 +197,7 @@ extension CapabilityRouter {
                     message: control.message ?? "control denied", target_session_id: target.id.uuidString)
             }
         }
-        return body(target)
+        return await body(target)
     }
 
     /// Consults the PermissionService for a relationship that policy would
