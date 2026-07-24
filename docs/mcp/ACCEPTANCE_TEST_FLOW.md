@@ -2,6 +2,22 @@
 
 Bu akış, Uncoil içinden başlatılan bir Claude oturumunun altı MCP aracını gerçek kontrol düzlemi üzerinden sınamasını sağlar. Test, mevcut proje verilerini silmez, yeni worktree oluşturmaz, mesaj göndermez ve kalıcı tarayıcı profili kullanmaz.
 
+## Son doğrulama
+
+24 Temmuz 2026 tarihinde Debug uygulaması `-ui-testing -control-plane -reset-state -fixture demo` argümanlarıyla çalıştırıldı. Uygulamayla paketlenen `uncoil-mcp`, demo Claude oturumunun kimliği ve izole `control.sock` üzerinden doğrudan sınandı. Claude süreci başlatılmadı.
+
+| Alan | Sonuç | Kanıt |
+|---|---|---|
+| MCP protokolü | PASS | `initialize` protokol `2025-06-18`, `tools/list` altı aracı döndürdü. |
+| `uncoil_system` | PASS | `help`, `status`, `version`, `capabilities`, `doctor`, `dependencies` başarılı. Kontrol ve hook soketleri hazır; kullanılmayan runtime daemon kapalı. |
+| `uncoil_projects` | PASS | Demo proje, boş worktree listesi ve `claude-worker` preset’i okundu. |
+| `uncoil_sessions` | PASS | Mevcut demo oturumu, oturum listesi, çocuk listesi ve boş rapor kutusu okundu. |
+| `uncoil_artifacts` | PASS | Boş liste döndü; bulunmayan artifact `INVALID_PATH` ile güvenli biçimde reddedildi. |
+| `uncoil_browser` | PASS | Ephemeral oturumda `example.com` açıldı; snapshot, başlık, screenshot ve sekme listesi doğrulanıp oturum kapatıldı. |
+| `uncoil_computer` | PASS | Oturuma özel Computer Use izni sonrası izinler, uygulamalar, Uncoil penceresi, AX snapshot ve pencere screenshot’ı doğrulandı. |
+
+Toplam 40 araç eylemi PASS verdi. İlk Computer Use denemesinde beklenen `CAPABILITY_DISABLED` görüldü; izin yalnızca demo Claude oturumuna verildikten sonra aynı salt-okunur akış geçti. Yeni worktree veya çocuk oturum oluşturulmadı, mesaj gönderilmedi, kalıcı tarayıcı profili kullanılmadı ve sürücü kurulumu yapılmadı.
+
 ## Ön koşullar
 
 - Uncoil güncel Debug derlemesiyle çalışıyor.
