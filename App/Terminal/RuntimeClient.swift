@@ -1,10 +1,15 @@
+import AppKit
 import Foundation
 
 /// Connects Uncoil to uncoil-runtimed over the user-private Unix socket.
 /// Spawns the daemon on demand; if it cannot be reached the app falls back
 /// to in-process terminals (TerminalRegistry checks `phase`).
-final class RuntimeClient {
-    static let shared = RuntimeClient()
+final class RuntimeClient: @unchecked Sendable {
+    static let shared = RuntimeClient(
+        socketPath: RuntimeClient.socketPath,
+        daemonURL: RuntimeClient.defaultDaemonURL,
+        observesWorkspaceNotifications: true
+    )
 
     static func submissionParts(_ text: String, provider: AgentProvider) -> [Data] {
         let enter = provider == .terminal
@@ -13,7 +18,13 @@ final class RuntimeClient {
         return [Data(text.utf8), enter]
     }
 
-    enum Phase { case idle, connecting, ready, failed }
+    enum Phase: Equatable {
+        case idle
+        case connecting
+        case ready
+        case failed
+        case incompatible(String)
+    }
 
     struct LaunchSpec {
         var shell: String
@@ -28,6 +39,13 @@ final class RuntimeClient {
     private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.runtime-client")
     private var fd: Int32 = -1
     private var readSource: DispatchSourceRead?
+    private var heartbeatSource: DispatchSourceTimer?
+    private var reconnectWorkItem: DispatchWorkItem?
+    private var reconnectAttempts = 0
+    private var preservesSessionsOnReconnect = false
+    private var isSystemSleeping = false
+    private var lastPong = Date.distantPast
+    private(set) var negotiatedMinor = 0
     private var inbox = Data()
     /// Session ids the daemon reported alive at handshake.
     private var aliveSessions: Set<String> = []
@@ -38,6 +56,9 @@ final class RuntimeClient {
     private var exitHandlers: [String: (Int32?) -> Void] = [:]
     /// One-shot replay-buffer readers keyed by sid (control-plane `peek`).
     private var peekHandlers: [String: (Data?) -> Void] = [:]
+    private let configuredSocketPath: String
+    private let configuredDaemonURL: URL?
+    private var workspaceObservers: [NSObjectProtocol] = []
 
     /// True once the daemon handshake completed and sessions are known.
     var isReady: Bool { phase == .ready }
@@ -46,43 +67,77 @@ final class RuntimeClient {
         ProjectStore.defaultDirectory().appendingPathComponent(RuntimeProtocol.socketName).path
     }
 
-    private static var daemonURL: URL? {
+    private static var defaultDaemonURL: URL? {
         Bundle.main.bundleURL
             .appendingPathComponent("Contents/Helpers/uncoil-runtimed")
+    }
+
+    init(
+        socketPath: String,
+        daemonURL: URL?,
+        observesWorkspaceNotifications: Bool
+    ) {
+        configuredSocketPath = socketPath
+        configuredDaemonURL = daemonURL
+        guard observesWorkspaceNotifications else { return }
+        let center = NSWorkspace.shared.notificationCenter
+        workspaceObservers.append(center.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.handleSystemSleep()
+        })
+        workspaceObservers.append(center.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.handleSystemWake()
+        })
     }
 
     // MARK: - Lifecycle
 
     func start() {
         queue.async { [self] in
-            guard phase == .idle else { return }
-            phase = .connecting
-            // First-ever run: the App Support dir may not exist yet.
-            try? FileManager.default.createDirectory(
-                at: ProjectStore.defaultDirectory(), withIntermediateDirectories: true
-            )
-            if !connect() {
-                spawnDaemon()
-                var attempts = 0
-                while attempts < 20, !connect() {
-                    attempts += 1
-                    usleep(100_000)
-                }
+            guard phase == .idle || phase == .failed else { return }
+            reconnectWorkItem?.cancel()
+            reconnectWorkItem = nil
+            reconnectAttempts = 0
+            startLocked()
+        }
+    }
+
+    private func startLocked() {
+        guard fd < 0 else { return }
+        phase = .connecting
+        let socketDirectory = URL(fileURLWithPath: configuredSocketPath)
+            .deletingLastPathComponent()
+        try? FileManager.default.createDirectory(
+            at: socketDirectory, withIntermediateDirectories: true
+        )
+        if !connect() {
+            spawnDaemon()
+            var attempts = 0
+            while attempts < 20, !connect() {
+                attempts += 1
+                usleep(100_000)
             }
-            if fd >= 0 {
-                NSLog("[uncoil-runtime] connected fd=%d", fd)
-                beginReading()
-                sendCommand(RuntimeCommand.hello())
-            } else {
-                NSLog("[uncoil-runtime] connect failed, falling back to in-process PTYs")
-                phase = .failed
-                flushPendingAsFailed()
-            }
+        }
+        if fd >= 0 {
+            NSLog("[uncoil-runtime] connected fd=%d", fd)
+            beginReading()
+            sendCommand(RuntimeCommand.hello())
+        } else {
+            NSLog("[uncoil-runtime] connect failed")
+            phase = .failed
+            scheduleReconnect()
         }
     }
 
     private func connect() -> Bool {
-        let path = Self.socketPath
+        let path = configuredSocketPath
         let sock = socket(AF_UNIX, SOCK_STREAM, 0)
         guard sock >= 0 else { return false }
         var address = sockaddr_un()
@@ -109,10 +164,10 @@ final class RuntimeClient {
     }
 
     private func spawnDaemon() {
-        guard let daemon = Self.daemonURL else { return }
+        guard let daemon = configuredDaemonURL else { return }
         let process = Process()
         process.executableURL = daemon
-        process.arguments = [Self.socketPath]
+        process.arguments = [configuredSocketPath]
         try? process.run()
     }
 
@@ -128,7 +183,7 @@ final class RuntimeClient {
         var chunk = [UInt8](repeating: 0, count: 128 * 1024)
         let count = read(fd, &chunk, chunk.count)
         guard count > 0 else {
-            disconnect()
+            disconnect(restart: true)
             return
         }
         inbox.append(contentsOf: chunk[0..<count])
@@ -142,31 +197,97 @@ final class RuntimeClient {
         }
     }
 
-    private func disconnect() {
+    private func disconnect(restart: Bool = false, notifyHandlers: Bool = true) {
+        stopHeartbeat()
         readSource?.cancel()
         readSource = nil
         fd = -1
-        phase = .failed
-        let handlers = exitHandlers
-        exitHandlers.removeAll()
-        dataHandlers.removeAll()
-        DispatchQueue.main.async {
-            for handler in handlers.values { handler(nil) }
+        if case .incompatible = phase {
+        } else {
+            phase = .failed
         }
+        if notifyHandlers {
+            let handlers = exitHandlers
+            exitHandlers.removeAll()
+            dataHandlers.removeAll()
+            preservesSessionsOnReconnect = false
+            DispatchQueue.main.async {
+                for handler in handlers.values { handler(nil) }
+            }
+        } else {
+            preservesSessionsOnReconnect = true
+        }
+        if restart, !isIncompatiblePhase, !isSystemSleeping {
+            scheduleReconnect()
+        }
+    }
+
+    private var isIncompatiblePhase: Bool {
+        if case .incompatible = phase { return true }
+        return false
+    }
+
+    private func scheduleReconnect() {
+        guard reconnectAttempts < 5, reconnectWorkItem == nil else { return }
+        reconnectAttempts += 1
+        let delay = min(pow(2, Double(reconnectAttempts - 1)), 16)
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.reconnectWorkItem = nil
+            guard self.fd < 0, !self.isIncompatiblePhase else { return }
+            self.startLocked()
+        }
+        reconnectWorkItem = work
+        queue.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private func handle(_ event: RuntimeEventMessage) {
         switch event.ev {
         case "hello":
-            sendCommand(RuntimeCommand(cmd: "list"))
+            switch RuntimeProtocol.negotiate(
+                peerVersion: event.version,
+                peerMinor: event.minor
+            ) {
+            case .compatible(let minor):
+                negotiatedMinor = minor
+                lastPong = .now
+                startHeartbeat()
+                sendCommand(RuntimeCommand(cmd: "list"))
+            case .incompatible(let message):
+                failCompatibility(message)
+            }
         case "sessions":
             aliveSessions = Set(event.sids ?? [])
             phase = .ready
+            reconnectAttempts = 0
             NSLog("[uncoil-runtime] ready, alive=%@", aliveSessions.joined(separator: ","))
             let pending = pendingOpens
             pendingOpens.removeAll()
             for open in pending {
                 openLocked(sid: open.sid, spec: open.spec, cols: open.cols, rows: open.rows)
+            }
+            let attached = dataHandlers.keys.filter { aliveSessions.contains($0) }
+            for sid in attached {
+                sendCommand(RuntimeCommand(cmd: "attach", sid: sid))
+            }
+            if preservesSessionsOnReconnect {
+                let missing = dataHandlers.keys.filter { !aliveSessions.contains($0) }
+                preservesSessionsOnReconnect = false
+                for sid in missing {
+                    let handler = exitHandlers.removeValue(forKey: sid)
+                    dataHandlers.removeValue(forKey: sid)
+                    if let handler {
+                        DispatchQueue.main.async { handler(nil) }
+                    }
+                }
+            }
+        case "pong":
+            lastPong = .now
+        case "error":
+            if phase == .connecting,
+               event.errorCode == "incompatible_protocol",
+               let message = event.message {
+                failCompatibility(message)
             }
         case "data":
             if let sid = event.sid, let b64 = event.b64, let data = Data(base64Encoded: b64),
@@ -189,6 +310,64 @@ final class RuntimeClient {
             }
         default:
             break
+        }
+    }
+
+    private func startHeartbeat() {
+        stopHeartbeat()
+        let source = DispatchSource.makeTimerSource(queue: queue)
+        source.schedule(deadline: .now() + 5, repeating: 5)
+        source.setEventHandler { [weak self] in
+            guard let self, self.fd >= 0 else { return }
+            if Date().timeIntervalSince(self.lastPong) > 15 {
+                self.disconnect(restart: true)
+                return
+            }
+            self.sendCommand(RuntimeCommand(cmd: "ping"))
+        }
+        source.resume()
+        heartbeatSource = source
+    }
+
+    private func stopHeartbeat() {
+        heartbeatSource?.cancel()
+        heartbeatSource = nil
+    }
+
+    private func failCompatibility(_ message: String) {
+        phase = .incompatible(message)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .runtimeCompatibilityError,
+                object: message
+            )
+        }
+        disconnect()
+    }
+
+    func handleSystemSleep() {
+        queue.async { [self] in
+            isSystemSleeping = true
+            stopHeartbeat()
+        }
+    }
+
+    func handleSystemWake() {
+        queue.async { [self] in
+            isSystemSleeping = false
+            guard phase == .ready, fd >= 0 else {
+                if phase == .failed { startLocked() }
+                return
+            }
+            lastPong = .distantPast
+            startHeartbeat()
+            sendCommand(RuntimeCommand(cmd: "ping"))
+            queue.asyncAfter(deadline: .now() + 5) { [weak self] in
+                guard let self,
+                      self.phase == .ready,
+                      Date().timeIntervalSince(self.lastPong) > 5 else { return }
+                self.disconnect(restart: true, notifyHandlers: false)
+            }
         }
     }
 
@@ -357,6 +536,13 @@ final class RuntimeClient {
             dataHandlers[key] = nil
             exitHandlers[key] = nil
             sendCommand(RuntimeCommand(cmd: "kill", sid: key))
+        }
+    }
+
+    func requestGracefulUpgrade() {
+        queue.async { [self] in
+            guard phase == .ready else { return }
+            sendCommand(RuntimeCommand(cmd: "upgrade"))
         }
     }
 }

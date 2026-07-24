@@ -12,12 +12,34 @@ enum RuntimeProtocol {
     static let socketName = "runtime.sock"
     /// Per-session replay buffer cap inside the daemon.
     static let replayBufferLimit = 512 * 1024
+    static let replayDiskLimit = 16 * 1024 * 1024
+    static let logFileLimit = 1024 * 1024
+    static let logGenerations = 3
+    static let sessionIdleThreshold: TimeInterval = 60 * 60
+
+    enum Compatibility: Equatable {
+        case compatible(minor: Int)
+        case incompatible(String)
+    }
+
+    static func negotiate(peerVersion: Int?, peerMinor: Int?) -> Compatibility {
+        guard let peerVersion else {
+            return .incompatible("Runtime daemon sürüm bilgisi göndermedi.")
+        }
+        guard peerVersion == version else {
+            return .incompatible(
+                "Runtime protokolü uyumsuz: uygulama \(version).\(minor), daemon \(peerVersion).\(peerMinor ?? 0)."
+            )
+        }
+        return .compatible(minor: min(minor, peerMinor ?? 0))
+    }
 }
 
 /// App → daemon.
 struct RuntimeCommand: Codable {
-    var cmd: String        // hello|launch|attach|input|resize|kill|list|shutdown|peek
+    var cmd: String        // hello|launch|attach|input|resize|kill|list|shutdown|upgrade|peek
     var version: Int?
+    var minor: Int?
     var sid: String?
     var shell: String?
     var args: [String]?
@@ -28,7 +50,11 @@ struct RuntimeCommand: Codable {
     var b64: String?
 
     static func hello() -> RuntimeCommand {
-        RuntimeCommand(cmd: "hello", version: RuntimeProtocol.version)
+        RuntimeCommand(
+            cmd: "hello",
+            version: RuntimeProtocol.version,
+            minor: RuntimeProtocol.minor
+        )
     }
 }
 
@@ -36,10 +62,12 @@ struct RuntimeCommand: Codable {
 struct RuntimeEventMessage: Codable {
     var ev: String         // hello|sessions|data|exited|error|replay
     var version: Int?
+    var minor: Int?
     var sid: String?
     var sids: [String]?
     var b64: String?
     var code: Int32?
+    var errorCode: String?
     var message: String?
 }
 

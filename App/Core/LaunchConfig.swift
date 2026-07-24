@@ -20,6 +20,7 @@ struct LaunchConfig {
     let windowWidth: Double?
     let windowHeight: Double?
     let disableAnimations: Bool
+    let runtimeMismatchFixture: Bool
 
     /// Isolated data root when UI testing; nil = normal App Support.
     var dataDirectoryOverride: URL? {
@@ -32,6 +33,8 @@ struct LaunchConfig {
         isUITesting = arguments.contains("-ui-testing")
         resetState = arguments.contains("-reset-state")
         disableAnimations = arguments.contains("-disable-animations")
+        runtimeMismatchFixture = isUITesting
+            && arguments.contains("-runtime-mismatch-fixture")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)

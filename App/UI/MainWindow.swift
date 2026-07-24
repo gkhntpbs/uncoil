@@ -20,6 +20,7 @@ struct MainWindow: View {
     @State private var testWorkspaceError: String?
     @State private var debugBundleMessage: String?
     @State private var debugBundleURL: URL?
+    @State private var runtimeCompatibilityError: String?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
     @State private var dragStartWidth: Double?
@@ -64,6 +65,26 @@ struct MainWindow: View {
             Button("Tamam", role: .cancel) {}
         } message: {
             Text(debugBundleMessage ?? "")
+        }
+        .alert(
+            "Runtime Uyumsuzluğu",
+            isPresented: Binding(
+                get: { runtimeCompatibilityError != nil },
+                set: { if !$0 { runtimeCompatibilityError = nil } }
+            )
+        ) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(runtimeCompatibilityError ?? "")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
+            runtimeCompatibilityError = $0.object as? String
+        }
+        .task {
+            if LaunchConfig.shared.runtimeMismatchFixture {
+                runtimeCompatibilityError =
+                    "Runtime protokolü uyumsuz: uygulama 1.1, daemon 2.0."
+            }
         }
     }
 

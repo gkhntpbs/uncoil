@@ -19,6 +19,51 @@ setsid()
 signal(SIGHUP, SIG_IGN)
 signal(SIGPIPE, SIG_IGN)
 
+final class RuntimeLog {
+    private var url: URL?
+
+    func configure(directory: URL) {
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        url = directory.appendingPathComponent("runtime.log")
+    }
+
+    func write(_ message: String) {
+        guard let url else { return }
+        rotateIfNeeded(url)
+        let line = "\(ISO8601DateFormatter().string(from: .now)) \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        if FileManager.default.fileExists(atPath: url.path) {
+            guard let handle = try? FileHandle(forWritingTo: url) else { return }
+            defer { try? handle.close() }
+            _ = try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func rotateIfNeeded(_ url: URL) {
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard size >= RuntimeProtocol.logFileLimit else { return }
+        let manager = FileManager.default
+        for index in stride(from: RuntimeProtocol.logGenerations - 1, through: 1, by: -1) {
+            let source = url.appendingPathExtension("\(index)")
+            let destination = url.appendingPathExtension("\(index + 1)")
+            try? manager.removeItem(at: destination)
+            if manager.fileExists(atPath: source.path) {
+                try? manager.moveItem(at: source, to: destination)
+            }
+        }
+        let first = url.appendingPathExtension("1")
+        try? manager.removeItem(at: first)
+        if manager.fileExists(atPath: url.path) {
+            try? manager.moveItem(at: url, to: first)
+        }
+    }
+}
+
+let runtimeLog = RuntimeLog()
+
 // MARK: - PTY session
 
 final class PTYSession {
@@ -28,13 +73,17 @@ final class PTYSession {
     var buffer = Data()
     var readSource: DispatchSourceRead?
     var exitCode: Int32?
+    let replayURL: URL
+    var lastActivity = Date()
+    var lastIdleReport = Date.distantPast
     /// fd of the single attached client, if any.
     var attachedFD: Int32?
 
-    init(sid: String, masterFD: Int32, pid: pid_t) {
+    init(sid: String, masterFD: Int32, pid: pid_t, replayURL: URL) {
         self.sid = sid
         self.masterFD = masterFD
         self.pid = pid
+        self.replayURL = replayURL
     }
 }
 
@@ -89,8 +138,28 @@ final class RuntimeDaemon {
     private var clientBuffers: [Int32: Data] = [:]
     private var clientVerified: Set<Int32> = []
     private var sessions: [String: PTYSession] = [:]
+    private var lockFD: Int32 = -1
+    private var healthSource: DispatchSourceTimer?
+    private var replayDirectory: URL?
+    private var isDrainingForUpgrade = false
 
     func start(socketPath: String) throws {
+        let directory = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+        runtimeLog.configure(directory: directory)
+        let lockPath = socketPath + ".lock"
+        lockFD = open(lockPath, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else {
+            if lockFD >= 0 { close(lockFD) }
+            throw POSIXError(.EADDRINUSE)
+        }
+        var fileLimit = rlimit(rlim_cur: 1024, rlim_max: 1024)
+        _ = setrlimit(RLIMIT_NOFILE, &fileLimit)
+        var coreLimit = rlimit(rlim_cur: 0, rlim_max: 0)
+        _ = setrlimit(RLIMIT_CORE, &coreLimit)
+        let replayDirectory = directory.appendingPathComponent("replays", isDirectory: true)
+        try? FileManager.default.createDirectory(at: replayDirectory, withIntermediateDirectories: true)
+        self.replayDirectory = replayDirectory
+        pruneReplayDirectory()
         unlink(socketPath)
         listenFD = socket(AF_UNIX, SOCK_STREAM, 0)
         guard listenFD >= 0 else {
@@ -127,6 +196,8 @@ final class RuntimeDaemon {
         source.setEventHandler { [weak self] in self?.acceptClient() }
         source.resume()
         acceptSource = source
+        startHealthChecks()
+        runtimeLog.write("daemon started")
     }
 
     private func acceptClient() {
@@ -189,6 +260,7 @@ final class RuntimeDaemon {
         for session in sessions.values where session.attachedFD == fd {
             session.attachedFD = nil
         }
+        runtimeLog.write("client disconnected")
     }
 
     private func send<T: Encodable>(_ message: T, to fd: Int32) {
@@ -207,13 +279,28 @@ final class RuntimeDaemon {
 
     private func handle(_ command: RuntimeCommand, from fd: Int32) {
         if command.cmd == "hello" {
-            guard command.version == RuntimeProtocol.version else {
-                send(RuntimeEventMessage(ev: "error", message: "version mismatch"), to: fd)
+            let compatibility = RuntimeProtocol.negotiate(
+                peerVersion: command.version,
+                peerMinor: command.minor
+            )
+            guard case .compatible(let negotiatedMinor) = compatibility else {
+                guard case .incompatible(let message) = compatibility else { return }
+                send(RuntimeEventMessage(
+                    ev: "error",
+                    version: RuntimeProtocol.version,
+                    minor: RuntimeProtocol.minor,
+                    errorCode: "incompatible_protocol",
+                    message: message
+                ), to: fd)
                 dropClient(fd)
                 return
             }
             clientVerified.insert(fd)
-            send(RuntimeEventMessage(ev: "hello", version: RuntimeProtocol.version), to: fd)
+            send(RuntimeEventMessage(
+                ev: "hello",
+                version: RuntimeProtocol.version,
+                minor: negotiatedMinor
+            ), to: fd)
             return
         }
         guard clientVerified.contains(fd) else {
@@ -222,16 +309,32 @@ final class RuntimeDaemon {
         }
 
         switch command.cmd {
+        case "ping":
+            send(RuntimeEventMessage(
+                ev: "pong",
+                version: RuntimeProtocol.version,
+                minor: RuntimeProtocol.minor
+            ), to: fd)
         case "list":
             let alive = sessions.values.filter { $0.exitCode == nil }.map(\.sid)
             send(RuntimeEventMessage(ev: "sessions", sids: alive), to: fd)
         case "launch":
-            launch(command, from: fd)
+            if isDrainingForUpgrade {
+                send(RuntimeEventMessage(
+                    ev: "error",
+                    sid: command.sid,
+                    errorCode: "daemon_upgrading",
+                    message: "Runtime daemon güncelleme için yeni oturum kabul etmiyor."
+                ), to: fd)
+            } else {
+                launch(command, from: fd)
+            }
         case "attach":
             attach(command, from: fd)
         case "input":
             if let sid = command.sid, let b64 = command.b64,
                let data = Data(base64Encoded: b64), let session = sessions[sid] {
+                session.lastActivity = .now
                 data.withUnsafeBytes { raw in
                     _ = write(session.masterFD, raw.baseAddress, raw.count)
                 }
@@ -260,15 +363,22 @@ final class RuntimeDaemon {
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
         case "shutdown":
-            for sid in sessions.keys { kill(sid: sid) }
+            for sid in Array(sessions.keys) { kill(sid: sid) }
             exit(0)
+        case "upgrade":
+            isDrainingForUpgrade = true
+            runtimeLog.write("graceful upgrade requested")
+            exitIfUpgradeIsDrained()
         default:
             send(RuntimeEventMessage(ev: "error", message: "unknown command"), to: fd)
         }
     }
 
     private func launch(_ command: RuntimeCommand, from fd: Int32) {
-        guard let sid = command.sid, let shell = command.shell else { return }
+        guard let sid = command.sid,
+              UUID(uuidString: sid) != nil,
+              let shell = command.shell,
+              let replayDirectory else { return }
         // Relaunch for an existing sid replaces the old process.
         if sessions[sid] != nil { kill(sid: sid) }
         do {
@@ -280,10 +390,13 @@ final class RuntimeDaemon {
                 cols: command.cols ?? 80,
                 rows: command.rows ?? 24
             )
-            let session = PTYSession(sid: sid, masterFD: master, pid: pid)
+            let replayURL = replayDirectory.appendingPathComponent("\(sid).log")
+            try? FileManager.default.removeItem(at: replayURL)
+            let session = PTYSession(sid: sid, masterFD: master, pid: pid, replayURL: replayURL)
             session.attachedFD = fd
             sessions[sid] = session
             startReading(session)
+            runtimeLog.write("session launched \(sid)")
         } catch {
             send(RuntimeEventMessage(ev: "error", sid: sid, message: "spawn failed: \(error)"), to: fd)
         }
@@ -312,9 +425,11 @@ final class RuntimeDaemon {
             if count > 0 {
                 let data = Data(chunk[0..<count])
                 session.buffer.append(data)
+                session.lastActivity = .now
                 if session.buffer.count > RuntimeProtocol.replayBufferLimit {
                     session.buffer.removeFirst(session.buffer.count - RuntimeProtocol.replayBufferLimit)
                 }
+                self.persistReplay(session)
                 if let fd = session.attachedFD {
                     self.send(RuntimeEventMessage(ev: "data", sid: session.sid, b64: data.base64EncodedString()), to: fd)
                 }
@@ -326,11 +441,13 @@ final class RuntimeDaemon {
         session.readSource = source
     }
 
-    private func reap(_ session: PTYSession) {
+    private func reap(_ session: PTYSession, status knownStatus: Int32? = nil) {
         session.readSource?.cancel()
         session.readSource = nil
-        var status: Int32 = 0
-        waitpid(session.pid, &status, WNOHANG)
+        var status = knownStatus ?? 0
+        if knownStatus == nil {
+            _ = waitpid(session.pid, &status, WNOHANG)
+        }
         let code = (status & 0x7f) == 0 ? (status >> 8) & 0xff : -1
         session.exitCode = Int32(code)
         close(session.masterFD)
@@ -338,6 +455,9 @@ final class RuntimeDaemon {
             send(RuntimeEventMessage(ev: "exited", sid: session.sid, code: session.exitCode), to: fd)
         }
         sessions[session.sid] = nil
+        try? FileManager.default.removeItem(at: session.replayURL)
+        runtimeLog.write("session exited \(session.sid) code=\(code)")
+        exitIfUpgradeIsDrained()
     }
 
     private func kill(sid: String) {
@@ -350,6 +470,76 @@ final class RuntimeDaemon {
         var status: Int32 = 0
         waitpid(session.pid, &status, WNOHANG)
         sessions[sid] = nil
+        try? FileManager.default.removeItem(at: session.replayURL)
+        runtimeLog.write("session terminated \(sid)")
+        exitIfUpgradeIsDrained()
+    }
+
+    private func persistReplay(_ session: PTYSession) {
+        guard let replayDirectory else { return }
+        let manager = FileManager.default
+        let files = (try? manager.contentsOfDirectory(
+            at: replayDirectory,
+            includingPropertiesForKeys: [.fileSizeKey]
+        )) ?? []
+        let otherBytes = files
+            .filter { $0 != session.replayURL }
+            .reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        let allowed = max(0, RuntimeProtocol.replayDiskLimit - otherBytes)
+        if session.buffer.count > allowed {
+            session.buffer.removeFirst(session.buffer.count - allowed)
+        }
+        try? session.buffer.write(to: session.replayURL, options: .atomic)
+    }
+
+    private func pruneReplayDirectory() {
+        guard let replayDirectory else { return }
+        let manager = FileManager.default
+        let files = (try? manager.contentsOfDirectory(at: replayDirectory, includingPropertiesForKeys: nil)) ?? []
+        for file in files { try? manager.removeItem(at: file) }
+    }
+
+    private func startHealthChecks() {
+        let source = DispatchSource.makeTimerSource(queue: queue)
+        source.schedule(deadline: .now() + 5, repeating: 5)
+        source.setEventHandler { [weak self] in self?.checkSessionHealth() }
+        source.resume()
+        healthSource = source
+    }
+
+    private func checkSessionHealth() {
+        for session in sessions.values {
+            var status: Int32 = 0
+            let result = waitpid(session.pid, &status, WNOHANG)
+            if result == session.pid {
+                reap(session, status: status)
+                continue
+            }
+            if result == -1 && errno == ECHILD {
+                reap(session, status: -1)
+                continue
+            }
+            let idle = Date().timeIntervalSince(session.lastActivity)
+            if idle >= RuntimeProtocol.sessionIdleThreshold,
+               Date().timeIntervalSince(session.lastIdleReport) >= RuntimeProtocol.sessionIdleThreshold {
+                session.lastIdleReport = .now
+                if let fd = session.attachedFD {
+                    send(RuntimeEventMessage(
+                        ev: "error",
+                        sid: session.sid,
+                        errorCode: "session_idle",
+                        message: "Oturum bir saattir çıktı üretmiyor."
+                    ), to: fd)
+                }
+                runtimeLog.write("session idle \(session.sid)")
+            }
+        }
+    }
+
+    private func exitIfUpgradeIsDrained() {
+        guard isDrainingForUpgrade, sessions.isEmpty else { return }
+        runtimeLog.write("graceful upgrade completed")
+        exit(0)
     }
 }
 

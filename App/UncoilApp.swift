@@ -1,4 +1,10 @@
 import SwiftUI
+
+extension Notification.Name {
+    static let runtimeCompatibilityError = Notification.Name(
+        "com.gkhntpbs.uncoil.runtimeCompatibilityError"
+    )
+}
 import AppKit
 
 @main

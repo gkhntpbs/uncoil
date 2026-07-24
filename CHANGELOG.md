@@ -9,10 +9,12 @@ All notable changes to Uncoil are recorded here.
 - Added a one-click acceptance workspace with Swift and JavaScript samples, deterministic process fixtures, and permission-classified fake MCP tools.
 - Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
 - Added command-palette Debug Bundle export with scoped app/runtime logs, agent versions, sanitized configs, MCP diagnostics, permission decisions, crash reports, acceptance results, and system information.
+- Added runtime protocol negotiation, heartbeat, crash recovery, sleep/wake reconnect, graceful upgrade drain, bounded replay storage, log rotation, process limits, and real daemon integration tests.
 
 ### Changed
 
 - Reorganized active product, MCP, and historical reference documentation.
+- Made background GitHub Keychain reads non-interactive so development builds no longer repeatedly request the login password.
 
 ### Fixed
 
@@ -23,6 +25,7 @@ All notable changes to Uncoil are recorded here.
 - Replaced the legacy UI-control MCP with Computer Use for Codex.
 - Disabled project-scoped tooling for Claude Code.
 - Embedded executable helpers under `Contents/Helpers` so macOS accepts their code signatures.
+- Added an explicit runtime protocol mismatch alert and hardened daemon single-instance and child cleanup behavior.
 
 ### Fixed
 

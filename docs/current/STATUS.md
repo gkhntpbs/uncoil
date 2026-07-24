@@ -1,6 +1,6 @@
 # Uncoil — Durum ve Yol Haritası
 
-> Son güncelleme: 2026-07-25 · Testler: 173/173 birim + 4/4 UI + Computer Use kabul akışı
+> Son güncelleme: 2026-07-25 · Testler: 178 geçti + 9 koşullu skipped + 4/4 UI + Computer Use kabul akışı
 > `docs/roadmap/FOUNDATION_PLAN.md` belgesinin güncel gerçeklik karşılığı budur.
 > Yeni oturumlar önce bu dosyayı, ardından ilgili ajan yönergesini okumalı.
 
@@ -26,10 +26,10 @@
 
 ### Persistent runtime ("terminals that never die", plan §12 — v1)
 - **`uncoil-runtimed`**: PTY'lerin sahibi ayrı daemon (`RuntimeHelper/`, tool target, Resources'a gömülü). App kapansa/çökse de agent süreçleri yaşar
-- IPC: `App Support/Uncoil/runtime.sock` (0600) üzerinde satır-JSON protokol (`Shared/RuntimeProtocol.swift`, versiyonlu hello); her peer LOCAL_PEERCRED euid kontrolünden geçer
-- Daemon: openpty + posix_spawn (SETSID + CLOEXEC_DEFAULT; slave'i fd0 açarak controlling tty), oturum başına 512 KB sınırlı replay buffer, resize/kill/attach/list/shutdown komutları
-- App: `RuntimeClient` (bağlan-yoksa-spawn, bekleyen open kuyruğu) + `TerminalRegistry` daemon destekli `TerminalView`; daemon ulaşılamazsa eski in-process PTY'ye düşer. UI testlerinde determinizm için kapalı (`-runtime` arg'ı ile açılır)
-- Doğrulama (2026-07-23, ekran görüntülü): gerçek uygulamada terminal oturumu başlat → komut çalıştır → uygulamadan çık (daemon + shell yaşıyor) → yeniden aç → oturuma tıkla → önceki içerik replay + aynı shell'de yeni komut çalışıyor. Daemon protokolü ayrıca soket düzeyinde uçtan uca test edildi
+- IPC: `App Support/Uncoil/runtime.sock` (0600) üzerinde satır-JSON protokol (`Shared/RuntimeProtocol.swift`, major/minor negotiation); her peer LOCAL_PEERCRED euid kontrolünden geçer. Uyumsuz major sürüm açık kullanıcı hatası üretir
+- Daemon: tek-instance dosya kilidi, openpty + posix_spawn (SETSID + CLOEXEC_DEFAULT; slave'i fd0 açarak controlling tty), oturum başına 512 KB / toplam 16 MB disk-sınırlı replay, 1 MB × 3 dönen log, child reaping/idle detection, NOFILE/core limitleri ve graceful upgrade drain
+- App: `RuntimeClient` heartbeat, sınırlı exponential crash restart ve sleep/wake reconnect uygular; `TerminalRegistry` daemon destekli `TerminalView` kullanır. Daemon ulaşılamazsa eski in-process PTY'ye düşer. UI testlerinde determinizm için kapalı (`-runtime` arg'ı ile açılır)
+- Doğrulama: gerçek uygulamada terminal persistence/replay akışı; gerçek `uncoil-runtimed` binary’siyle handshake, heartbeat, version mismatch, graceful upgrade, tek-instance, crash restart, child reaping, replay disk limiti, log rotation ve sleep/wake reconnect entegrasyon testleri; runtime mismatch uyarısı Computer Use kabul testi
 
 ### MCP kontrol düzlemi (plan §16–17 — ajan işbirliği)
 - **Altı MCP aracı** ajanlara sınırlı bir yüzey açar: `uncoil_projects / uncoil_sessions / uncoil_artifacts / uncoil_system / uncoil_browser / uncoil_computer`. Her oturuma pakete gömülü `uncoil-mcp` stdio sunucusu kaydedilir; app içi kontrol düzlemine `control.sock` (0600 + euid kontrolü) üzerinden satır-JSON ile ulaşır. Tel biçimleri tek yerde (`Shared/ControlProtocol.swift`), hem app hem `uncoil-mcp` derler
@@ -37,7 +37,7 @@
 - **Orkestrasyon (M5):** `create_child` ham shell KABUL ETMEZ — yalnız adlandırılmış `SessionPreset`'ler (yerleşik `claude-worker` / `codex-reviewer`); yetenekler kesişimle daraltılır (preset ∩ çağıran, asla yükseltmez), idempotency_key ile tekrar-üretim engellenir. Çocuk oturum kenar çubuğunda normal oturum gibi görünür. Çocuk koordinasyonu: `inspect_child`, `wait_for_children` (settled durum bekleme + TIMEOUT), `summarize_children` (durum + çıktı kuyruğu + artefakt sayısı), tek yönlü `report_to_parent` / `read_reports` (parent inbox.jsonl; `pending_reports` inspect'te)
 - **İzin akışı:** kardeş/ilgisiz kontrol → `PERMISSION_REQUIRED`; ajan `uncoil_system request_permission` çağırır, kullanıcı **Ayarlar → İzinler**'de onaylar/reddeder/iptal eder. İzinler yönlü (A→B, C→B'yi kapsamaz), iptal edilebilir, her çağrıda yeniden kontrol edilir (önbelleksiz), bekleyenler 10 dk sonra düşer. `permissions.json` atomik yazılır
 - **Sağlamlaştırma (M6):** wait'ler sokete engel olmaz (her istek ayrı `Task { @MainActor }`, `Task.sleep` aktörü serbest bırakır); `permissions.json` / `artifacts.json` write-temp-rename (`AtomicFile`)
-- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). Test: socket'siz birim paketi (`UncoilTests`), toplam 169 test yeşil; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
+- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). `UncoilTests` paketinde 178 test geçti, 9 ortam-koşullu test skipped; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
 
 ### Çoklu hesap
 - Profil başına izole config kökü: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (profiles/<provider>/<ad>)
@@ -56,7 +56,7 @@
 
 ### Ayarlar (kenar çubuklu + aramalı)
 - Hesaplar / Varsayılanlar (editör seçimi dahil) / **CLI Araçları** (sürüm + kaynak rozeti; otomatik güncelleme kontrolü, sadece gerektiğinde Güncelle) / Parametreler (provider başına ek arg) / **Bildirimler** (durum başına tek bildirim, olay bazlı aç-kapa, öncelik, sistem sesleri, **proje bazlı override**) / **Tema** (koyu-açık preset + tüm renkler özelleştirilebilir, terminal renkleri dahil) / GitHub (**device-flow tarayıcı girişi**, token yalnız Keychain) / Hooks
-- GitHub token'ı ile özel repo PR'ları
+- GitHub token'ı ile özel repo PR'ları; arka plan Keychain okumaları etkileşimsizdir ve parola penceresi açmaz
 - **İzinler** — sık kullanılan izinleri anlaşılır dört grupta gösterir; proje/oturum/browser otomasyonu varsayılan açık, yalnız Computer Use zorunlu olarak kapalı ve onay gerektirir
 - **Agent Browser seçimi** — yalnız makinede kurulu Chromium tabanlı tarayıcılar listelenir; Uncoil Chromium, Chrome, Arc, Edge, Brave, Vivaldi ve Chromium desteklenir
 - **Provider çalışma modları** — Claude ve Codex için yeni oturumlarda kullanılacak çalışma modu Agent Ayarları'ndan seçilir; Claude Manual/Accept Edits/Plan/Auto/Dangerously Skip Permissions, Codex Ask for Approval/Approve for Me/Full Access seçeneklerini destekler
