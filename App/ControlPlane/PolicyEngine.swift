@@ -27,17 +27,18 @@ struct PolicyDecision {
 enum PolicyEngine {
     /// Grants every session has unless its record overrides `capabilities`.
     static let defaultGrants: Set<String> = [
-        "projects.read", "worktrees.read", "sessions.read",
+        "projects.read", "worktrees.read", "worktrees.create",
+        "sessions.read", "sessions.read_all", "sessions.control_children",
+        "sessions.control_all", "sessions.create_children", "sessions.cross_project",
+        "sessions.organize",
         "artifacts.read", "artifacts.write",
+        "browser.use", "browser.persistent_state",
     ]
 
     /// Opt-in grants that are OFF by default; a session must explicitly list
     /// them in `capabilities`. Browser/computer control (Milestones 3+4) plus
     /// the earlier control grants live here for discoverability.
     static let optionalGrants: Set<String> = [
-        "sessions.read_all", "sessions.control_children", "sessions.create_children",
-        "sessions.cross_project", "worktrees.create",
-        "browser.use", "browser.persistent_state",
         "computer.inspect", "computer.background_control", "computer.foreground_control",
     ]
 
@@ -97,6 +98,7 @@ enum PolicyEngine {
         if relation == .current {
             return .deny(.invalidRelationship, "a session cannot control itself")
         }
+        if grants.contains("sessions.control_all") { return .allow }
         guard grants.contains("sessions.control_children") else {
             return .deny(.capabilityDisabled, "sessions.control_children is not granted")
         }
@@ -107,6 +109,7 @@ enum PolicyEngine {
 
     static func canClose(relation: SessionRelation, grants: Set<String>) -> PolicyDecision {
         if relation == .current { return .allow }
+        if grants.contains("sessions.control_all") { return .allow }
         guard grants.contains("sessions.control_children") else {
             return .deny(.capabilityDisabled, "sessions.control_children is not granted")
         }

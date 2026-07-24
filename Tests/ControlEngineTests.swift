@@ -184,6 +184,10 @@ final class BrowserHandlerTests: XCTestCase {
     }
 
     func testDisabledWithoutGrant() async {
+        store.updateSession(caller.id) {
+            $0.capabilities = Array(PolicyEngine.defaultGrants.subtracting(["browser.use"]))
+        }
+        caller = store.sessions.first { $0.id == caller.id }
         let env = await router.handle(req("status"))
         XCTAssertFalse(env.ok)
         XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")

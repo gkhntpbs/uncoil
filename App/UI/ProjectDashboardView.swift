@@ -4,6 +4,7 @@ import SwiftUI
 struct ProjectDashboardView: View {
     let project: Project
     @Binding var selection: MainSelection?
+    let onOrganizeSessions: () -> Void
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
@@ -220,7 +221,22 @@ struct ProjectDashboardView: View {
 
     private var sessionsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Oturumlar", count: projectStore.sessions(for: project.id).count)
+            HStack {
+                PanelHeading(title: "Oturumlar", count: projectStore.sessions(for: project.id).count)
+                Spacer()
+                Button {
+                    onOrganizeSessions()
+                } label: {
+                    HStack(spacing: 6) {
+                        TablerIcon(name: "sparkles", size: 12, color: Theme.claude)
+                        Text("Otomatik Düzenle")
+                            .font(Theme.mono(10.5, .medium))
+                    }
+                }
+                .buttonStyle(GhostButtonStyle())
+                .accessibilityIdentifier("dashboard.sessions.organize")
+                .padding(.trailing, 10)
+            }
 
             let records = projectStore.sessions(for: project.id)
             if records.isEmpty {

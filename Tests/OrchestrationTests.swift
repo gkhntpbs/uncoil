@@ -169,6 +169,11 @@ final class OrchestrationRouterTests: XCTestCase {
     func testCreateChildDeniedWithoutGrant() async {
         // A plain caller without the grant.
         let plain = store.createSession(projectID: store.projects[0].id, provider: .claude, accountID: nil, title: "claude: plain")
+        store.updateSession(plain.id) {
+            $0.capabilities = Array(
+                PolicyEngine.defaultGrants.subtracting(["sessions.create_children"])
+            )
+        }
         let env = await router.handle(req("create_child", args: ["preset_id": .string("claude-worker")], caller: plain))
         XCTAssertFalse(env.ok)
         XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")
@@ -202,14 +207,14 @@ final class OrchestrationRouterTests: XCTestCase {
     }
 
     func testCreateChildCapabilitySubsetNonEscalation() async {
-        // Request browser.use which neither the caller nor the preset grants.
+        // Request computer.inspect which neither the caller nor the preset grants.
         let env = await router.handle(req("create_child", args: [
             "preset_id": .string("claude-worker"),
-            "capabilities": .array([.string("browser.use"), .string("sessions.read")]),
+            "capabilities": .array([.string("computer.inspect"), .string("sessions.read")]),
         ]))
         XCTAssertTrue(env.ok)
         let child = store.sessions.first { $0.parentSessionID == caller.id }!
-        XCTAssertFalse((child.capabilities ?? []).contains("browser.use"))
+        XCTAssertFalse((child.capabilities ?? []).contains("computer.inspect"))
         XCTAssertTrue((child.capabilities ?? []).contains("sessions.read"))
     }
 
@@ -286,7 +291,9 @@ final class OrchestrationRouterTests: XCTestCase {
         // only via a permission. Give caller control_children so the denial is
         // relationship-based (permissionDenied), not capability-based.
         store.updateSession(caller.id) {
-            $0.capabilities = Array(PolicyEngine.defaultGrants) + ["sessions.read", "sessions.create_children", "sessions.control_children"]
+            $0.capabilities = Array(
+                PolicyEngine.defaultGrants.subtracting(["sessions.control_all"])
+            ) + ["sessions.control_children"]
         }
         caller = store.sessions.first { $0.id == caller.id }
         let other = store.createSession(projectID: store.projects[0].id, provider: .claude, accountID: nil, title: "claude: other")

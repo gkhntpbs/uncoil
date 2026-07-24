@@ -147,7 +147,7 @@ final class PolicyDecisionTests: XCTestCase {
     }
 
     func testCrossProjectReadDenied() {
-        let caller = rec(project: UUID())
+        let caller = rec(project: UUID(), caps: ["sessions.read"])
         let other = rec(project: UUID())
         let all = [caller.id: caller, other.id: other]
         let decision = PolicyEngine.canRead(
@@ -160,7 +160,7 @@ final class PolicyDecisionTests: XCTestCase {
 
     func testCapabilityOffYieldsCapabilityDisabled() {
         let p = UUID()
-        let caller = rec(project: p, caps: Array(PolicyEngine.defaultGrants))  // no control_children
+        let caller = rec(project: p, caps: ["sessions.read"])
         let child = rec(parent: caller.id, project: p)
         let all = [caller.id: caller, child.id: child]
         let decision = PolicyEngine.canControl(
@@ -302,10 +302,60 @@ final class CapabilityRouterTests: XCTestCase {
     }
 
     func testCreateWorktreeDeniedWithoutGrant() async {
+        store.updateSession(caller.id) {
+            $0.capabilities = Array(PolicyEngine.defaultGrants.subtracting(["worktrees.create"]))
+        }
+        caller = store.sessions.first { $0.id == caller.id }
         let env = await router.handle(request("uncoil_projects", "create_worktree",
                                               args: ["name": .string("feature")]))
         XCTAssertFalse(env.ok)
         XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")
+    }
+
+    func testSessionGroupLifecycleThroughMCP() async {
+        let second = store.createSession(
+            projectID: store.projects[0].id,
+            provider: .codex,
+            accountID: nil,
+            title: "codex: review"
+        )
+        let created = await router.handle(request(
+            "uncoil_sessions",
+            "create_group",
+            args: ["name": .string("Review")]
+        ))
+        XCTAssertTrue(created.ok)
+        guard case let .object(createdData)? = created.data,
+              let groupID = createdData["group_id"]?.stringValue else {
+            return XCTFail("missing group id")
+        }
+
+        let assigned = await router.handle(request(
+            "uncoil_sessions",
+            "assign_group",
+            args: [
+                "group_id": .string(groupID),
+                "session_ids": .array([.string(second.id.uuidString)]),
+            ]
+        ))
+        XCTAssertTrue(assigned.ok)
+        XCTAssertEqual(store.sessions.first { $0.id == second.id }?.groupID?.uuidString, groupID)
+
+        let listed = await router.handle(request("uncoil_sessions", "list_groups"))
+        XCTAssertTrue(listed.ok)
+        guard case let .object(listData)? = listed.data,
+              case let .array(groups)? = listData["groups"] else {
+            return XCTFail("missing groups")
+        }
+        XCTAssertEqual(groups.count, 1)
+
+        let deleted = await router.handle(request(
+            "uncoil_sessions",
+            "delete_group",
+            args: ["group_id": .string(groupID)]
+        ))
+        XCTAssertTrue(deleted.ok)
+        XCTAssertNil(store.sessions.first { $0.id == second.id }?.groupID)
     }
 
     func testCreateWorktreeInvalidName() async {

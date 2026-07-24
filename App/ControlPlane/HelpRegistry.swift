@@ -95,7 +95,9 @@ enum HelpRegistry {
         let names = ["help", "current", "list", "inspect", "read_output", "send_text",
                      "interrupt", "list_children", "wait_for_status", "stop",
                      "create_child", "inspect_child", "wait_for_children",
-                     "summarize_children", "report_to_parent", "read_reports"]
+                     "summarize_children", "report_to_parent", "read_reports",
+                     "list_groups", "create_group", "rename_group", "assign_group",
+                     "delete_group"]
         let overview = "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them."
         return CapabilityDoc(
             capability: "uncoil_sessions",
@@ -132,6 +134,16 @@ enum HelpRegistry {
                     doc: "# report_to_parent\nChild → parent. Args: `message` (required, ≤8 KB), `data` (optional JSON). Appends a JSON line to the parent's `reports/inbox.jsonl`; INVALID_RELATIONSHIP if the caller has no parent."),
                 ActionDoc(action: "read_reports", summary: "Read (and optionally clear) the report inbox.",
                     doc: "# read_reports\nArgs: `clear` (bool, default false). Returns `reports:[{ts, from_session, message, data?}]` from the caller's own inbox, clearing it when `clear` is true."),
+                ActionDoc(action: "list_groups", summary: "List project session groups.",
+                    doc: "# list_groups\nArgs: `project_id` (optional). Returns groups with their session ids and the ungrouped session ids."),
+                ActionDoc(action: "create_group", summary: "Create a project session group.",
+                    doc: "# create_group\nRequires `sessions.organize`. Args: `name` (required), `project_id` (optional). Returns the new group id."),
+                ActionDoc(action: "rename_group", summary: "Rename a session group.",
+                    doc: "# rename_group\nRequires `sessions.organize`. Args: `group_id`, `name`, and optional `project_id`."),
+                ActionDoc(action: "assign_group", summary: "Move sessions into or out of a group.",
+                    doc: "# assign_group\nRequires `sessions.organize`. Args: `session_ids` (required array), `group_id` (optional; omit to ungroup), `project_id` (optional). All sessions must belong to the project."),
+                ActionDoc(action: "delete_group", summary: "Delete a group without deleting its sessions.",
+                    doc: "# delete_group\nRequires `sessions.organize`. Args: `group_id` and optional `project_id`. Sessions become ungrouped."),
             ])
     }()
 

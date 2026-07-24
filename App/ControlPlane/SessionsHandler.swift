@@ -8,6 +8,10 @@ extension CapabilityRouter {
         let all = sessionMap()
         let grants = PolicyEngine.grants(for: caller)
 
+        if let grouped = handleSessionGroups(request, caller: caller, grants: grants) {
+            return grouped
+        }
+
         // Milestone 5 orchestration actions live in a separate file.
         if let orchestrated = await handleSessionsOrchestration(
             request, caller: caller, all: all, grants: grants) {
@@ -231,6 +235,7 @@ extension CapabilityRouter {
             "provider": .string(record.provider.rawValue),
             "status": .string(sessionStore.status(of: record.id).rawValue),
             "relation_to_caller": .string(relation.rawValue),
+            "group_id": .string(optional: record.groupID?.uuidString),
         ])
     }
 
@@ -251,6 +256,7 @@ extension CapabilityRouter {
             "status": .string(sessionStore.status(of: record.id).rawValue),
             "worktree_path": .string(optional: record.worktreePath),
             "parent_session_id": .string(optional: record.parentSessionID?.uuidString),
+            "group_id": .string(optional: record.groupID?.uuidString),
             "created_at": .string(ISO8601DateFormatter().string(from: record.createdAt)),
             "relation_to_caller": .string(relation.rawValue),
             "can_read": .bool(canRead),

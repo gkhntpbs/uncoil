@@ -37,7 +37,7 @@ final class LiveCapabilityTests: XCTestCase {
 
     func testGrantAddedFlipsDecisionFromDisabledToAllowed() {
         let p = UUID()
-        var caller = rec(project: p, caps: Array(PolicyEngine.defaultGrants))
+        var caller = rec(project: p, caps: ["sessions.read"])
         let child = rec(project: p, parent: caller.id)
         let all = [caller.id: caller, child.id: child]
         let relation = PolicyEngine.relation(of: child, to: caller, in: all)
@@ -49,9 +49,20 @@ final class LiveCapabilityTests: XCTestCase {
 
         // Mutating the record's capabilities (what the proactive toggle does)
         // flips the very next read to allowed — grants are read live.
-        caller.capabilities = Array(PolicyEngine.defaultGrants) + ["sessions.control_children"]
+        caller.capabilities = ["sessions.read", "sessions.control_children"]
         let after = PolicyEngine.canControl(relation: relation, grants: PolicyEngine.grants(for: caller))
         XCTAssertTrue(after.allowed)
+    }
+
+    func testDefaultsEnableAutomationButNotComputerUse() {
+        let grants = PolicyEngine.defaultGrants
+        XCTAssertTrue(grants.contains("sessions.organize"))
+        XCTAssertTrue(grants.contains("sessions.control_all"))
+        XCTAssertTrue(grants.contains("browser.use"))
+        XCTAssertTrue(grants.contains("browser.persistent_state"))
+        XCTAssertFalse(grants.contains("computer.inspect"))
+        XCTAssertFalse(grants.contains("computer.background_control"))
+        XCTAssertFalse(grants.contains("computer.foreground_control"))
     }
 }
 

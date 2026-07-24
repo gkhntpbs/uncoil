@@ -219,7 +219,11 @@ struct MainWindow: View {
         switch selection {
         case .project(let id):
             if let project = projectStore.projects.first(where: { $0.id == id }) {
-                ProjectDashboardView(project: project, selection: $selection)
+                ProjectDashboardView(
+                    project: project,
+                    selection: $selection,
+                    onOrganizeSessions: { organizeSessions(projectID: project.id) }
+                )
                     .id(project.id)
             } else {
                 EmptyDetailView(showFolderPicker: $showFolderPicker)
@@ -267,6 +271,34 @@ struct MainWindow: View {
             }
         case nil:
             EmptyDetailView(showFolderPicker: $showFolderPicker)
+        }
+    }
+
+    private func organizeSessions(projectID: UUID) {
+        let record = projectStore.createSession(
+            projectID: projectID,
+            provider: .claude,
+            accountID: settings.defaultAccount(for: .claude)?.id,
+            title: "claude: oturumları otomatik düzenle"
+        )
+        selection = .session(record.id)
+        guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
+        _ = TerminalRegistry.shared.terminal(
+            for: record,
+            project: project,
+            account: settings.account(id: record.accountID),
+            settings: settings,
+            sessionStore: sessionStore
+        )
+        let prompt = """
+        Bu projedeki Uncoil oturumlarını düzenle. Yalnızca Uncoil MCP araçlarını kullan. Önce uncoil_sessions list ve list_groups çağır. Oturum başlıkları, sağlayıcıları ve amaçlarına göre az sayıda, anlaşılır grup belirle. Gereken grupları create_group ile oluştur, sonra assign_group ile oturumları taşı. Bu düzenleyici oturumunu gruplama. Mevcut anlamlı grupları koru, boş veya yinelenen grup oluşturma. Bittiğinde yaptığın düzeni kısa bir tabloyla bildir.
+        """
+        Task { @MainActor in
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline, sessionStore.status(of: record.id) == .terminated {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            RuntimeClient.shared.sendText(Data((prompt + "\n").utf8), sid: record.id)
         }
     }
 
