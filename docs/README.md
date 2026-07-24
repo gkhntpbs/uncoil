@@ -4,6 +4,7 @@
 
 - `product/STATUS.md` — implemented behavior, current deviations, and known limitations.
 - `product/FOUNDATION_PLAN.md` — original product and technical foundation.
+- `product/RELEASE_PIPELINE.md` — current build, validation, signing, and release checklist.
 - `../TODO.md` — canonical implementation backlog.
 - `../CHANGELOG.md` — project history.
 - `mcp/` — MCP control-plane architecture, capabilities, permissions, security, artifacts, acceptance flow, and troubleshooting.
