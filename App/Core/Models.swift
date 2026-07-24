@@ -131,6 +131,28 @@ struct Project: Identifiable, Codable, Equatable {
     }
 }
 
+struct SessionGroup: Identifiable, Codable, Equatable {
+    let id: UUID
+    let projectID: UUID
+    var name: String
+    var createdAt: Date
+    var sortIndex: Double?
+
+    init(
+        id: UUID = UUID(),
+        projectID: UUID,
+        name: String,
+        createdAt: Date = .now,
+        sortIndex: Double? = nil
+    ) {
+        self.id = id
+        self.projectID = projectID
+        self.name = name
+        self.createdAt = createdAt
+        self.sortIndex = sortIndex
+    }
+}
+
 // MARK: - Session
 
 enum AgentSessionStatus: String, Codable {
@@ -208,6 +230,7 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Extra CLI arguments from the launching preset (control-plane children).
     /// Appended after the provider's default arguments. Backward-compatible.
     var extraArguments: [String]?
+    var groupID: UUID?
 
     init(
         id: UUID = UUID(),

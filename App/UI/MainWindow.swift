@@ -2,6 +2,7 @@ import SwiftUI
 
 enum MainSelection: Hashable {
     case project(UUID)
+    case group(UUID)
     case session(UUID)
 }
 
@@ -12,6 +13,7 @@ struct MainWindow: View {
     @Environment(\.openWindow) private var openWindow
     @StateObject private var palette = PaletteModel()
     @State private var selection: MainSelection?
+    @State private var selectedSessionIDs: Set<UUID> = []
     /// Secondary session shown side-by-side (drop a session onto the view).
     @State private var splitSessionID: UUID?
     @State private var showFolderPicker = false
@@ -40,6 +42,7 @@ struct MainWindow: View {
             if sidebarVisible {
                 SidebarView(
                     selection: $selection,
+                    selectedSessionIDs: $selectedSessionIDs,
                     showFolderPicker: $showFolderPicker
                 )
                 .frame(width: sidebarWidth)
@@ -130,6 +133,9 @@ struct MainWindow: View {
         case .session(let id):
             palette.currentSessionID = id
             palette.currentProjectID = projectStore.sessions.first { $0.id == id }?.projectID
+        case .group(let id):
+            palette.currentSessionID = nil
+            palette.currentProjectID = projectStore.sessionGroups.first { $0.id == id }?.projectID
         case nil:
             palette.currentProjectID = nil
             palette.currentSessionID = nil
@@ -215,6 +221,19 @@ struct MainWindow: View {
             if let project = projectStore.projects.first(where: { $0.id == id }) {
                 ProjectDashboardView(project: project, selection: $selection)
                     .id(project.id)
+            } else {
+                EmptyDetailView(showFolderPicker: $showFolderPicker)
+            }
+        case .group(let id):
+            if let group = projectStore.sessionGroups.first(where: { $0.id == id }),
+               let project = projectStore.projects.first(where: { $0.id == group.projectID }) {
+                SessionGroupView(
+                    group: group,
+                    project: project,
+                    selection: $selection,
+                    selectedSessionIDs: $selectedSessionIDs
+                )
+                .id(group.id)
             } else {
                 EmptyDetailView(showFolderPicker: $showFolderPicker)
             }

@@ -5,20 +5,53 @@ struct SidebarView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @Binding var selection: MainSelection?
+    @Binding var selectedSessionIDs: Set<UUID>
     @Binding var showFolderPicker: Bool
     @Environment(\.openWindow) private var openWindow
+    @State private var showCreateGroup = false
+    @State private var showBulkDelete = false
+    @State private var groupName = ""
+    @State private var isMultiSelecting = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Space for traffic lights — the window has no title bar.
-            Spacer().frame(height: 38)
+            HStack {
+                Spacer()
+                Button {
+                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+                        isMultiSelecting.toggle()
+                        if !isMultiSelecting {
+                            selectedSessionIDs.removeAll()
+                        }
+                    }
+                } label: {
+                    TablerIcon(
+                        name: "list-check",
+                        size: 13,
+                        color: isMultiSelecting ? Theme.codex : Theme.textDim
+                    )
+                    .frame(width: 24, height: 24)
+                    .background(
+                        isMultiSelecting ? Theme.panelActive : .clear,
+                        in: RoundedRectangle(cornerRadius: 6)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help(isMultiSelecting ? "Çoklu seçimi kapat" : "Birden fazla seç")
+                .accessibilityIdentifier("sidebar.multiSelectButton")
+                .accessibilityValue(isMultiSelecting ? "Açık" : "Kapalı")
+            }
+            .frame(height: 38)
+            .padding(.horizontal, 14)
 
             ScrollView {
                 LazyVStack(spacing: 2) {
                     ForEach(projectStore.projects) { project in
                         ProjectSection(
                             project: project,
-                            selection: $selection
+                            selection: $selection,
+                            selectedSessionIDs: $selectedSessionIDs,
+                            isMultiSelecting: isMultiSelecting
                         )
                     }
                     if projectStore.projects.isEmpty {
@@ -38,7 +71,10 @@ struct SidebarView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("sidebar.container")
 
-            // Bottom rail: settings gear + add project
+            if !selectedSessionIDs.isEmpty {
+                batchActions
+            }
+
             HStack(spacing: 10) {
                 RailButton(iconName: "settings") {
                     openWindow(id: "settings")
@@ -54,6 +90,93 @@ struct SidebarView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
+        .alert("Yeni Grup", isPresented: $showCreateGroup) {
+            TextField("Grup adı", text: $groupName)
+            Button("Oluştur") { createGroup() }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("\(selectedSessionIDs.count) oturum bu gruba taşınacak.")
+        }
+        .confirmationDialog(
+            "\(selectedSessionIDs.count) oturum silinsin mi?",
+            isPresented: $showBulkDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Oturumları Sil", role: .destructive) { deleteSelectedSessions() }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Çalışan süreçler kapatılır; kayıtlar geri alınamaz.")
+        }
+    }
+
+    private var selectedProjectIDs: Set<UUID> {
+        Set(projectStore.sessions.filter {
+            selectedSessionIDs.contains($0.id)
+        }.map(\.projectID))
+    }
+
+    private var batchActions: some View {
+        HStack(spacing: 8) {
+            Text("\(selectedSessionIDs.count) seçili")
+                .font(Theme.mono(10.5, .semibold))
+                .foregroundStyle(Theme.text)
+            Spacer()
+            Button {
+                groupName = ""
+                showCreateGroup = true
+            } label: {
+                TablerIcon(name: "folder-plus", size: 13, color: Theme.text)
+            }
+            .buttonStyle(.plain)
+            .disabled(selectedProjectIDs.count != 1)
+            .help("Seçilenleri grupla")
+            .accessibilityIdentifier("sidebar.selection.createGroup")
+            Button {
+                showBulkDelete = true
+            } label: {
+                TablerIcon(name: "trash", size: 13, color: Theme.danger)
+            }
+            .buttonStyle(.plain)
+            .help("Seçilenleri sil")
+            .accessibilityIdentifier("sidebar.selection.delete")
+            Button {
+                selectedSessionIDs.removeAll()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Theme.textDim)
+            }
+            .buttonStyle(.plain)
+            .help("Seçimi temizle")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Theme.panelActive)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Theme.border).frame(height: 1)
+        }
+    }
+
+    private func createGroup() {
+        guard let projectID = selectedProjectIDs.first,
+              selectedProjectIDs.count == 1,
+              let group = projectStore.createGroup(projectID: projectID, name: groupName)
+        else { return }
+        projectStore.assignSessions(selectedSessionIDs, to: group.id)
+        selection = .group(group.id)
+        selectedSessionIDs.removeAll()
+    }
+
+    private func deleteSelectedSessions() {
+        let projectID = selectedProjectIDs.first
+        for id in selectedSessionIDs {
+            TerminalRegistry.shared.closeTerminal(for: id)
+        }
+        projectStore.removeSessions(selectedSessionIDs)
+        if case .session(let id) = selection, selectedSessionIDs.contains(id) {
+            selection = projectID.map(MainSelection.project)
+        }
+        selectedSessionIDs.removeAll()
     }
 }
 
@@ -78,6 +201,8 @@ private struct RailButton: View {
 private struct ProjectSection: View {
     let project: Project
     @Binding var selection: MainSelection?
+    @Binding var selectedSessionIDs: Set<UUID>
+    let isMultiSelecting: Bool
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
@@ -95,6 +220,14 @@ private struct ProjectSection: View {
 
     private var records: [SessionRecord] {
         projectStore.sessions(for: project.id)
+    }
+
+    private var groups: [SessionGroup] {
+        projectStore.groups(for: project.id)
+    }
+
+    private var ungroupedRecords: [SessionRecord] {
+        records.filter { $0.groupID == nil }
     }
 
     var body: some View {
@@ -139,6 +272,11 @@ private struct ProjectSection: View {
             .onHover { value in
                 withAnimation(uncoilAnimation(.easeOut(duration: 0.12))) { hovering = value }
             }
+            .onDrop(of: [.text], isTargeted: nil) { providers in
+                loadSessionIDs(from: providers) { ids in
+                    projectStore.assignSessions(ids, to: nil)
+                }
+            }
             .contextMenu {
                 Button("Özelleştir…") { showCustomize = true }
                 Button(sessionsCollapsed ? "Oturumları Göster" : "Oturumları Gizle") {
@@ -156,14 +294,29 @@ private struct ProjectSection: View {
                 ProjectCustomizeSheet(project: project)
             }
 
-            // Session rows
             if !sessionsCollapsed {
-                ForEach(records) { record in
+                ForEach(groups) { group in
+                    SessionGroupRow(
+                        group: group,
+                        selection: $selection,
+                        selectedSessionIDs: $selectedSessionIDs,
+                        isMultiSelecting: isMultiSelecting
+                    )
+                }
+                ForEach(ungroupedRecords) { record in
                     SessionRow(
                         record: record,
                         isSelected: selection == .session(record.id)
+                            || selectedSessionIDs.contains(record.id),
+                        isMultiSelected: selectedSessionIDs.contains(record.id),
+                        showsSelectionControl: isMultiSelecting,
+                        dragIDs: selectedSessionIDs.contains(record.id)
+                            ? selectedSessionIDs
+                            : [record.id]
                     ) {
-                        selection = .session(record.id)
+                        select(record)
+                    } onToggleSelection: {
+                        toggleSelection(record.id)
                     }
                 }
             }
@@ -175,6 +328,39 @@ private struct ProjectSection: View {
         withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
             collapsedStore.set(project.id, collapsed: !sessionsCollapsed)
         }
+    }
+
+    private func select(_ record: SessionRecord) {
+        if isMultiSelecting {
+            toggleSelection(record.id)
+            return
+        }
+        selectedSessionIDs.removeAll()
+        selection = .session(record.id)
+    }
+
+    private func toggleSelection(_ id: UUID) {
+        if selectedSessionIDs.contains(id) {
+            selectedSessionIDs.remove(id)
+        } else {
+            selectedSessionIDs.insert(id)
+        }
+    }
+
+    private func loadSessionIDs(
+        from providers: [NSItemProvider],
+        completion: @escaping @MainActor (Set<UUID>) -> Void
+    ) -> Bool {
+        guard let provider = providers.first else { return false }
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let payload = object as? String else { return }
+            let ids = Set(payload.split(separator: ",").compactMap {
+                UUID(uuidString: String($0))
+            })
+            guard !ids.isEmpty else { return }
+            Task { @MainActor in completion(ids) }
+        }
+        return true
     }
 }
 
@@ -271,12 +457,146 @@ private struct LauncherButton: View {
     }
 }
 
-// MARK: - Session row
+private struct SessionGroupRow: View {
+    let group: SessionGroup
+    @Binding var selection: MainSelection?
+    @Binding var selectedSessionIDs: Set<UUID>
+    let isMultiSelecting: Bool
+    @EnvironmentObject private var projectStore: ProjectStore
+    @State private var isExpanded = true
+    @State private var isTargeted = false
+    @State private var showRename = false
+    @State private var renameValue = ""
+
+    private var records: [SessionRecord] {
+        projectStore.sessions(in: group.id)
+    }
+
+    var body: some View {
+        VStack(spacing: 1) {
+            HStack(spacing: 7) {
+                Button {
+                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+                TablerIcon(
+                    name: "folder",
+                    size: 12,
+                    color: isTargeted ? Theme.codex : Theme.textDim
+                )
+                Text(group.name)
+                    .font(Theme.mono(11.5, .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .lineLimit(1)
+                Spacer()
+                Text("\(records.count)")
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            .background(
+                selection == .group(group.id) || isTargeted
+                    ? Theme.panelActive
+                    : Theme.panel.opacity(0.45),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .onTapGesture {
+                selectedSessionIDs.removeAll()
+                selection = .group(group.id)
+            }
+            .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
+                guard let provider = providers.first else { return false }
+                provider.loadObject(ofClass: NSString.self) { object, _ in
+                    guard let payload = object as? String else { return }
+                    let ids = Set(payload.split(separator: ",").compactMap {
+                        UUID(uuidString: String($0))
+                    })
+                    Task { @MainActor in
+                        projectStore.assignSessions(ids, to: group.id)
+                        selectedSessionIDs.removeAll()
+                        selection = .group(group.id)
+                    }
+                }
+                return true
+            }
+            .contextMenu {
+                Button("Yeniden Adlandır") {
+                    renameValue = group.name
+                    showRename = true
+                }
+                Button("Grubu Sil", role: .destructive) {
+                    projectStore.removeGroup(group.id)
+                    selection = .project(group.projectID)
+                }
+            }
+            .alert("Grubu Yeniden Adlandır", isPresented: $showRename) {
+                TextField("Grup adı", text: $renameValue)
+                Button("Kaydet") {
+                    let value = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !value.isEmpty else { return }
+                    projectStore.updateGroup(group.id) { $0.name = value }
+                }
+                Button("Vazgeç", role: .cancel) {}
+            }
+            .accessibilityIdentifier("sidebar.group.\(group.name)")
+
+            if isExpanded {
+                ForEach(records) { record in
+                    SessionRow(
+                        record: record,
+                        isSelected: selection == .session(record.id)
+                            || selectedSessionIDs.contains(record.id),
+                        isMultiSelected: selectedSessionIDs.contains(record.id),
+                        showsSelectionControl: isMultiSelecting,
+                        dragIDs: selectedSessionIDs.contains(record.id)
+                            ? selectedSessionIDs
+                            : [record.id]
+                    ) {
+                        select(record)
+                    } onToggleSelection: {
+                        if selectedSessionIDs.contains(record.id) {
+                            selectedSessionIDs.remove(record.id)
+                        } else {
+                            selectedSessionIDs.insert(record.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func select(_ record: SessionRecord) {
+        if isMultiSelecting {
+            if selectedSessionIDs.contains(record.id) {
+                selectedSessionIDs.remove(record.id)
+            } else {
+                selectedSessionIDs.insert(record.id)
+            }
+            return
+        }
+        selectedSessionIDs.removeAll()
+        selection = .session(record.id)
+    }
+}
 
 private struct SessionRow: View {
     let record: SessionRecord
     let isSelected: Bool
+    let isMultiSelected: Bool
+    let showsSelectionControl: Bool
+    let dragIDs: Set<UUID>
     let onSelect: () -> Void
+    let onToggleSelection: () -> Void
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
     @Environment(\.openWindow) private var openWindow
@@ -288,8 +608,32 @@ private struct SessionRow: View {
     }
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 8) {
+        HStack(spacing: 6) {
+            if showsSelectionControl {
+                Button(action: onToggleSelection) {
+                    Image(systemName: isMultiSelected ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 12))
+                        .foregroundStyle(isMultiSelected ? Theme.codex : Theme.textFaint)
+                        .frame(width: 14, height: 14)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sidebar.select.\(record.title)")
+            }
+
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(hovering ? Theme.textDim : Theme.textFaint)
+                .frame(width: 12, height: 22)
+                .contentShape(Rectangle())
+                .onDrag {
+                    let payload = dragIDs.map(\.uuidString).sorted().joined(separator: ",")
+                    return NSItemProvider(object: payload as NSString)
+                }
+                .accessibilityIdentifier("sidebar.drag.\(record.title)")
+                .help("Gruba sürükle")
+
+            Button(action: onSelect) {
+                HStack(spacing: 8) {
                 ProviderMark(provider: record.provider, size: 11)
                     .opacity(status == .terminated ? 0.45 : 1)
                 Text(record.displayTitle)
@@ -305,29 +649,27 @@ private struct SessionRow: View {
                     .font(Theme.mono(10))
                     .foregroundStyle(Theme.textFaint)
                     .frame(width: 34, alignment: .trailing)
+                }
             }
-            .padding(.leading, 22)
-            .padding(.trailing, 10)
-            .padding(.vertical, 6)
-            .background(
-                isSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
-                in: RoundedRectangle(cornerRadius: 7)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(isSelected ? Theme.border : .clear, lineWidth: 1)
-            )
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("sidebar.session.\(record.title)")
         }
-        .buttonStyle(.plain)
+        .padding(.leading, 8)
+        .padding(.trailing, 10)
+        .padding(.vertical, 4)
+        .background(
+            isSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
+            in: RoundedRectangle(cornerRadius: 7)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .strokeBorder(isSelected ? Theme.border : .clear, lineWidth: 1)
+        )
         .onHover { hovering = $0 }
-        .onDrag {
-            NSItemProvider(object: record.id.uuidString as NSString)
-        }
         .onDrop(of: [.text], delegate: SessionDropDelegate(
             targetID: record.id,
             projectStore: projectStore
         ))
-        .accessibilityIdentifier("sidebar.session.\(record.title)")
         .contextMenu {
             Button(record.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle") {
                 projectStore.togglePin(record.id)

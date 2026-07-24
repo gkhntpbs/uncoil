@@ -5,15 +5,18 @@ import Foundation
 final class ProjectStore: ObservableObject {
     @Published private(set) var projects: [Project] = []
     @Published private(set) var sessions: [SessionRecord] = []
+    @Published private(set) var sessionGroups: [SessionGroup] = []
 
     private let projectsURL: URL
     private let sessionsURL: URL
+    private let sessionGroupsURL: URL
 
     init(directory: URL? = nil) {
         let base = directory ?? Self.defaultDirectory()
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         projectsURL = base.appendingPathComponent("projects.json")
         sessionsURL = base.appendingPathComponent("sessions.json")
+        sessionGroupsURL = base.appendingPathComponent("session-groups.json")
         load()
     }
 
@@ -52,6 +55,56 @@ final class ProjectStore: ObservableObject {
     func removeProject(_ project: Project) {
         projects.removeAll { $0.id == project.id }
         sessions.removeAll { $0.projectID == project.id }
+        sessionGroups.removeAll { $0.projectID == project.id }
+        save()
+    }
+
+    func groups(for projectID: UUID) -> [SessionGroup] {
+        sessionGroups
+            .filter { $0.projectID == projectID }
+            .sorted {
+                switch ($0.sortIndex, $1.sortIndex) {
+                case let (left?, right?): return left < right
+                case (.some, nil): return true
+                case (nil, .some): return false
+                case (nil, nil): return $0.createdAt < $1.createdAt
+                }
+            }
+    }
+
+    @discardableResult
+    func createGroup(projectID: UUID, name: String) -> SessionGroup? {
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty,
+              projects.contains(where: { $0.id == projectID }) else { return nil }
+        let group = SessionGroup(projectID: projectID, name: normalized)
+        sessionGroups.append(group)
+        save()
+        return group
+    }
+
+    func updateGroup(_ id: UUID, mutate: (inout SessionGroup) -> Void) {
+        guard let index = sessionGroups.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&sessionGroups[index])
+        save()
+    }
+
+    func removeGroup(_ id: UUID) {
+        sessionGroups.removeAll { $0.id == id }
+        for index in sessions.indices where sessions[index].groupID == id {
+            sessions[index].groupID = nil
+        }
+        save()
+    }
+
+    func assignSessions(_ ids: Set<UUID>, to groupID: UUID?) {
+        let projectID = groupID.flatMap { id in
+            sessionGroups.first(where: { $0.id == id })?.projectID
+        }
+        for index in sessions.indices where ids.contains(sessions[index].id) {
+            if let projectID, sessions[index].projectID != projectID { continue }
+            sessions[index].groupID = groupID
+        }
         save()
     }
 
@@ -71,6 +124,11 @@ final class ProjectStore: ObservableObject {
                 case (nil, nil): return $0.lastActivityAt > $1.lastActivityAt
                 }
             }
+    }
+
+    func sessions(in groupID: UUID) -> [SessionRecord] {
+        guard let group = sessionGroups.first(where: { $0.id == groupID }) else { return [] }
+        return sessions(for: group.projectID).filter { $0.groupID == groupID }
     }
 
     /// Drag-reorder: places `draggedID` before `targetID` in its project.
@@ -131,6 +189,11 @@ final class ProjectStore: ObservableObject {
         save()
     }
 
+    func removeSessions(_ ids: Set<UUID>) {
+        sessions.removeAll { ids.contains($0.id) }
+        save()
+    }
+
     // MARK: - Persistence
 
     private func load() {
@@ -142,6 +205,10 @@ final class ProjectStore: ObservableObject {
            let decoded = try? JSONDecoder().decode([SessionRecord].self, from: data) {
             sessions = decoded
         }
+        if let data = try? Data(contentsOf: sessionGroupsURL),
+           let decoded = try? JSONDecoder().decode([SessionGroup].self, from: data) {
+            sessionGroups = decoded
+        }
     }
 
     private func save() {
@@ -150,6 +217,9 @@ final class ProjectStore: ObservableObject {
         }
         if let data = try? JSONEncoder().encode(sessions) {
             try? data.write(to: sessionsURL, options: .atomic)
+        }
+        if let data = try? JSONEncoder().encode(sessionGroups) {
+            try? data.write(to: sessionGroupsURL, options: .atomic)
         }
     }
 }

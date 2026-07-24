@@ -58,6 +58,55 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(record.workingDirectory(in: project), "/tmp/demo/.uncoil-worktrees/fix-login")
     }
 
+    func testSessionGroupsPersistAndAssignMultipleSessions() {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
+        let project = store.projects[0]
+        let first = store.createSession(
+            projectID: project.id,
+            provider: .claude,
+            accountID: nil,
+            title: "first"
+        )
+        let second = store.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "second"
+        )
+        let group = store.createGroup(projectID: project.id, name: "Implementation")
+        XCTAssertNotNil(group)
+        store.assignSessions([first.id, second.id], to: group?.id)
+
+        let reloaded = ProjectStore(directory: tempDir)
+        XCTAssertEqual(reloaded.groups(for: project.id).map(\.name), ["Implementation"])
+        XCTAssertEqual(Set(reloaded.sessions(in: group!.id).map(\.id)), [first.id, second.id])
+
+        reloaded.removeGroup(group!.id)
+        XCTAssertTrue(reloaded.sessionGroups.isEmpty)
+        XCTAssertTrue(reloaded.sessions.allSatisfy { $0.groupID == nil })
+    }
+
+    func testBulkSessionRemoval() {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
+        let project = store.projects[0]
+        let first = store.createSession(
+            projectID: project.id,
+            provider: .claude,
+            accountID: nil,
+            title: "first"
+        )
+        let second = store.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "second"
+        )
+        store.removeSessions([first.id, second.id])
+        XCTAssertTrue(store.sessions.isEmpty)
+    }
+
     func testWorktreePorcelainParsing() {
         let porcelain = """
         worktree /repo
