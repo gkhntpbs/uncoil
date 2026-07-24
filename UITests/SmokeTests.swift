@@ -10,9 +10,8 @@ final class SmokeTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = [
-            "-ui-testing", "-control-plane", "-reset-state",
+            "-ui-testing", "-reset-state",
             "-fixture", "demo",
-            "-route", "project",
             "-window-width", "1100", "-window-height", "720",
             "-disable-animations",
         ]
