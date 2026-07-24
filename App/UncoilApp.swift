@@ -47,6 +47,9 @@ struct UncoilApp: App {
                 .environmentObject(settings)
                 .environmentObject(theme)
                 .preferredColorScheme(theme.palette.isLight ? .light : .dark)
+                .onAppear {
+                    applyBundledApplicationIcon()
+                }
                 .frame(minWidth: 940, minHeight: 600)
         }
         .windowStyle(.hiddenTitleBar)
@@ -82,6 +85,14 @@ struct UncoilApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+    }
+
+    private func applyBundledApplicationIcon() {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else {
+            return
+        }
+        NSApplication.shared.applicationIconImage = image
     }
 
 }
