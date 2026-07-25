@@ -252,9 +252,11 @@ final class ProjectStore: ObservableObject {
 
     private func load() {
         var needsSessionSave = false
+        // Versioned document, falling back to the bare array an older build
+        // wrote so an existing installation keeps its projects.
         if let data = try? Data(contentsOf: projectsURL),
-           let decoded = try? JSONDecoder().decode([Project].self, from: data) {
-            projects = decoded
+           let decoded = VersionedDocument<[Project]>.decode(data, schema: .projects) {
+            projects = decoded.payload
         }
         if let data = try? Data(contentsOf: sessionsURL) {
             if let document = try? JSONDecoder().decode(SessionDocument.self, from: data) {
@@ -271,8 +273,8 @@ final class ProjectStore: ObservableObject {
             }
         }
         if let data = try? Data(contentsOf: sessionGroupsURL),
-           let decoded = try? JSONDecoder().decode([SessionGroup].self, from: data) {
-            sessionGroups = decoded
+           let decoded = VersionedDocument<[SessionGroup]>.decode(data, schema: .sessionGroups) {
+            sessionGroups = decoded.payload
         }
         if needsSessionSave {
             saveSessions()
@@ -280,11 +282,15 @@ final class ProjectStore: ObservableObject {
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(projects) {
+        if let data = try? JSONEncoder().encode(VersionedDocument(
+            schemaVersion: UncoilSchema.projects.currentVersion, payload: projects
+        )) {
             try? data.write(to: projectsURL, options: .atomic)
         }
         saveSessions()
-        if let data = try? JSONEncoder().encode(sessionGroups) {
+        if let data = try? JSONEncoder().encode(VersionedDocument(
+            schemaVersion: UncoilSchema.sessionGroups.currentVersion, payload: sessionGroups
+        )) {
             try? data.write(to: sessionGroupsURL, options: .atomic)
         }
     }
