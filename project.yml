@@ -106,9 +106,16 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Gökhan Topbaş"
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
-        ENABLE_HARDENED_RUNTIME: false
         ENABLE_USER_SCRIPT_SANDBOXING: false
         SWIFT_STRICT_CONCURRENCY: minimal
+      # Debug keeps the hardened runtime off so a locally built app can attach a
+      # debugger and spawn helpers without an entitlement round-trip; Release
+      # needs it on, because notarization refuses a build without it.
+      configs:
+        Debug:
+          ENABLE_HARDENED_RUNTIME: false
+        Release:
+          ENABLE_HARDENED_RUNTIME: true
 
   UncoilTests:
     type: bundle.unit-test

@@ -6,6 +6,29 @@ All notable changes to Uncoil are recorded here.
 
 ### Added
 
+- Added the Project Tasks system end to end: lossless `TODO.md` discovery and parsing, byte-range patching, document, list, Kanban and session views, task↔session metadata with fingerprint relinking, claims, orchestration, worktree/review/test/merge flows, the `uncoil_tasks` MCP surface, and per-file git state with conflict-aware read-only editing.
+- Added task test runs, review verdicts and merge attempts as persisted results, with completion refused on a failing test or a review that asked for changes, and a merge screen that shows the diff, runs, verdict and every remaining blocker before the user approves.
+- Added task events to the Attention Center and menu bar, with shortcuts to a project's board, its task sessions and stopping its orchestrator.
+- Added Gemini CLI, Cursor and Amp config management through one shared JSON adapter, and surfaced the config transaction plan and one-click rollback in the Agents screen.
+- Added per-source-class capabilities for extensions, bundled-extension manifest verification, adoption of externally installed extensions with a diff and backup, and remote MCP health, capability diff and server-reported version.
+- Added extension discovery sources, an install preview (owner, licence, commit, scripts, permissions, agents, findings, exact commit, diff) and install guards that refuse a moving reference, a blocked finding, unapproved executables or an invalid structure.
+- Added the Bumblebee integration layer: binary resolution order, version and self-test handling with untrusted results on failure, NDJSON scan parsing with `scan_summary` validation, a single-scan lock and per-kind timeouts, both lock files, and a threat catalog versioned apart from the binary with validation, diff and rollback.
+- Added Uncoil's own security findings for changed shell commands and unsigned binaries, and made quarantine disable an extension everywhere while deleting nothing.
+- Added backup and restore with schema validation, opt-in transcripts, secrets never exported, missing-extension reporting from exact commits, and an all-or-nothing restore.
+- Added a release pipeline script with hardened runtime, signature verification and optional notarization/stapling, plus an uninstall plan that removes what Uncoil created and keeps what the user wrote.
+- Added a schema registry so every persisted shape declares its version, with older bare-array documents still read and documents from a newer version refused rather than half-read.
+
+### Fixed
+
+- Fixed `GitService` trimming its command output, which ate the leading space of a ` M path` porcelain code and returned the first changed file's path one character short.
+- Fixed moving a task into a file whose last line had no newline gluing the moved block onto that line, and the same case in `create_subtask` over MCP.
+- Fixed relative paths being computed by string prefix, which collapsed every nested file to its bare name because macOS reports `/private/var` where the URL says `/var`.
+- Fixed the backup secret heuristic matching any field whose name contained "key", which silently dropped the permission decisions.
+- Fixed the extension registry file being collected three times in a backup because three contents name it.
+- Fixed stale Claude Code hook entries pointing at a deleted DerivedData bundle by repairing Uncoil's own entries at launch.
+
+### Added
+
 - Added a one-click acceptance workspace with Swift and JavaScript samples, deterministic process fixtures, and permission-classified fake MCP tools.
 - Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
 - Added command-palette Debug Bundle export with scoped app/runtime logs, agent versions, sanitized configs, MCP diagnostics, permission decisions, crash reports, acceptance results, and system information.
