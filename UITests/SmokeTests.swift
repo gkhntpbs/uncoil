@@ -79,6 +79,25 @@ final class SmokeTests: XCTestCase {
         )
     }
 
+    func testAttentionCenterListsAndResolvesRows() {
+        app.terminate()
+        app.launchArguments.append("-attention-fixture")
+        app.launch()
+
+        let bell = app.descendants(matching: .any)["sidebar.attentionButton"]
+        XCTAssertTrue(bell.waitForExistence(timeout: 10))
+        bell.click()
+
+        let panel = app.descendants(matching: .any)["attention.panel"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
+
+        let failure = app.descendants(matching: .any)["attention.item.test:fixture"]
+        XCTAssertTrue(failure.waitForExistence(timeout: 5))
+
+        app.descendants(matching: .any)["attention.resolve.test:fixture"].click()
+        XCTAssertTrue(failure.waitForNonExistence(timeout: 5))
+    }
+
     func testClosedSessionHistoryCanBeResumed() {
         let history = app.descendants(matching: .any)["dashboard.sessionHistory"]
         XCTAssertTrue(history.waitForExistence(timeout: 10))

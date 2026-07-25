@@ -23,6 +23,7 @@ struct LaunchConfig {
     let runtimeMismatchFixture: Bool
     let codexAppServerEnabled: Bool
     let codexApprovalFixture: Bool
+    let attentionFixture: Bool
 
     /// Isolated data root when UI testing; nil = normal App Support.
     var dataDirectoryOverride: URL? {
@@ -41,6 +42,8 @@ struct LaunchConfig {
             || arguments.contains("-codex-app-server")
         codexApprovalFixture = isUITesting
             && arguments.contains("-codex-approval-fixture")
+        attentionFixture = isUITesting
+            && arguments.contains("-attention-fixture")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
@@ -88,6 +91,31 @@ struct LaunchConfig {
             $0.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
         }
         projectStore.markSessionEnded(history.id, exitCode: 0)
+    }
+
+    /// Seeds one row per Attention Center source so the panel can be driven
+    /// deterministically, without a real permission prompt or failing test.
+    @MainActor
+    func seedAttentionFixture(projectStore: ProjectStore, sessionStore: SessionStore) {
+        guard attentionFixture,
+              let project = projectStore.projects.first,
+              let session = projectStore.sessions(for: project.id).first(where: {
+                  $0.provider == .claude
+              }) else { return }
+        sessionStore.setStatus(
+            .waitingForPermission, detail: "Bash(rm -rf build)", for: session.id
+        )
+        AttentionStore.shared.report(
+            kind: .testFailure,
+            title: "\(project.name) › \(session.displayTitle)",
+            detail: "3 test başarısız",
+            projectID: project.id,
+            sessionID: session.id,
+            id: "test:fixture"
+        )
+        AttentionRefresher.shared.refresh(
+            projectStore: projectStore, sessionStore: sessionStore
+        )
     }
 }
 

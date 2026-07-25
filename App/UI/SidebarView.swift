@@ -84,6 +84,14 @@ struct SidebarView: View {
                     showFolderPicker = true
                 }
                 .accessibilityIdentifier("sidebar.addProjectButton")
+                AttentionRailButton { item in
+                    if let sessionID = item.sessionID {
+                        selectedSessionIDs.removeAll()
+                        selection = .session(sessionID)
+                    } else if let projectID = item.projectID {
+                        selection = .project(projectID)
+                    }
+                }
                 Spacer()
                 CollapseAllButton()
             }

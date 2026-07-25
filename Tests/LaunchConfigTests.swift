@@ -32,4 +32,14 @@ final class LaunchConfigTests: XCTestCase {
         XCTAssertTrue(uiOptIn.codexAppServerEnabled)
         XCTAssertTrue(uiOptIn.codexApprovalFixture)
     }
+
+    func testAttentionFixtureRequiresUITesting() {
+        XCTAssertFalse(
+            LaunchConfig(arguments: ["Uncoil", "-attention-fixture"]).attentionFixture
+        )
+        XCTAssertTrue(
+            LaunchConfig(arguments: ["Uncoil", "-ui-testing", "-attention-fixture"])
+                .attentionFixture
+        )
+    }
 }

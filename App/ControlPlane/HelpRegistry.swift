@@ -164,7 +164,7 @@ enum HelpRegistry {
                 ActionDoc(action: "read_text", summary: "Read a text artifact (≤256 KB).",
                     doc: "# read_text\nArgs: `session_id` (optional), `name` (required). Reads UTF-8 text up to 256 KB. Requires `artifacts.read`; the path must resolve inside an approved session root (symlink escape rejected)."),
                 ActionDoc(action: "register", summary: "Record artifact metadata.",
-                    doc: "# register\nRequires `artifacts.write`. Args: `name` (required), `kind` (optional), `description` (optional). Appends to `artifacts.json` in the caller's session artifact dir."),
+                    doc: "# register\nRequires `artifacts.write`. Args: `name` (required), `kind` (optional), `description` (optional), `status` (optional — `passed`/`failed`). Appends to `artifacts.json` in the caller's session artifact dir. A failed status also raises a row in Uncoil's Attention Center, so report test runs here."),
                 ActionDoc(action: "resolve_path", summary: "Resolve a name to an approved absolute path.",
                     doc: "# resolve_path\nArgs: `session_id` (optional), `name` (required). Returns the absolute path only if it resolves inside an approved artifact root."),
             ])

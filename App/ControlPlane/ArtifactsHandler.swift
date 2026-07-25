@@ -86,14 +86,28 @@ extension CapabilityRouter {
                let existing = try? JSONDecoder().decode([JSONValue].self, from: data) {
                 entries = existing
             }
+            let status = request.args["status"]?.stringValue
+            let summary = request.args["description"]?.stringValue
             entries.append(.object([
                 "name": .string(name),
                 "kind": .string(optional: request.args["kind"]?.stringValue),
-                "description": .string(optional: request.args["description"]?.stringValue),
+                "description": .string(optional: summary),
+                "status": .string(optional: status),
                 "registered_at": .string(ISO8601DateFormatter().string(from: Date())),
             ]))
             if let data = try? JSONEncoder().encode(entries) {
                 AtomicFile.write(data, to: metaURL)
+            }
+            if Self.isFailedStatus(status) {
+                let project = projectStore.projects.first { $0.id == caller.projectID }
+                AttentionStore.shared.report(
+                    kind: .testFailure,
+                    title: [project?.name, caller.displayTitle].compactMap { $0 }.joined(separator: " › "),
+                    detail: summary ?? name,
+                    projectID: caller.projectID,
+                    sessionID: caller.id,
+                    id: "test:\(caller.id.uuidString):\(name)"
+                )
             }
             return .success(request, data: .object(["registered": .string(name), "count": .int(entries.count)]),
                             target_session_id: caller.id.uuidString)
@@ -124,6 +138,15 @@ extension CapabilityRouter {
         if let data = try? JSONEncoder().encode(entries) {
             AtomicFile.write(data, to: metaURL)
         }
+    }
+
+    /// A registered artifact whose `status` says the run failed raises an
+    /// Attention Center row. Pure so the vocabulary is pinned by a test.
+    nonisolated static func isFailedStatus(_ status: String?) -> Bool {
+        guard let status = status?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(), !status.isEmpty else { return false }
+        return ["failed", "fail", "failing", "error", "red"].contains(status)
     }
 
     // MARK: - Helpers

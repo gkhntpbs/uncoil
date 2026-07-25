@@ -85,12 +85,32 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
             runtimeCompatibilityError = $0.object as? String
         }
+        .onChange(of: sessionStore.statuses) { _, _ in refreshAttention() }
+        .onChange(of: sessionStore.codexAuthentication) { _, _ in refreshAttention() }
         .task {
             if LaunchConfig.shared.runtimeMismatchFixture {
                 runtimeCompatibilityError =
                     "Runtime protokolü uyumsuz: uygulama 1.1, daemon 2.0."
             }
         }
+        .task {
+            // Merge conflicts and the runtime phase are not observable, so the
+            // Attention Center re-derives them on a slow poll.
+            while !Task.isCancelled {
+                await AttentionRefresher.shared.scanConflicts(
+                    projectStore: projectStore,
+                    sessionStore: sessionStore
+                )
+                try? await Task.sleep(nanoseconds: 20_000_000_000)
+            }
+        }
+    }
+
+    private func refreshAttention() {
+        AttentionRefresher.shared.refresh(
+            projectStore: projectStore,
+            sessionStore: sessionStore
+        )
     }
 
     private var mainContent: some View {
@@ -161,6 +181,9 @@ struct MainWindow: View {
             // update triggers "Publishing changes from within view updates".
             DispatchQueue.main.async {
                 LaunchConfig.shared.seedFixture(projectStore: projectStore)
+                LaunchConfig.shared.seedAttentionFixture(
+                    projectStore: projectStore, sessionStore: sessionStore
+                )
                 startServices()
                 applyLaunchRoute()
                 applyWindowFrame()

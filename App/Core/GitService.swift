@@ -60,6 +60,19 @@ enum GitService {
         return snapshot
     }
 
+    /// Paths with an unresolved merge conflict (`git diff --diff-filter=U`),
+    /// which is what the Attention Center reports. Blocking; call from a
+    /// background task.
+    static func conflictedFiles(repoPath: String) -> [String] {
+        guard let output = run([
+            "-C", repoPath, "diff", "--name-only", "--diff-filter=U",
+        ]) else { return [] }
+        return output
+            .split(separator: "\n")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+    }
+
     /// Blocking; call from a background task.
     static func remoteURL(repoPath: String) -> String? {
         run(["-C", repoPath, "remote", "get-url", "origin"])
