@@ -100,6 +100,17 @@ struct MainWindow: View {
             }
         }
         .task {
+            // At launch, and once a day while the app runs: a Bumblebee scan when
+            // the last one is old enough to be worth redoing. With no binary
+            // installed this returns "not installed" and changes nothing.
+            let scans = BumblebeeScanCoordinator(registry: ExtensionRegistry())
+            _ = await scans.scanAtLaunchIfStale()
+            while !Task.isCancelled {
+                _ = await scans.scanDailyBaselineIfDue()
+                try? await Task.sleep(nanoseconds: 3_600_000_000_000)
+            }
+        }
+        .task {
             // Merge conflicts and the runtime phase are not observable, so the
             // Attention Center re-derives them on a slow poll.
             while !Task.isCancelled {

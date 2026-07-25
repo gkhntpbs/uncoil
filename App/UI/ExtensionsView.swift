@@ -1113,6 +1113,13 @@ private struct PackageCard: View {
 
     private func adopt(_ plan: ExtensionAdoptionService.Plan) {
         adoption = nil
+        // A quick scan before anything is copied in. With no Bumblebee installed
+        // this says so and the step continues on Uncoil's own findings.
+        Task {
+            let outcome = await BumblebeeScanCoordinator(registry: registry)
+                .scanBeforeInstall(path: plan.externalPath)
+            if outcome.didRun { message = outcome.message }
+        }
         let service = ExtensionAdoptionService(layout: registry.layout)
         do {
             let adopted = try service.adopt(plan)
@@ -1318,12 +1325,18 @@ private struct PackageCard: View {
         )
         do {
             let staged = try engine.stage(candidate, package: package)
+            let coordinator = BumblebeeScanCoordinator(registry: registry)
+            let stagedPath = staged.path
+            Task { _ = await coordinator.scanBeforeUpdate(stagedPath: stagedPath) }
             let updated = try engine.activate(staged, package: package, skillName: package.name)
             registry.upsert(updated)
             registry.record(AuditEvent(
                 kind: .updateApplied, extensionID: package.id,
                 detail: "\(candidate.availableCommitSHA.prefix(12)) sürümüne güncellendi"
             ))
+            if let activePath = updated.activeRevision?.path {
+                Task { _ = await coordinator.scanAfterUpdate(activePath: activePath) }
+            }
             registry.discover()
             return "\(package.name) güncellendi."
         } catch {
@@ -1981,9 +1994,74 @@ private struct SourceRow: View {
 private struct SecurityScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @Binding var message: String?
+    @EnvironmentObject private var projectStore: ProjectStore
+    @StateObject private var scans: BumblebeeScanCoordinator
+
+    init(registry: ExtensionRegistry, message: Binding<String?>) {
+        self.registry = registry
+        _message = message
+        _scans = StateObject(wrappedValue: BumblebeeScanCoordinator(registry: registry))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            SectionCard(
+                title: "Tarama",
+                detail: scans.isInstalled
+                    ? "Bumblebee bulundu; taramalar buradan çalıştırılır."
+                    : "Bumblebee kurulu değil. Kurulumu senin onayınla olur; Uncoil kendi taramasını yapmaya devam eder."
+            ) {
+                KeyValueRow(
+                    key: "Son Bumblebee taraması",
+                    value: registry.lastBumblebeeScanAt
+                        .map { RelativeClock.short(since: $0) } ?? "hiç",
+                    tint: registry.lastBumblebeeScanAt == nil ? Theme.textFaint : nil
+                )
+                Divider().overlay(Theme.border)
+                KeyValueRow(
+                    key: "Binary",
+                    value: registry.bumblebeeVersion?.label ?? "bilinmiyor"
+                )
+                Divider().overlay(Theme.border)
+                KeyValueRow(
+                    key: "Self-test",
+                    value: registry.bumblebeeSelfTest.map {
+                        $0.passed ? "geçti" : "başarısız: \($0.detail)"
+                    } ?? "çalıştırılmadı",
+                    tint: registry.bumblebeeSelfTest?.passed == false ? Theme.danger : nil
+                )
+                Divider().overlay(Theme.border)
+                HStack(spacing: 9) {
+                    Button(scans.isScanning ? "Taranıyor…" : "Manuel scan") {
+                        Task { message = await scans.scanManually().message }
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(scans.isScanning)
+                    .accessibilityIdentifier("extensions.security.manualScan")
+
+                    Button("Proje taraması") {
+                        let roots = projectStore.projects.map(\.rootPath)
+                        Task { message = await scans.scanProjects(roots: roots).message }
+                    }
+                    .buttonStyle(GhostButtonStyle())
+                    .disabled(scans.isScanning)
+
+                    Button("Deep scan") {
+                        Task { message = await scans.deepScan().message }
+                    }
+                    .buttonStyle(GhostButtonStyle())
+                    .disabled(scans.isScanning)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+            }
+            .task {
+                // At launch: only when the last scan is old enough to redo.
+                _ = await scans.scanAtLaunchIfStale()
+                _ = await scans.scanDailyBaselineIfDue()
+            }
+
             SectionCard(
                 title: "Kapsam",
                 detail: "Temiz sonuç, extension'ın tümüyle güvenli olduğu anlamına gelmez."
@@ -2001,11 +2079,14 @@ private struct SecurityScreen: View {
                     tint: Theme.textDim
                 )
                 Divider().overlay(Theme.border)
-                KeyValueRow(
-                    key: "Not covered by Bumblebee",
-                    value: "Codex TOML MCP config'i ve gevşek SKILL.md klasörleri.",
-                    tint: Theme.warn
-                )
+                ForEach(BumblebeeCoverage.all) { gap in
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Not covered by Bumblebee",
+                        value: "\(gap.message) \(gap.remedy)",
+                        tint: Theme.warn
+                    )
+                }
             }
 
             ForEach([SecurityFinding.Origin.uncoil, .bumblebee], id: \.rawValue) { origin in

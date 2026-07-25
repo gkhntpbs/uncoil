@@ -5,7 +5,10 @@ import Foundation
 /// the user-private directory). Each request is decoded, routed on the main
 /// actor, and the envelope written back on the same connection.
 /// Safe to mark `@unchecked Sendable`: all mutable socket bookkeeping is
-/// confined to the private serial `queue`; only immutable references escape.
+/// confined to the private serial `queue` — including `start` and `stop`, which
+/// run on the caller's thread and so must hop onto it. Mutating the client
+/// dictionaries from two threads corrupts them, and the corruption only shows up
+/// later, as an unrecognised selector on a garbage object.
 final class ControlPlaneServer: @unchecked Sendable {
     private let socketPath: String
     private let router: CapabilityRouter
@@ -26,6 +29,12 @@ final class ControlPlaneServer: @unchecked Sendable {
     }
 
     func start() throws {
+        // The socket calls are local, but every assignment below is shared with
+        // the accept handler, so the whole thing happens on the queue.
+        try queue.sync { try startLocked() }
+    }
+
+    private func startLocked() throws {
         listenFD = socket(AF_UNIX, SOCK_STREAM, 0)
         guard listenFD >= 0 else { throw POSIXError(.EMFILE) }
 
@@ -87,6 +96,10 @@ final class ControlPlaneServer: @unchecked Sendable {
     }
 
     func stop() {
+        queue.sync { stopLocked() }
+    }
+
+    private func stopLocked() {
         acceptSource?.cancel()
         acceptSource = nil
         for source in clientSources.values { source.cancel() }

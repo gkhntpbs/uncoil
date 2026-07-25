@@ -864,3 +864,192 @@ final class BumblebeeRegistryRecordTests: XCTestCase {
         ))
     }
 }
+
+@MainActor
+final class BumblebeeScanCoordinatorTests: XCTestCase {
+    private var base: URL!
+    private var layout: ExtensionStoreLayout!
+    private var registry: ExtensionRegistry!
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilScans-\(UUID().uuidString)", isDirectory: true)
+        layout = ExtensionStoreLayout(root: base.appendingPathComponent("store", isDirectory: true))
+        try layout.ensure()
+        registry = ExtensionRegistry(
+            layout: layout,
+            store: SkillStore(
+                layout: layout,
+                canonicalRoot: base.appendingPathComponent("canonical", isDirectory: true)
+            )
+        )
+        var package = ExtensionPackage(
+            id: "acme/mcp:srv", kind: .mcpServer, name: "srv",
+            source: .managedGitHub(
+                repository: "acme/mcp", subpath: nil, tracking: .branch("main")
+            ),
+            state: .active
+        )
+        package.activeRevision = InstalledRevision(
+            id: "rev-1", commitSHA: "c1", contentHash: "h",
+            path: layout.revisions.appendingPathComponent("rev-1").path, installedAt: now
+        )
+        registry.upsert(package)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    private func locator(installed: Bool) -> BumblebeeLocator {
+        var locator = BumblebeeLocator(pinnedPath: nil, managedDirectory: base)
+        locator.pathLookup = { installed ? "/tmp/bumblebee" : nil }
+        locator.exists = { _ in installed }
+        return locator
+    }
+
+    private func coordinator(
+        installed: Bool = true,
+        lock: BumblebeeScanLock = BumblebeeScanLock(),
+        record: @escaping (BumblebeeRunner.Invocation) -> Void = { _ in }
+    ) -> BumblebeeScanCoordinator {
+        BumblebeeScanCoordinator(
+            registry: registry,
+            locator: locator(installed: installed),
+            lock: lock,
+            makeRunner: { binary, lock in
+                BumblebeeRunner(
+                    binary: binary,
+                    run: { invocation in
+                        record(invocation)
+                        switch invocation.arguments.first {
+                        case "selftest":
+                            return .init(
+                                stdout: #"{"ok":true}"#, stderr: "", exitCode: 0, timedOut: false
+                            )
+                        case "version":
+                            return .init(
+                                stdout: #"{"version":"1.4.2"}"#, stderr: "",
+                                exitCode: 0, timedOut: false
+                            )
+                        default:
+                            return .init(
+                                stdout: #"{"type":"scan_summary","scanned":1,"findings":0}"#,
+                                stderr: "", exitCode: 0, timedOut: false
+                            )
+                        }
+                    },
+                    lock: lock
+                )
+            }
+        )
+    }
+
+    func testWithNoBinaryEveryTriggerSaysSoAndRunsNothing() async {
+        let coordinator = coordinator(installed: false)
+        XCTAssertFalse(coordinator.isInstalled)
+        for outcome in [
+            await coordinator.scanManually(now: now),
+            await coordinator.scanBeforeInstall(path: base.path, now: now),
+            await coordinator.deepScan(now: now),
+        ] {
+            XCTAssertEqual(outcome, .notInstalled)
+            XCTAssertTrue(outcome.message.contains("onayınla"), outcome.message)
+        }
+    }
+
+    func testALaunchScanOnlyRunsWhenTheLastOneIsStale() async {
+        var kinds: [String] = []
+        let coordinator = coordinator(record: { invocation in
+            if invocation.arguments.first == "scan" { kinds.append("scan") }
+        })
+        // Nothing scanned yet: due.
+        let first = await coordinator.scanAtLaunchIfStale(now: now)
+        XCTAssertTrue(first.didRun, first.message)
+        XCTAssertEqual(kinds.count, 1)
+
+        // The registry now has a recent scan, so a second launch skips.
+        let second = await coordinator.scanAtLaunchIfStale(now: now.addingTimeInterval(60))
+        guard case .skipped = second else {
+            return XCTFail("a recent scan is not redone: \(second)")
+        }
+        XCTAssertEqual(kinds.count, 1)
+    }
+
+    func testTheDailyBaselineWaitsForItsDueTime() async {
+        let coordinator = coordinator()
+        _ = await coordinator.scanManually(now: now)
+        let tooSoon = await coordinator.scanDailyBaselineIfDue(now: now.addingTimeInterval(3_600))
+        guard case .skipped(let reason) = tooSoon else {
+            return XCTFail("expected a skip: \(tooSoon)")
+        }
+        XCTAssertTrue(reason.contains("baseline"))
+
+        let due = await coordinator.scanDailyBaselineIfDue(
+            now: now.addingTimeInterval(25 * 60 * 60)
+        )
+        XCTAssertTrue(due.didRun, due.message)
+    }
+
+    func testEachTriggerPassesTheRightPaths() async {
+        var scanned: [[String]] = []
+        let coordinator = coordinator(record: { invocation in
+            guard invocation.arguments.first == "scan" else { return }
+            scanned.append(invocation.arguments.filter { $0.hasPrefix("/") })
+        })
+        _ = await coordinator.scanBeforeInstall(path: "/dış/kurulum", now: now)
+        _ = await coordinator.scanProjects(roots: ["/repo/a", "/repo/b"], now: now)
+        _ = await coordinator.scanManually(now: now)
+
+        XCTAssertTrue(scanned[0].contains("/dış/kurulum"))
+        XCTAssertTrue(scanned[1].contains("/repo/a") && scanned[1].contains("/repo/b"))
+        XCTAssertTrue(
+            scanned[2].contains { $0.contains("rev-1") },
+            "a store-wide scan covers the revisions Uncoil installed: \(scanned[2])"
+        )
+    }
+
+    func testAProjectScanWithNoProjectsIsSkipped() async {
+        let outcome = await coordinator().scanProjects(roots: [], now: now)
+        guard case .skipped = outcome else { return XCTFail("expected a skip") }
+    }
+
+    func testAScanIsSkippedWhileAnotherIsRunning() async {
+        let lock = BumblebeeScanLock()
+        lock.acquire(.deep)
+        let outcome = await coordinator(lock: lock).scanManually(now: now)
+        guard case .skipped(let reason) = outcome else {
+            return XCTFail("expected a skip: \(outcome)")
+        }
+        XCTAssertTrue(reason.contains("Deep scan"), reason)
+    }
+
+    func testOnlyWhatBumblebeeCoversIsSentToIt() {
+        var remote = ExtensionPackage(
+            id: "remote:srv", kind: .mcpServer, name: "remote",
+            source: .remoteMCP(url: "https://x.test", transport: .http), state: .active
+        )
+        remote.activeRevision = InstalledRevision(
+            id: "rev-remote", commitSHA: nil, contentHash: "h",
+            path: "/tmp/remote", installedAt: now
+        )
+        registry.upsert(remote)
+        let paths = coordinator().managedPaths()
+        XCTAssertFalse(
+            paths.contains("/tmp/remote"),
+            "a remote server has no local files to scan"
+        )
+        XCTAssertTrue(paths.contains { $0.contains("rev-1") })
+    }
+
+    func testAScanResultReachesTheRegistry() async {
+        let coordinator = coordinator()
+        _ = await coordinator.scanManually(now: now)
+        XCTAssertEqual(registry.lastBumblebeeScanAt, now)
+        XCTAssertEqual(registry.bumblebeeVersion?.version, "1.4.2")
+        XCTAssertEqual(registry.bumblebeeSelfTest?.passed, true)
+    }
+}
