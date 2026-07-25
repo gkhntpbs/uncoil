@@ -11,7 +11,10 @@ struct ThemePalette: Codable, Equatable, Hashable {
     var border: UInt32 = 0x2A2A30
     var text: UInt32 = 0xE9E9EC
     var textDim: UInt32 = 0x86868F
-    var textFaint: UInt32 = 0x55555E
+    /// Raised from 0x55555E: against `bg` and `panelActive` the old value sat at
+    /// 2.6:1, under the 3:1 Uncoil holds secondary text to. `ThemeContrastTests`
+    /// enforces it now.
+    var textFaint: UInt32 = 0x707079
     var claude: UInt32 = 0xE2572B
     var codex: UInt32 = 0x4A8FD9
     var terminalBg: UInt32 = 0x0F0F11
@@ -28,7 +31,9 @@ struct ThemePalette: Codable, Equatable, Hashable {
         border: 0xD9D6D0,
         text: 0x1C1C1E,
         textDim: 0x5F5F66,
-        textFaint: 0x9A9AA1,
+        // Darkened from 0x9A9AA1 for the same reason as the dark palette's:
+        // 2.54:1 against the window background was not readable.
+        textFaint: 0x7E7E85,
         claude: 0xD24A20,
         codex: 0x2F6FBE,
         terminalBg: 0xFFFFFF,
@@ -83,5 +88,101 @@ extension Color {
         let g = UInt32((ns.greenComponent * 255).rounded())
         let b = UInt32((ns.blueComponent * 255).rounded())
         return (r << 16) | (g << 8) | b
+    }
+}
+
+/// Contrast arithmetic for a palette.
+///
+/// A light theme's tuning fails in a measurable way — text that is technically
+/// visible and practically unreadable — so the rule is a number rather than an
+/// opinion. Ratios are WCAG 2.1 relative luminance.
+extension ThemePalette {
+    /// Text sizes Uncoil actually uses are small (9–13pt mono), so the normal-text
+    /// threshold applies throughout; there is no "large text" exemption to lean on.
+    static let minimumTextContrast = 4.5
+    /// Dim and faint text is secondary by design, but it still has to be readable.
+    static let minimumSecondaryTextContrast = 3.0
+    /// A border only has to be perceptible against its surroundings.
+    static let minimumBorderContrast = 1.2
+
+    static func relativeLuminance(_ hex: UInt32) -> Double {
+        func channel(_ raw: UInt32) -> Double {
+            let value = Double(raw) / 255
+            return value <= 0.039_28
+                ? value / 12.92
+                : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let red = channel((hex >> 16) & 0xFF)
+        let green = channel((hex >> 8) & 0xFF)
+        let blue = channel(hex & 0xFF)
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    }
+
+    static func contrast(_ first: UInt32, _ second: UInt32) -> Double {
+        let a = relativeLuminance(first)
+        let b = relativeLuminance(second)
+        let lighter = max(a, b)
+        let darker = min(a, b)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    /// One pair that has to hold, with the threshold it is judged against.
+    struct ContrastRequirement: Equatable {
+        var label: String
+        var foreground: UInt32
+        var background: UInt32
+        var minimum: Double
+
+        func ratio() -> Double { ThemePalette.contrast(foreground, background) }
+        func holds() -> Bool { ratio() >= minimum }
+    }
+
+    /// Every pair the app actually puts on screen. Kept explicit so a new surface
+    /// has to be added here to be considered checked.
+    var contrastRequirements: [ContrastRequirement] {
+        var pairs: [ContrastRequirement] = []
+        for (name, surface) in [
+            ("bg", bg), ("panel", panel), ("panelHover", panelHover), ("panelActive", panelActive),
+        ] {
+            pairs.append(.init(
+                label: "text on \(name)", foreground: text, background: surface,
+                minimum: Self.minimumTextContrast
+            ))
+            pairs.append(.init(
+                label: "textDim on \(name)", foreground: textDim, background: surface,
+                minimum: Self.minimumSecondaryTextContrast
+            ))
+            pairs.append(.init(
+                label: "textFaint on \(name)", foreground: textFaint, background: surface,
+                minimum: Self.minimumSecondaryTextContrast
+            ))
+            pairs.append(.init(
+                label: "claude on \(name)", foreground: claude, background: surface,
+                minimum: Self.minimumSecondaryTextContrast
+            ))
+            pairs.append(.init(
+                label: "codex on \(name)", foreground: codex, background: surface,
+                minimum: Self.minimumSecondaryTextContrast
+            ))
+        }
+        pairs.append(.init(
+            label: "terminal foreground on terminal background",
+            foreground: terminalFg, background: terminalBg,
+            minimum: Self.minimumTextContrast
+        ))
+        pairs.append(.init(
+            label: "border on bg", foreground: border, background: bg,
+            minimum: Self.minimumBorderContrast
+        ))
+        pairs.append(.init(
+            label: "border on panel", foreground: border, background: panel,
+            minimum: Self.minimumBorderContrast
+        ))
+        return pairs
+    }
+
+    /// The pairs that do not hold, for a test to name.
+    var contrastFailures: [ContrastRequirement] {
+        contrastRequirements.filter { !$0.holds() }
     }
 }
