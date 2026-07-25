@@ -370,6 +370,23 @@ final class ExtensionAdoptionTests: XCTestCase {
         )
     }
 
+    func testNestedFilesKeepTheirDirectoryInTheDiff() throws {
+        // Regression: the relative path was computed by string prefix, and macOS
+        // hands back /private/var where the URL says /var — so every nested file
+        // collapsed to its bare name and two files in different directories
+        // looked like one.
+        let root = try external([
+            "SKILL.md": "# dış\n",
+            "scripts/setup.sh": "echo bir\n",
+            "docs/setup.sh": "echo iki\n",
+        ])
+        let plan = try service.plan(name: "nested", kind: .skill, externalPath: root.path)
+        XCTAssertEqual(
+            plan.changedFiles.map(\.path).sorted(),
+            ["SKILL.md", "docs/setup.sh", "scripts/setup.sh"]
+        )
+    }
+
     func testPlanningAnExternalPathThatIsNotThereFails() {
         XCTAssertThrowsError(
             try service.plan(name: "s", kind: .skill, externalPath: "/does/not/exist")

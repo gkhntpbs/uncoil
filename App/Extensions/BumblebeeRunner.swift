@@ -1,0 +1,389 @@
+import Foundation
+
+/// Finds the Bumblebee binary, in Uncoil's order of preference.
+///
+/// Installing one is never done here: fetching and running a third-party binary
+/// is the user's decision, and this only reports what is already present.
+struct BumblebeeLocator {
+    /// Inside the app bundle, when a build pinned one.
+    var pinnedPath: String?
+    /// Uncoil's own tools directory.
+    var managedDirectory: URL
+    /// Overridable so tests need no real binary anywhere.
+    var exists: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
+    var pathLookup: () -> String? = { AgentAdapterSupport.locateBinary("bumblebee") }
+
+    static func `default`(bundle: Bundle = .main) -> BumblebeeLocator {
+        BumblebeeLocator(
+            pinnedPath: bundle.url(forAuxiliaryExecutable: "bumblebee")?.path,
+            managedDirectory: FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".uncoil/tools", isDirectory: true)
+        )
+    }
+
+    var managedPath: String {
+        managedDirectory.appendingPathComponent("bumblebee").path
+    }
+
+    /// The first source that actually has a binary, in preference order.
+    func resolve() -> BumblebeeBinary? {
+        if let pinnedPath, exists(pinnedPath) {
+            return BumblebeeBinary(source: .pinned, path: pinnedPath)
+        }
+        if exists(managedPath) {
+            return BumblebeeBinary(source: .managed, path: managedPath)
+        }
+        if let found = pathLookup(), exists(found) {
+            return BumblebeeBinary(source: .path, path: found)
+        }
+        return nil
+    }
+
+    /// Every source that has one, for the UI to explain which was chosen.
+    func available() -> [BumblebeeBinary] {
+        var result: [BumblebeeBinary] = []
+        if let pinnedPath, exists(pinnedPath) {
+            result.append(BumblebeeBinary(source: .pinned, path: pinnedPath))
+        }
+        if exists(managedPath) {
+            result.append(BumblebeeBinary(source: .managed, path: managedPath))
+        }
+        if let found = pathLookup(), exists(found) {
+            result.append(BumblebeeBinary(source: .path, path: found))
+        }
+        return result
+    }
+}
+
+/// Runs Bumblebee and turns its output into results Uncoil can act on.
+///
+/// Every process call is injected. That keeps the decisions — what counts as a
+/// finished scan, when a result may be trusted, what happens when two scans are
+/// asked for at once — testable without the binary being installed, and it means
+/// nothing here can start a real process by accident.
+struct BumblebeeRunner {
+    struct Invocation: Equatable {
+        var arguments: [String]
+        var timeout: TimeInterval
+    }
+
+    struct Output: Equatable {
+        var stdout: String
+        var stderr: String
+        var exitCode: Int32
+        var timedOut: Bool
+    }
+
+    enum RunError: LocalizedError, Equatable {
+        case notInstalled
+        case alreadyRunning(BumblebeeScanKind)
+        case selfTestFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .notInstalled:
+                "Bumblebee kurulu değil. Kurulumu kullanıcı onayı gerektirir."
+            case .alreadyRunning(let kind):
+                "Zaten bir tarama çalışıyor (\(kind.label)); ikincisi başlatılmadı."
+            case .selfTestFailed(let detail):
+                "Bumblebee self-test başarısız: \(detail)"
+            }
+        }
+    }
+
+    var binary: BumblebeeBinary?
+    /// Injected process call.
+    var run: (Invocation) async throws -> Output
+    /// Shared across a process; what stops two scans running at once.
+    var lock: BumblebeeScanLock
+
+    // MARK: - Verification
+
+    /// Reads the version, so a finding can be traced to the build that made it.
+    func version(now: Date = .now) async throws -> BumblebeeVersion {
+        guard binary != nil else { throw RunError.notInstalled }
+        let output = try await run(Invocation(arguments: ["version", "--json"], timeout: 15))
+        guard let version = BumblebeeVersion.parse(output.stdout)
+            ?? BumblebeeVersion.parse(output.stderr) else {
+            throw RunError.selfTestFailed("version okunamadı")
+        }
+        return version
+    }
+
+    func selfTest(now: Date = .now) async throws -> BumblebeeSelfTest {
+        guard binary != nil else { throw RunError.notInstalled }
+        let output = try await run(Invocation(arguments: ["selftest", "--json"], timeout: 60))
+        return BumblebeeSelfTest.parse(
+            output.stdout.isEmpty ? output.stderr : output.stdout,
+            exitCode: output.exitCode,
+            now: now
+        )
+    }
+
+    // MARK: - Scanning
+
+    /// Runs one scan. Refuses when the binary is missing, when another scan holds
+    /// the lock, or when the self-test did not pass — a scan from a binary that
+    /// cannot verify itself is not evidence.
+    func scan(
+        kind: BumblebeeScanKind,
+        paths: [String],
+        lockFile: String? = nil,
+        now: Date = .now
+    ) async throws -> BumblebeeScanResult {
+        guard binary != nil else { throw RunError.notInstalled }
+        if let running = lock.current { throw RunError.alreadyRunning(running) }
+
+        let selfTest = try await selfTest(now: now)
+        let version = try? await version(now: now)
+        guard selfTest.resultsAreTrustworthy else {
+            throw RunError.selfTestFailed(selfTest.detail)
+        }
+
+        lock.acquire(kind)
+        defer { lock.release() }
+
+        var arguments = ["scan", "--ndjson"]
+        if let lockFile { arguments += ["--lock-file", lockFile] }
+        if kind == .deep { arguments.append("--deep") }
+        arguments += paths
+
+        let started = now
+        let output = try await run(Invocation(arguments: arguments, timeout: kind.timeout))
+        let events = BumblebeeOutputParser.parseStdout(output.stdout, now: now)
+        var findings: [SecurityFinding] = []
+        var diagnostics = BumblebeeOutputParser.parseStderr(output.stderr)
+        var summary: BumblebeeScanSummary?
+        var unknown: [String] = []
+        for event in events {
+            switch event {
+            case .finding(let finding): findings.append(finding)
+            case .diagnostic(let message): diagnostics.append(message)
+            case .summary(let value): summary = value
+            case .unknown(let line): unknown.append(line)
+            }
+        }
+        return BumblebeeScanResult(
+            kind: kind,
+            findings: findings,
+            diagnostics: diagnostics,
+            summary: summary,
+            unknownLines: unknown,
+            exitCode: output.exitCode,
+            timedOut: output.timedOut,
+            selfTest: selfTest,
+            version: version,
+            startedAt: started,
+            finishedAt: now
+        )
+    }
+
+    /// The real process call, used by the app. Enforces the timeout by killing
+    /// the child, so a hung scan cannot hold the lock forever.
+    static func processRunner(binaryPath: String) -> (Invocation) async throws -> Output {
+        { invocation in
+            try await withCheckedThrowingContinuation { continuation in
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: binaryPath)
+                process.arguments = invocation.arguments
+                let out = Pipe()
+                let err = Pipe()
+                process.standardOutput = out
+                process.standardError = err
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                let deadline = DispatchWorkItem {
+                    if process.isRunning { process.terminate() }
+                }
+                DispatchQueue.global().asyncAfter(
+                    deadline: .now() + invocation.timeout, execute: deadline
+                )
+                let stdout = out.fileHandleForReading.readDataToEndOfFile()
+                let stderr = err.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                let timedOut = deadline.isCancelled == false && process.terminationReason == .uncaughtSignal
+                deadline.cancel()
+                continuation.resume(returning: Output(
+                    stdout: String(decoding: stdout, as: UTF8.self),
+                    stderr: String(decoding: stderr, as: UTF8.self),
+                    exitCode: process.terminationStatus,
+                    timedOut: timedOut
+                ))
+            }
+        }
+    }
+}
+
+/// Single-scan lock. One scan at a time, whoever asks.
+final class BumblebeeScanLock: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.bumblebee.lock")
+    private var running: BumblebeeScanKind?
+
+    var current: BumblebeeScanKind? {
+        queue.sync { running }
+    }
+
+    func acquire(_ kind: BumblebeeScanKind) {
+        queue.sync { running = kind }
+    }
+
+    func release() {
+        queue.sync { running = nil }
+    }
+
+    /// Takes the lock only when it is free, for callers that must not block.
+    func tryAcquire(_ kind: BumblebeeScanKind) -> Bool {
+        queue.sync {
+            guard running == nil else { return false }
+            running = kind
+            return true
+        }
+    }
+}
+
+/// The lock files Bumblebee reads, and Uncoil's own fuller one.
+///
+/// Two files on purpose: `.skill-lock.json` is the shape Bumblebee expects, and
+/// `extensions.lock.json` is what Uncoil needs to reproduce an install — the
+/// second must not be squeezed into the first's schema.
+enum ExtensionLockFiles {
+    struct SkillLockEntry: Equatable, Codable {
+        var name: String
+        var path: String
+        var source: String
+        var repository: String?
+        var commit: String?
+        var ref: String?
+        /// True for a folder the user added by hand, so a scanner does not treat
+        /// it as something Uncoil vouches for.
+        var isManual: Bool
+    }
+
+    struct SkillLock: Equatable, Codable {
+        var version = 1
+        var generatedBy = "uncoil"
+        var generatedAt: Date
+        var skills: [SkillLockEntry]
+    }
+
+    struct ExtensionsLock: Equatable, Codable {
+        struct Entry: Equatable, Codable {
+            var id: String
+            var name: String
+            var kind: ExtensionKind
+            var sourceLabel: String
+            var repository: String?
+            var commit: String?
+            var tracking: String?
+            var revisionID: String?
+            var contentHash: String?
+            var state: ExtensionState
+            var agents: [String]
+            var isManual: Bool
+        }
+
+        var version = 1
+        var generatedAt: Date
+        var appVersion: String
+        var entries: [Entry]
+    }
+
+    /// The Bumblebee-facing lock: active managed skills, plus manual ones marked
+    /// as such.
+    static func skillLock(
+        packages: [ExtensionPackage],
+        generatedAt: Date
+    ) -> SkillLock {
+        let entries = packages
+            .filter { $0.kind == .skill && $0.state == .active }
+            .sorted { $0.name < $1.name }
+            .map { package -> SkillLockEntry in
+                var repository: String?
+                var ref: String?
+                if case .managedGitHub(let value, _, let tracking) = package.source {
+                    repository = value
+                    ref = tracking.label
+                }
+                return SkillLockEntry(
+                    name: package.name,
+                    path: package.activeRevision?.path ?? "",
+                    source: package.source.label,
+                    repository: repository,
+                    commit: package.activeRevision?.commitSHA,
+                    ref: ref,
+                    isManual: !package.source.isOwnedByUncoil
+                )
+            }
+        return SkillLock(generatedAt: generatedAt, skills: entries)
+    }
+
+    /// Uncoil's own record: everything needed to put the same set back.
+    static func extensionsLock(
+        packages: [ExtensionPackage],
+        agents: (String) -> [ExtensionAgentID],
+        appVersion: String,
+        generatedAt: Date
+    ) -> ExtensionsLock {
+        ExtensionsLock(
+            generatedAt: generatedAt,
+            appVersion: appVersion,
+            entries: packages.sorted { $0.id < $1.id }.map { package in
+                var repository: String?
+                var tracking: String?
+                if case .managedGitHub(let value, _, let mode) = package.source {
+                    repository = value
+                    tracking = mode.label
+                }
+                return ExtensionsLock.Entry(
+                    id: package.id,
+                    name: package.name,
+                    kind: package.kind,
+                    sourceLabel: package.source.label,
+                    repository: repository,
+                    commit: package.activeRevision?.commitSHA,
+                    tracking: tracking,
+                    revisionID: package.activeRevision?.id,
+                    contentHash: package.activeRevision?.contentHash,
+                    state: package.state,
+                    agents: agents(package.id).map(\.rawValue),
+                    isManual: !package.source.isOwnedByUncoil
+                )
+            }
+        )
+    }
+
+    static func write(
+        _ lock: SkillLock,
+        to url: URL
+    ) throws {
+        try write(value: lock, to: url)
+    }
+
+    static func write(
+        _ lock: ExtensionsLock,
+        to url: URL
+    ) throws {
+        try write(value: lock, to: url)
+    }
+
+    private static func write<T: Encodable>(value: T, to url: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        try encoder.encode(value).write(to: url, options: .atomic)
+    }
+
+    /// `~/.agents/.skill-lock.json` by default.
+    static func defaultSkillLockURL(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        home.appendingPathComponent(".agents/.skill-lock.json")
+    }
+}

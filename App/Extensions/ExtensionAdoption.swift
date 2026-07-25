@@ -170,19 +170,11 @@ struct ExtensionAdoptionService {
 
     /// Relative path → content hash for every file under `root`.
     static func listing(_ root: URL) -> [String: String] {
-        guard let enumerator = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: [.isRegularFileKey]
-        ) else { return [:] }
         var result: [String: String] = [:]
-        let prefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
-        for case let url as URL in enumerator {
-            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?
-                .isRegularFile == true else { continue }
-            guard let data = FileManager.default.contents(atPath: url.path) else { continue }
-            let relative = url.path.hasPrefix(prefix)
-                ? String(url.path.dropFirst(prefix.count))
-                : url.lastPathComponent
-            result[relative] = AgentAdapterSupport.hash(String(decoding: data, as: UTF8.self))
+        for file in FileTree.regularFiles(under: root) {
+            guard let data = FileManager.default.contents(atPath: file.url.path) else { continue }
+            result[file.relativePath] = AgentAdapterSupport
+                .hash(String(decoding: data, as: UTF8.self))
         }
         return result
     }

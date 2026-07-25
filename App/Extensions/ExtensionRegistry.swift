@@ -24,6 +24,11 @@ final class ExtensionRegistry: ObservableObject {
         /// click away after a restart too. `pendingContent` is dropped before
         /// storing: it holds a copy of the user's config, secrets included.
         var configTransactions: [ConfigurationTransaction] = []
+        /// Which Bumblebee build produced the findings on record, so a finding is
+        /// traceable to the binary and catalog that made it.
+        var bumblebeeVersion: BumblebeeVersion?
+        var bumblebeeSelfTest: BumblebeeSelfTest?
+        var lastBumblebeeScanAt: Date?
     }
 
     @Published private(set) var packages: [ExtensionPackage] = []
@@ -35,6 +40,9 @@ final class ExtensionRegistry: ObservableObject {
     @Published private(set) var auditEvents: [AuditEvent] = []
     /// Config changes Uncoil applied, newest first.
     @Published private(set) var configTransactions: [ConfigurationTransaction] = []
+    @Published private(set) var bumblebeeVersion: BumblebeeVersion?
+    @Published private(set) var bumblebeeSelfTest: BumblebeeSelfTest?
+    @Published private(set) var lastBumblebeeScanAt: Date?
 
     /// Transient (not persisted): rediscovered on every launch.
     @Published private(set) var installations: [AgentInstallation] = []
@@ -90,6 +98,9 @@ final class ExtensionRegistry: ObservableObject {
         updateCandidates = document.updateCandidates
         sources = document.sources
         configTransactions = document.configTransactions
+        bumblebeeVersion = document.bumblebeeVersion
+        bumblebeeSelfTest = document.bumblebeeSelfTest
+        lastBumblebeeScanAt = document.lastBumblebeeScanAt
         health = healthChecks()
     }
 
@@ -102,7 +113,10 @@ final class ExtensionRegistry: ObservableObject {
             findings: findings,
             updateCandidates: updateCandidates,
             sources: sources,
-            configTransactions: configTransactions
+            configTransactions: configTransactions,
+            bumblebeeVersion: bumblebeeVersion,
+            bumblebeeSelfTest: bumblebeeSelfTest,
+            lastBumblebeeScanAt: lastBumblebeeScanAt
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -452,7 +466,77 @@ final class ExtensionRegistry: ObservableObject {
         lastDiscoveryAt = now
         refreshProcessHealth(launcherPath: launcherPath, now: now)
         health = healthChecks(now: now)
+        // The lock files describe what is active right now, so they are rewritten
+        // whenever that changes.
+        _ = writeLockFiles(home: skillLockHome, now: now)
         save()
+    }
+
+    // MARK: - Bumblebee
+
+    /// Records a Bumblebee scan. A result that is not usable as current state is
+    /// remembered as an attempt — its version and self-test — but its findings do
+    /// not replace what is on record.
+    @discardableResult
+    func record(scan: BumblebeeScanResult) -> Bool {
+        bumblebeeVersion = scan.version ?? bumblebeeVersion
+        bumblebeeSelfTest = scan.selfTest
+        guard scan.isUsableAsCurrentState else {
+            record(AuditEvent(
+                kind: .scanCompleted,
+                detail: "Bumblebee taraması kullanılmadı: \(scan.unusableReason ?? "bilinmiyor")"
+            ))
+            save()
+            return false
+        }
+        // Bumblebee's findings replace only Bumblebee's own; Uncoil's stay.
+        findings.removeAll { $0.origin == .bumblebee }
+        findings.append(contentsOf: scan.bumblebeeFindings)
+        lastBumblebeeScanAt = scan.finishedAt
+        record(AuditEvent(
+            kind: .scanCompleted,
+            detail: "Bumblebee \(scan.kind.label): \(scan.bumblebeeFindings.count) bulgu"
+                + (scan.version.map { ", \($0.label)" } ?? "")
+        ))
+        save()
+        return true
+    }
+
+    /// Where `~/.agents/.skill-lock.json` goes.
+    ///
+    /// Nil until something sets it, and `discover` writes the shared lock only
+    /// when it is set: a registry created by a test must not leave a file in the
+    /// real home directory.
+    var skillLockHome: URL?
+
+    /// Writes both lock files: the one Bumblebee reads and Uncoil's fuller one.
+    @discardableResult
+    func writeLockFiles(
+        home: URL?,
+        appVersion: String = "dev",
+        now: Date = .now
+    ) -> Bool {
+        let skillLock = ExtensionLockFiles.skillLock(packages: packages, generatedAt: now)
+        let extensionsLock = ExtensionLockFiles.extensionsLock(
+            packages: packages,
+            agents: { [weak self] id in self?.agents(for: id) ?? [] },
+            appVersion: appVersion,
+            generatedAt: now
+        )
+        do {
+            if let home {
+                try ExtensionLockFiles.write(
+                    skillLock, to: ExtensionLockFiles.defaultSkillLockURL(home: home)
+                )
+            }
+            try ExtensionLockFiles.write(
+                extensionsLock,
+                to: layout.locks.appendingPathComponent("extensions.lock.json")
+            )
+            return true
+        } catch {
+            return false
+        }
     }
 
     // MARK: - MCP process health

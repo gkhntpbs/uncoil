@@ -59,7 +59,15 @@ struct ExtensionsView: View {
     }
 
     @EnvironmentObject private var projectStore: ProjectStore
-    @StateObject private var registry = ExtensionRegistry()
+    @StateObject private var registry = {
+        let registry = ExtensionRegistry()
+        // The shared lock file lives in the user's home; a test-made registry
+        // never gets one, which is why this is set here rather than defaulted.
+        registry.skillLockHome = LaunchConfig.shared.isUITesting
+            ? nil
+            : FileManager.default.homeDirectoryForCurrentUser
+        return registry
+    }()
     @State private var selection: Section = .overview
     @State private var selectedPackageID: String?
     @State private var message: String?
