@@ -6,9 +6,13 @@ import Foundation
 /// connection on a version mismatch.
 enum RuntimeProtocol {
     static let version = 1
-    /// Minor revision: additive commands (`peek`/`replay`) that don't break
-    /// the version-1 handshake. Bumped when such commands are added.
-    static let minor = 1
+    /// Minor revision: additive commands (`peek`/`replay`, then the task-claim
+    /// set) that don't break the version-1 handshake. Bumped when such commands
+    /// are added.
+    static let minor = 2
+    /// A task claim is granted for this long and renewed by heartbeat, so an
+    /// agent that dies stops holding the task.
+    static let taskLeaseDuration: TimeInterval = 15 * 60
     static let socketName = "runtime.sock"
     /// Per-session replay buffer cap inside the daemon.
     static let replayBufferLimit = 512 * 1024
@@ -37,7 +41,9 @@ enum RuntimeProtocol {
 
 /// App → daemon.
 struct RuntimeCommand: Codable {
-    var cmd: String        // hello|launch|attach|input|resize|kill|list|shutdown|upgrade|peek
+    /// hello|launch|attach|input|resize|kill|list|shutdown|upgrade|peek
+    /// |task_claim|task_release|task_heartbeat|task_claims
+    var cmd: String
     var version: Int?
     var minor: Int?
     var sid: String?
@@ -48,6 +54,12 @@ struct RuntimeCommand: Codable {
     var cols: Int?
     var rows: Int?
     var b64: String?
+    /// Claim key: the task's id, scoped by project.
+    var task_id: String?
+    var project_id: String?
+    /// Claiming role, so the daemon can enforce one implementer per task.
+    var role: String?
+    var duration_s: Double?
 
     static func hello() -> RuntimeCommand {
         RuntimeCommand(
@@ -60,7 +72,8 @@ struct RuntimeCommand: Codable {
 
 /// Daemon → app.
 struct RuntimeEventMessage: Codable {
-    var ev: String         // hello|sessions|data|exited|error|replay
+    /// hello|sessions|data|exited|error|replay|task_claim|task_claims
+    var ev: String
     var version: Int?
     var minor: Int?
     var sid: String?
@@ -69,6 +82,33 @@ struct RuntimeEventMessage: Codable {
     var code: Int32?
     var errorCode: String?
     var message: String?
+    /// Task-claim replies.
+    var task_id: String?
+    var granted: Bool?
+    var owner_sid: String?
+    var role: String?
+    var expires_at: Double?
+    var generation: Int?
+    var claims: [RuntimeTaskClaim]?
+}
+
+/// One live claim as the daemon holds it. The daemon is the arbiter because it
+/// is the single process that outlives the app and knows when a session's PTY
+/// went away — a claim whose session died must not keep a task locked.
+struct RuntimeTaskClaim: Codable, Equatable {
+    var task_id: String
+    var project_id: String?
+    var owner_sid: String
+    var role: String
+    var acquired_at: Double
+    var expires_at: Double
+    var generation: Int
+    var last_heartbeat: Double
+    /// True when the daemon owned this session's PTY at claim time. Only then
+    /// does the session disappearing release the claim: a session the daemon
+    /// never launched (an in-process PTY, a Codex app-server thread) is not
+    /// "gone" merely because the daemon cannot see it.
+    var session_known: Bool
 }
 
 extension Data {

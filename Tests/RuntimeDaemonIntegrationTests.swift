@@ -357,6 +357,171 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         try body(socketPath, process)
     }
 
+
+    // MARK: - Task claims (Aşama 29)
+
+    func testTwoImplementersCannotHoldTheSameTask() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            XCTAssertEqual(try receive(from: fd).ev, "hello")
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            let granted = try receive(from: fd)
+            XCTAssertEqual(granted.ev, "task_claim")
+            XCTAssertEqual(granted.granted, true)
+            XCTAssertEqual(granted.owner_sid, "session-a")
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-b",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            let refused = try receive(from: fd)
+            XCTAssertEqual(refused.granted, false)
+            XCTAssertEqual(refused.owner_sid, "session-a", "the refusal names the holder")
+        }
+    }
+
+    func testATesterAttachesAlongsideAnImplementer() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, true)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-b",
+                task_id: "task-1", project_id: "p", role: "tester"
+            ), to: fd)
+            XCTAssertEqual(
+                try receive(from: fd).granted, true,
+                "a tester has its own job and must not be locked out"
+            )
+        }
+    }
+
+    func testTaskClaimHolderRenewsAndTheGenerationClimbs() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            let first = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_heartbeat", sid: "session-a", task_id: "task-1", project_id: "p"
+            ), to: fd)
+            let renewed = try receive(from: fd)
+            XCTAssertEqual(renewed.granted, true)
+            XCTAssertEqual(renewed.generation, (first.generation ?? 0) + 1)
+        }
+    }
+
+    func testOnlyTheClaimOwnerCanReleaseOrRenew() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_release", sid: "session-b", task_id: "task-1", project_id: "p"
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, false)
+
+            try send(RuntimeCommand(
+                cmd: "task_heartbeat", sid: "session-b", task_id: "task-1", project_id: "p"
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, false)
+
+            try send(RuntimeCommand(
+                cmd: "task_release", sid: "session-a", task_id: "task-1", project_id: "p"
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, true)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-b",
+                task_id: "task-1", project_id: "p", role: "implementer"
+            ), to: fd)
+            XCTAssertEqual(
+                try receive(from: fd).granted, true,
+                "a released task is free for anyone"
+            )
+        }
+    }
+
+    func testClaimListReportsOwnerRoleAndLease() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a", task_id: "task-1",
+                project_id: "p", role: "implementer", duration_s: 60
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, true)
+
+            try send(RuntimeCommand(cmd: "task_claims"), to: fd)
+            let listed = try receive(from: fd)
+            XCTAssertEqual(listed.ev, "task_claims")
+            let claim = listed.claims?.first { $0.task_id == "task-1" }
+            XCTAssertEqual(claim?.owner_sid, "session-a")
+            XCTAssertEqual(claim?.role, "implementer")
+            XCTAssertGreaterThan((claim?.expires_at ?? 0) - (claim?.acquired_at ?? 0), 59)
+            XCTAssertEqual(
+                claim?.session_known, false,
+                "the daemon never launched this session, so its absence must not free the claim"
+            )
+        }
+    }
+
+    func testTaskClaimsAreScopedPerProject() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-a",
+                task_id: "task-1", project_id: "p1", role: "implementer"
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).granted, true)
+
+            try send(RuntimeCommand(
+                cmd: "task_claim", sid: "session-b",
+                task_id: "task-1", project_id: "p2", role: "implementer"
+            ), to: fd)
+            XCTAssertEqual(
+                try receive(from: fd).granted, true,
+                "the same task id under another project is a different task"
+            )
+        }
+    }
+
     private func startDaemon(socketPath: String) throws -> Process {
         let process = Process()
         process.executableURL = try daemonURL()

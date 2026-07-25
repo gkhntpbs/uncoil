@@ -138,6 +138,10 @@ final class RuntimeDaemon {
     private var clientBuffers: [Int32: Data] = [:]
     private var clientVerified: Set<Int32> = []
     private var sessions: [String: PTYSession] = [:]
+    /// Live task claims, keyed "<project>|<task>". The daemon arbitrates because
+    /// it is the one process that outlives the app and sees a session's PTY exit,
+    /// so a claim can never outlive the agent that took it.
+    private var taskClaims: [String: RuntimeTaskClaim] = [:]
     private var lockFD: Int32 = -1
     private var healthSource: DispatchSourceTimer?
     private var replayDirectory: URL?
@@ -360,6 +364,18 @@ final class RuntimeDaemon {
             } else {
                 send(RuntimeEventMessage(ev: "error", sid: command.sid, message: "no such session"), to: fd)
             }
+        case "task_claim":
+            send(claimTask(command), to: fd)
+        case "task_heartbeat":
+            send(heartbeatTask(command), to: fd)
+        case "task_release":
+            send(releaseTask(command), to: fd)
+        case "task_claims":
+            pruneTaskClaims()
+            send(
+                RuntimeEventMessage(ev: "task_claims", claims: Array(taskClaims.values)),
+                to: fd
+            )
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
         case "shutdown":
@@ -532,6 +548,130 @@ final class RuntimeDaemon {
                     ), to: fd)
                 }
                 runtimeLog.write("session idle \(session.sid)")
+            }
+        }
+    }
+
+    // MARK: - Task claims
+
+    private func claimKey(_ command: RuntimeCommand) -> String? {
+        guard let taskID = command.task_id else { return nil }
+        return "\(command.project_id ?? "-")|\(taskID)"
+    }
+
+    /// Grants a claim unless a live one conflicts. Only one implementer at a
+    /// time; a different role attaches alongside, and the same session renews.
+    private func claimTask(_ command: RuntimeCommand) -> RuntimeEventMessage {
+        pruneTaskClaims()
+        guard let key = claimKey(command), let taskID = command.task_id,
+              let sid = command.sid, let role = command.role else {
+            return RuntimeEventMessage(
+                ev: "error", errorCode: "invalid_request",
+                message: "task_claim needs task_id, sid and role"
+            )
+        }
+        let now = Date().timeIntervalSince1970
+        let duration = min(max(command.duration_s ?? RuntimeProtocol.taskLeaseDuration, 60), 3600)
+
+        if let existing = taskClaims[key] {
+            let sameSession = existing.owner_sid == sid
+            // "implementer" is the only exclusive role; everything else coexists.
+            let conflicts = !sameSession && existing.role == "implementer" && role == "implementer"
+            if conflicts {
+                return RuntimeEventMessage(
+                    ev: "task_claim", message: "held by another implementer",
+                    task_id: taskID, granted: false,
+                    owner_sid: existing.owner_sid, role: existing.role,
+                    expires_at: existing.expires_at, generation: existing.generation
+                )
+            }
+            if sameSession {
+                var renewed = existing
+                renewed.acquired_at = now
+                renewed.expires_at = now + duration
+                renewed.last_heartbeat = now
+                renewed.generation += 1
+                taskClaims[key] = renewed
+                runtimeLog.write("task claim renewed \(key) by \(sid)")
+                return RuntimeEventMessage(
+                    ev: "task_claim", task_id: taskID, granted: true,
+                    owner_sid: sid, role: renewed.role,
+                    expires_at: renewed.expires_at, generation: renewed.generation
+                )
+            }
+        }
+
+        let claim = RuntimeTaskClaim(
+            task_id: taskID, project_id: command.project_id, owner_sid: sid,
+            role: role, acquired_at: now, expires_at: now + duration,
+            generation: 1, last_heartbeat: now,
+            session_known: sessions[sid] != nil
+        )
+        // A non-exclusive role does not displace an exclusive holder's record.
+        if taskClaims[key] == nil || role == "implementer" {
+            taskClaims[key] = claim
+        }
+        runtimeLog.write("task claim granted \(key) by \(sid) as \(role)")
+        return RuntimeEventMessage(
+            ev: "task_claim", task_id: taskID, granted: true,
+            owner_sid: sid, role: role,
+            expires_at: claim.expires_at, generation: claim.generation
+        )
+    }
+
+    private func heartbeatTask(_ command: RuntimeCommand) -> RuntimeEventMessage {
+        pruneTaskClaims()
+        guard let key = claimKey(command), let taskID = command.task_id,
+              let sid = command.sid, var claim = taskClaims[key], claim.owner_sid == sid else {
+            return RuntimeEventMessage(
+                ev: "task_claim", message: "no claim to renew",
+                task_id: command.task_id, granted: false
+            )
+        }
+        let now = Date().timeIntervalSince1970
+        claim.last_heartbeat = now
+        claim.expires_at = now + min(
+            max(command.duration_s ?? RuntimeProtocol.taskLeaseDuration, 60), 3600
+        )
+        claim.generation += 1
+        taskClaims[key] = claim
+        return RuntimeEventMessage(
+            ev: "task_claim", task_id: taskID, granted: true,
+            owner_sid: sid, role: claim.role,
+            expires_at: claim.expires_at, generation: claim.generation
+        )
+    }
+
+    private func releaseTask(_ command: RuntimeCommand) -> RuntimeEventMessage {
+        guard let key = claimKey(command), let sid = command.sid,
+              let claim = taskClaims[key], claim.owner_sid == sid else {
+            return RuntimeEventMessage(
+                ev: "task_claim", message: "not the owner",
+                task_id: command.task_id, granted: false
+            )
+        }
+        taskClaims.removeValue(forKey: key)
+        runtimeLog.write("task claim released \(key)")
+        return RuntimeEventMessage(
+            ev: "task_claim", task_id: command.task_id, granted: true
+        )
+    }
+
+    /// Drops claims that expired, went quiet, or belong to a session the daemon
+    /// no longer has — the three ways an agent stops holding a task.
+    private func pruneTaskClaims() {
+        let now = Date().timeIntervalSince1970
+        let silenceLimit = RuntimeProtocol.taskLeaseDuration
+        for (key, claim) in taskClaims {
+            let expired = now >= claim.expires_at
+            let silent = now - claim.last_heartbeat > silenceLimit
+            let sessionGone = claim.session_known && sessions[claim.owner_sid] == nil
+            if expired || silent || sessionGone {
+                taskClaims.removeValue(forKey: key)
+                runtimeLog.write(
+                    "task claim dropped \(key): " +
+                    (expired ? "expired" : silent ? "no heartbeat" : "session gone")
+                )
             }
         }
     }
