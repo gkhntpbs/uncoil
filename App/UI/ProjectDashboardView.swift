@@ -16,27 +16,42 @@ struct ProjectDashboardView: View {
     @State private var pullRequests: [GitHubService.PullRequest] = []
     @State private var prMessage: String?
 
+    /// Which area of the project screen is showing. Tasks is a peer of the
+    /// overview rather than a panel inside it, so a long TODO.md gets the room.
+    private enum Area: String, CaseIterable, Identifiable {
+        case overview
+        case tasks
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .overview: "Genel"
+            case .tasks: "Tasks"
+            }
+        }
+    }
+
+    @State private var area: Area = .overview
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 header
-                sessionsPanel
-                if !projectStore.sessionHistory(for: project.id).isEmpty {
-                    historyPanel
-                }
-                if git.isRepo {
-                    worktreesPanel
-                }
-                HStack(alignment: .top, spacing: 14) {
-                    VStack(spacing: 14) {
-                        gitPanel
-                        if git.isRepo {
-                            pullRequestsPanel
-                        }
+                Picker("", selection: $area) {
+                    ForEach(Area.allCases) { area in
+                        Text(area.title).tag(area)
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    filesPanel
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .accessibilityIdentifier("dashboard.areaPicker")
+
+                if area == .tasks {
+                    ProjectTasksView(project: project, selection: $selection)
+                } else {
+                    overviewContent
                 }
             }
             .padding(16)
@@ -45,6 +60,29 @@ struct ProjectDashboardView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dashboard.container")
         .task(id: project.id) { await refreshGit() }
+    }
+
+    private var overviewContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sessionsPanel
+            if !projectStore.sessionHistory(for: project.id).isEmpty {
+                historyPanel
+            }
+            if git.isRepo {
+                worktreesPanel
+            }
+            HStack(alignment: .top, spacing: 14) {
+                VStack(spacing: 14) {
+                    gitPanel
+                    if git.isRepo {
+                        pullRequestsPanel
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                filesPanel
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
     }
 
     private func refreshGit() async {
