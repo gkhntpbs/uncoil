@@ -192,7 +192,7 @@ struct ExtensionUpdateEngine {
 
     /// Symlinks resolving outside the package root — the classic way a package
     /// reaches into `~/.ssh` while looking innocent.
-    static func symlinkEscapes(at root: URL) -> [String]? {
+    nonisolated static func symlinkEscapes(at root: URL) -> [String]? {
         let manager = FileManager.default
         guard let base = CapabilityRouter.realpathString(root.standardizedFileURL.path) else {
             return nil
