@@ -30,7 +30,10 @@ enum GitService {
         var snapshot = Snapshot(isRepo: true)
         snapshot.branch = run(["-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"])
 
-        if let status = run(["-C", repoPath, "status", "--porcelain"]) {
+        // Not trimmed: porcelain codes start with a space for "modified, not
+        // staged", and trimming the output would eat it — leaving the first
+        // entry's path one character short.
+        if let status = run(["-C", repoPath, "status", "--porcelain"], trimming: false) {
             snapshot.changedFiles = status
                 .split(separator: "\n")
                 .prefix(100)
@@ -82,7 +85,7 @@ enum GitService {
     /// the newest file in the last commit. Blocking; call from background.
     static func lastChangedFile(repoPath: String) -> String? {
         let root = URL(fileURLWithPath: repoPath)
-        let changed = run(["-C", repoPath, "status", "--porcelain"])?
+        let changed = run(["-C", repoPath, "status", "--porcelain"], trimming: false)?
             .split(separator: "\n")
             .compactMap { line -> String? in
                 guard line.count > 3 else { return nil }
@@ -108,6 +111,43 @@ enum GitService {
             return root.appendingPathComponent(String(committed)).path
         }
         return nil
+    }
+
+    // MARK: - Per-file status
+
+    /// Porcelain codes for the given paths, keyed by repo-relative path.
+    ///
+    /// One `git status` call for all of them, scoped by pathspec: asking for the
+    /// whole repo with `--ignored` can walk an entire `node_modules`. Blocking;
+    /// call from a background task.
+    static func fileStatuses(repoPath: String, relativePaths: [String]) -> [String: String] {
+        guard !relativePaths.isEmpty else { return [:] }
+        // core.quotePath=false keeps non-ASCII paths readable instead of escaped.
+        guard let output = run(
+            ["-c", "core.quotePath=false", "-C", repoPath,
+             "status", "--porcelain", "--ignored", "--"] + relativePaths,
+            trimming: false
+        ) else { return [:] }
+        return parseFileStatuses(output)
+    }
+
+    /// Pure half of `fileStatuses`.
+    static func parseFileStatuses(_ output: String) -> [String: String] {
+        var result: [String: String] = [:]
+        for line in output.split(separator: "\n") where line.count > 3 {
+            let code = String(line.prefix(2))
+            var path = String(line.dropFirst(3))
+            // "R  old -> new": the new path is the one that exists now.
+            if let arrow = path.range(of: " -> ") {
+                path = String(path[arrow.upperBound...])
+            }
+            result[path.trimmingCharacters(in: CharacterSet(charactersIn: "\""))] = code
+        }
+        return result
+    }
+
+    static func isRepository(_ path: String) -> Bool {
+        run(["-C", path, "rev-parse", "--git-dir"]) != nil
     }
 
     // MARK: - Worktrees
@@ -199,7 +239,8 @@ enum GitService {
         return .success(Worktree(path: destination.path, branch: branch, isMain: false))
     }
 
-    private static func run(_ arguments: [String]) -> String? {
+    /// `trimming: false` keeps leading whitespace, which porcelain output needs.
+    private static func run(_ arguments: [String], trimming: Bool = true) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = arguments
@@ -210,8 +251,9 @@ enum GitService {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
-        let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return output?.isEmpty == false ? output : output
+        guard let raw = String(data: data, encoding: .utf8) else { return nil }
+        return trimming
+            ? raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            : String(raw.reversed().drop { $0 == "\n" }.reversed())
     }
 }

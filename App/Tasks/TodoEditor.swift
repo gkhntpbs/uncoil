@@ -155,10 +155,22 @@ enum TodoEditor {
         )
         let paste = Patch(
             range: insertion.range,
-            replacement: moved,
+            replacement: separator(before: insertion.range.startByte, in: document.raw) + moved,
             summary: "\(task.text) → \(headingPath.joined(separator: " › "))"
         )
         return [cut, paste]
+    }
+
+    /// The newline a paste at `byte` has to bring with it.
+    ///
+    /// A file whose last line has no trailing newline is common, and pasting a
+    /// block at its end without this would glue the block onto that line —
+    /// silently destroying it.
+    static func separator(before byte: Int, in raw: String) -> String {
+        guard byte > 0 else { return "" }
+        let bytes = Array(raw.utf8)
+        guard byte <= bytes.count, bytes[byte - 1] != 0x0A else { return "" }
+        return "\n"
     }
 
     // MARK: - Applying

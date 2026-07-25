@@ -19,6 +19,10 @@ struct ProjectTasksView: View {
     @State private var watcher: TodoSourceWatcher?
     @State private var message: String?
     @State private var conflictTaskIDs: Set<String> = []
+    /// Git state per source file, and the tracker that notices a conflict
+    /// clearing so the file is reparsed instead of staying frozen.
+    @State private var gitStatuses: [String: TaskFileGitStatus] = [:]
+    @State private var conflictTracker = TaskConflictTracker()
     @State private var editingTaskID: String?
     @State private var editingText = ""
     /// Task awaiting a dispatch decision, with the document it came from.
@@ -229,6 +233,12 @@ struct ProjectTasksView: View {
                     Text("değişiklik \(RelativeClock.short(since: source.lastReadAt))")
                         .font(Theme.mono(9.5))
                         .foregroundStyle(Theme.textFaint)
+                    if let status = gitStatuses[source.path] {
+                        Text(status.label.lowercased())
+                            .font(Theme.mono(9.5, .semibold))
+                            .foregroundStyle(status.isEditable ? Theme.textFaint : Theme.warn)
+                            .accessibilityIdentifier("tasks.git.\(source.displayPath)")
+                    }
                     if conflictTaskIDs.contains(where: { id in
                         sources.document(for: source.path)?.task(id: id) != nil
                     }) {
@@ -238,8 +248,41 @@ struct ProjectTasksView: View {
                     }
                     Spacer()
                 }
+                if let status = gitStatuses[source.path], !status.conflicts.isEmpty {
+                    conflictStrip(source: source, regions: status.conflicts)
+                }
             }
         }
+    }
+
+    /// Where the conflict is, and the two ways out: the editor, or a terminal in
+    /// the project to run the merge tool.
+    private func conflictStrip(
+        source: ProjectTaskSource,
+        regions: [TaskFileGitStatus.ConflictRegion]
+    ) -> some View {
+        HStack(spacing: 8) {
+            TablerIcon(name: "git-merge", size: 11, color: Theme.warn)
+            Text(
+                regions
+                    .prefix(3)
+                    .map { "\($0.startLine)–\($0.endLine) (\($0.ourLabel)/\($0.theirLabel))" }
+                    .joined(separator: ", ")
+                    + (regions.count > 3 ? " +\(regions.count - 3)" : "")
+            )
+            .font(Theme.mono(9.5))
+            .foregroundStyle(Theme.warn)
+            Button("Editörde aç") {
+                settings.preferredEditor.open(URL(fileURLWithPath: source.path))
+                message = "\(source.displayPath):\(regions.first?.startLine ?? 1)"
+            }
+            .buttonStyle(.plain)
+            .font(Theme.mono(9.5, .semibold))
+            .foregroundStyle(Theme.codex)
+            .accessibilityIdentifier("tasks.conflict.open")
+            Spacer()
+        }
+        .padding(.leading, 19)
     }
 
     private func changeLabel(_ change: TodoSourceChange) -> String {
@@ -1081,12 +1124,47 @@ struct ProjectTasksView: View {
         metadata.markNeedsRelinking(assignmentIDs: sources.needsRelinking)
         watcher?.watch(paths: sources.sources.map(\.path) + [project.rootPath])
         let path = project.rootPath
+        let contents = Dictionary(
+            uniqueKeysWithValues: sources.sources.compactMap { source in
+                sources.document(for: source.path).map { ($0.path, $0.raw) }
+            }
+        )
         Task {
             let snapshot = await Task.detached(priority: .utility) {
                 GitService.snapshot(repoPath: path)
             }.value
             gitChangedPaths = snapshot.changedFiles.map(\.path)
+            let statuses = await Task.detached(priority: .utility) {
+                TaskGitStatusReader.statuses(repoRoot: path, contentsByPath: contents)
+            }.value
+            gitStatuses = statuses
+            applyConflictTransitions(conflictTracker.apply(statuses))
         }
+    }
+
+    /// A conflict that cleared means the file changed underneath us during the
+    /// merge, so it is reparsed and its task relations re-attached.
+    private func applyConflictTransitions(_ transitions: [TaskConflictTracker.Transition]) {
+        var resolved: [String] = []
+        for transition in transitions {
+            switch transition {
+            case .becameConflicted(let path):
+                message = "\(URL(fileURLWithPath: path).lastPathComponent) conflict içeriyor; "
+                    + "düzenleme kapalı. Çözüp kaydedince otomatik yeniden okunur."
+            case .resolved(let path):
+                resolved.append(path)
+            }
+        }
+        guard !resolved.isEmpty else { return }
+        sources.refresh(trackedFingerprints: metadata.trackedFingerprints(in: sources.allTasks))
+        metadata.markNeedsRelinking(assignmentIDs: sources.needsRelinking)
+        let names = resolved.map { URL(fileURLWithPath: $0).lastPathComponent }
+        message = "Conflict çözüldü: \(names.joined(separator: ", ")) yeniden okundu."
+    }
+
+    /// Whether a source may be written. Refused while a conflict is unresolved.
+    private func isEditable(_ path: String) -> Bool {
+        gitStatuses[path]?.isEditable ?? true
     }
 
     private func toggle(_ task: ProjectTask, in document: TaskDocument) {
@@ -1146,6 +1224,12 @@ struct ProjectTasksView: View {
         document: TaskDocument,
         rebuild: @escaping (ProjectTask) -> [TodoEditor.Patch]
     ) {
+        guard isEditable(document.path) else {
+            let regions = gitStatuses[document.path]?.conflicts.count ?? 0
+            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict "
+                + "içeriyor (\(regions) bölge); önce çözülmeli."
+            return
+        }
         do {
             let outcome = try TodoEditor.write(
                 patches: patches,

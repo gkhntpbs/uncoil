@@ -627,7 +627,9 @@ extension CapabilityRouter {
             // A subtask is a line indented under its parent, inserted at the end
             // of the parent's own block.
             let indent = found.task.checkbox.indent + "  "
-            let line = "\(indent)\(found.task.checkbox.listMarker) [ ] \(text)\n"
+            let line = TodoEditor.separator(
+                before: found.task.blockRange.endByte, in: found.document.raw
+            ) + "\(indent)\(found.task.checkbox.listMarker) [ ] \(text)\n"
             let patch = TodoEditor.Patch(
                 range: TaskSourceRange(
                     startByte: found.task.blockRange.endByte,

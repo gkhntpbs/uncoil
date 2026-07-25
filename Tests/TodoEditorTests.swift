@@ -159,6 +159,25 @@ final class TodoEditorTests: XCTestCase {
         XCTAssertTrue(updated.contains("## Kaynak"), "başlıklar korunuyor")
     }
 
+    func testMovingIntoAFileWithNoTrailingNewlineKeepsTheAnchorLine() throws {
+        // A file whose last line has no newline is ordinary; pasting the block
+        // straight onto that byte offset used to glue it to "- [x] bitmiş" and
+        // destroy that task.
+        let raw = "## Todo\n\n- [ ] taşınacak\n\n## Done\n\n- [x] bitmiş"
+        let (_, document) = try file(raw)
+        let task = try XCTUnwrap(document.tasks.first { $0.text == "taşınacak" })
+        let updated = try TodoEditor.apply(
+            try TodoEditor.movePatches(task: task, to: ["Done"], in: document), to: raw
+        )
+        XCTAssertTrue(updated.contains("\n- [x] bitmiş\n"), updated)
+        let reparsed = TodoParser.parse(updated, path: "/p/TODO.md")
+        XCTAssertEqual(reparsed.tasks.count, 2)
+        XCTAssertEqual(
+            reparsed.tasks.first { $0.text == "taşınacak" }?.headingPath, ["Done"]
+        )
+        XCTAssertNotNil(reparsed.tasks.first { $0.text == "bitmiş" })
+    }
+
     func testMovingToAnUnknownHeadingIsRefused() throws {
         let (_, document) = try file("## A\n\n- [ ] görev\n")
         XCTAssertThrowsError(
@@ -269,6 +288,53 @@ final class TodoEditorTests: XCTestCase {
         XCTAssertTrue(diff.contains("-[ ]"))
         XCTAssertTrue(diff.contains("+[x]"))
         XCTAssertTrue(diff.contains("işaretleniyor"))
+    }
+
+    func testEveryEditKindProducesAReadableDiff() throws {
+        let raw = """
+        ## Kaynak
+
+        - [ ] taşınacak
+          açıklaması
+
+        ## Hedef
+
+        - [x] hedefte var olan
+
+        """
+        let (_, document) = try file(raw)
+        let task = try XCTUnwrap(document.tasks.first { $0.text == "taşınacak" })
+
+        let rename = try XCTUnwrap(TodoEditor.renamePatch(for: task, to: "yeni ad"))
+        let renameDiff = TodoEditor.diff([rename], in: raw)
+        // The rename patch covers the task's own text only, so that is what the
+        // diff shows — not the whole line.
+        XCTAssertTrue(renameDiff.contains("-taşınacak"), renameDiff)
+        XCTAssertTrue(renameDiff.contains("+yeni ad"), renameDiff)
+
+        let describe = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: task, to: "yeni açıklama")
+        )
+        let describeDiff = TodoEditor.diff([describe], in: raw)
+        XCTAssertTrue(describeDiff.contains("-  açıklaması"), describeDiff)
+        XCTAssertTrue(describeDiff.contains("+  yeni açıklama"), describeDiff)
+
+        // A move is two patches: what leaves, and where it lands. Both sides
+        // have to show, or the user cannot tell a move from a delete.
+        let moveDiff = TodoEditor.diff(
+            try TodoEditor.movePatches(task: task, to: ["Hedef"], in: document), in: raw
+        )
+        XCTAssertTrue(moveDiff.contains("-- [ ] taşınacak"), moveDiff)
+        XCTAssertTrue(moveDiff.contains("+- [ ] taşınacak"), moveDiff)
+        XCTAssertTrue(moveDiff.contains("Hedef"), moveDiff)
+
+        let block = TodoEditor.blockWithDescendants(of: task, in: document)
+        let deleteDiff = TodoEditor.diff(
+            [.init(range: block.range, replacement: "", summary: "görev silindi")], in: raw
+        )
+        XCTAssertTrue(deleteDiff.contains("-- [ ] taşınacak"), deleteDiff)
+        XCTAssertTrue(deleteDiff.contains("görev silindi"), deleteDiff)
+        XCTAssertFalse(deleteDiff.contains("+"), "a delete adds nothing")
     }
 
     // MARK: - Safe write
