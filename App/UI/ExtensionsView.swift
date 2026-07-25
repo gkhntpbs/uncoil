@@ -702,6 +702,10 @@ private struct PackagesScreen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            if kind == .skill {
+                TriggerTesterCard(registry: registry)
+            }
+
             if packages.isEmpty {
                 SectionCard(title: "\(kind.label) bulunamadı") {
                     EmptyRow(
@@ -966,6 +970,127 @@ private struct PackageCard: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
+    }
+}
+
+// MARK: - Skill trigger tester
+
+private struct TriggerTesterCard: View {
+    @ObservedObject var registry: ExtensionRegistry
+    @StateObject private var history = SkillTriggerHistory()
+    @State private var prompt = ""
+    @State private var results: [SkillTriggerTester.Result] = []
+    @State private var candidateCount = 0
+
+    var body: some View {
+        SectionCard(
+            title: "Trigger Tester",
+            detail: "Bir prompt'un hangi skill'i tetikleyebileceğini, agent'ın gördüğü açıklamalardan tahmin eder."
+        ) {
+            HStack(spacing: 9) {
+                TextField("Örnek prompt yaz…", text: $prompt)
+                    .textFieldStyle(.plain)
+                    .font(Theme.mono(11.5))
+                    .foregroundStyle(Theme.text)
+                    .onSubmit(run)
+                    .accessibilityIdentifier("extensions.trigger.prompt")
+                Button("Test et", action: run)
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("extensions.trigger.run")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+
+            Divider().overlay(Theme.border)
+            HStack(spacing: 9) {
+                Toggle("Test geçmişini sakla", isOn: $history.isEnabled)
+                    .toggleStyle(.checkbox)
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.textDim)
+                    .accessibilityIdentifier("extensions.trigger.keepHistory")
+                Spacer()
+                if !history.entries.isEmpty {
+                    Text("\(history.entries.count) kayıt")
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.textFaint)
+                    Button("Geçmişi sil") { history.clear() }
+                        .buttonStyle(GhostButtonStyle())
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            if !results.isEmpty {
+                Divider().overlay(Theme.border)
+                Text("\(candidateCount) skill açıklaması yüklendi")
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.textFaint)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+
+                ForEach(results) { result in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 7) {
+                            Text(result.agent.displayName)
+                                .font(Theme.mono(11, .semibold))
+                                .foregroundStyle(Theme.text)
+                            Text(result.verdict.label)
+                                .font(Theme.mono(10, .semibold))
+                                .foregroundStyle(verdictColor(result.verdict))
+                        }
+                        Text(result.verdict.advice)
+                            .font(Theme.mono(10.5))
+                            .foregroundStyle(Theme.textDim)
+                        ForEach(result.matches) { match in
+                            Text("· \(match.candidate.name) — \(Int(match.score * 100))% · \(match.matchedTerms.prefix(4).joined(separator: ", "))")
+                                .font(Theme.mono(10))
+                                .foregroundStyle(Theme.textFaint)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .accessibilityIdentifier("extensions.trigger.result.\(result.agent.rawValue)")
+                }
+            }
+        }
+    }
+
+    private func verdictColor(_ verdict: SkillTriggerTester.Verdict) -> Color {
+        switch verdict {
+        case .single: Theme.ok
+        case .noMatch: Theme.textDim
+        case .conflict: Theme.warn
+        case .tooBroad: Theme.danger
+        }
+    }
+
+    private func run() {
+        let value = prompt.trimmingCharacters(in: .whitespaces)
+        guard !value.isEmpty else { return }
+        let candidates = SkillTriggerTester.candidates(
+            skills: registry.skills,
+            agentBindings: registry.agentBindings
+        ) { package in
+            guard let path = package.activeRevision?.path
+                ?? skillPath(for: package) else { return nil }
+            return try? String(
+                contentsOf: URL(fileURLWithPath: path).appendingPathComponent("SKILL.md"),
+                encoding: .utf8
+            )
+        }
+        candidateCount = candidates.count
+        results = SkillTriggerTester.testAll(prompt: value, candidates: candidates)
+        results.forEach(history.record)
+    }
+
+    /// Unmanaged skills have no revision, so their files are read where the
+    /// agent keeps them.
+    private func skillPath(for package: ExtensionPackage) -> String? {
+        if case .detectedExternal(let path) = package.source { return path }
+        if case .local(let path) = package.source { return path }
+        return nil
     }
 }
 

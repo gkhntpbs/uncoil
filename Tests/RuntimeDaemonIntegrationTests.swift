@@ -439,10 +439,18 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         return root
     }
 
+    /// Waits until the daemon is actually accepting connections.
+    ///
+    /// The socket FILE appears at `bind()`, but `connect()` fails with
+    /// ECONNREFUSED until `listen()` runs a few instructions later — so waiting
+    /// for the file to exist raced with the daemon and made whichever test lost
+    /// the race fail with "Connection refused". Probing with a real connection
+    /// closes that window.
     private func waitForSocket(_ path: String, timeout: TimeInterval) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if FileManager.default.fileExists(atPath: path) {
+            if FileManager.default.fileExists(atPath: path), let probe = try? connect(to: path) {
+                close(probe)
                 return true
             }
             usleep(20_000)
