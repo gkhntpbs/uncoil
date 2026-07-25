@@ -148,7 +148,10 @@ final class SkillTriggerTesterTests: XCTestCase {
         let results = SkillTriggerTester.testAll(
             prompt: "grafik tasarımı", candidates: candidates, now: now
         )
-        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(
+            results.count, ExtensionAgentID.supported.count,
+            "every managed agent is reported, matching or not"
+        )
         XCTAssertEqual(
             results.first { $0.agent == .claudeCode }?.matches.map(\.candidate.name),
             ["claude-only"]
@@ -156,6 +159,10 @@ final class SkillTriggerTesterTests: XCTestCase {
         XCTAssertEqual(
             results.first { $0.agent == .codex }?.matches.map(\.candidate.name),
             ["codex-only"]
+        )
+        XCTAssertEqual(
+            results.first { $0.agent == .cursor }?.matches.count, 0,
+            "an agent nothing is assigned to matches nothing"
         )
     }
 

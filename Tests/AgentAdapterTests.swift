@@ -485,13 +485,18 @@ final class CodexAdapterTests: XCTestCase {
 
 @MainActor
 final class AgentAdapterRegistryTests: XCTestCase {
-    func testShipsAdaptersForClaudeAndCodexOnly() {
+    func testShipsAnAdapterForEveryListedAgent() {
         let registry = AgentAdapterRegistry()
-        XCTAssertEqual(registry.adapters.map(\.agent), [.claudeCode, .codex])
-        XCTAssertNotNil(registry.adapter(for: .claudeCode))
-        XCTAssertNotNil(registry.adapter(for: .codex))
-        XCTAssertNil(registry.adapter(for: .cursor))
-        XCTAssertEqual(Set(registry.unmanagedAgents), [.geminiCLI, .cursor, .amp])
+        XCTAssertEqual(
+            registry.adapters.map(\.agent), [.claudeCode, .codex, .geminiCLI, .cursor, .amp]
+        )
+        for agent in ExtensionAgentID.allCases {
+            XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
+        }
+        XCTAssertTrue(registry.unmanagedAgents.isEmpty)
+        // Managed is not the same as launchable: Uncoil edits Gemini CLI, Cursor
+        // and Amp configs but does not run their sessions.
+        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex])
     }
 
     func testSupportedAgentsMatchTheAdaptersWeShip() {

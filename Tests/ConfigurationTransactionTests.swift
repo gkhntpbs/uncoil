@@ -170,3 +170,138 @@ final class ConfigurationTransactionServiceTests: XCTestCase {
         XCTAssertTrue(event.detail.contains("dışarıdan değişti"))
     }
 }
+
+/// The history that makes "go back to the previous config" a single click, and
+/// what it deliberately does not keep.
+@MainActor
+final class ConfigTransactionHistoryTests: XCTestCase {
+    private var base: URL!
+    private var registry: ExtensionRegistry!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilConfigHistory-\(UUID().uuidString)", isDirectory: true)
+        let layout = ExtensionStoreLayout(
+            root: base.appendingPathComponent("store", isDirectory: true)
+        )
+        try layout.ensure()
+        registry = ExtensionRegistry(
+            layout: layout,
+            store: SkillStore(
+                layout: layout,
+                canonicalRoot: base.appendingPathComponent("agents/skills", isDirectory: true)
+            )
+        )
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    private func backupFile(_ name: String = "backup.json") throws -> String {
+        let url = base.appendingPathComponent(name)
+        try Data("{}".utf8).write(to: url)
+        return url.path
+    }
+
+    private func transaction(
+        status: ConfigurationTransaction.Status,
+        agent: ExtensionAgentID = .claudeCode,
+        backupPath: String?,
+        appliedAt: Date? = Date(timeIntervalSince1970: 100)
+    ) -> ConfigurationTransaction {
+        var transaction = ConfigurationTransaction(
+            agent: agent,
+            configPath: "/home/.claude.json",
+            baseHash: "hash",
+            diff: "+  \"mcpServers\": {}",
+            pendingContent: "{\"secret\": \"kullanıcının config'i\"}",
+            backupPath: backupPath
+        )
+        transaction.status = status
+        transaction.appliedAt = appliedAt
+        return transaction
+    }
+
+    func testTheStoredHistoryDropsThePendingContent() throws {
+        registry.recordConfigTransaction(
+            transaction(status: .applied, backupPath: try backupFile())
+        )
+        let stored = try XCTUnwrap(registry.configTransactions.first)
+        XCTAssertNil(
+            stored.pendingContent,
+            "a full copy of the user's config has no business being kept"
+        )
+        XCTAssertNotNil(stored.backupPath, "the backup is what a rollback needs")
+        XCTAssertEqual(stored.diff, "+  \"mcpServers\": {}")
+
+        let raw = try String(contentsOf: registry.documentURL, encoding: .utf8)
+        XCTAssertFalse(raw.contains("kullanıcının config'i"))
+    }
+
+    func testHistorySurvivesAReload() throws {
+        registry.recordConfigTransaction(
+            transaction(status: .applied, backupPath: try backupFile())
+        )
+        registry.load()
+        XCTAssertEqual(registry.configTransactions.count, 1)
+        XCTAssertEqual(registry.configTransactions.first?.status, .applied)
+    }
+
+    func testRecordingTheSameTransactionAgainUpdatesItInPlace() throws {
+        var applied = transaction(status: .applied, backupPath: try backupFile())
+        registry.recordConfigTransaction(applied)
+        applied.status = .rolledBack
+        registry.recordConfigTransaction(applied)
+        XCTAssertEqual(registry.configTransactions.count, 1)
+        XCTAssertEqual(registry.configTransactions.first?.status, .rolledBack)
+    }
+
+    func testTheRollbackCandidateIsTheNewestAppliedChangeWithABackup() throws {
+        registry.recordConfigTransaction(transaction(
+            status: .applied, backupPath: try backupFile("first.json"),
+            appliedAt: Date(timeIntervalSince1970: 100)
+        ))
+        let newest = transaction(
+            status: .applied, backupPath: try backupFile("second.json"),
+            appliedAt: Date(timeIntervalSince1970: 200)
+        )
+        registry.recordConfigTransaction(newest)
+        XCTAssertEqual(registry.rollbackCandidate(for: .claudeCode)?.id, newest.id)
+    }
+
+    func testAChangeThatWasNotAppliedIsNotOfferedForRollback() throws {
+        registry.recordConfigTransaction(
+            transaction(status: .planned, backupPath: try backupFile())
+        )
+        registry.recordConfigTransaction(
+            transaction(status: .failed, backupPath: try backupFile("failed.json"))
+        )
+        registry.recordConfigTransaction(
+            transaction(status: .rolledBack, backupPath: try backupFile("rolled.json"))
+        )
+        XCTAssertNil(registry.rollbackCandidate(for: .claudeCode))
+    }
+
+    func testAnAppliedChangeWhoseBackupIsGoneIsNotOffered() {
+        registry.recordConfigTransaction(
+            transaction(status: .applied, backupPath: "/tmp/uncoil-does-not-exist.json")
+        )
+        XCTAssertNil(
+            registry.rollbackCandidate(for: .claudeCode),
+            "offering a rollback with no snapshot behind it would be a lie"
+        )
+    }
+
+    func testCandidatesAreKeptPerAgent() throws {
+        let claude = transaction(
+            status: .applied, agent: .claudeCode, backupPath: try backupFile("c.json")
+        )
+        registry.recordConfigTransaction(claude)
+        XCTAssertNotNil(registry.rollbackCandidate(for: .claudeCode))
+        XCTAssertNil(registry.rollbackCandidate(for: .codex))
+        XCTAssertNil(registry.rollbackCandidate(for: .geminiCLI))
+    }
+}

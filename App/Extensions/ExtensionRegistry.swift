@@ -20,6 +20,10 @@ final class ExtensionRegistry: ObservableObject {
         /// Repositories the user added, so Sources can list one even before it
         /// has produced an extension.
         var sources: [String] = []
+        /// Applied config changes, so "go back to the previous config" is one
+        /// click away after a restart too. `pendingContent` is dropped before
+        /// storing: it holds a copy of the user's config, secrets included.
+        var configTransactions: [ConfigurationTransaction] = []
     }
 
     @Published private(set) var packages: [ExtensionPackage] = []
@@ -29,6 +33,8 @@ final class ExtensionRegistry: ObservableObject {
     @Published private(set) var updateCandidates: [UpdateCandidate] = []
     @Published private(set) var sources: [String] = []
     @Published private(set) var auditEvents: [AuditEvent] = []
+    /// Config changes Uncoil applied, newest first.
+    @Published private(set) var configTransactions: [ConfigurationTransaction] = []
 
     /// Transient (not persisted): rediscovered on every launch.
     @Published private(set) var installations: [AgentInstallation] = []
@@ -75,6 +81,7 @@ final class ExtensionRegistry: ObservableObject {
         findings = document.findings
         updateCandidates = document.updateCandidates
         sources = document.sources
+        configTransactions = document.configTransactions
         health = healthChecks()
     }
 
@@ -86,7 +93,8 @@ final class ExtensionRegistry: ObservableObject {
             projectBindings: projectBindings,
             findings: findings,
             updateCandidates: updateCandidates,
-            sources: sources
+            sources: sources,
+            configTransactions: configTransactions
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -124,6 +132,37 @@ final class ExtensionRegistry: ObservableObject {
             .split(separator: 0x0A)
             .compactMap { try? decoder.decode(AuditEvent.self, from: Data($0)) }
             .reversed()
+    }
+
+    /// Remembers an applied or rolled-back config change.
+    ///
+    /// The pending content is stripped: it is a full copy of the agent's config
+    /// and has no business sitting in a file Uncoil keeps around. The backup path
+    /// is what a rollback actually needs.
+    func recordConfigTransaction(_ transaction: ConfigurationTransaction) {
+        var stored = transaction
+        stored.pendingContent = nil
+        if let index = configTransactions.firstIndex(where: { $0.id == stored.id }) {
+            configTransactions[index] = stored
+        } else {
+            configTransactions.insert(stored, at: 0)
+        }
+        if configTransactions.count > 100 {
+            configTransactions.removeLast(configTransactions.count - 100)
+        }
+        save()
+    }
+
+    /// The change a "go back to the previous config" button would undo for this
+    /// agent: the newest applied transaction that still has its backup.
+    func rollbackCandidate(for agent: ExtensionAgentID) -> ConfigurationTransaction? {
+        configTransactions.first { transaction in
+            transaction.agent == agent
+                && transaction.status == .applied
+                && transaction.backupPath.map {
+                    FileManager.default.fileExists(atPath: $0)
+                } == true
+        }
     }
 
     // MARK: - Mutation

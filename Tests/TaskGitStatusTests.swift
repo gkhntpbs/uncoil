@@ -579,3 +579,27 @@ final class GitMergeTests: XCTestCase {
         XCTAssertLessThan(diff.split(separator: "\n").count, 60)
     }
 }
+
+final class StaleEditComparisonTests: XCTestCase {
+    func testBothSidesAreLabelledSoTheUserCanTell() {
+        let text = StaleEditComparison.text(
+            taskText: "daemon heartbeat ekle",
+            attempted: "@@ satır 3 @@ işaretleniyor\n-[ ]\n+[x]",
+            onDisk: "- [ ] daemon heartbeat ekle, kullanıcı düzeltti"
+        )
+        XCTAssertTrue(text.contains("Senin düzenlemen"))
+        XCTAssertTrue(text.contains("daemon heartbeat ekle"))
+        XCTAssertTrue(text.contains("+[x]"))
+        XCTAssertTrue(text.contains("Dosyadaki hâli"))
+        XCTAssertTrue(text.contains("kullanıcı düzeltti"))
+    }
+
+    func testAVanishedTaskIsSaidSoRatherThanShownAsEmpty() {
+        for onDisk in [nil, ""] {
+            let text = StaleEditComparison.text(
+                taskText: "görev", attempted: "-a\n+b", onDisk: onDisk
+            )
+            XCTAssertTrue(text.contains("dosyada bulunamadı"), text)
+        }
+    }
+}

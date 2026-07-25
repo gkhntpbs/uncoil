@@ -505,6 +505,15 @@ private struct OverviewScreen: View {
 private struct AgentsScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @Binding var message: String?
+    /// A planned config change awaiting the user's word, with the changes it was
+    /// built from so a stale config can be re-planned on top of the user's edit.
+    @State private var plan: (
+        transaction: ConfigurationTransaction,
+        changes: [ConfigurationChange],
+        installation: AgentInstallation,
+        summary: String,
+        issues: [ConfigurationIssue]
+    )?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -598,6 +607,79 @@ private struct AgentsScreen: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
+
+                    if let configuration, !configuration.mcpServers.isEmpty {
+                        Divider().overlay(Theme.border)
+                        ForEach(configuration.mcpServers) { server in
+                            HStack(spacing: 8) {
+                                TablerIcon(
+                                    name: server.isEnabled ? "server" : "server-off",
+                                    size: 11,
+                                    color: server.isEnabled ? Theme.codex : Theme.textFaint
+                                )
+                                Text(server.name)
+                                    .font(Theme.mono(10.5))
+                                    .foregroundStyle(Theme.text)
+                                Text(server.transport.rawValue)
+                                    .font(Theme.mono(9))
+                                    .foregroundStyle(Theme.textFaint)
+                                Spacer()
+                                Button(server.isEnabled ? "Kapat" : "Aç") {
+                                    planChange(
+                                        [.setMCPServerEnabled(
+                                            name: server.name, isEnabled: !server.isEnabled
+                                        )],
+                                        installation: installation,
+                                        summary: server.isEnabled
+                                            ? "\(server.name) kapatılıyor"
+                                            : "\(server.name) açılıyor"
+                                    )
+                                }
+                                .buttonStyle(GhostButtonStyle())
+                                .font(Theme.mono(9.5))
+                                .accessibilityIdentifier(
+                                    "extensions.mcp.toggle.\(installation.agent.rawValue).\(server.name)"
+                                )
+                                Button("Kaldır") {
+                                    planChange(
+                                        [.removeMCPServer(name: server.name)],
+                                        installation: installation,
+                                        summary: "\(server.name) kaldırılıyor"
+                                    )
+                                }
+                                .buttonStyle(GhostButtonStyle())
+                                .font(Theme.mono(9.5))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                        }
+                    }
+
+                    if let candidate = registry.rollbackCandidate(for: installation.agent) {
+                        Divider().overlay(Theme.border)
+                        HStack(spacing: 8) {
+                            TablerIcon(name: "history", size: 11, color: Theme.warn)
+                            Text(
+                                "Son değişiklik "
+                                    + (candidate.appliedAt.map {
+                                        RelativeClock.short(since: $0)
+                                    } ?? "bilinmiyor")
+                            )
+                            .font(Theme.mono(10))
+                            .foregroundStyle(Theme.textDim)
+                            Spacer()
+                            Button("Önceki config'e dön") {
+                                message = rollback(candidate, installation: installation)
+                            }
+                            .buttonStyle(GhostButtonStyle())
+                            .font(Theme.mono(9.5))
+                            .accessibilityIdentifier(
+                                "extensions.config.rollback.\(installation.agent.rawValue)"
+                            )
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                    }
                 }
             }
 
@@ -611,6 +693,106 @@ private struct AgentsScreen: View {
                     }
                 }
             }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { plan != nil },
+                set: { if !$0 { plan = nil } }
+            )
+        ) {
+            if let pending = plan {
+                ConfigPlanSheet(
+                    transaction: pending.transaction,
+                    summary: pending.summary,
+                    issues: pending.issues,
+                    onApply: { applyPlan(pending) },
+                    onCancel: { plan = nil }
+                )
+            }
+        }
+    }
+
+    /// Builds the plan and shows it. Nothing is written until the sheet's Apply.
+    private func planChange(
+        _ changes: [ConfigurationChange],
+        installation: AgentInstallation,
+        summary: String
+    ) {
+        let service = ConfigurationTransactionService(registry: AgentAdapterRegistry())
+        do {
+            let planned = try service.plan(
+                changes, agent: installation.agent, installation: installation
+            )
+            plan = (
+                planned.transaction, changes, installation, summary,
+                AgentAdapterRegistry().adapter(for: installation.agent)?
+                    .validate(planned.configuration) ?? []
+            )
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func applyPlan(
+        _ pending: (
+            transaction: ConfigurationTransaction,
+            changes: [ConfigurationChange],
+            installation: AgentInstallation,
+            summary: String,
+            issues: [ConfigurationIssue]
+        )
+    ) {
+        let service = ConfigurationTransactionService(registry: AgentAdapterRegistry())
+        plan = nil
+        do {
+            let outcome = try service.apply(
+                pending.transaction, changes: pending.changes, installation: pending.installation
+            )
+            registry.recordConfigTransaction(outcome.transaction)
+            registry.record(
+                ConfigurationTransactionService.auditEvent(for: outcome, extensionID: nil)
+            )
+            registry.discover()
+            if let replanned = outcome.replanned {
+                // The file moved under us: the user's edit stays and the change
+                // is re-proposed on top of it.
+                plan = (
+                    replanned, pending.changes, pending.installation,
+                    pending.summary + " (config dışarıdan değişti, yeniden planlandı)",
+                    outcome.issues
+                )
+                message = "Config dışarıdan değişmiş; plan yeniden hesaplandı."
+                return
+            }
+            message = outcome.didApply
+                ? "\(pending.summary): uygulandı."
+                : (outcome.transaction.failureReason ?? "Değişiklik uygulanamadı.")
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func rollback(
+        _ transaction: ConfigurationTransaction,
+        installation: AgentInstallation
+    ) -> String {
+        let service = ConfigurationTransactionService(registry: AgentAdapterRegistry())
+        do {
+            let outcome = try service.rollback(transaction, installation: installation)
+            registry.recordConfigTransaction(outcome.transaction)
+            registry.record(
+                ConfigurationTransactionService.auditEvent(for: outcome, extensionID: nil)
+            )
+            registry.discover()
+            guard outcome.transaction.status == .rolledBack else {
+                return outcome.transaction.failureReason ?? "Geri alınamadı."
+            }
+            let errors = outcome.issues.filter { $0.severity == .error }
+            return errors.isEmpty
+                ? "Önceki config geri yüklendi."
+                : "Config geri yüklendi ama \(errors.count) hata var: \(errors[0].message)"
+        } catch {
+            return error.localizedDescription
         }
     }
 

@@ -34,7 +34,16 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     /// Agents with an adapter today; the rest are listed but not managed.
-    static var supported: [ExtensionAgentID] { [.claudeCode, .codex] }
+    ///
+    /// Gemini CLI, Cursor and Amp are managed through the shared JSON adapter:
+    /// their MCP servers are read and written, but neither skills nor
+    /// authentication are, so they are not equals of Claude Code and Codex.
+    static var supported: [ExtensionAgentID] {
+        [.claudeCode, .codex, .geminiCLI, .cursor, .amp]
+    }
+
+    /// Agents Uncoil can also launch a session for.
+    static var launchable: [ExtensionAgentID] { allCases.filter { $0.provider != nil } }
 }
 
 /// A concrete agent install found on disk.

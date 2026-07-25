@@ -36,6 +36,9 @@ struct ProjectTasksView: View {
     /// shows what actually changed rather than a list of touched files.
     @State private var writtenDiffs: [String: String] = [:]
     @State private var diffPreview: (task: ProjectTask, diff: String)?
+    /// An edit that could not be applied because the file changed inside the
+    /// task's own block. The user decides what happens to it.
+    @State private var staleEdit: (task: ProjectTask, detail: String, attempted: String)?
 
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
@@ -103,6 +106,20 @@ struct ProjectTasksView: View {
                     ? "Planlanacak açık görev yok."
                     : orchestratorPlan?.summary() ?? ""
             )
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { staleEdit != nil },
+                set: { if !$0 { staleEdit = nil } }
+            )
+        ) {
+            if let stale = staleEdit {
+                TaskStaleEditSheet(
+                    taskText: stale.task.text,
+                    detail: stale.detail,
+                    onChoose: { choice in resolveStaleEdit(stale, choice: choice) }
+                )
+            }
         }
         .sheet(
             isPresented: Binding(
@@ -1343,12 +1360,40 @@ struct ProjectTasksView: View {
                 message = "Dosya dışarıdan değişmişti; düzenleme güncel içerik üzerinde uygulandı."
             case .conflict(let detail):
                 conflictTaskIDs.insert(task.id)
-                message = "\(detail) Yeniden yükleyip tekrar dene."
+                staleEdit = (
+                    task, detail, TodoEditor.diff(patches, in: document.raw)
+                )
             }
         } catch {
             message = error.localizedDescription
         }
         refresh()
+    }
+
+    private func resolveStaleEdit(
+        _ stale: (task: ProjectTask, detail: String, attempted: String),
+        choice: TaskStaleEditSheet.Choice
+    ) {
+        staleEdit = nil
+        switch choice {
+        case .reload:
+            conflictTaskIDs.remove(stale.task.id)
+            refresh()
+            message = "Dosya yeniden yüklendi; düzenleme uygulanmadı."
+        case .compare:
+            let onDisk = sources.document(for: stale.task.sourcePath)?
+                .task(id: stale.task.id)?.rawBlock
+            diffPreview = (
+                stale.task,
+                StaleEditComparison.text(
+                    taskText: stale.task.text,
+                    attempted: stale.attempted,
+                    onDisk: onDisk
+                )
+            )
+        case .cancel:
+            message = "Düzenleme uygulanmadı; dosya olduğu gibi kaldı."
+        }
     }
 
     /// After a successful merge the task is finished: its checkbox is ticked, or
