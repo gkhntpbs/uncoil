@@ -66,7 +66,7 @@ enum HookInstaller {
         try backupCurrentSettings()
 
         var hooks = root["hooks"] as? [String: Any] ?? [:]
-        let command = "\"\(helper.path)\" \"\(socketPath)\""
+        let command = command(helperPath: helper.path)
 
         for event in managedEvents {
             var entries = hooks[event] as? [[String: Any]] ?? []
@@ -105,6 +105,67 @@ enum HookInstaller {
             root["hooks"] = hooks
         }
         try write(root)
+    }
+
+    /// Installed Uncoil commands that do not invoke `helperPath` — the app was
+    /// rebuilt elsewhere, moved, or its old DerivedData bundle was deleted.
+    /// Pure (takes the parsed settings root) so it is directly testable.
+    static func staleCommands(in root: [String: Any], helperPath: String) -> [String] {
+        guard let hooks = root["hooks"] as? [String: Any] else { return [] }
+        let expected = command(helperPath: helperPath)
+        return managedEvents.flatMap { event -> [String] in
+            let entries = hooks[event] as? [[String: Any]] ?? []
+            return entries.flatMap { entry -> [String] in
+                let inner = entry["hooks"] as? [[String: Any]] ?? []
+                return inner.compactMap { hook in
+                    guard let command = hook["command"] as? String,
+                          command.contains(helperName),
+                          command != expected else { return nil }
+                    return command
+                }
+            }
+        }
+    }
+
+    /// Re-points existing Uncoil entries at the running bundle's helper.
+    /// Only rewrites commands that are already there — a stale path makes
+    /// every Claude tool call log a hook failure, but a hook the user removed
+    /// stays removed. Returns the number of rewritten commands.
+    @discardableResult
+    static func repairStalePaths() throws -> Int {
+        guard let helper = helperURL else { return 0 }
+        var root = try loadSettings()
+        guard !staleCommands(in: root, helperPath: helper.path).isEmpty,
+              var hooks = root["hooks"] as? [String: Any] else { return 0 }
+        try backupCurrentSettings()
+
+        let expected = command(helperPath: helper.path)
+        var repaired = 0
+        for event in managedEvents {
+            guard var entries = hooks[event] as? [[String: Any]] else { continue }
+            for index in entries.indices {
+                guard var inner = entries[index]["hooks"] as? [[String: Any]] else { continue }
+                var changed = false
+                for hookIndex in inner.indices {
+                    guard let command = inner[hookIndex]["command"] as? String,
+                          command.contains(helperName),
+                          command != expected else { continue }
+                    inner[hookIndex]["command"] = expected
+                    changed = true
+                    repaired += 1
+                }
+                if changed { entries[index]["hooks"] = inner }
+            }
+            hooks[event] = entries
+        }
+        guard repaired > 0 else { return 0 }
+        root["hooks"] = hooks
+        try write(root)
+        return repaired
+    }
+
+    static func command(helperPath: String) -> String {
+        "\"\(helperPath)\" \"\(socketPath)\""
     }
 
     static func status() -> Status {

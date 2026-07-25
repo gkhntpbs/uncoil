@@ -27,6 +27,18 @@ struct UncoilApp: App {
             || ProcessInfo.processInfo.arguments.contains("-runtime") {
             RuntimeClient.shared.start()
         }
+        // An installed hook that still points at an old build makes every
+        // Claude tool call log a failure, so re-point it at this bundle.
+        if !LaunchConfig.shared.isUITesting {
+            do {
+                let repaired = try HookInstaller.repairStalePaths()
+                if repaired > 0 {
+                    NSLog("Uncoil repaired \(repaired) stale hook command(s)")
+                }
+            } catch {
+                NSLog("Uncoil could not repair hook commands: \(error)")
+            }
+        }
         // Window state restoration can come back as "zero windows" once a
         // value-presented WindowGroup exists; sessions are persisted by our
         // own stores, so native window restoration is disabled entirely.

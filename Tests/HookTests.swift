@@ -27,6 +27,58 @@ final class HookEventTests: XCTestCase {
 }
 
 @MainActor
+final class HookInstallerStalePathTests: XCTestCase {
+    private func settings(command: String, event: String = "PreToolUse") -> [String: Any] {
+        [
+            "hooks": [
+                event: [
+                    ["matcher": "*", "hooks": [["type": "command", "command": command]]],
+                ],
+            ],
+        ]
+    }
+
+    func testDetectsCommandPointingAtAnotherBundle() {
+        let stale = HookInstaller.staleCommands(
+            in: settings(command: "\"/old/Uncoil.app/Contents/Resources/uncoil-hook\" \"/tmp/hook.sock\""),
+            helperPath: "/new/Uncoil.app/Contents/Helpers/uncoil-hook"
+        )
+        XCTAssertEqual(stale.count, 1)
+    }
+
+    func testCurrentCommandIsNotStale() {
+        let helper = "/new/Uncoil.app/Contents/Helpers/uncoil-hook"
+        XCTAssertTrue(
+            HookInstaller.staleCommands(
+                in: settings(command: HookInstaller.command(helperPath: helper)),
+                helperPath: helper
+            ).isEmpty
+        )
+    }
+
+    func testForeignHooksAreNeverReportedAsStale() {
+        XCTAssertTrue(
+            HookInstaller.staleCommands(
+                in: settings(command: "\"/usr/local/bin/my-own-hook\""),
+                helperPath: "/new/Uncoil.app/Contents/Helpers/uncoil-hook"
+            ).isEmpty
+        )
+        XCTAssertTrue(
+            HookInstaller.staleCommands(in: [:], helperPath: "/x/uncoil-hook").isEmpty
+        )
+    }
+
+    func testUnmanagedEventIsIgnored() {
+        XCTAssertTrue(
+            HookInstaller.staleCommands(
+                in: settings(command: "\"/old/uncoil-hook\"", event: "PreCompact"),
+                helperPath: "/new/uncoil-hook"
+            ).isEmpty
+        )
+    }
+}
+
+@MainActor
 final class HookReducerTests: XCTestCase {
     private var tempDir: URL!
     private var projects: ProjectStore!
