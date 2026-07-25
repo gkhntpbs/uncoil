@@ -131,6 +131,8 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         prefs: NotificationPrefs
     ) {
         if let projectID, !prefs.isEnabled(project: projectID) { return }
+        // Not in tests: see AttentionNotifier.isRunningTests.
+        guard !AttentionNotifier.isRunningTests else { return }
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }

@@ -73,12 +73,25 @@ struct NotificationPrefs: Codable, Equatable {
 /// Posts session-attention notifications with per-project prefs and
 /// once-per-state dedup handled by the caller.
 enum AttentionNotifier {
+    /// True while a test bundle is loaded.
+    ///
+    /// `UNUserNotificationCenter` is not usable in the unit-test host, and its
+    /// authorization callback arrives on a background queue — long after the test
+    /// that triggered it finished, where an ObjC exception from it surfaced as an
+    /// unrelated test failing intermittently. Delivery is therefore skipped in
+    /// tests; the state transitions that lead to a notification are asserted
+    /// directly instead.
+    static var isRunningTests: Bool {
+        NSClassFromString("XCTestCase") != nil
+    }
+
     static func post(
         title: String,
         body: String,
         projectID: UUID,
         prefs: NotificationPrefs
     ) {
+        guard !isRunningTests else { return }
         guard prefs.isEnabled(project: projectID) else { return }
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in

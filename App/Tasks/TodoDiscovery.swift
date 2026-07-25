@@ -62,14 +62,19 @@ enum TodoDiscovery {
         ignoredPaths: Set<String>? = nil
     ) -> [Found] {
         let manager = FileManager.default
-        let root = URL(fileURLWithPath: projectRoot).standardizedFileURL
+        let root = URL(fileURLWithPath: projectRoot)
         guard manager.fileExists(atPath: root.path) else { return [] }
 
         let ignored = ignoredPaths ?? (
             rules.respectsGitIgnore ? gitIgnoredPaths(projectRoot: root.path) : []
         )
         var found: [Found] = []
-        var queue: [(url: URL, depth: Int)] = [(root, 0)]
+        // The relative path is carried through the walk rather than derived by
+        // string-prefixing the root: on macOS an enumerated child comes back as
+        // /private/var/... while every URL normalisation turns the root back into
+        // /var/..., so prefix matching silently fails and display paths collapse
+        // to bare file names.
+        var queue: [(url: URL, relative: String, depth: Int)] = [(root, "", 0)]
 
         while let entry = queue.first {
             queue.removeFirst()
@@ -87,13 +92,14 @@ enum TodoDiscovery {
                 // Symlinked directories can loop; a task file is expected to be
                 // a real file in the project.
                 if values?.isSymbolicLink == true { continue }
-                let relative = relativePath(of: url, from: root)
+                let name = url.lastPathComponent
+                let relative = entry.relative.isEmpty ? name : "\(entry.relative)/\(name)"
                 if ignored.contains(relative) { continue }
                 if rules.excludedPaths.contains(relative) { continue }
 
                 if values?.isDirectory == true {
-                    guard !rules.excludes(directoryNamed: url.lastPathComponent) else { continue }
-                    queue.append((url, entry.depth + 1))
+                    guard !rules.excludes(directoryNamed: name) else { continue }
+                    queue.append((url, relative, entry.depth + 1))
                     continue
                 }
                 guard rules.isTaskFile(named: url.lastPathComponent) else { continue }

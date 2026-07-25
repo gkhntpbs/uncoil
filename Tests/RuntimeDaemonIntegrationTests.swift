@@ -208,7 +208,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 _ = waitForExit(process, timeout: 2)
             }
         }
-        XCTAssertTrue(waitForSocket(socketPath, timeout: 3))
+        XCTAssertTrue(waitForSocket(socketPath, timeout: socketTimeout))
         XCTAssertTrue(FileManager.default.fileExists(atPath: logURL.appendingPathExtension("1").path))
 
         let fd = try connect(to: socketPath)
@@ -230,7 +230,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 _ = waitForExit(first, timeout: 2)
             }
         }
-        XCTAssertTrue(waitForSocket(socketPath, timeout: 3))
+        XCTAssertTrue(waitForSocket(socketPath, timeout: socketTimeout))
 
         let client = RuntimeClient(
             socketPath: socketPath,
@@ -270,7 +270,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 _ = waitForExit(first, timeout: 2)
             }
         }
-        XCTAssertTrue(waitForSocket(socketPath, timeout: 3))
+        XCTAssertTrue(waitForSocket(socketPath, timeout: socketTimeout))
 
         let client = RuntimeClient(
             socketPath: socketPath,
@@ -348,7 +348,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 _ = waitForExit(process, timeout: 2)
             }
         }
-        XCTAssertTrue(waitForSocket(socketPath, timeout: 3))
+        XCTAssertTrue(waitForSocket(socketPath, timeout: socketTimeout))
         try body(socketPath, process)
     }
 
@@ -438,6 +438,12 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root
     }
+
+    /// Budget for the daemon to come up. Generous on purpose: these tests spawn
+    /// a real helper process, and one of them first makes the daemon rotate a
+    /// 1 MB log, which under a full-suite load took longer than a tight window
+    /// allowed. A daemon that never starts still fails the assertion.
+    private var socketTimeout: TimeInterval { 10 }
 
     /// Waits for the daemon's socket file to appear.
     ///
