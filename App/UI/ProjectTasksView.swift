@@ -23,6 +23,8 @@ struct ProjectTasksView: View {
     @State private var editingText = ""
     /// Task awaiting a dispatch decision, with the document it came from.
     @State private var dispatchTarget: (task: ProjectTask, document: TaskDocument)?
+    /// Plan the orchestrator proposes, shown before anything is dispatched.
+    @State private var orchestratorPlan: OrchestratorPlan?
 
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
@@ -75,6 +77,21 @@ struct ProjectTasksView: View {
             self.watcher = watcher
         }
         .onDisappear { watcher?.stop() }
+        .alert(
+            "Orchestrator planı",
+            isPresented: Binding(
+                get: { orchestratorPlan != nil },
+                set: { if !$0 { orchestratorPlan = nil } }
+            )
+        ) {
+            Button("Kapat", role: .cancel) { orchestratorPlan = nil }
+        } message: {
+            Text(
+                orchestratorPlan?.isEmpty == true
+                    ? "Planlanacak açık görev yok."
+                    : orchestratorPlan?.summary() ?? ""
+            )
+        }
         .sheet(
             isPresented: Binding(
                 get: { dispatchTarget != nil },
@@ -146,6 +163,20 @@ struct ProjectTasksView: View {
                 Text("\(visibleTasks.filter { !$0.isDone }.count) açık / \(visibleTasks.count)")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
+
+                Button {
+                    previewOrchestratorPlan()
+                } label: {
+                    HStack(spacing: 5) {
+                        TablerIcon(name: "sitemap", size: 12, color: Theme.codex)
+                        Text("Run Orchestrator")
+                            .font(Theme.mono(10.5, .medium))
+                            .foregroundStyle(Theme.codex)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Açık görevler için dispatch planı hazırla")
+                .accessibilityIdentifier("tasks.runOrchestrator")
 
                 Button {
                     refresh()
@@ -1015,6 +1046,34 @@ struct ProjectTasksView: View {
     }
 
     // MARK: - Actions
+
+    /// Builds a dispatch plan and shows it. Nothing is started here: the plan is
+    /// a preview the user reads before any agent is spawned.
+    private func previewOrchestratorPlan() {
+        let store = OrchestratorStore(projectID: project.id)
+        let claimStates = Dictionary(
+            uniqueKeysWithValues: visibleTasks.map { task in
+                (
+                    task.id,
+                    TaskClaimPolicy.state(
+                        lease: metadata.lease(for: task.id),
+                        executionStates: metadata.assignments(for: task.id).map(\.state),
+                        checkboxDone: task.isDone
+                    )
+                )
+            }
+        )
+        let plan = TaskOrchestrator.plan(TaskOrchestrator.Input(
+            projectID: project.id,
+            tasks: visibleTasks,
+            assignments: metadata.assignmentsByTask,
+            claimStates: claimStates,
+            settings: store.settings,
+            now: .now
+        ))
+        store.store(plan)
+        orchestratorPlan = plan
+    }
 
     private func refresh() {
         let tracked = metadata.trackedFingerprints(in: sources.allTasks)
