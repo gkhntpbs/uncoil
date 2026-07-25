@@ -12,6 +12,7 @@ struct ProjectTasksView: View {
     @Binding var selection: MainSelection?
 
     @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @StateObject private var sources: TodoSourceStore
     @StateObject private var metadata: ProjectTaskMetadataStore
@@ -500,7 +501,14 @@ struct ProjectTasksView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .contextMenu { cardActions(task, in: documentFor(task)) }
         .accessibilityIdentifier("tasks.row.\(task.id)")
+    }
+
+    /// The document a task belongs to, needed by actions that patch the file.
+    private func documentFor(_ task: ProjectTask) -> TaskDocument {
+        sources.document(for: task.sourcePath)
+            ?? TodoParser.parse("", path: task.sourcePath)
     }
 
     // MARK: - Kanban view
@@ -633,6 +641,7 @@ struct ProjectTasksView: View {
         .padding(8)
         .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 7))
         .onDrag { NSItemProvider(object: task.id as NSString) }
+        .contextMenu { cardActions(task, in: document) }
         .accessibilityIdentifier("tasks.card.\(task.id)")
     }
 
@@ -719,6 +728,197 @@ struct ProjectTasksView: View {
         sources.document(for: assignment.sourcePath)?
             .task(id: assignment.taskID)?.text
             ?? "görev bulunamadı"
+    }
+
+
+    // MARK: - Card actions
+
+    /// The actions a task offers, in one place so the list row and the kanban
+    /// card cannot drift apart.
+    @ViewBuilder
+    private func cardActions(_ task: ProjectTask, in document: TaskDocument) -> some View {
+        Button("Send to Agent") { sendToAgent(task, role: .implementer, reuseSession: true) }
+        Button("Create New Session") { sendToAgent(task, role: .implementer, reuseSession: false) }
+        Menu("Assign Existing Session") {
+            let candidates = projectStore.sessions(for: project.id)
+            if candidates.isEmpty {
+                Text("Oturum yok")
+            }
+            ForEach(candidates) { record in
+                Menu(record.displayTitle) {
+                    ForEach(TaskAgentRole.allCases) { role in
+                        Button(role.label) {
+                            metadata.assign(
+                                taskID: task.id, sourcePath: task.sourcePath,
+                                sessionID: record.id, role: role,
+                                fingerprint: task.fingerprint
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        let assignments = metadata.assignments(for: task.id)
+        if !assignments.isEmpty {
+            Menu("Open Session") {
+                ForEach(assignments) { assignment in
+                    Button(sessionLabel(assignment)) {
+                        selection = .session(assignment.sessionID)
+                    }
+                }
+            }
+        }
+        Button("Run with Orchestrator") {
+            sendToAgent(task, role: .orchestrator, reuseSession: false)
+        }
+
+        Divider()
+
+        Button("Request Review") {
+            reviewOrTest(task, role: .reviewer, state: .reviewRequested)
+        }
+        Button("Run Tests") {
+            reviewOrTest(task, role: .tester, state: .testsFailing)
+        }
+        Button("Mark Blocked") {
+            metadata.setState(.blocked, taskID: task.id, detail: "Kullanıcı bloklandı olarak işaretledi")
+        }
+        if task.isDone {
+            Button("Reopen") {
+                metadata.setState(.queued, taskID: task.id)
+                toggle(task, in: document)
+            }
+        } else {
+            Button("Complete") {
+                metadata.setState(.completed, taskID: task.id)
+                toggle(task, in: document)
+            }
+        }
+
+        Divider()
+
+        Button("Show Source") { revealSource(task) }
+        Button("Show Diff") { showDiff(task) }
+        if assignments.contains(where: \.needsRelinking) {
+            Divider()
+            Button("Bu göreve yeniden bağla") {
+                for assignment in assignments where assignment.needsRelinking {
+                    metadata.rebind(assignmentID: assignment.id, to: task)
+                }
+            }
+        }
+    }
+
+    private func sessionLabel(_ assignment: TaskSessionAssignment) -> String {
+        let title = projectStore.sessions.first { $0.id == assignment.sessionID }?.displayTitle
+            ?? String(assignment.sessionID.uuidString.prefix(8))
+        return "\(assignment.role.label): \(title)"
+    }
+
+    /// Starts (or reuses) a session and hands it the task as a prompt. The task
+    /// text and its heading chain are all the agent is told — Uncoil writes
+    /// nothing of its own into the file.
+    private func sendToAgent(_ task: ProjectTask, role: TaskAgentRole, reuseSession: Bool) {
+        let provider = settings.defaultProvider
+        let existing = reuseSession
+            ? projectStore.sessions(for: project.id).first(where: {
+                $0.provider == provider && sessionStore.status(of: $0.id) != .terminated
+            })
+            : nil
+        let record = existing ?? projectStore.createSession(
+            projectID: project.id,
+            provider: provider,
+            accountID: settings.defaultAccount(for: provider)?.id,
+            title: "\(provider.rawValue): \(task.text)"
+        )
+        metadata.assign(
+            taskID: task.id, sourcePath: task.sourcePath, sessionID: record.id,
+            role: role, fingerprint: task.fingerprint
+        )
+        if let assignment = metadata.assignments(for: task.id)
+            .first(where: { $0.sessionID == record.id && $0.role == role }) {
+            metadata.setState(.agentStarting, assignmentID: assignment.id)
+        }
+        selection = .session(record.id)
+        deliver(prompt: prompt(for: task, role: role), to: record)
+    }
+
+    private func reviewOrTest(
+        _ task: ProjectTask,
+        role: TaskAgentRole,
+        state: ProjectTaskExecutionState
+    ) {
+        // Requesting a review or a test run is a state change plus a prompt; the
+        // failing/awaiting state itself is set by whatever reports back.
+        sendToAgent(task, role: role, reuseSession: false)
+        if let assignment = metadata.assignments(for: task.id).first(where: { $0.role == role }) {
+            metadata.setState(
+                role == .reviewer ? .reviewRequested : .running,
+                assignmentID: assignment.id
+            )
+        }
+        _ = state
+    }
+
+    private func prompt(for task: ProjectTask, role: TaskAgentRole) -> String {
+        let location = task.headingPath.isEmpty
+            ? URL(fileURLWithPath: task.sourcePath).lastPathComponent
+            : "\(URL(fileURLWithPath: task.sourcePath).lastPathComponent) › \(task.headingPath.joined(separator: " › "))"
+        let body = task.rawBlock.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch role {
+        case .reviewer:
+            return """
+            \(location) altındaki şu görevi review et. Uygulama yapma, bulgularını bildir.
+
+            \(body)
+            """
+        case .tester:
+            return """
+            \(location) altındaki şu görev için testleri çalıştır ve sonucu bildir.
+
+            \(body)
+            """
+        case .orchestrator:
+            return """
+            \(location) altındaki şu görevi alt görevlere bölerek yürüt. Gerekirse alt oturum aç ve sonuçları bana bildir.
+
+            \(body)
+            """
+        case .owner, .implementer, .observer:
+            return """
+            \(location) altındaki şu görevi uygula. Bitirdiğinde TODO.md'deki checkbox'ı işaretle.
+
+            \(body)
+            """
+        }
+    }
+
+    private func deliver(prompt: String, to record: SessionRecord) {
+        guard let project = projectStore.projects.first(where: { $0.id == record.projectID }) else {
+            return
+        }
+        _ = TerminalRegistry.shared.terminal(
+            for: record, project: project,
+            account: settings.account(id: record.accountID),
+            settings: settings, sessionStore: sessionStore,
+            projectStore: projectStore
+        )
+        let sid = record.id
+        let provider = record.provider
+        Task { @MainActor in
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+            }
+            await TerminalRegistry.shared.submitText(prompt, for: sid, provider: provider)
+        }
+    }
+
+    private func showDiff(_ task: ProjectTask) {
+        let worktree = metadata.assignments(for: task.id).compactMap(\.worktreePath).first
+        let path = worktree ?? project.rootPath
+        let changed = gitChangedPaths.isEmpty ? "değişiklik yok" : gitChangedPaths.joined(separator: ", ")
+        message = "\(URL(fileURLWithPath: path).lastPathComponent): \(changed)"
     }
 
     // MARK: - Actions

@@ -211,7 +211,7 @@ final class TaskFilterTests: XCTestCase {
             let task = tasks[pair.index]
             result[task.id, default: []].append(TaskSessionAssignment(
                 taskID: task.id, sourcePath: task.sourcePath,
-                sessionID: pair.session, role: .implement, state: pair.state
+                sessionID: pair.session, role: .implementer, state: pair.state
             ))
         }
         return result

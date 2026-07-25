@@ -209,7 +209,12 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
             }
         }
         XCTAssertTrue(waitForSocket(socketPath, timeout: socketTimeout))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: logURL.appendingPathExtension("1").path))
+        // Rotation happens when the daemon next writes a log line, not when it
+        // configures the directory, so the rotated file is waited for rather
+        // than asserted the instant the socket appears.
+        XCTAssertTrue(waitUntil(timeout: socketTimeout) {
+            FileManager.default.fileExists(atPath: logURL.appendingPathExtension("1").path)
+        })
 
         let fd = try connect(to: socketPath)
         defer { close(fd) }

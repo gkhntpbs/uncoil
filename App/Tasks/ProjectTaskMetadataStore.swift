@@ -45,10 +45,13 @@ final class ProjectTaskMetadataStore: ObservableObject {
         sessionID: UUID,
         role: TaskAgentRole,
         worktreePath: String? = nil,
+        fingerprint: TaskFingerprint? = nil,
         now: Date = .now
     ) -> TaskSessionAssignment {
         // One assignment per (task, session, role): re-assigning the same work
-        // updates it rather than piling up duplicates.
+        // updates it rather than piling up duplicates. A different role, or a
+        // different session, is a separate link — the relationship is
+        // many-to-many by design.
         if let index = document.assignments.firstIndex(where: {
             $0.taskID == taskID && $0.sessionID == sessionID && $0.role == role
         }) {
@@ -56,29 +59,90 @@ final class ProjectTaskMetadataStore: ObservableObject {
             document.assignments[index].worktreePath = worktreePath
             document.assignments[index].updatedAt = now
             document.assignments[index].needsRelinking = false
+            if let fingerprint { document.assignments[index].fingerprint = fingerprint }
+            document.assignments[index].history.append(
+                TaskExecutionEvent(state: .assigned, at: now)
+            )
             save()
             return document.assignments[index]
         }
         let assignment = TaskSessionAssignment(
             taskID: taskID, sourcePath: sourcePath, sessionID: sessionID,
-            role: role, worktreePath: worktreePath, assignedAt: now, updatedAt: now
+            role: role, worktreePath: worktreePath, assignedAt: now, updatedAt: now,
+            fingerprint: fingerprint
         )
         document.assignments.append(assignment)
         save()
         return assignment
     }
 
+    /// Re-points an assignment at another task after the user resolved a
+    /// relink. The task itself is never touched.
+    func rebind(assignmentID: UUID, to task: ProjectTask, now: Date = .now) {
+        guard let index = document.assignments.firstIndex(where: { $0.id == assignmentID }) else {
+            return
+        }
+        document.assignments[index].taskID = task.id
+        document.assignments[index].sourcePath = task.sourcePath
+        document.assignments[index].fingerprint = task.fingerprint
+        document.assignments[index].needsRelinking = false
+        document.assignments[index].updatedAt = now
+        document.needsRelinking = document.assignments.filter(\.needsRelinking).map(\.taskID)
+        save()
+    }
+
     func setState(
         _ state: ProjectTaskExecutionState,
         assignmentID: UUID,
+        detail: String? = nil,
         now: Date = .now
     ) {
         guard let index = document.assignments.firstIndex(where: { $0.id == assignmentID }) else {
             return
         }
+        guard document.assignments[index].state != state || detail != nil else { return }
         document.assignments[index].state = state
         document.assignments[index].updatedAt = now
+        document.assignments[index].history.append(
+            TaskExecutionEvent(state: state, at: now, detail: detail)
+        )
+        // History is bounded: a long-running task must not grow without limit.
+        if document.assignments[index].history.count > 200 {
+            document.assignments[index].history.removeFirst(
+                document.assignments[index].history.count - 200
+            )
+        }
         save()
+    }
+
+    /// Sets the state of every assignment on a task — what a card-level action
+    /// like "Mark Blocked" means.
+    func setState(
+        _ state: ProjectTaskExecutionState,
+        taskID: String,
+        detail: String? = nil,
+        now: Date = .now
+    ) {
+        for assignment in assignments(for: taskID) {
+            setState(state, assignmentID: assignment.id, detail: detail, now: now)
+        }
+    }
+
+    /// Everything that happened to a task, newest first, across its sessions.
+    ///
+    /// Two events can share a timestamp (a state set in the same instant it was
+    /// assigned), so insertion order breaks the tie — otherwise the order of a
+    /// task's own history would vary between reads.
+    func history(for taskID: String) -> [TaskExecutionEvent] {
+        assignments(for: taskID)
+            .flatMap(\.history)
+            .enumerated()
+            .sorted {
+                $0.element.at != $1.element.at
+                    ? $0.element.at > $1.element.at
+                    : $0.offset > $1.offset
+            }
+            .map(\.element)
     }
 
     func removeAssignment(id: UUID) {
@@ -103,7 +167,11 @@ final class ProjectTaskMetadataStore: ObservableObject {
         let byID = Dictionary(tasks.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return Dictionary(
             document.assignments.compactMap { assignment in
-                byID[assignment.taskID].map { (assignment.id.uuidString, $0.fingerprint) }
+                // The stored fingerprint comes first: looking the task up in the
+                // current document would return nothing for a task that just
+                // vanished, and that is precisely the case worth flagging.
+                let fingerprint = assignment.fingerprint ?? byID[assignment.taskID]?.fingerprint
+                return fingerprint.map { (assignment.id.uuidString, $0) }
             },
             uniquingKeysWith: { first, _ in first }
         )

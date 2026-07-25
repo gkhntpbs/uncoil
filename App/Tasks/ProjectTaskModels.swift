@@ -195,19 +195,78 @@ enum ProjectTaskExecutionState: String, Equatable, Codable, CaseIterable {
 }
 
 /// What an agent was asked to do for a task.
-enum TaskAgentRole: String, Equatable, Codable, CaseIterable {
-    case implement
-    case review
-    case test
-    case investigate
+enum TaskAgentRole: String, Equatable, Codable, CaseIterable, Identifiable {
+    /// Accountable for the task, not necessarily doing the work.
+    case owner
+    case implementer
+    case reviewer
+    case tester
+    /// Watching without changing anything — a reader, not a writer.
+    case observer
+    /// Coordinates other sessions on this task.
+    case orchestrator
+
+    var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .implement: "Uygulama"
-        case .review: "Review"
-        case .test: "Test"
-        case .investigate: "İnceleme"
+        case .owner: "Sahip"
+        case .implementer: "Uygulayan"
+        case .reviewer: "Review"
+        case .tester: "Test"
+        case .observer: "İzleyen"
+        case .orchestrator: "Orkestratör"
         }
+    }
+
+    /// Roles that actually change the working tree, so a claim only has to
+    /// exclude those from each other.
+    var writes: Bool {
+        switch self {
+        case .implementer, .tester: true
+        case .owner, .reviewer, .observer, .orchestrator: false
+        }
+    }
+
+    /// Names written by an earlier build decode into their current equivalents,
+    /// so a stored assignment is never lost to a rename.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "implement": self = .implementer
+        case "review": self = .reviewer
+        case "test": self = .tester
+        case "investigate": self = .observer
+        default:
+            guard let value = TaskAgentRole(rawValue: raw) else {
+                throw DecodingError.dataCorrupted(.init(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "bilinmeyen rol: \(raw)"
+                ))
+            }
+            self = value
+        }
+    }
+}
+
+/// One step in a task's execution history: what state it entered and when.
+struct TaskExecutionEvent: Identifiable, Equatable, Codable {
+    let id: UUID
+    var state: ProjectTaskExecutionState
+    var at: Date
+    /// Free-text reason, e.g. why it was blocked.
+    var detail: String?
+
+    init(
+        id: UUID = UUID(),
+        state: ProjectTaskExecutionState,
+        at: Date = .now,
+        detail: String? = nil
+    ) {
+        self.id = id
+        self.state = state
+        self.at = at
+        self.detail = detail
     }
 }
 
@@ -225,6 +284,11 @@ struct TaskSessionAssignment: Identifiable, Equatable, Codable {
     /// Set when the fingerprint no longer resolves, so the UI can ask the user
     /// which task this session was really working on.
     var needsRelinking: Bool
+    /// The task's fingerprint when the assignment was made, so the link can be
+    /// re-established after the file changed without consulting the file again.
+    var fingerprint: TaskFingerprint?
+    /// Every state this assignment passed through, oldest first.
+    var history: [TaskExecutionEvent]
 
     init(
         id: UUID = UUID(),
@@ -236,7 +300,9 @@ struct TaskSessionAssignment: Identifiable, Equatable, Codable {
         worktreePath: String? = nil,
         assignedAt: Date = .now,
         updatedAt: Date = .now,
-        needsRelinking: Bool = false
+        needsRelinking: Bool = false,
+        fingerprint: TaskFingerprint? = nil,
+        history: [TaskExecutionEvent] = []
     ) {
         self.id = id
         self.taskID = taskID
@@ -248,6 +314,10 @@ struct TaskSessionAssignment: Identifiable, Equatable, Codable {
         self.assignedAt = assignedAt
         self.updatedAt = updatedAt
         self.needsRelinking = needsRelinking
+        self.fingerprint = fingerprint
+        self.history = history.isEmpty
+            ? [TaskExecutionEvent(state: state, at: assignedAt)]
+            : history
     }
 }
 
