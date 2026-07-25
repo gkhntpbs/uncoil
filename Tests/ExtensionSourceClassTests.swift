@@ -495,3 +495,85 @@ final class RemoteMCPProbeTests: XCTestCase {
         XCTAssertEqual(same.summary, "Değişiklik yok")
     }
 }
+
+/// Aşama 20 — a remote server that goes away and comes back.
+@MainActor
+final class RemoteMCPFlapTests: XCTestCase {
+    private var base: URL!
+    private var registry: ExtensionRegistry!
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilFlap-\(UUID().uuidString)", isDirectory: true)
+        let layout = ExtensionStoreLayout(
+            root: base.appendingPathComponent("store", isDirectory: true)
+        )
+        try layout.ensure()
+        registry = ExtensionRegistry(layout: layout, store: SkillStore(layout: layout))
+        registry.upsert(ExtensionPackage(
+            id: "remote:srv", kind: .mcpServer, name: "srv",
+            source: .remoteMCP(url: "https://mcp.test/sse", transport: .http),
+            state: .active
+        ))
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    func testTheNetworkGoingAwayAndComingBackIsRecordedHonestly() async {
+        var reachable = true
+        let probe = RemoteMCPProbe { _ in
+            guard reachable else { throw RemoteMCPProbe.ProbeError.transport("ağ yok") }
+            return .init(
+                statusCode: 200,
+                body: #"{"result":{"serverInfo":{"name":"srv","version":"3.1.0"},"capabilities":{"tools":{}}}}"#
+            )
+        }
+
+        // Up: the version and capabilities come from the server.
+        var status = await probe.probe(url: "https://mcp.test/sse", transport: .http, now: now)
+        registry.record(probe: status, packageID: "remote:srv", now: now)
+        XCTAssertEqual(status.serverVersion, "3.1.0")
+        XCTAssertEqual(registry.reportedCapabilities["remote:srv"], ["tools"])
+        XCTAssertNil(registry.lastErrors["remote:srv"])
+
+        // Down: the failure is recorded and no version is invented from the last
+        // time it answered.
+        reachable = false
+        status = await probe.probe(url: "https://mcp.test/sse", transport: .http, now: now)
+        registry.record(probe: status, packageID: "remote:srv", now: now)
+        XCTAssertNil(status.serverVersion)
+        XCTAssertEqual(status.versionLabel, "sunucu sürüm bildirmedi")
+        XCTAssertEqual(registry.lastErrors["remote:srv"], "ağ yok")
+
+        // Up again: the error clears rather than lingering.
+        reachable = true
+        status = await probe.probe(url: "https://mcp.test/sse", transport: .http, now: now)
+        registry.record(probe: status, packageID: "remote:srv", now: now)
+        XCTAssertEqual(status.reachability, .reachable)
+        XCTAssertNil(registry.lastErrors["remote:srv"])
+        XCTAssertNotNil(registry.lastHealthCheckAt["remote:srv"])
+    }
+
+    func testACapabilityThatDisappearsAcrossAFlapIsSeen() async {
+        var capabilities = #"{"tools":{},"prompts":{}}"#
+        let probe = RemoteMCPProbe { _ in
+            .init(
+                statusCode: 200,
+                body: #"{"result":{"capabilities":\#(capabilities)}}"#
+            )
+        }
+        let before = await probe.probe(url: "https://mcp.test", transport: .http, now: now)
+        capabilities = #"{"tools":{}}"#
+        let after = await probe.probe(url: "https://mcp.test", transport: .http, now: now)
+        let diff = RemoteMCPCapabilityDiff.between(
+            known: before.reportedCapabilities, reported: after.reportedCapabilities
+        )
+        XCTAssertEqual(diff.removed, ["prompts"])
+        XCTAssertTrue(diff.summary.contains("-prompts"))
+    }
+}

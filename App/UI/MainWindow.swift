@@ -104,7 +104,12 @@ struct MainWindow: View {
             // the last one is old enough to be worth redoing. With no binary
             // installed this returns "not installed" and changes nothing.
             let scans = BumblebeeScanCoordinator(registry: ExtensionRegistry())
+            // A scan the daemon ran while the app was closed is read first.
+            _ = scans.importDaemonResult()
             _ = await scans.scanAtLaunchIfStale()
+            // And the daily one is handed to the daemon so it keeps happening
+            // after the app quits.
+            _ = scans.scheduleInDaemon()
             while !Task.isCancelled {
                 _ = await scans.scanDailyBaselineIfDue()
                 try? await Task.sleep(nanoseconds: 3_600_000_000_000)

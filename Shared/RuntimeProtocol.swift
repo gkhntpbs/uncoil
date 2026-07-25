@@ -43,6 +43,7 @@ enum RuntimeProtocol {
 struct RuntimeCommand: Codable {
     /// hello|launch|attach|input|resize|kill|list|shutdown|upgrade|peek
     /// |task_claim|task_release|task_heartbeat|task_claims
+    /// |scan_schedule|scan_status|scan_cancel
     var cmd: String
     var version: Int?
     var minor: Int?
@@ -60,6 +61,14 @@ struct RuntimeCommand: Codable {
     /// Claiming role, so the daemon can enforce one implementer per task.
     var role: String?
     var duration_s: Double?
+    /// Scheduled scan: the binary to run, its arguments, how often, and where the
+    /// result goes. The daemon keeps running it after the app quits, which is the
+    /// only reason this lives here rather than in the app.
+    var scan_binary: String?
+    var scan_args: [String]?
+    var interval_s: Double?
+    var timeout_s: Double?
+    var output_path: String?
 
     static func hello() -> RuntimeCommand {
         RuntimeCommand(
@@ -72,7 +81,7 @@ struct RuntimeCommand: Codable {
 
 /// Daemon → app.
 struct RuntimeEventMessage: Codable {
-    /// hello|sessions|data|exited|error|replay|task_claim|task_claims
+    /// hello|sessions|data|exited|error|replay|task_claim|task_claims|scan_status
     var ev: String
     var version: Int?
     var minor: Int?
@@ -88,6 +97,12 @@ struct RuntimeEventMessage: Codable {
     var owner_sid: String?
     var role: String?
     var expires_at: Double?
+    /// Scheduled-scan replies.
+    var scan_scheduled: Bool?
+    var scan_running: Bool?
+    var scan_last_started_at: Double?
+    var scan_last_exit_code: Int32?
+    var scan_runs: Int?
     var generation: Int?
     var claims: [RuntimeTaskClaim]?
 }

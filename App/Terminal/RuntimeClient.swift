@@ -539,6 +539,35 @@ final class RuntimeClient: @unchecked Sendable {
         }
     }
 
+    /// Hands a scheduled scan to the daemon, which keeps running it after the app
+    /// quits. Uncoil does not install the binary; it only says where one is.
+    func scheduleScan(
+        binaryPath: String,
+        arguments: [String],
+        intervalSeconds: TimeInterval,
+        timeoutSeconds: TimeInterval,
+        outputPath: String
+    ) {
+        queue.async { [self] in
+            guard phase == .ready else { return }
+            sendCommand(RuntimeCommand(
+                cmd: "scan_schedule",
+                scan_binary: binaryPath,
+                scan_args: arguments,
+                interval_s: intervalSeconds,
+                timeout_s: timeoutSeconds,
+                output_path: outputPath
+            ))
+        }
+    }
+
+    func cancelScheduledScan() {
+        queue.async { [self] in
+            guard phase == .ready else { return }
+            sendCommand(RuntimeCommand(cmd: "scan_cancel"))
+        }
+    }
+
     func requestGracefulUpgrade() {
         queue.async { [self] in
             guard phase == .ready else { return }

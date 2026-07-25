@@ -146,6 +146,23 @@ final class RuntimeDaemon {
     private var healthSource: DispatchSourceTimer?
     private var replayDirectory: URL?
     private var isDrainingForUpgrade = false
+    /// Scheduled scan, if the app asked for one. The daemon keeps it running after
+    /// the app quits — that is the whole point of scheduling it here — and refuses
+    /// to start a second one while the first is still going.
+    private var scanSchedule: ScanSchedule?
+
+    private struct ScanSchedule {
+        var binary: String
+        var args: [String]
+        var interval: TimeInterval
+        var timeout: TimeInterval
+        var outputPath: String?
+        var timer: DispatchSourceTimer?
+        var isRunning = false
+        var lastStartedAt: Date?
+        var lastExitCode: Int32?
+        var runs = 0
+    }
 
     func start(socketPath: String) throws {
         let directory = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
@@ -376,6 +393,13 @@ final class RuntimeDaemon {
                 RuntimeEventMessage(ev: "task_claims", claims: Array(taskClaims.values)),
                 to: fd
             )
+        case "scan_schedule":
+            send(scheduleScan(command), to: fd)
+        case "scan_status":
+            send(scanStatus(), to: fd)
+        case "scan_cancel":
+            cancelScan()
+            send(scanStatus(), to: fd)
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
         case "shutdown":
@@ -659,6 +683,113 @@ final class RuntimeDaemon {
 
     /// Drops claims that expired, went quiet, or belong to a session the daemon
     /// no longer has — the three ways an agent stops holding a task.
+    // MARK: - Scheduled scans
+
+    /// Takes a scan schedule from the app. One schedule at a time: a second
+    /// request replaces the first rather than stacking timers.
+    private func scheduleScan(_ command: RuntimeCommand) -> RuntimeEventMessage {
+        guard let binary = command.scan_binary, !binary.isEmpty else {
+            return RuntimeEventMessage(
+                ev: "error", message: "scan_binary required", scan_scheduled: false
+            )
+        }
+        guard FileManager.default.isExecutableFile(atPath: binary) else {
+            // Not installed is an ordinary answer, not a failure to hide.
+            runtimeLog.write("scan not scheduled: \(binary) is not executable")
+            return RuntimeEventMessage(
+                ev: "scan_status",
+                message: "binary not executable",
+                scan_scheduled: false,
+                scan_running: false
+            )
+        }
+        let interval = max(60, command.interval_s ?? 24 * 60 * 60)
+        cancelScan()
+        var schedule = ScanSchedule(
+            binary: binary,
+            args: command.scan_args ?? [],
+            interval: interval,
+            timeout: max(10, command.timeout_s ?? 300),
+            outputPath: command.output_path
+        )
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        // Fires once now and then on the interval; the app asks for this only when
+        // a scan is already due.
+        timer.schedule(deadline: .now() + 1, repeating: interval)
+        timer.setEventHandler { [weak self] in self?.runScheduledScan() }
+        schedule.timer = timer
+        scanSchedule = schedule
+        timer.resume()
+        runtimeLog.write("scan scheduled every \(Int(interval))s: \(binary)")
+        return scanStatus()
+    }
+
+    private func cancelScan() {
+        scanSchedule?.timer?.cancel()
+        scanSchedule?.timer = nil
+        scanSchedule = nil
+    }
+
+    private func scanStatus() -> RuntimeEventMessage {
+        RuntimeEventMessage(
+            ev: "scan_status",
+            scan_scheduled: scanSchedule != nil,
+            scan_running: scanSchedule?.isRunning ?? false,
+            scan_last_started_at: scanSchedule?.lastStartedAt?.timeIntervalSince1970,
+            scan_last_exit_code: scanSchedule?.lastExitCode,
+            scan_runs: scanSchedule?.runs ?? 0
+        )
+    }
+
+    /// Runs the scan. Never two at once: a slow scan is skipped rather than
+    /// queued, because two scanners over the same files is worse than one late.
+    private func runScheduledScan() {
+        guard var schedule = scanSchedule else { return }
+        if schedule.isRunning {
+            runtimeLog.write("scan skipped: previous run still going")
+            return
+        }
+        schedule.isRunning = true
+        schedule.lastStartedAt = Date()
+        schedule.runs += 1
+        scanSchedule = schedule
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: schedule.binary)
+        process.arguments = schedule.args
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch {
+            runtimeLog.write("scan failed to start: \(error)")
+            scanSchedule?.isRunning = false
+            scanSchedule?.lastExitCode = -1
+            return
+        }
+        let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        queue.asyncAfter(deadline: .now() + schedule.timeout, execute: deadline)
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        deadline.cancel()
+
+        // The result is written where the app will find it on its next launch;
+        // the daemon does not interpret it.
+        if let path = scanSchedule?.outputPath, !data.isEmpty {
+            try? FileManager.default.createDirectory(
+                at: URL(fileURLWithPath: path).deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        }
+        scanSchedule?.isRunning = false
+        scanSchedule?.lastExitCode = process.terminationStatus
+        runtimeLog.write(
+            "scan finished: exit \(process.terminationStatus), \(data.count) bytes"
+        )
+    }
+
     private func pruneTaskClaims() {
         let now = Date().timeIntervalSince1970
         let silenceLimit = RuntimeProtocol.taskLeaseDuration

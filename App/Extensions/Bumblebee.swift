@@ -372,3 +372,183 @@ enum BumblebeeCoverage {
             + "tarama kapsamı sınırlıdır."
     }
 }
+
+/// The kinds of finding Bumblebee reports, and what each one means for Uncoil.
+///
+/// Classification lives here rather than in the UI because the kind decides more
+/// than a label: an inventory line is not a problem, a parser diagnostic says
+/// Bumblebee could not read something (so a clean result nearby means less), and
+/// an unsupported configuration is a coverage gap wearing a finding's clothes.
+/// A rule Uncoil does not recognise stays visible as `.other` — a finding nobody
+/// classified is still a finding.
+enum BumblebeeFindingKind: String, Equatable, CaseIterable, Identifiable {
+    case knownPackageExposure
+    case knownMaliciousVersion
+    case suspiciousEditorExtension
+    case mcpInventory
+    case agentSkillInventory
+    case parserDiagnostic
+    case unsupportedConfiguration
+    case other
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .knownPackageExposure: "Bilinen paket açığı"
+        case .knownMaliciousVersion: "Bilinen zararlı sürüm"
+        case .suspiciousEditorExtension: "Şüpheli editör eklentisi"
+        case .mcpInventory: "MCP envanteri"
+        case .agentSkillInventory: "Agent skill envanteri"
+        case .parserDiagnostic: "Parser uyarısı"
+        case .unsupportedConfiguration: "Desteklenmeyen yapılandırma"
+        case .other: "Sınıflandırılmamış bulgu"
+        }
+    }
+
+    /// Inventory is a list of what exists, not a claim that something is wrong.
+    var isInventory: Bool {
+        self == .mcpInventory || self == .agentSkillInventory
+    }
+
+    /// A diagnostic is about the scanner, not about the extension.
+    var isAboutTheScanner: Bool {
+        self == .parserDiagnostic || self == .unsupportedConfiguration
+    }
+
+    /// Whether this kind should count towards "open findings" — the number the
+    /// user is meant to act on.
+    var isActionable: Bool {
+        switch self {
+        case .knownPackageExposure, .knownMaliciousVersion, .suspiciousEditorExtension,
+             .other:
+            true
+        case .mcpInventory, .agentSkillInventory, .parserDiagnostic,
+             .unsupportedConfiguration:
+            false
+        }
+    }
+
+    /// The severity Uncoil uses when Bumblebee does not give one. A malicious
+    /// version blocks; an exposure needs review; inventory and diagnostics are
+    /// information.
+    var defaultSeverity: SecurityFinding.Severity {
+        switch self {
+        case .knownMaliciousVersion: .blocked
+        case .knownPackageExposure: .high
+        case .suspiciousEditorExtension: .needsReview
+        case .other: .needsReview
+        case .mcpInventory, .agentSkillInventory, .parserDiagnostic,
+             .unsupportedConfiguration:
+            .info
+        }
+    }
+
+    /// What the user is told to do about it.
+    var remedy: String {
+        switch self {
+        case .knownPackageExposure:
+            "Paketi güncelle; güncel sürüm yoksa extension'ı karantinaya al."
+        case .knownMaliciousVersion:
+            "Bu sürümü çalıştırma: karantinaya al ve kaynağı doğrula."
+        case .suspiciousEditorExtension:
+            "Editör eklentisini gözden geçir; Uncoil onu yönetmiyor."
+        case .mcpInventory, .agentSkillInventory:
+            "Bilgi amaçlı: listede beklemediğin bir şey varsa ona bak."
+        case .parserDiagnostic:
+            "Bumblebee bu dosyayı okuyamadı; o dosya için temiz sonuç kanıt değildir."
+        case .unsupportedConfiguration:
+            "Bu yapılandırma tarama kapsamı dışında; Uncoil'in kendi taramasına güven."
+        case .other:
+            "Bumblebee bu kuralı bildirdi ama Uncoil sınıflandırmadı; kuralın adına bak."
+        }
+    }
+
+    /// Reads the kind from Bumblebee's rule identifier. Several spellings are
+    /// accepted because the exact strings come from a binary Uncoil does not own.
+    static func from(rule: String) -> BumblebeeFindingKind {
+        let normalized = rule.lowercased().replacingOccurrences(of: "_", with: "-")
+        switch true {
+        case normalized.contains("malicious"), normalized.contains("known-bad"):
+            return .knownMaliciousVersion
+        case normalized.contains("exposure"), normalized.contains("vulnerab"),
+             normalized.contains("advisory"), normalized.contains("cve"):
+            return .knownPackageExposure
+        case normalized.contains("editor-extension"), normalized.contains("vscode"),
+             normalized.contains("editor"):
+            return .suspiciousEditorExtension
+        case normalized.contains("mcp-inventory"), normalized.contains("inventory.mcp"):
+            return .mcpInventory
+        case normalized.contains("skill-inventory"), normalized.contains("inventory.skill"),
+             normalized.contains("agent-inventory"):
+            return .agentSkillInventory
+        case normalized.contains("parser"), normalized.contains("parse-error"):
+            return .parserDiagnostic
+        case normalized.contains("unsupported"), normalized.contains("not-supported"),
+             normalized.contains("coverage"):
+            return .unsupportedConfiguration
+        default:
+            return .other
+        }
+    }
+}
+
+extension SecurityFinding {
+    /// Bumblebee's own classification of this finding. Uncoil's own findings are
+    /// not classified this way — they have their own rule names.
+    var bumblebeeKind: BumblebeeFindingKind? {
+        origin == .bumblebee ? BumblebeeFindingKind.from(rule: rule) : nil
+    }
+
+    /// Whether this finding is one the user is meant to act on.
+    var isActionable: Bool {
+        guard let kind = bumblebeeKind else { return severity >= .needsReview }
+        return kind.isActionable && severity >= .needsReview
+    }
+}
+
+/// How a scan's findings break down, for the screen that shows them.
+struct BumblebeeFindingSummary: Equatable {
+    var byKind: [BumblebeeFindingKind: [SecurityFinding]]
+    /// Parser diagnostics mean a clean result elsewhere proves less.
+    var hasParserDiagnostics: Bool
+    var actionableCount: Int
+    var inventoryCount: Int
+
+    init(findings: [SecurityFinding]) {
+        var grouped: [BumblebeeFindingKind: [SecurityFinding]] = [:]
+        for finding in findings where finding.origin == .bumblebee {
+            let kind = BumblebeeFindingKind.from(rule: finding.rule)
+            grouped[kind, default: []].append(finding)
+        }
+        byKind = grouped
+        hasParserDiagnostics = grouped[.parserDiagnostic]?.isEmpty == false
+        actionableCount = grouped
+            .filter { $0.key.isActionable }
+            .values
+            .flatMap { $0 }
+            .filter { $0.severity >= .needsReview && !$0.isAccepted }
+            .count
+        inventoryCount = grouped
+            .filter { $0.key.isInventory }
+            .values
+            .reduce(0) { $0 + $1.count }
+    }
+
+    var kinds: [BumblebeeFindingKind] {
+        BumblebeeFindingKind.allCases.filter { byKind[$0]?.isEmpty == false }
+    }
+
+    /// The caption above a clean-looking result. A scan with parser diagnostics is
+    /// never described as clean.
+    func caption(scanned: Int) -> String {
+        if hasParserDiagnostics {
+            return "\(scanned) öğe tarandı ama bazı dosyalar okunamadı; "
+                + "bulgu olmaması onların temiz olduğunu göstermez."
+        }
+        if actionableCount == 0 {
+            return BumblebeeCoverage.cleanResultCaption(scanned: scanned)
+        }
+        return "\(scanned) öğe tarandı, \(actionableCount) bulgu ilgilenilmeyi bekliyor."
+    }
+}

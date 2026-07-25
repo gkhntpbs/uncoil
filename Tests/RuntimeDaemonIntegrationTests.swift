@@ -358,6 +358,274 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
     }
 
 
+    // MARK: - Scheduled scans (Aşama 16.4)
+
+    func testTheDaemonRunsAScheduledScanAndWritesItsOutput() throws {
+        try withDaemon { socketPath, _ in
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let script = root.appendingPathComponent("fake-bumblebee.sh")
+            let output = root.appendingPathComponent("scan-output.ndjson")
+            try """
+            #!/bin/sh
+            echo '{"type":"scan_summary","scanned":1,"findings":0}'
+            """.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: script.path
+            )
+
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            XCTAssertEqual(try receive(from: fd).ev, "hello")
+
+            try send(RuntimeCommand(
+                cmd: "scan_schedule",
+                scan_binary: script.path,
+                scan_args: ["scan", "--ndjson"],
+                interval_s: 60,
+                timeout_s: 10,
+                output_path: output.path
+            ), to: fd)
+            let scheduled = try receive(from: fd)
+            XCTAssertEqual(scheduled.ev, "scan_status")
+            XCTAssertEqual(scheduled.scan_scheduled, true)
+
+            // The first run fires a second after scheduling: the app asks only when
+            // a scan is already due.
+            XCTAssertTrue(
+                waitUntil(timeout: 8) {
+                    FileManager.default.fileExists(atPath: output.path)
+                },
+                "the daemon should have run the scan and written its output"
+            )
+            let written = try String(contentsOf: output, encoding: .utf8)
+            XCTAssertTrue(written.contains("scan_summary"), written)
+
+            try send(RuntimeCommand(cmd: "scan_status"), to: fd)
+            let status = try receive(from: fd)
+            XCTAssertEqual(status.scan_scheduled, true)
+            XCTAssertEqual(status.scan_last_exit_code, 0)
+            XCTAssertGreaterThanOrEqual(status.scan_runs ?? 0, 1)
+
+            try send(RuntimeCommand(cmd: "scan_cancel"), to: fd)
+            XCTAssertEqual(try receive(from: fd).scan_scheduled, false)
+        }
+    }
+
+    func testAScheduledScanKeepsRunningAfterTheAppDisconnects() throws {
+        try withDaemon { socketPath, process in
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let script = root.appendingPathComponent("fake-bumblebee.sh")
+            let marker = root.appendingPathComponent("ran.txt")
+            try """
+            #!/bin/sh
+            echo run >> "\(marker.path)"
+            echo '{"type":"scan_summary","scanned":1,"findings":0}'
+            """.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: script.path
+            )
+
+            let fd = try connect(to: socketPath)
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+            try send(RuntimeCommand(
+                cmd: "scan_schedule",
+                scan_binary: script.path,
+                scan_args: [],
+                interval_s: 60,
+                timeout_s: 10,
+                output_path: root.appendingPathComponent("out.ndjson").path
+            ), to: fd)
+            _ = try receive(from: fd)
+
+            // The app quits: its connection goes away, the daemon does not.
+            close(fd)
+            XCTAssertTrue(
+                waitUntil(timeout: 8) { FileManager.default.fileExists(atPath: marker.path) },
+                "the scan runs with no client connected — that is the point of scheduling it here"
+            )
+            XCTAssertTrue(process.isRunning, "and the daemon is still up")
+
+            let second = try connect(to: socketPath)
+            defer { close(second) }
+            try send(RuntimeCommand.hello(), to: second)
+            _ = try receive(from: second)
+            try send(RuntimeCommand(cmd: "scan_status"), to: second)
+            XCTAssertEqual(try receive(from: second).scan_scheduled, true)
+        }
+    }
+
+    func testASecondScheduleReplacesTheFirstRatherThanStacking() throws {
+        try withDaemon { socketPath, _ in
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let script = root.appendingPathComponent("s.sh")
+            try "#!/bin/sh\nexit 0\n".write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: script.path
+            )
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            for _ in 0..<3 {
+                try send(RuntimeCommand(
+                    cmd: "scan_schedule", scan_binary: script.path,
+                    interval_s: 3_600, timeout_s: 10
+                ), to: fd)
+                XCTAssertEqual(try receive(from: fd).scan_scheduled, true)
+            }
+            try send(RuntimeCommand(cmd: "scan_status"), to: fd)
+            let status = try receive(from: fd)
+            XCTAssertEqual(status.scan_scheduled, true)
+            XCTAssertLessThanOrEqual(
+                status.scan_runs ?? 0, 1,
+                "three requests are one schedule, not three timers"
+            )
+        }
+    }
+
+    func testAMissingScanBinaryIsReportedRatherThanScheduled() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+            try send(RuntimeCommand(
+                cmd: "scan_schedule", scan_binary: "/does/not/exist", interval_s: 60
+            ), to: fd)
+            let reply = try receive(from: fd)
+            XCTAssertEqual(reply.scan_scheduled, false)
+            XCTAssertTrue(reply.message?.contains("not executable") ?? false, reply.message ?? "-")
+        }
+    }
+
+    // MARK: - Load and durability (Aşama 20)
+
+    func testTenSessionsRunAtOnce() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            var sids: [String] = []
+            for index in 0..<10 {
+                let sid = UUID().uuidString
+                sids.append(sid)
+                try send(RuntimeCommand(
+                    cmd: "launch", sid: sid, shell: "/bin/sh",
+                    args: ["-c", "echo session-\(index); sleep 30"],
+                    env: [], cwd: NSTemporaryDirectory(), cols: 80, rows: 24
+                ), to: fd)
+            }
+            // Every one of them is live at the same time.
+            XCTAssertTrue(
+                waitUntil(timeout: 10) {
+                    guard (try? send(RuntimeCommand(cmd: "list"), to: fd)) != nil,
+                          let listed = try? receive(from: fd) else { return false }
+                    return Set(listed.sids ?? []).isSuperset(of: Set(sids))
+                },
+                "ten concurrent sessions"
+            )
+            for sid in sids {
+                try send(RuntimeCommand(cmd: "kill", sid: sid), to: fd)
+            }
+        }
+    }
+
+    func testASustainedHighVolumeSessionStaysBounded() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            let sid = UUID().uuidString
+            // What an hours-long PTY does to Uncoil is produce output without end;
+            // this produces the same volume quickly.
+            try send(RuntimeCommand(
+                cmd: "launch", sid: sid, shell: "/bin/sh",
+                args: ["-c", "for i in $(seq 1 4000); do head -c 4096 /dev/zero | tr '\\0' 'x'; echo; done"],
+                env: [], cwd: NSTemporaryDirectory(), cols: 80, rows: 24
+            ), to: fd)
+
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let replay = root.appendingPathComponent("replays/\(sid).log")
+            XCTAssertTrue(
+                waitUntil(timeout: 20) {
+                    FileManager.default.fileExists(atPath: replay.path)
+                },
+                "the session should be recording"
+            )
+            // Give it time to finish producing ~16 MB.
+            _ = waitUntil(timeout: 25) {
+                let size = (try? replay.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+                return size >= RuntimeProtocol.replayBufferLimit
+            }
+            let size = (try? replay.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+            XCTAssertLessThanOrEqual(
+                size, RuntimeProtocol.replayBufferLimit,
+                "the replay is bounded however long the session runs"
+            )
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: fd)
+        }
+    }
+
+    func testASessionSurvivesTheAppQuittingAndIsFoundAgain() throws {
+        try withDaemon { socketPath, process in
+            let first = try connect(to: socketPath)
+            try send(RuntimeCommand.hello(), to: first)
+            _ = try receive(from: first)
+            let sid = UUID().uuidString
+            // It has to produce something: a silent session has nothing to
+            // replay, and "nothing to replay" is not evidence of survival.
+            try send(RuntimeCommand(
+                cmd: "launch", sid: sid, shell: "/bin/sh",
+                args: ["-c", "echo hayatta; sleep 30"], env: [], cwd: NSTemporaryDirectory(),
+                cols: 80, rows: 24
+            ), to: first)
+            XCTAssertTrue(
+                waitUntil(timeout: 5) {
+                    guard (try? send(RuntimeCommand(cmd: "list"), to: first)) != nil,
+                          let listed = try? receive(from: first) else { return false }
+                    return listed.sids?.contains(sid) == true
+                }
+            )
+
+            // The app goes away without saying goodbye — a quit, a crash, a sleep.
+            close(first)
+            XCTAssertTrue(process.isRunning)
+
+            // And a fresh connection finds the session still there.
+            let second = try connect(to: socketPath)
+            defer { close(second) }
+            try send(RuntimeCommand.hello(), to: second)
+            _ = try receive(from: second)
+            try send(RuntimeCommand(cmd: "list"), to: second)
+            XCTAssertEqual(try receive(from: second).sids?.contains(sid), true)
+
+            // `peek` reads the replay buffer without attaching, which is exactly
+            // the question here: is the output the app missed still there?
+            var replayed = ""
+            XCTAssertTrue(
+                waitUntil(timeout: 5) {
+                    guard (try? send(RuntimeCommand(cmd: "peek", sid: sid), to: second)) != nil,
+                          let reply = try? receive(from: second), reply.ev == "replay" else {
+                        return false
+                    }
+                    replayed = reply.b64
+                        .flatMap { Data(base64Encoded: $0) }
+                        .map { String(decoding: $0, as: UTF8.self) } ?? ""
+                    return replayed.contains("hayatta")
+                },
+                "the output produced while no app was connected survived: \(replayed)"
+            )
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: second)
+        }
+    }
+
     // MARK: - Task claims (Aşama 29)
 
     func testTwoImplementersCannotHoldTheSameTask() throws {

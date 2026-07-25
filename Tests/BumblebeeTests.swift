@@ -1053,3 +1053,222 @@ final class BumblebeeScanCoordinatorTests: XCTestCase {
         XCTAssertEqual(registry.bumblebeeSelfTest?.passed, true)
     }
 }
+
+/// Aşama 17.1 — every Bumblebee finding type Uncoil has to handle.
+final class BumblebeeFindingKindTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    private func finding(
+        rule: String,
+        severity: SecurityFinding.Severity = .needsReview,
+        origin: SecurityFinding.Origin = .bumblebee
+    ) -> SecurityFinding {
+        SecurityFinding(
+            id: rule, origin: origin, severity: severity, rule: rule,
+            message: rule, extensionID: "x", foundAt: now
+        )
+    }
+
+    func testEveryFindingTypeIsRecognisedFromItsRule() {
+        let cases: [(String, BumblebeeFindingKind)] = [
+            ("known-package-exposure", .knownPackageExposure),
+            ("advisory.CVE-2026-1234", .knownPackageExposure),
+            ("vulnerable-dependency", .knownPackageExposure),
+            ("known-malicious-version", .knownMaliciousVersion),
+            ("known_bad_package", .knownMaliciousVersion),
+            ("suspicious-editor-extension", .suspiciousEditorExtension),
+            ("vscode-extension-risk", .suspiciousEditorExtension),
+            ("mcp-inventory", .mcpInventory),
+            ("inventory.mcp.servers", .mcpInventory),
+            ("agent-skill-inventory", .agentSkillInventory),
+            ("inventory.skills", .agentSkillInventory),
+            ("parser-diagnostic", .parserDiagnostic),
+            ("parse-error.toml", .parserDiagnostic),
+            ("unsupported-configuration", .unsupportedConfiguration),
+            ("coverage.not-supported", .unsupportedConfiguration),
+        ]
+        for (rule, expected) in cases {
+            XCTAssertEqual(BumblebeeFindingKind.from(rule: rule), expected, rule)
+        }
+    }
+
+    func testAnUnknownRuleStaysVisibleRatherThanBeingDropped() {
+        XCTAssertEqual(
+            BumblebeeFindingKind.from(rule: "bb-9999-brand-new-rule"), .other
+        )
+        XCTAssertTrue(
+            BumblebeeFindingKind.other.isActionable,
+            "a finding nobody classified is still a finding"
+        )
+        XCTAssertEqual(BumblebeeFindingKind.other.defaultSeverity, .needsReview)
+    }
+
+    func testEveryKindHasALabelAndARemedy() {
+        for kind in BumblebeeFindingKind.allCases {
+            XCTAssertFalse(kind.label.isEmpty, kind.rawValue)
+            XCTAssertFalse(kind.remedy.isEmpty, kind.rawValue)
+        }
+    }
+
+    func testInventoryAndDiagnosticsAreNotProblemsToActOn() {
+        XCTAssertTrue(BumblebeeFindingKind.mcpInventory.isInventory)
+        XCTAssertTrue(BumblebeeFindingKind.agentSkillInventory.isInventory)
+        XCTAssertFalse(BumblebeeFindingKind.mcpInventory.isActionable)
+        XCTAssertTrue(BumblebeeFindingKind.parserDiagnostic.isAboutTheScanner)
+        XCTAssertTrue(BumblebeeFindingKind.unsupportedConfiguration.isAboutTheScanner)
+        XCTAssertFalse(BumblebeeFindingKind.parserDiagnostic.isActionable)
+    }
+
+    func testAMaliciousVersionBlocksAndAnExposureIsHigh() {
+        XCTAssertEqual(BumblebeeFindingKind.knownMaliciousVersion.defaultSeverity, .blocked)
+        XCTAssertEqual(BumblebeeFindingKind.knownPackageExposure.defaultSeverity, .high)
+        XCTAssertEqual(BumblebeeFindingKind.mcpInventory.defaultSeverity, .info)
+    }
+
+    func testOnlyBumblebeeFindingsGetABumblebeeKind() {
+        XCTAssertEqual(
+            finding(rule: "known-malicious-version").bumblebeeKind, .knownMaliciousVersion
+        )
+        XCTAssertNil(
+            finding(rule: "file.obfuscated", origin: .uncoil).bumblebeeKind,
+            "Uncoil's own findings have their own rule names"
+        )
+    }
+
+    func testTheSummaryCountsOnlyWhatTheUserShouldActOn() {
+        let summary = BumblebeeFindingSummary(findings: [
+            finding(rule: "known-malicious-version", severity: .blocked),
+            finding(rule: "known-package-exposure", severity: .high),
+            finding(rule: "mcp-inventory", severity: .info),
+            finding(rule: "agent-skill-inventory", severity: .info),
+            finding(rule: "file.obfuscated", origin: .uncoil),
+        ])
+        XCTAssertEqual(summary.actionableCount, 2)
+        XCTAssertEqual(summary.inventoryCount, 2)
+        XCTAssertFalse(summary.hasParserDiagnostics)
+        XCTAssertEqual(
+            summary.byKind[.knownMaliciousVersion]?.count, 1
+        )
+        XCTAssertNil(
+            summary.byKind.keys.first { $0 == .other && summary.byKind[$0]?.isEmpty == false }
+                .flatMap { _ -> BumblebeeFindingKind? in nil },
+            "Uncoil's own finding is not classified as a Bumblebee kind"
+        )
+        XCTAssertEqual(
+            summary.byKind.values.flatMap { $0 }.count, 4,
+            "the Uncoil finding is left out of the Bumblebee breakdown"
+        )
+    }
+
+    func testAScanWithParserDiagnosticsIsNeverCalledClean() {
+        let summary = BumblebeeFindingSummary(findings: [
+            finding(rule: "parser-diagnostic", severity: .info),
+        ])
+        XCTAssertTrue(summary.hasParserDiagnostics)
+        XCTAssertEqual(summary.actionableCount, 0)
+        let caption = summary.caption(scanned: 10)
+        XCTAssertTrue(caption.contains("okunamadı"), caption)
+        XCTAssertFalse(caption.contains("bulgu yok"), caption)
+    }
+
+    func testACleanScanSaysWhatItDoesNotMean() {
+        let caption = BumblebeeFindingSummary(findings: []).caption(scanned: 5)
+        XCTAssertTrue(caption.contains("değildir"), caption)
+    }
+
+    func testTheKindsShownAreOnlyTheOnesPresent() {
+        let summary = BumblebeeFindingSummary(findings: [
+            finding(rule: "mcp-inventory", severity: .info),
+        ])
+        XCTAssertEqual(summary.kinds, [.mcpInventory])
+    }
+}
+
+@MainActor
+final class BumblebeeDaemonHandoffTests: XCTestCase {
+    private var base: URL!
+    private var layout: ExtensionStoreLayout!
+    private var registry: ExtensionRegistry!
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilHandoff-\(UUID().uuidString)", isDirectory: true)
+        layout = ExtensionStoreLayout(root: base.appendingPathComponent("store", isDirectory: true))
+        try layout.ensure()
+        registry = ExtensionRegistry(layout: layout, store: SkillStore(layout: layout))
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    private func coordinator() -> BumblebeeScanCoordinator {
+        var locator = BumblebeeLocator(pinnedPath: nil, managedDirectory: base)
+        locator.pathLookup = { nil }
+        locator.exists = { _ in false }
+        return BumblebeeScanCoordinator(registry: registry, locator: locator)
+    }
+
+    private func writeDaemonResult(_ text: String) throws {
+        try Data(text.utf8).write(
+            to: layout.scans.appendingPathComponent("daemon-baseline.ndjson")
+        )
+    }
+
+    func testAResultTheDaemonLeftBehindReachesTheRegistry() throws {
+        // The app recorded a passing self-test before it quit, which is what the
+        // daemon's result is judged against.
+        registry.record(scan: BumblebeeScanResult(
+            kind: .manual, findings: [], diagnostics: [],
+            summary: BumblebeeScanSummary(scanned: 0, findings: 0),
+            unknownLines: [], exitCode: 0, timedOut: false,
+            selfTest: BumblebeeSelfTest(passed: true, detail: "ok", ranAt: now),
+            version: BumblebeeVersion(version: "1.4.2", buildRevision: nil, catalogVersion: nil),
+            startedAt: now, finishedAt: now
+        ))
+
+        try writeDaemonResult("""
+        {"type":"finding","rule":"known-package-exposure","severity":"high","message":"paket açığı"}
+        {"type":"scan_summary","scanned":4,"findings":1}
+        """)
+        let outcome = coordinator().importDaemonResult(now: now.addingTimeInterval(3_600))
+        XCTAssertTrue(outcome.didRun, outcome.message)
+        XCTAssertEqual(registry.findings.filter { $0.origin == .bumblebee }.count, 1)
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: layout.scans.appendingPathComponent("daemon-baseline.ndjson").path
+            ),
+            "the file is consumed, so the same result is not imported twice"
+        )
+    }
+
+    func testADaemonResultWithoutATrustedSelfTestIsNotTheCurrentState() throws {
+        try writeDaemonResult(#"{"type":"scan_summary","scanned":1,"findings":0}"#)
+        let outcome = coordinator().importDaemonResult(now: now)
+        // It ran, but with no self-test on record it is not taken as current.
+        guard case .ran(_, let usable) = outcome else {
+            return XCTFail("expected a run: \(outcome)")
+        }
+        XCTAssertFalse(usable)
+        XCTAssertNil(registry.lastBumblebeeScanAt)
+    }
+
+    func testNothingToImportIsSaidPlainly() {
+        let outcome = coordinator().importDaemonResult(now: now)
+        guard case .skipped(let reason) = outcome else {
+            return XCTFail("expected a skip: \(outcome)")
+        }
+        XCTAssertTrue(reason.contains("sonuç yok"), reason)
+    }
+
+    func testSchedulingIsRefusedWithoutABinary() {
+        let outcome = coordinator().scheduleInDaemon(client: .shared, now: now)
+        XCTAssertEqual(
+            outcome, .notInstalled,
+            "Uncoil hands the daemon a path, it does not install one"
+        )
+    }
+}

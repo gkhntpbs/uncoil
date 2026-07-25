@@ -2103,6 +2103,36 @@ private struct SecurityScreen: View {
                                 ? "Bumblebee çalıştırılmadı."
                                 : "Açık bulgu yok."
                         )
+                    } else if origin == .bumblebee {
+                        // Grouped by kind: an inventory line and a malicious
+                        // version are not the same kind of news.
+                        let summary = BumblebeeFindingSummary(findings: originFindings)
+                        Text(summary.caption(
+                            scanned: registry.packages.count
+                        ))
+                        .font(Theme.mono(10))
+                        .foregroundStyle(summary.hasParserDiagnostics ? Theme.warn : Theme.textFaint)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        ForEach(summary.kinds) { kind in
+                            Divider().overlay(Theme.border)
+                            HStack(spacing: 7) {
+                                StatusBadge(
+                                    text: kind.label,
+                                    level: kind.isActionable ? .warning : .neutral
+                                )
+                                Text(kind.remedy)
+                                    .font(Theme.mono(9.5))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .lineLimit(2)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 6)
+                            ForEach(summary.byKind[kind] ?? []) { finding in
+                                FindingRow(registry: registry, finding: finding)
+                            }
+                        }
                     } else {
                         ForEach(Array(originFindings.enumerated()), id: \.element.id) { index, finding in
                             FindingRow(registry: registry, finding: finding)

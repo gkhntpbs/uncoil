@@ -125,6 +125,71 @@ final class BumblebeeScanCoordinator: ObservableObject {
         await run(kind: .deep, paths: managedPaths() + extraPaths, now: now)
     }
 
+    /// Hands the daily baseline to the daemon so it keeps happening while the app
+    /// is closed. Returns what was asked for, or why nothing was.
+    @discardableResult
+    func scheduleInDaemon(
+        client: RuntimeClient = .shared,
+        now: Date = .now
+    ) -> Outcome {
+        guard let binary = locator.resolve() else { return finish(.notInstalled) }
+        let paths = managedPaths()
+        guard !paths.isEmpty else {
+            return finish(.skipped(reason: "Bumblebee kapsamında dosya yok"))
+        }
+        client.scheduleScan(
+            binaryPath: binary.path,
+            arguments: ["scan", "--ndjson"] + paths,
+            intervalSeconds: BumblebeeSchedule.staleAfter,
+            timeoutSeconds: BumblebeeScanKind.dailyBaseline.timeout,
+            outputPath: registry.layout.scans
+                .appendingPathComponent("daemon-baseline.ndjson").path
+        )
+        return finish(.skipped(reason: "günlük baseline daemon'a bırakıldı"))
+    }
+
+    /// Reads what the daemon's scan left behind, so a scan that ran while the app
+    /// was closed still reaches the registry.
+    @discardableResult
+    func importDaemonResult(now: Date = .now) -> Outcome {
+        let url = registry.layout.scans.appendingPathComponent("daemon-baseline.ndjson")
+        guard let data = FileManager.default.contents(atPath: url.path),
+              let text = String(data: data, encoding: .utf8), !text.isEmpty else {
+            return finish(.skipped(reason: "daemon taramasından sonuç yok"))
+        }
+        var findings: [SecurityFinding] = []
+        var diagnostics: [String] = []
+        var summary: BumblebeeScanSummary?
+        var unknown: [String] = []
+        for event in BumblebeeOutputParser.parseStdout(text, now: now) {
+            switch event {
+            case .finding(let finding): findings.append(finding)
+            case .diagnostic(let message): diagnostics.append(message)
+            case .summary(let value): summary = value
+            case .unknown(let line): unknown.append(line)
+            }
+        }
+        // The daemon does not run the self-test, so the one the app recorded last
+        // is what this result is judged against — and without one it is not taken
+        // as the current state.
+        let result = BumblebeeScanResult(
+            kind: .dailyBaseline,
+            findings: findings,
+            diagnostics: diagnostics,
+            summary: summary,
+            unknownLines: unknown,
+            exitCode: 0,
+            timedOut: false,
+            selfTest: registry.bumblebeeSelfTest,
+            version: registry.bumblebeeVersion,
+            startedAt: now,
+            finishedAt: now
+        )
+        let usable = registry.record(scan: result)
+        try? FileManager.default.removeItem(at: url)
+        return finish(.ran(findings: result.bumblebeeFindings.count, usable: usable))
+    }
+
     // MARK: - Running
 
     /// What a store-wide scan covers: the revisions Uncoil installed. Anything
