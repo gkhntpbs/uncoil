@@ -89,10 +89,32 @@ protocol ShiftEnterCapableTerminal: AnyObject {
     func sendNewline(_ bytes: [UInt8])
 }
 
+/// Opts a terminal view into SwiftTerm's GPU renderer. `setUseMetal` must run
+/// after the view is in a window; SwiftTerm itself handles later window moves
+/// (pop-out drag) and falls back to CoreGraphics if the pipeline can't init,
+/// so a throw here just means we stay on the CPU path.
+@MainActor
+enum TerminalMetal {
+    /// Escape hatch: `defaults write com.gkhntpbs.uncoil TerminalMetalDisabled -bool YES`.
+    static var isDisabled: Bool {
+        UserDefaults.standard.bool(forKey: "TerminalMetalDisabled")
+    }
+
+    static func enableIfPossible(_ view: TerminalView) {
+        guard !isDisabled, !view.isUsingMetalRenderer else { return }
+        try? view.setUseMetal(true)
+    }
+}
+
 /// Daemon-backed terminal view.
 final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil { TerminalMetal.enableIfPossible(self) }
+    }
 }
 
 /// In-process fallback terminal view.
@@ -104,6 +126,11 @@ final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapable
     override func dataReceived(slice: ArraySlice<UInt8>) {
         onDataReceived(Data(slice))
         super.dataReceived(slice: slice)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil { TerminalMetal.enableIfPossible(self) }
     }
 }
 
