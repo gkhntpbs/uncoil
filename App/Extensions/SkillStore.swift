@@ -35,8 +35,13 @@ struct ExtensionStoreLayout: Equatable {
     var locks: URL { root.appendingPathComponent("locks", isDirectory: true) }
     var scans: URL { root.appendingPathComponent("scans", isDirectory: true) }
     var audit: URL { root.appendingPathComponent("audit", isDirectory: true) }
+    /// Snapshots taken before a step that would overwrite files Uncoil did not
+    /// write — adopting an external install, for instance.
+    var backups: URL { root.appendingPathComponent("backups", isDirectory: true) }
 
-    var allDirectories: [URL] { [mirrors, revisions, activeSkills, locks, scans, audit] }
+    var allDirectories: [URL] {
+        [mirrors, revisions, activeSkills, locks, scans, audit, backups]
+    }
 
     func ensure() throws {
         for directory in allDirectories {

@@ -920,6 +920,11 @@ private struct PackageCard: View {
     let toggle: () -> Void
     @Binding var message: String?
     @EnvironmentObject private var projectStore: ProjectStore
+    /// Adoption plan awaiting the user: the diff and the backup are on screen
+    /// before any file is copied in.
+    @State private var adoption: ExtensionAdoptionService.Plan?
+    /// Repository the user is typing to attach to a local source.
+    @State private var linkingRepository: String?
 
     private var candidate: UpdateCandidate? {
         registry.updateCandidate(for: package.id)
@@ -944,6 +949,80 @@ private struct PackageCard: View {
         }
         .panel()
         .accessibilityIdentifier("extensions.package.\(package.id)")
+        .sheet(
+            isPresented: Binding(
+                get: { adoption != nil },
+                set: { if !$0 { adoption = nil } }
+            )
+        ) {
+            if let plan = adoption {
+                ExtensionAdoptionSheet(
+                    plan: plan,
+                    onAdopt: { adopt(plan) },
+                    onCancel: { adoption = nil }
+                )
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { linkingRepository != nil },
+                set: { if !$0 { linkingRepository = nil } }
+            )
+        ) {
+            RepositoryLinkSheet(
+                packageName: package.name,
+                onLink: { repository, tracking in linkToRepository(repository, tracking: tracking) },
+                onCancel: { linkingRepository = nil }
+            )
+        }
+    }
+
+    /// Builds the adoption plan: file diff, backup, and the findings that would
+    /// block it. Copies nothing.
+    private func planAdoption() {
+        guard case .detectedExternal(let path) = package.source else { return }
+        let service = ExtensionAdoptionService(layout: registry.layout)
+        do {
+            adoption = try service.plan(
+                name: package.name, kind: package.kind, externalPath: path,
+                findings: findings
+            )
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func adopt(_ plan: ExtensionAdoptionService.Plan) {
+        adoption = nil
+        let service = ExtensionAdoptionService(layout: registry.layout)
+        do {
+            let adopted = try service.adopt(plan)
+            registry.upsert(adopted)
+            registry.record(AuditEvent(
+                kind: package.kind == .skill ? .skillInstalled : .mcpEnabled,
+                extensionID: adopted.id,
+                detail: "sahiplenildi: \(plan.summary), yedek \(plan.backupPath ?? "-")"
+            ))
+            message = "\(package.name) sahiplenildi; \(plan.summary)."
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func linkToRepository(_ repository: String, tracking: ExtensionSource.TrackingMode) {
+        linkingRepository = nil
+        guard let source = package.source.linkedToRepository(repository, tracking: tracking) else {
+            message = "\(package.name) bir depoya bağlanamaz."
+            return
+        }
+        var updated = package
+        updated.source = source
+        registry.upsert(updated)
+        registry.record(AuditEvent(
+            kind: .configChanged, extensionID: package.id,
+            detail: "kaynak bağlandı: \(repository) · \(tracking.label)"
+        ))
+        message = "\(package.name) artık \(repository) kaynağından yönetiliyor."
     }
 
     private var header: some View {
@@ -1105,13 +1184,29 @@ private struct PackageCard: View {
 
     private var actions: some View {
         HStack(spacing: 9) {
-            ForEach(ExtensionAgentID.supported) { agent in
-                let isOn = registry.agents(for: package.id).contains(agent)
-                Button(isOn ? "\(agent.displayName): açık" : "\(agent.displayName): kapalı") {
-                    registry.setAgentBinding(!isOn, packageID: package.id, agent: agent)
+            // An external install Uncoil did not adopt is shown, not wired up:
+            // assigning it would mean managing files that are not ours.
+            if package.source.capabilities.canAssign {
+                ForEach(ExtensionAgentID.supported) { agent in
+                    let isOn = registry.agents(for: package.id).contains(agent)
+                    Button(isOn ? "\(agent.displayName): açık" : "\(agent.displayName): kapalı") {
+                        registry.setAgentBinding(!isOn, packageID: package.id, agent: agent)
+                    }
+                    .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("extensions.package.toggle.\(package.id).\(agent.rawValue)")
                 }
-                .buttonStyle(GhostButtonStyle())
-                .accessibilityIdentifier("extensions.package.toggle.\(package.id).\(agent.rawValue)")
+            }
+
+            if package.source.capabilities.canAdopt {
+                Button("Adopt into Uncoil…") { planAdoption() }
+                    .buttonStyle(AccentButtonStyle())
+                    .accessibilityIdentifier("extensions.package.adopt.\(package.id)")
+            }
+
+            if package.source.capabilities.canLinkToRepository {
+                Button("GitHub kaynağına bağla…") { linkingRepository = "" }
+                    .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("extensions.package.link.\(package.id)")
             }
 
             if package.state == .quarantined {
