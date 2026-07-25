@@ -439,18 +439,17 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         return root
     }
 
-    /// Waits until the daemon is actually accepting connections.
+    /// Waits for the daemon's socket file to appear.
     ///
-    /// The socket FILE appears at `bind()`, but `connect()` fails with
-    /// ECONNREFUSED until `listen()` runs a few instructions later — so waiting
-    /// for the file to exist raced with the daemon and made whichever test lost
-    /// the race fail with "Connection refused". Probing with a real connection
-    /// closes that window.
+    /// Existence alone does not mean the daemon is accepting yet — the file is
+    /// created by `bind()` and `connect()` keeps failing with ECONNREFUSED until
+    /// `listen()` runs. That window is closed in `connect(to:)` instead of here,
+    /// because probing with a throwaway connection would look to the daemon like
+    /// a client that connected and left, which is a lifecycle event it acts on.
     private func waitForSocket(_ path: String, timeout: TimeInterval) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if FileManager.default.fileExists(atPath: path), let probe = try? connect(to: path) {
-                close(probe)
+            if FileManager.default.fileExists(atPath: path) {
                 return true
             }
             usleep(20_000)
@@ -478,7 +477,24 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         return condition()
     }
 
-    private func connect(to path: String) throws -> Int32 {
+    /// Connects, retrying while the daemon is between `bind()` and `listen()`.
+    /// Without the retry, a test that reached this a few microseconds early
+    /// failed with "Connection refused" — intermittently, on whichever test in
+    /// the suite happened to lose the race.
+    private func connect(to path: String, timeout: TimeInterval = 3) throws -> Int32 {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            do {
+                return try attemptConnect(to: path)
+            } catch let error as POSIXError where error.code == .ECONNREFUSED
+                || error.code == .ENOENT {
+                guard Date() < deadline else { throw error }
+                usleep(20_000)
+            }
+        }
+    }
+
+    private func attemptConnect(to path: String) throws -> Int32 {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { throw POSIXError(.EMFILE) }
         var timeout = timeval(tv_sec: 3, tv_usec: 0)
