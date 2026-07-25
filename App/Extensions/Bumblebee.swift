@@ -55,15 +55,31 @@ struct BumblebeeVersion: Equatable, Codable {
                 catalogVersion: root["catalog"] as? String
             )
         }
-        // "bumblebee 1.4.2 (build a1b2c3d)"
+        // What `bumblebee version` actually prints:
+        //   bumblebee v0.1.2
+        //   commit: cc57710eea…
+        //   built:  2026-06-18T15:03:13Z
+        //   go:     go1.25.11
         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let parts = trimmed.split(separator: " ").map(String.init)
-        guard let version = parts.first(where: { $0.first?.isNumber == true }) else { return nil }
-        let build = parts
+        let lines = trimmed.components(separatedBy: "\n").map {
+            $0.trimmingCharacters(in: .whitespaces)
+        }
+        let commit = lines
+            .first { $0.hasPrefix("commit:") }
+            .map { String($0.dropFirst("commit:".count)).trimmingCharacters(in: .whitespaces) }
+
+        let head = lines[0].split(separator: " ").map(String.init)
+        let version = head.first {
+            $0.first == "v" && $0.dropFirst().first?.isNumber == true
+        } ?? head.first { $0.first?.isNumber == true }
+        guard let version else { return nil }
+
+        // The older one-line form: "bumblebee 1.4.2 (build a1b2c3d)".
+        let build = commit ?? head
             .first { $0.hasPrefix("(build") || $0.hasPrefix("build") }
             .flatMap { _ in
-                parts.last?.trimmingCharacters(in: CharacterSet(charactersIn: "()"))
+                head.last?.trimmingCharacters(in: CharacterSet(charactersIn: "()"))
             }
         return BumblebeeVersion(version: version, buildRevision: build, catalogVersion: nil)
     }
@@ -185,6 +201,8 @@ enum BumblebeeEvent: Equatable {
     case finding(SecurityFinding)
     case diagnostic(String)
     case summary(BumblebeeScanSummary)
+    /// An inventory line: a package that exists, with nothing said against it.
+    case package
     /// A line Uncoil did not understand. Kept rather than dropped: a scan whose
     /// output changed shape must be visible, not silently thinner.
     case unknown(String)
@@ -254,23 +272,29 @@ enum BumblebeeOutputParser {
                         .jsonObject(with: data) as? [String: Any] else {
                     return .unknown(line)
                 }
-                let type = root["type"] as? String ?? root["kind"] as? String
+                // `record_type` is what the binary writes; `type`/`kind` are kept
+                // as fallbacks so a differently-shaped line is still understood.
+                let type = root["record_type"] as? String
+                    ?? root["type"] as? String
+                    ?? root["kind"] as? String
                 switch type {
                 case "scan_summary", "summary":
-                    return .summary(BumblebeeScanSummary(
-                        scanned: root["scanned"] as? Int ?? 0,
-                        findings: root["findings"] as? Int ?? 0,
-                        durationSeconds: root["duration_seconds"] as? Double,
-                        catalogVersion: root["catalog_version"] as? String,
-                        truncated: root["truncated"] as? Bool ?? false
-                    ))
+                    return .summary(summary(from: root))
                 case "finding":
                     guard let finding = finding(from: root, now: now) else {
                         return .unknown(line)
                     }
                     return .finding(finding)
+                case "package":
+                    // Inventory: what exists, not a claim that anything is wrong.
+                    // Counted by the summary rather than turned into findings.
+                    return .package
                 case "diagnostic", "parser_diagnostic":
-                    return .diagnostic(root["message"] as? String ?? line)
+                    return .diagnostic(
+                        root["message"] as? String
+                            ?? root["detail"] as? String
+                            ?? line
+                    )
                 default:
                     // A line with a rule but no type is still a finding.
                     if let finding = finding(from: root, now: now) { return .finding(finding) }
@@ -295,18 +319,57 @@ enum BumblebeeOutputParser {
             }
     }
 
+    /// The `scan_summary` record, in the shape the binary writes it: counts live
+    /// under `counts`, the duration in milliseconds, and anything other than a
+    /// complete status means the numbers describe a partial run.
+    static func summary(from root: [String: Any]) -> BumblebeeScanSummary {
+        let counts = root["counts"] as? [String: Any] ?? [:]
+        let status = root["status"] as? String
+        let timedOut = root["timed_out"] as? Bool ?? false
+        return BumblebeeScanSummary(
+            scanned: root["scanned"] as? Int
+                ?? counts["package"] as? Int
+                ?? root["files_considered"] as? Int
+                ?? 0,
+            findings: root["findings"] as? Int ?? counts["finding"] as? Int ?? 0,
+            durationSeconds: root["duration_seconds"] as? Double
+                ?? (root["duration_ms"] as? Double).map { $0 / 1000 }
+                ?? (root["duration_ms"] as? Int).map { Double($0) / 1000 },
+            catalogVersion: root["catalog_version"] as? String,
+            truncated: root["truncated"] as? Bool
+                ?? (timedOut || (status != nil && status != "complete"))
+        )
+    }
+
     static func finding(from root: [String: Any], now: Date) -> SecurityFinding? {
-        guard let rule = root["rule"] as? String ?? root["id"] as? String else { return nil }
+        // `catalog_id` is the rule identifier in the emitted schema; `rule`/`id`
+        // are older spellings this parser still accepts.
+        guard let rule = root["rule"] as? String
+            ?? root["catalog_id"] as? String
+            ?? root["id"] as? String else { return nil }
         let severity = severity(root["severity"] as? String)
+        let path = root["path"] as? String
+            ?? root["source_file"] as? String
+            ?? root["project_path"] as? String
+        let package = [
+            root["package_name"] as? String,
+            (root["version"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+        ].compactMap { $0 }.joined(separator: "@")
+        let message = root["message"] as? String
+            ?? [
+                root["catalog_name"] as? String ?? rule,
+                package.isEmpty ? nil : package,
+                root["evidence"] as? String,
+            ].compactMap { $0 }.joined(separator: " · ")
         return SecurityFinding(
-            id: "bumblebee:\(root["id"] as? String ?? rule):\(root["path"] as? String ?? "-")",
+            id: "bumblebee:\(root["record_id"] as? String ?? rule):\(path ?? "-")",
             // Always `.bumblebee`: whose finding this is decides how it is shown.
             origin: .bumblebee,
             severity: severity,
             rule: rule,
-            message: root["message"] as? String ?? rule,
+            message: message.isEmpty ? rule : message,
             extensionID: root["extension_id"] as? String,
-            path: root["path"] as? String,
+            path: path,
             foundAt: now
         )
     }
@@ -357,7 +420,8 @@ enum BumblebeeCoverage {
     static func isCovered(_ package: ExtensionPackage) -> Bool {
         switch package.source {
         case .remoteMCP: false
-        case .managedGitHub, .bundled, .local, .detectedExternal: package.kind == .mcpServer
+        case .managedGitHub, .bundled, .local, .adopted, .detectedExternal:
+            package.kind == .mcpServer
         }
     }
 

@@ -210,7 +210,7 @@ final class MenuBarTaskCountsTests: XCTestCase {
             statuses: [:], attention: [item(.taskFailed)]
         )
         XCTAssertTrue(summary.hasProblem)
-        XCTAssertEqual(summary.symbolName, "exclamationmark.triangle.fill")
+        XCTAssertEqual(summary.icon, .waiting)
 
         XCTAssertFalse(
             MenuBarMonitorEngine.summary(statuses: [:], attention: [item(.mergeReady)])

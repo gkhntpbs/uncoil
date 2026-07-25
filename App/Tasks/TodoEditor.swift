@@ -161,6 +161,51 @@ enum TodoEditor {
         return [cut, paste]
     }
 
+    /// A brand-new task under a heading (or at the file's end for the root),
+    /// written the way an agent would write it: the same indent and list marker
+    /// as the sibling above it, `- [ ]` when it is the first one there.
+    ///
+    /// An ordered sibling gets the next number rather than a copy of the same
+    /// one, so `3.` is followed by `4.` — Markdown would render a duplicate
+    /// fine, but the file is the user's and it should read right raw.
+    static func insertTaskPatch(
+        text: String,
+        under headingPath: [String],
+        in document: TaskDocument
+    ) throws -> Patch {
+        let title = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\n", with: " ")
+        guard !title.isEmpty else {
+            throw EditError.conflict("görev metni boş olamaz")
+        }
+        guard let insertion = insertionPoint(forHeading: headingPath, in: document) else {
+            throw EditError.conflict(
+                "hedef başlık bulunamadı: \(headingPath.joined(separator: " › "))"
+            )
+        }
+        let sibling = document.tasks(under: headingPath).last
+        let indent = sibling?.checkbox.indent ?? ""
+        let marker = sibling.map { nextListMarker(after: $0.checkbox.listMarker) } ?? "-"
+        var line = "\(indent)\(marker) [ ] \(title)\n"
+        if insertion.isEmptyHeading {
+            // The first task directly after a heading line reads better with a
+            // blank line between them, which is also how agents write it.
+            line = "\n" + line
+        }
+        return Patch(
+            range: insertion.range,
+            replacement: separator(before: insertion.range.startByte, in: document.raw) + line,
+            summary: "yeni görev: \(title)"
+        )
+    }
+
+    /// `-`/`*`/`+` stay as they are; `3.` → `4.`, `7)` → `8)`.
+    static func nextListMarker(after marker: String) -> String {
+        guard let last = marker.last, last == "." || last == ")" else { return marker }
+        guard let number = Int(marker.dropLast()) else { return marker }
+        return "\(number + 1)\(last)"
+    }
+
     /// The newline a paste at `byte` has to bring with it.
     ///
     /// A file whose last line has no trailing newline is common, and pasting a

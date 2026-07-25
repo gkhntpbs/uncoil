@@ -81,7 +81,7 @@ struct TaskMergeSheet: View {
             if let branch = snapshot.branch {
                 Text("\(branch) → \(project.name)")
                     .font(Theme.mono(10))
-                    .foregroundStyle(Theme.codex)
+                    .foregroundStyle(Theme.highlight)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

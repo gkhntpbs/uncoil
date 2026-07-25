@@ -7,80 +7,70 @@ struct SidebarView: View {
     @Binding var selection: MainSelection?
     @Binding var selectedSessionIDs: Set<UUID>
     @Binding var showFolderPicker: Bool
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
     @Environment(\.openWindow) private var openWindow
     @State private var showCreateGroup = false
     @State private var showBulkDelete = false
     @State private var groupName = ""
     @State private var isMultiSelecting = false
+    // Sheets and dialogs the row context menus ask for. They live here rather
+    // than in the rows because a recycled row is the wrong owner for a window.
+    @State private var customizingProject: Project?
+    /// Project getting a new, empty group from its context menu. Until now a
+    /// group could only be born from a multi-selection.
+    @State private var groupingProject: Project?
+    @State private var renamingGroup: SessionGroup?
+    @State private var renameValue = ""
+    @State private var deletingSession: SessionRecord?
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Spacer()
-                Button {
-                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
-                        isMultiSelecting.toggle()
-                        if !isMultiSelecting {
-                            selectedSessionIDs.removeAll()
-                        }
-                    }
-                } label: {
-                    TablerIcon(
-                        name: "list-check",
-                        size: 13,
-                        color: isMultiSelecting ? Theme.codex : Theme.textDim
-                    )
-                    .frame(width: 24, height: 24)
-                    .background(
-                        isMultiSelecting ? Theme.panelActive : .clear,
-                        in: RoundedRectangle(cornerRadius: 6)
-                    )
-                }
-                .buttonStyle(.plain)
-                .help(isMultiSelecting ? "Çoklu seçimi kapat" : "Birden fazla seç")
-                .accessibilityIdentifier("sidebar.multiSelectButton")
-                .accessibilityValue(isMultiSelecting ? "Açık" : "Kapalı")
-            }
-            .frame(height: 38)
-            .padding(.horizontal, 14)
+            // The window controls that used to sit here now live in the title
+            // bar, in one place regardless of the sidebar. What is left is the
+            // clearance the first row needs from it.
+            Spacer().frame(height: 32)
 
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(projectStore.projects) { project in
-                        ProjectSection(
-                            project: project,
-                            selection: $selection,
-                            selectedSessionIDs: $selectedSessionIDs,
-                            isMultiSelecting: isMultiSelecting
-                        )
+            SidebarOutline(
+                selection: $selection,
+                selectedSessionIDs: $selectedSessionIDs,
+                isMultiSelecting: isMultiSelecting,
+                actions: SidebarRowActions(
+                    openSessionWindow: { openWindow(id: "session-window", value: $0) },
+                    customizeProject: { customizingProject = $0 },
+                    createGroup: {
+                        groupName = ""
+                        groupingProject = $0
+                    },
+                    renameGroup: {
+                        renameValue = $0.name
+                        renamingGroup = $0
+                    },
+                    confirmDeleteSession: { deletingSession = $0 }
+                )
+            )
+            .overlay(alignment: .top) {
+                if projectStore.projects.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("Henüz proje yok")
+                            .font(Theme.mono(11))
+                            .foregroundStyle(Theme.textFaint)
+                        Button("Proje ekle") { showFolderPicker = true }
+                            .buttonStyle(GhostButtonStyle())
                     }
-                    if projectStore.projects.isEmpty {
-                        VStack(spacing: 8) {
-                            Text("Henüz proje yok")
-                                .font(Theme.mono(11))
-                                .foregroundStyle(Theme.textFaint)
-                            Button("Proje ekle") { showFolderPicker = true }
-                                .buttonStyle(GhostButtonStyle())
-                        }
-                        .padding(.top, 40)
-                    }
+                    .padding(.top, 40)
                 }
-                .padding(.horizontal, 8)
-                .uncoilScrollers()
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("sidebar.container")
 
             if !selectedSessionIDs.isEmpty {
                 batchActions
             }
 
-            HStack(spacing: 10) {
-                RailButton(iconName: "settings") {
+            HStack(spacing: 2) {
+                RailButton(iconName: "settings", help: "Ayarlar") {
                     openWindow(id: "settings")
                 }
                 .accessibilityIdentifier("sidebar.settingsButton")
-                RailButton(iconName: "plus") {
+                RailButton(iconName: "plus", help: "Proje ekle") {
                     showFolderPicker = true
                 }
                 .accessibilityIdentifier("sidebar.addProjectButton")
@@ -93,10 +83,24 @@ struct SidebarView: View {
                     }
                 }
                 Spacer()
+                RailButton(
+                    iconName: "list-check",
+                    help: isMultiSelecting ? "Çoklu seçimi kapat" : "Birden fazla seç",
+                    isOn: isMultiSelecting
+                ) {
+                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+                        isMultiSelecting.toggle()
+                        if !isMultiSelecting {
+                            selectedSessionIDs.removeAll()
+                        }
+                    }
+                }
+                .accessibilityIdentifier("sidebar.multiSelectButton")
+                .accessibilityValue(isMultiSelecting ? "Açık" : "Kapalı")
                 CollapseAllButton()
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
         .alert("Yeni Grup", isPresented: $showCreateGroup) {
             TextField("Grup adı", text: $groupName)
@@ -115,6 +119,53 @@ struct SidebarView: View {
         } message: {
             Text("Çalışan süreçler kapatılır; kayıtlar geri alınamaz.")
         }
+        .sheet(item: $customizingProject) { project in
+            ProjectCustomizeSheet(project: project)
+        }
+        .alert("Yeni Grup", isPresented: isPresenting($groupingProject)) {
+            TextField("Grup adı", text: $groupName)
+            Button("Oluştur") {
+                guard let project = groupingProject,
+                      let group = projectStore.createGroup(
+                          projectID: project.id, name: groupName
+                      ) else { return }
+                selection = .group(group.id)
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Boş bir grup oluşturulur; oturumları içine sürükleyebilirsin.")
+        }
+        .alert("Grubu Yeniden Adlandır", isPresented: isPresenting($renamingGroup)) {
+            TextField("Grup adı", text: $renameValue)
+            Button("Kaydet") {
+                let value = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !value.isEmpty, let group = renamingGroup else { return }
+                projectStore.updateGroup(group.id) { $0.name = value }
+            }
+            Button("Vazgeç", role: .cancel) {}
+        }
+        .confirmationDialog(
+            deletingSession.map { "\"\($0.displayTitle)\" oturumu silinsin mi?" } ?? "",
+            isPresented: isPresenting($deletingSession),
+            titleVisibility: .visible
+        ) {
+            Button("Sil", role: .destructive) {
+                guard let record = deletingSession else { return }
+                TerminalRegistry.shared.closeTerminal(for: record.id)
+                projectStore.removeSession(record.id)
+            }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text("Çalışan süreç kapatılır; kayıt geri alınamaz.")
+        }
+    }
+
+    /// Presents an alert or dialog off an optional value, clearing it on dismiss.
+    private func isPresenting<Value>(_ value: Binding<Value?>) -> Binding<Bool> {
+        Binding(
+            get: { value.wrappedValue != nil },
+            set: { if !$0 { value.wrappedValue = nil } }
+        )
     }
 
     private var selectedProjectIDs: Set<UUID> {
@@ -188,66 +239,207 @@ struct SidebarView: View {
     }
 }
 
+private extension View {
+    /// `sheet(item:)` for a plain optional, so a row's context menu can raise a
+    /// sheet the sidebar owns.
+    func sheet<Value: Identifiable, Content: View>(
+        item: Binding<Value?>,
+        @ViewBuilder content: @escaping (Value) -> Content
+    ) -> some View {
+        sheet(isPresented: Binding(
+            get: { item.wrappedValue != nil },
+            set: { if !$0 { item.wrappedValue = nil } }
+        )) {
+            if let value = item.wrappedValue {
+                content(value)
+            }
+        }
+    }
+}
+
+// MARK: - Hierarchy metrics
+
+/// The one place the sidebar's nesting is defined.
+///
+/// Sessions used to sit at almost the same inset as the project above them, so a
+/// project and its sessions read as one flat list. Depth now buys both an indent
+/// and a hairline that ties a child to the row it belongs to.
+enum SidebarIndent {
+    /// Inset of the whole list from the sidebar's edge.
+    static let outer: CGFloat = 8
+    /// Content inset per depth, measured from the cell's leading edge.
+    ///
+    /// A project sits close to the edge: indentation exists to show what belongs
+    /// to what, and a top-level row belongs to nothing.
+    static func leading(depth: Int) -> CGFloat {
+        switch depth {
+        case 0: return 4
+        case 1: return 16
+        default: return 28
+        }
+    }
+
+    /// Where the connecting hairlines sit for a row at this depth. A session
+    /// inside a group gets two: its project's and its group's.
+    static func rails(depth: Int) -> [CGFloat] {
+        switch depth {
+        case 0: return []
+        case 1: return [11]
+        default: return [11, 23]
+        }
+    }
+}
+
+/// The hairlines that tie a row to the project — and group — it lives under.
+private struct IndentRails: View {
+    let depth: Int
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            ForEach(SidebarIndent.rails(depth: depth), id: \.self) { x in
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(width: 1)
+                    .padding(.leading, x)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// The pinned marker.
+///
+/// It was drawn as `pinned-filled`, a name the bundled outline font does not
+/// have — and `TablerIcon` falls back to a dot for an unknown name, which is why
+/// pinning showed a yellow dot instead of a pin. The filled set is not bundled;
+/// `pinned` is the glyph that actually exists and reads as a stuck pin.
+/// The pin, in one icon and one colour.
+///
+/// It was drawn with `TablerIcon(name: "pinned-filled")` — a name the bundled
+/// font does not have, because that font is the outline set and carries no
+/// filled variants at all, and an unknown name silently falls back to a dot.
+/// That is what showed up as a yellow dot. Pinned state is the *same* pin,
+/// filled, in the same colour as the unpinned one; SF Symbols has that pair, the
+/// bundled font does not.
+struct PinMark: View {
+    let isPinned: Bool
+    var size: CGFloat = 11
+    var color: Color = Theme.textFaint
+
+    var body: some View {
+        Image(systemName: isPinned ? "pin.fill" : "pin")
+            .font(.system(size: size))
+            .foregroundStyle(color)
+    }
+}
+
 private struct RailButton: View {
     let iconName: String
+    var help: String = ""
+    /// Drawn as engaged — the multi-select toggle is the one rail button that
+    /// has a state rather than just an action.
+    var isOn = false
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            TablerIcon(name: iconName, size: 13, color: hovering ? Theme.text : Theme.textDim)
-                .frame(width: 24, height: 24)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+            TablerIcon(
+                name: iconName,
+                size: 12,
+                color: isOn ? Theme.highlight : (hovering ? Theme.text : Theme.textDim)
+            )
+            .frame(width: 20, height: 20)
+            .background(
+                isOn ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
+                in: RoundedRectangle(cornerRadius: 5)
+            )
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .help(help)
     }
 }
 
-// MARK: - Project section
+/// Hide/show the sidebar, and open the command palette.
+///
+/// Lives in the sidebar when there is one and beside the traffic lights when
+/// there is not: a control that hides a surface cannot be the first casualty of
+/// hiding it, or there is no way back except the menu bar.
+struct WindowControlsCluster: View {
+    var onOpenPalette: () -> Void
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
 
-private struct ProjectSection: View {
-    let project: Project
+    var body: some View {
+        HStack(spacing: 2) {
+            RailButton(
+                iconName: "layout-sidebar",
+                help: sidebarVisible ? "Kenar çubuğunu gizle" : "Kenar çubuğunu göster"
+            ) {
+                withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
+                    sidebarVisible.toggle()
+                }
+            }
+            .accessibilityIdentifier("sidebar.toggleButton")
+            RailButton(iconName: "search", help: "Komut paletini aç (⌘K)") {
+                onOpenPalette()
+            }
+            .accessibilityIdentifier("sidebar.paletteButton")
+        }
+    }
+}
+
+// MARK: - Project row
+
+/// A project row.
+///
+/// Selection, dragging, reordering and the context menu belong to the outline
+/// view that hosts this; what stays here is the design, the hover reveal, and
+/// the two controls that are genuinely the row's own. The project is read from
+/// the store by id so a rename or a pin redraws this row without the outline
+/// view needing to hear about it.
+struct ProjectRowView: View {
+    let projectID: UUID
+    let isFirst: Bool
     @Binding var selection: MainSelection?
-    @Binding var selectedSessionIDs: Set<UUID>
-    let isMultiSelecting: Bool
+    let actions: SidebarRowActions
     @EnvironmentObject private var projectStore: ProjectStore
-    @EnvironmentObject private var sessionStore: SessionStore
-    @EnvironmentObject private var settings: SettingsStore
     @State private var hovering = false
-    @State private var showCustomize = false
     @ObservedObject private var collapsedStore = CollapsedProjects.shared
 
+    private var project: Project? {
+        projectStore.projects.first { $0.id == projectID }
+    }
+
     private var sessionsCollapsed: Bool {
-        collapsedStore.contains(project.id)
+        collapsedStore.contains(projectID)
     }
 
     private var isProjectSelected: Bool {
-        selection == .project(project.id)
+        selection == .project(projectID)
     }
 
-    private var records: [SessionRecord] {
-        projectStore.sessions(for: project.id)
+    private var childCount: Int {
+        projectStore.sessions(for: projectID).count
     }
 
-    private var groups: [SessionGroup] {
-        projectStore.groups(for: project.id)
-    }
-
-    private var ungroupedRecords: [SessionRecord] {
-        records.filter { $0.groupID == nil }
+    private var hasChildren: Bool {
+        childCount > 0 || !projectStore.groups(for: projectID).isEmpty
     }
 
     var body: some View {
-        VStack(spacing: 1) {
-            // Project row — hover reveals collapse chevron + agent launcher.
+        if let project {
             HStack(spacing: 8) {
                 ProjectIcon(project: project)
                 Text(project.name)
                     .font(Theme.mono(12.5, .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
-                if !records.isEmpty {
+                if project.isPinned == true {
+                    PinMark(isPinned: true, size: 10, color: Theme.textDim)
+                        .help("Sabitlenmiş")
+                }
+                if hasChildren {
                     Button {
                         toggleCollapsed()
                     } label: {
@@ -255,120 +447,62 @@ private struct ProjectSection: View {
                             .font(.system(size: 8, weight: .semibold))
                             .foregroundStyle(Theme.textFaint)
                             .rotationEffect(.degrees(sessionsCollapsed ? -90 : 0))
+                            // An 8pt glyph is an 8pt target: the chevron was
+                            // drawn small on purpose, but it still has to be
+                            // hittable without aiming. The frame is the target,
+                            // not the mark.
+                            .frame(width: 20, height: 20)
+                            .contentShape(Rectangle())
+                            // Negative padding keeps the row's layout exactly
+                            // where it was: the target grows into the gaps
+                            // around the glyph rather than pushing the name.
+                            .padding(.horizontal, -5)
                     }
                     .buttonStyle(.plain)
                     .opacity(hovering || sessionsCollapsed ? 1 : 0)
                 }
                 Spacer(minLength: 4)
-                if hovering {
-                    AgentLauncherStrip(project: project, selection: $selection)
-                        .transition(.opacity)
+                if sessionsCollapsed, childCount > 0 {
+                    // Collapsed, the project has to say how much it is hiding.
+                    Text("\(childCount)")
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(Theme.textFaint)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.leading, SidebarIndent.leading(depth: 0))
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            // The launcher floats above the row instead of sitting in it: laid
+            // out inline it grew the row on hover (the whole list twitched), and
+            // reserving its width truncated every project name for good.
+            .overlay(alignment: .trailing) {
+                AgentLauncherStrip(project: project, selection: $selection)
+                    .padding(.trailing, 8)
+                    .opacity(hovering ? 1 : 0)
+                    .allowsHitTesting(hovering)
+                    .animation(uncoilAnimation(.easeOut(duration: 0.12)), value: hovering)
+            }
             .background(
-                isProjectSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
+                isProjectSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),
                 in: RoundedRectangle(cornerRadius: 7)
             )
             .contentShape(RoundedRectangle(cornerRadius: 7))
-            .onTapGesture { selection = .project(project.id) }
+            .padding(.horizontal, 8)
+            // Sections used to be separated by the stack's own padding; as
+            // outline rows they carry the gap themselves.
+            .padding(.top, isFirst ? 0 : 6)
+            .onHover { hovering = $0 }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("sidebar.project.\(project.name)")
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction { selection = .project(project.id) }
-            .onHover { value in
-                withAnimation(uncoilAnimation(.easeOut(duration: 0.12))) { hovering = value }
-            }
-            .onDrop(of: [.text], isTargeted: nil) { providers in
-                loadSessionIDs(from: providers) { ids in
-                    projectStore.assignSessions(ids, to: nil)
-                }
-            }
-            .contextMenu {
-                Button("Özelleştir…") { showCustomize = true }
-                Button(sessionsCollapsed ? "Oturumları Göster" : "Oturumları Gizle") {
-                    toggleCollapsed()
-                }
-                Divider()
-                Button("Finder'da Göster") {
-                    NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
-                }
-                Button("Listeden Kaldır", role: .destructive) {
-                    projectStore.removeProject(project)
-                }
-            }
-            .sheet(isPresented: $showCustomize) {
-                ProjectCustomizeSheet(project: project)
-            }
-
-            if !sessionsCollapsed {
-                ForEach(groups) { group in
-                    SessionGroupRow(
-                        group: group,
-                        selection: $selection,
-                        selectedSessionIDs: $selectedSessionIDs,
-                        isMultiSelecting: isMultiSelecting
-                    )
-                }
-                ForEach(ungroupedRecords) { record in
-                    SessionRow(
-                        record: record,
-                        isSelected: selection == .session(record.id)
-                            || selectedSessionIDs.contains(record.id),
-                        isMultiSelected: selectedSessionIDs.contains(record.id),
-                        showsSelectionControl: isMultiSelecting,
-                        dragIDs: selectedSessionIDs.contains(record.id)
-                            ? selectedSessionIDs
-                            : [record.id]
-                    ) {
-                        select(record)
-                    } onToggleSelection: {
-                        toggleSelection(record.id)
-                    }
-                }
-            }
+            .accessibilityAction { selection = .project(projectID) }
         }
-        .padding(.bottom, 6)
     }
 
     private func toggleCollapsed() {
         withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
-            collapsedStore.set(project.id, collapsed: !sessionsCollapsed)
+            collapsedStore.set(projectID, collapsed: !sessionsCollapsed)
         }
-    }
-
-    private func select(_ record: SessionRecord) {
-        if isMultiSelecting {
-            toggleSelection(record.id)
-            return
-        }
-        selectedSessionIDs.removeAll()
-        selection = .session(record.id)
-    }
-
-    private func toggleSelection(_ id: UUID) {
-        if selectedSessionIDs.contains(id) {
-            selectedSessionIDs.remove(id)
-        } else {
-            selectedSessionIDs.insert(id)
-        }
-    }
-
-    private func loadSessionIDs(
-        from providers: [NSItemProvider],
-        completion: @escaping @MainActor (Set<UUID>) -> Void
-    ) -> Bool {
-        guard let provider = providers.first else { return false }
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let payload = object as? String else { return }
-            let ids = Set(payload.split(separator: ",").compactMap {
-                UUID(uuidString: String($0))
-            })
-            guard !ids.isEmpty else { return }
-            Task { @MainActor in completion(ids) }
-        }
-        return true
     }
 }
 
@@ -465,247 +599,210 @@ private struct LauncherButton: View {
     }
 }
 
-private struct SessionGroupRow: View {
-    let group: SessionGroup
-    @Binding var selection: MainSelection?
-    @Binding var selectedSessionIDs: Set<UUID>
-    let isMultiSelecting: Bool
-    @EnvironmentObject private var projectStore: ProjectStore
-    @State private var isExpanded = true
-    @State private var isTargeted = false
-    @State private var showRename = false
-    @State private var renameValue = ""
+// MARK: - Group row
 
-    private var records: [SessionRecord] {
-        projectStore.sessions(in: group.id)
+/// A session group's header row. The chevron collapses it; the outline view
+/// takes care of what the collapse means for the rows below.
+struct SessionGroupRowView: View {
+    let groupID: UUID
+    let isSelected: Bool
+    let actions: SidebarRowActions
+    @EnvironmentObject private var projectStore: ProjectStore
+    @ObservedObject private var collapsedGroups = CollapsedGroups.shared
+
+    private var group: SessionGroup? {
+        projectStore.sessionGroups.first { $0.id == groupID }
     }
 
+    private var isExpanded: Bool { !collapsedGroups.contains(groupID) }
+
     var body: some View {
-        VStack(spacing: 1) {
+        if let group {
             HStack(spacing: 7) {
                 Button {
                     withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
-                        isExpanded.toggle()
+                        collapsedGroups.toggle(groupID)
                     }
                 } label: {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 8, weight: .semibold))
                         .rotationEffect(.degrees(isExpanded ? 0 : -90))
                         .foregroundStyle(Theme.textFaint)
+                        // Same target as the project row's chevron — the two sit
+                        // in the same list and should not aim differently.
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                        .padding(.horizontal, -5)
                 }
                 .buttonStyle(.plain)
-                TablerIcon(
-                    name: "folder",
-                    size: 12,
-                    color: isTargeted ? Theme.codex : Theme.textDim
-                )
+                TablerIcon(name: "folder", size: 12, color: Theme.textDim)
                 Text(group.name)
                     .font(Theme.mono(11.5, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(1)
                 Spacer()
-                Text("\(records.count)")
+                Text("\(projectStore.sessions(in: groupID).count)")
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
             }
-            .padding(.leading, 16)
+            .padding(.leading, SidebarIndent.leading(depth: 1))
             .padding(.trailing, 10)
             .padding(.vertical, 6)
             .background(
-                selection == .group(group.id) || isTargeted
-                    ? Theme.panelActive
-                    : Theme.panel.opacity(0.45),
+                isSelected ? Theme.highlightMuted : Theme.panel.opacity(0.45),
                 in: RoundedRectangle(cornerRadius: 7)
             )
             .contentShape(RoundedRectangle(cornerRadius: 7))
-            .onTapGesture {
-                selectedSessionIDs.removeAll()
-                selection = .group(group.id)
-            }
-            .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
-                guard let provider = providers.first else { return false }
-                provider.loadObject(ofClass: NSString.self) { object, _ in
-                    guard let payload = object as? String else { return }
-                    let ids = Set(payload.split(separator: ",").compactMap {
-                        UUID(uuidString: String($0))
-                    })
-                    Task { @MainActor in
-                        projectStore.assignSessions(ids, to: group.id)
-                        selectedSessionIDs.removeAll()
-                        selection = .group(group.id)
-                    }
-                }
-                return true
-            }
-            .contextMenu {
-                Button("Yeniden Adlandır") {
-                    renameValue = group.name
-                    showRename = true
-                }
-                Button("Grubu Sil", role: .destructive) {
-                    projectStore.removeGroup(group.id)
-                    selection = .project(group.projectID)
-                }
-            }
-            .alert("Grubu Yeniden Adlandır", isPresented: $showRename) {
-                TextField("Grup adı", text: $renameValue)
-                Button("Kaydet") {
-                    let value = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !value.isEmpty else { return }
-                    projectStore.updateGroup(group.id) { $0.name = value }
-                }
-                Button("Vazgeç", role: .cancel) {}
-            }
+            .padding(.horizontal, SidebarIndent.outer)
+            .overlay(alignment: .leading) { IndentRails(depth: 1) }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("sidebar.group.\(group.name)")
-
-            if isExpanded {
-                ForEach(records) { record in
-                    SessionRow(
-                        record: record,
-                        isSelected: selection == .session(record.id)
-                            || selectedSessionIDs.contains(record.id),
-                        isMultiSelected: selectedSessionIDs.contains(record.id),
-                        showsSelectionControl: isMultiSelecting,
-                        dragIDs: selectedSessionIDs.contains(record.id)
-                            ? selectedSessionIDs
-                            : [record.id]
-                    ) {
-                        select(record)
-                    } onToggleSelection: {
-                        if selectedSessionIDs.contains(record.id) {
-                            selectedSessionIDs.remove(record.id)
-                        } else {
-                            selectedSessionIDs.insert(record.id)
-                        }
-                    }
-                }
-            }
         }
-    }
-
-    private func select(_ record: SessionRecord) {
-        if isMultiSelecting {
-            if selectedSessionIDs.contains(record.id) {
-                selectedSessionIDs.remove(record.id)
-            } else {
-                selectedSessionIDs.insert(record.id)
-            }
-            return
-        }
-        selectedSessionIDs.removeAll()
-        selection = .session(record.id)
     }
 }
 
-private struct SessionRow: View {
-    let record: SessionRecord
+// MARK: - Session row
+
+/// A session row. The whole row is the drag source now — the grip is the
+/// affordance for it rather than the only place it works.
+struct SessionRowView: View {
+    let sessionID: UUID
+    /// 1 directly under a project, 2 inside one of its groups.
+    let depth: Int
     let isSelected: Bool
     let isMultiSelected: Bool
     let showsSelectionControl: Bool
-    let dragIDs: Set<UUID>
-    let onSelect: () -> Void
-    let onToggleSelection: () -> Void
+    @Binding var selectedSessionIDs: Set<UUID>
+    let actions: SidebarRowActions
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
-    @Environment(\.openWindow) private var openWindow
     @State private var hovering = false
-    @State private var confirmDelete = false
+    /// Drives the attention pulse; flipped by the status, animated by SwiftUI.
+    @State private var pulsing = false
+
+    private var record: SessionRecord? {
+        projectStore.sessions.first { $0.id == sessionID }
+    }
 
     private var status: AgentSessionStatus {
-        sessionStore.status(of: record.id)
+        sessionStore.status(of: sessionID)
+    }
+
+    /// Waiting on the user right now, or carrying a notification nobody has
+    /// looked at yet.
+    private var wantsAttention: Bool {
+        sessionStore.wantsAttention(sessionID)
+    }
+
+    /// The colour of what it is waiting for — the same one the status orb uses,
+    /// so the row and the orb never disagree. A finished turn reads as idle, so
+    /// its unlooked-at notification borrows the "ready" accent instead.
+    private var attentionColor: Color {
+        status.needsAttention ? status.color : Theme.highlight
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            if showsSelectionControl {
-                Button(action: onToggleSelection) {
-                    Image(systemName: isMultiSelected ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 12))
-                        .foregroundStyle(isMultiSelected ? Theme.codex : Theme.textFaint)
-                        .frame(width: 14, height: 14)
+        if let record {
+            HStack(spacing: 6) {
+                if showsSelectionControl {
+                    Button {
+                        if selectedSessionIDs.contains(sessionID) {
+                            selectedSessionIDs.remove(sessionID)
+                        } else {
+                            selectedSessionIDs.insert(sessionID)
+                        }
+                    } label: {
+                        Image(systemName: isMultiSelected ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 12))
+                            .foregroundStyle(isMultiSelected ? Theme.highlight : Theme.textFaint)
+                            .frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("sidebar.select.\(record.title)")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar.select.\(record.title)")
-            }
 
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(hovering ? Theme.textDim : Theme.textFaint)
-                .frame(width: 12, height: 22)
-                .contentShape(Rectangle())
-                .overlay(
-                    // Dragging onto a group still works; dropping outside the
-                    // window opens the session in its own one.
-                    PopoutDragHandle(
-                        payload: dragIDs.map(\.uuidString).sorted().joined(separator: ","),
-                        onDropOutside: { openWindow(id: "session-window", value: record.id) }
-                    )
-                )
-                .accessibilityIdentifier("sidebar.drag.\(record.title)")
-                .help("Gruba sürükle, pencere dışına bırakınca yeni pencerede açılır")
-
-            Button(action: onSelect) {
                 HStack(spacing: 8) {
-                ProviderMark(provider: record.provider, size: 11)
-                    .opacity(status == .terminated ? 0.45 : 1)
-                Text(record.displayTitle)
-                    .font(Theme.mono(12))
-                    .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if record.isPinned == true || hovering {
-                    PinButton(record: record)
+                    // The grip is gone: it existed because SwiftUI could not
+                    // drag a row, so a session needed one spot that could. The
+                    // whole row is the drag source now, and in a sidebar this
+                    // narrow those 18 points are worth more as title than as a
+                    // decoration. Its identifier stays here, on the row's first
+                    // element, so a drag still starts from the same place.
+                    ProviderMark(provider: record.provider, size: 11)
+                        .opacity(status == .terminated ? 0.45 : 1)
+                        .accessibilityIdentifier("sidebar.drag.\(record.title)")
+                        .help("Sürükleyip gruba taşı, pencere dışına bırakınca yeni pencerede açılır")
+                    Text(record.displayTitle)
+                        .font(Theme.mono(12))
+                        .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    if record.isPinned == true || hovering {
+                        PinButton(record: record)
+                    }
+                    StatusOrb(status: status, size: 11)
+                    Text(RelativeClock.short(since: record.lastActivityAt))
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.textFaint)
+                        .frame(width: 34, alignment: .trailing)
                 }
-                StatusOrb(status: status, size: 11)
-                Text(RelativeClock.short(since: record.lastActivityAt))
-                    .font(Theme.mono(10))
-                    .foregroundStyle(Theme.textFaint)
-                    .frame(width: 34, alignment: .trailing)
+                // A container element, not a combined one: without this the
+                // identifier is copied onto every label inside and the row
+                // matches several times over; with `.combine` the pin button
+                // would stop being addressable on its own.
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("sidebar.session.\(record.title)")
+                // The highlight is a background colour, which no test and no
+                // screen reader can see. The trait says it out loud — and a row
+                // keeping a stale highlight was a real bug.
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+            }
+            .padding(.leading, SidebarIndent.leading(depth: depth))
+            .padding(.trailing, 10)
+            .padding(.vertical, 4)
+            // Selection is the highlight's muted surface, not a grey one: the
+            // palette carries a pair for exactly this, and grey-on-grey made a
+            // selected row hard to find at a glance.
+            .background(
+                isSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),
+                in: RoundedRectangle(cornerRadius: 7)
+            )
+            // A session that stopped to ask something has to be findable without
+            // reading the list: it breathes in that status's own colour until it
+            // is dealt with.
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(attentionColor.opacity(wantsAttention && pulsing ? 0.24 : 0.0))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(
+                        wantsAttention
+                            ? attentionColor.opacity(pulsing ? 0.85 : 0.25)
+                            : (isSelected ? Theme.highlightBorder : .clear),
+                        lineWidth: 1
+                    )
+            )
+            .animation(
+                pulsing
+                    ? uncoilAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true))
+                    : uncoilAnimation(.easeOut(duration: 0.2)),
+                value: pulsing
+            )
+            .onChange(of: wantsAttention, initial: true) { _, wants in
+                // Deferred for the same reason the orb defers: a repeating
+                // animation started during the first render keeps the window
+                // from being presented at all.
+                if wants {
+                    DeferredMotion.start { pulsing = true }
+                } else {
+                    pulsing = false
                 }
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("sidebar.session.\(record.title)")
-        }
-        .padding(.leading, 8)
-        .padding(.trailing, 10)
-        .padding(.vertical, 4)
-        .background(
-            isSelected ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
-            in: RoundedRectangle(cornerRadius: 7)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(isSelected ? Theme.border : .clear, lineWidth: 1)
-        )
-        .onHover { hovering = $0 }
-        .onDrop(of: [.text], delegate: SessionDropDelegate(
-            targetID: record.id,
-            projectStore: projectStore
-        ))
-        .contextMenu {
-            Button(record.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle") {
-                projectStore.togglePin(record.id)
-            }
-            Button("Yeni Pencerede Aç") {
-                openWindow(id: "session-window", value: record.id)
-            }
-            Divider()
-            Button("Oturumu Sil", role: .destructive) {
-                confirmDelete = true
-            }
-        }
-        .confirmationDialog(
-            "\"\(record.displayTitle)\" oturumu silinsin mi?",
-            isPresented: $confirmDelete,
-            titleVisibility: .visible
-        ) {
-            Button("Sil", role: .destructive) {
-                TerminalRegistry.shared.closeTerminal(for: record.id)
-                projectStore.removeSession(record.id)
-            }
-            Button("Vazgeç", role: .cancel) {}
-        } message: {
-            Text("Çalışan süreç kapatılır; kayıt geri alınamaz.")
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .padding(.horizontal, SidebarIndent.outer)
+            .overlay(alignment: .leading) { IndentRails(depth: depth) }
+            .onHover { hovering = $0 }
         }
     }
 }
@@ -721,10 +818,12 @@ private struct PinButton: View {
         Button {
             projectStore.togglePin(record.id)
         } label: {
-            TablerIcon(
-                name: isPinned ? "pinned-filled" : "pin",
+            // Same icon, same colour language, whether it is a button to pin
+            // with or the mark saying it is pinned — only filled or not.
+            PinMark(
+                isPinned: isPinned,
                 size: 10,
-                color: isPinned ? Theme.warn : (hovering ? Theme.text : Theme.textFaint)
+                color: isPinned ? Theme.textDim : (hovering ? Theme.text : Theme.textFaint)
             )
             .frame(width: 14, height: 14)
         }
@@ -734,7 +833,6 @@ private struct PinButton: View {
         .help(isPinned ? "Sabitlemeyi kaldır" : "Sabitle")
     }
 }
-
 
 /// Rail button: hide/show the session lists of every project at once.
 private struct CollapseAllButton: View {
@@ -754,39 +852,15 @@ private struct CollapseAllButton: View {
         } label: {
             TablerIcon(
                 name: allCollapsed ? "layout-navbar-expand" : "layout-navbar-collapse",
-                size: 13,
+                size: 12,
                 color: hovering ? Theme.text : Theme.textDim
             )
-            .frame(width: 24, height: 24)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .frame(width: 20, height: 20)
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.collapseAllButton")
         .help(allCollapsed ? "Tüm oturumları göster" : "Tüm oturumları gizle")
-    }
-}
-
-
-/// Reorders sessions when one row is dropped onto another.
-private struct SessionDropDelegate: DropDelegate {
-    let targetID: UUID
-    let projectStore: ProjectStore
-
-    func performDrop(info: DropInfo) -> Bool {
-        guard let provider = info.itemProviders(for: [.text]).first else { return false }
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let string = object as? String, let draggedID = UUID(uuidString: string) else {
-                return
-            }
-            Task { @MainActor in
-                projectStore.moveSession(draggedID, before: targetID)
-            }
-        }
-        return true
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
     }
 }

@@ -99,135 +99,14 @@ struct SessionDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Button {
-                selection = .project(project.id)
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Theme.textDim)
-                    .frame(width: 22, height: 22)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(Theme.border, lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("session.backButton")
-            .help("Proje panosuna dön")
-
-            ProviderMark(provider: record.provider, size: 17)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
-                    Text(record.provider.displayName)
-                        .font(Theme.mono(13, .bold))
-                        .foregroundStyle(Theme.text)
-                    Text(record.displayTitle)
-                        .font(Theme.mono(13))
-                        .foregroundStyle(Theme.textDim)
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    if let account {
-                        Text(account.name)
-                            .font(Theme.mono(11))
-                            .foregroundStyle(record.provider.color.opacity(0.9))
-                        Text("·")
-                            .foregroundStyle(Theme.textFaint)
-                    }
-                    Text(displayPath)
-                        .font(Theme.mono(11))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-            }
-
-            Spacer()
-
-            HStack(spacing: 7) {
-                StatusOrb(status: status, size: 13)
-                Text(sessionStore.detail(of: record.id) ?? status.label)
-                    .font(Theme.mono(11, .medium))
-                    .foregroundStyle(status.color)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(status.color.opacity(0.10), in: Capsule())
-
-            controlCluster
-        }
-        .padding(14)
-        .panel(radius: 12)
-    }
-
-    /// Session controls: open last change in editor · restart · changes panel.
-    private var controlCluster: some View {
-        HStack(spacing: 2) {
-            // Editor: the selected app's real icon opens the last change;
-            // the chevron menu picks among the user's installed editors.
-            Button {
-                openLastChange()
-            } label: {
-                Group {
-                    if let icon = settings.preferredEditor.appIcon {
-                        Image(nsImage: icon)
-                            .resizable()
-                            .frame(width: 15, height: 15)
-                    } else {
-                        TablerIcon(name: "pencil", size: 13, color: Theme.textDim)
-                    }
-                }
-                .frame(width: 26, height: 24)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("session.openLastChangeButton")
-            .help("Son değişen dosyayı \(settings.preferredEditor.displayName) ile aç")
-
-            Menu {
-                ForEach(PreferredEditor.installed) { editor in
-                    Button {
-                        settings.preferredEditor = editor
-                        settings.save()
-                        openLastChange()
-                    } label: {
-                        if let icon = editor.appIcon {
-                            Image(nsImage: icon)
-                        }
-                        Text(editor.displayName)
-                    }
-                }
-                Divider()
-                Button("Klasörü Finder'da Aç") {
-                    NSWorkspace.shared.activateFileViewerSelecting(
-                        [URL(fileURLWithPath: workingDirectory)]
-                    )
-                }
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(Theme.textDim)
-                    .frame(width: 16, height: 24)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityIdentifier("session.editorMenu")
-
-            Rectangle().fill(Theme.border).frame(width: 1, height: 16)
-
-            ControlButton(
-                iconName: "refresh",
-                help: "Oturumu yeniden başlat" +
-                    (record.providerSessionID != nil ? " (geçmişiyle devam eder)" : ""),
-                identifier: "session.restartButton"
-            ) {
-                restart()
-            }
-
+        SessionHeaderBar(
+            record: record,
+            project: project,
+            leadingIcon: "chevron.left",
+            leadingHelp: "Proje panosuna dön",
+            onLeading: { selection = .project(project.id) },
+            onRestart: { restart() }
+        ) {
             Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 
             ControlButton(
@@ -238,12 +117,6 @@ struct SessionDetailView: View {
                 toggleChangesPanel(!showChangesPanel)
             }
         }
-        .padding(3)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        )
     }
 
     private var displayPath: String {
@@ -260,17 +133,6 @@ struct SessionDetailView: View {
         TerminalRegistry.shared.closeTerminal(for: record.id)
         projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
         restartToken += 1
-    }
-
-    private func openLastChange() {
-        let dir = workingDirectory
-        let editor = settings.preferredEditor
-        Task.detached(priority: .userInitiated) {
-            guard let file = GitService.lastChangedFile(repoPath: dir) else { return }
-            await MainActor.run {
-                editor.open(URL(fileURLWithPath: file))
-            }
-        }
     }
 
     private func toggleChangesPanel(_ show: Bool) {
@@ -342,26 +204,6 @@ private struct CodexAuthenticationBanner: View {
     }
 }
 
-private struct ControlButton: View {
-    let iconName: String
-    let help: String
-    let identifier: String
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            TablerIcon(name: iconName, size: 13, color: hovering ? Theme.text : Theme.textDim)
-                .frame(width: 26, height: 24)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityIdentifier(identifier)
-        .help(help)
-    }
-}
-
 // MARK: - Changes panel
 
 /// Right-side sliding panel: uncommitted changes + recent commits for the
@@ -428,7 +270,7 @@ private struct ChangesPanel: View {
                                         HStack(spacing: 6) {
                                             Text(commit.hash)
                                                 .font(Theme.mono(9.5))
-                                                .foregroundStyle(Theme.codex)
+                                                .foregroundStyle(Theme.highlight)
                                             Text(commit.relativeDate)
                                                 .font(Theme.mono(9.5))
                                                 .foregroundStyle(Theme.textFaint)
@@ -518,47 +360,47 @@ struct EmptyDetailView: View {
 }
 
 
-/// Right half of a drag-to-split: terminal + tiny header with close.
+/// Right half of a drag-to-split: the same session header as the pane it was
+/// dragged out of, over the same terminal.
 struct SplitSessionPane: View {
     let record: SessionRecord
     let project: Project
     let onClose: () -> Void
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var projectStore: ProjectStore
+    @State private var restartToken = 0
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                ProviderMark(provider: record.provider, size: 12)
-                Text(record.displayTitle)
-                    .font(Theme.mono(11.5, .medium))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(1)
-                Text(project.name)
-                    .font(Theme.mono(10))
-                    .foregroundStyle(Theme.textFaint)
-                Spacer()
-                StatusOrb(status: sessionStore.status(of: record.id), size: 11)
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Theme.textFaint)
-                }
-                .buttonStyle(.plain)
-                .help("Bölmeyi kapat")
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 18)
-            .padding(.bottom, 8)
+            SessionHeaderBar(
+                record: record,
+                project: project,
+                leadingIcon: "xmark",
+                leadingHelp: "Bölmeyi kapat",
+                onLeading: onClose,
+                onRestart: { restart() },
+                trailing: { EmptyView() }
+            )
+            .padding(.horizontal, 10)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
 
             TerminalHostView(
                 record: record,
                 project: project,
                 account: settings.account(id: record.accountID)
             )
+            .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
             .padding([.horizontal, .bottom], 8)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.splitPane")
+    }
+
+    private func restart() {
+        TerminalRegistry.shared.closeTerminal(for: record.id)
+        projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
+        restartToken += 1
     }
 }

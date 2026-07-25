@@ -224,6 +224,10 @@ struct Project: Identifiable, Codable, Equatable {
     var iconName: String?
     /// Accent color as 0xRRGGBB; nil = neutral.
     var colorHex: UInt32?
+    /// Kept at the top of the sidebar. Optional so older documents decode.
+    var isPinned: Bool?
+    /// Manual sidebar order; nil = never moved by hand.
+    var sortIndex: Double?
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
 
@@ -292,9 +296,19 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForInput: Theme.warn
         case .thinking: Color(hex: 0xB56CD6)
         case .running: Theme.ok
-        case .completed: Theme.codex
+        case .completed: Theme.highlight
         case .idle: Theme.textDim
         case .terminated: Theme.textFaint
+        }
+    }
+
+    /// Whether the agent has stopped and is waiting on the human. These are the
+    /// states that post a notification, and the ones a sidebar row keeps
+    /// pulsing for until they are dealt with.
+    var needsAttention: Bool {
+        switch self {
+        case .waitingForPermission, .waitingForInput: true
+        case .idle, .thinking, .running, .completed, .terminated: false
         }
     }
 
@@ -365,6 +379,9 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Extra CLI arguments from the launching preset (control-plane children).
     /// Appended after the provider's default arguments. Backward-compatible.
     var extraArguments: [String]?
+    /// Model / effort / working-mode the session was dispatched with. nil = the
+    /// provider's defaults. Backward-compatible.
+    var launchSelection: AgentLaunchSelection?
     var groupID: UUID?
     var endedAt: Date?
     var exitCode: Int32?
@@ -464,6 +481,19 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
 
     static var installed: [PreferredEditor] {
         allCases.filter(\.isInstalled)
+    }
+
+    /// Whether handing this app a folder does anything useful. TextEdit is a
+    /// text editor, not a code editor: given a directory it just refuses, so it
+    /// is left out of the "open the project" menu rather than offered and then
+    /// failing silently.
+    var opensDirectories: Bool {
+        self != .textedit
+    }
+
+    /// Installed apps that can open a project directory.
+    static var directoryCapable: [PreferredEditor] {
+        installed.filter(\.opensDirectories)
     }
 
     /// The app's real icon from disk, for the session control cluster.

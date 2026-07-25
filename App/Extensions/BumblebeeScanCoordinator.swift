@@ -50,16 +50,40 @@ final class BumblebeeScanCoordinator: ObservableObject {
         self.registry = registry
         self.locator = locator
         self.lock = lock
+        let resolvedLocator = locator
         self.makeRunner = makeRunner ?? { binary, lock in
             BumblebeeRunner(
                 binary: binary,
                 run: BumblebeeRunner.processRunner(binaryPath: binary.path),
-                lock: lock
+                lock: lock,
+                catalogPath: resolvedLocator.catalogDirectory(for: binary)
             )
         }
     }
 
     var isInstalled: Bool { locator.resolve() != nil }
+
+    /// Asks the binary what it is and makes it prove it works, recording both so
+    /// the Security screen can show a version instead of "bilinmiyor". Runs no
+    /// scan: this is the check the user makes right after installing.
+    func verifyBinary(now: Date = .now) async -> String {
+        guard let binary = locator.resolve() else {
+            _ = finish(.notInstalled)
+            return Outcome.notInstalled.message
+        }
+        let runner = makeRunner(binary, lock)
+        let version = try? await runner.version(now: now)
+        do {
+            let selfTest = try await runner.selfTest(now: now)
+            registry.record(verification: version, selfTest: selfTest)
+            return selfTest.passed
+                ? "Doğrulandı: \(version?.label ?? "sürüm okunamadı") · self-test geçti."
+                : "Self-test başarısız: \(selfTest.detail)"
+        } catch {
+            registry.record(verification: version, selfTest: nil)
+            return "Doğrulama yapılamadı: \(error.localizedDescription)"
+        }
+    }
 
     // MARK: - Triggers
 
@@ -166,6 +190,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
             case .finding(let finding): findings.append(finding)
             case .diagnostic(let message): diagnostics.append(message)
             case .summary(let value): summary = value
+            case .package: break
             case .unknown(let line): unknown.append(line)
             }
         }
@@ -195,10 +220,19 @@ final class BumblebeeScanCoordinator: ObservableObject {
     /// What a store-wide scan covers: the revisions Uncoil installed. Anything
     /// outside its reach is reported as a coverage gap instead of pretended over.
     func managedPaths() -> [String] {
-        registry.packages
+        // The store as a whole, plus the shared skills location: one root each
+        // rather than a path per package, which is both what the scanner wants
+        // and what keeps a scan from missing an extension the registry forgot.
+        let storeRoots = [
+            registry.layout.revisions.path,
+            registry.layout.activeSkills.path,
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".agents/skills", isDirectory: true).path,
+        ].filter { FileManager.default.fileExists(atPath: $0) }
+        let packageRoots = registry.packages
             .filter { BumblebeeCoverage.isCovered($0) }
             .compactMap { $0.activeRevision?.path }
-            .sorted()
+        return Array(Set(storeRoots + packageRoots)).sorted()
     }
 
     private func run(
@@ -216,13 +250,10 @@ final class BumblebeeScanCoordinator: ObservableObject {
         isScanning = true
         defer { isScanning = false }
         do {
+            // The skill lock file is read from its own known location
+            // (`~/.agents/.skill-lock.json`); the binary takes no flag for it.
             let result = try await makeRunner(binary, lock).scan(
-                kind: kind,
-                paths: paths,
-                lockFile: ExtensionLockFiles
-                    .defaultSkillLockURL(home: FileManager.default.homeDirectoryForCurrentUser)
-                    .path,
-                now: now
+                kind: kind, paths: paths, now: now
             )
             let usable = registry.record(scan: result)
             return finish(.ran(findings: result.bumblebeeFindings.count, usable: usable))

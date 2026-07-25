@@ -47,7 +47,7 @@ final class MenuBarMonitorTests: XCTestCase {
         let summary = MenuBarMonitorEngine.summary(statuses: [UUID(): .idle])
         XCTAssertEqual(summary.label, "")
         XCTAssertEqual(summary.headline, "Bekleyen iş yok")
-        XCTAssertEqual(summary.symbolName, "circle.dotted")
+        XCTAssertEqual(summary.icon, .idle)
         XCTAssertFalse(summary.hasProblem)
         XCTAssertFalse(summary.needsUser)
     }
@@ -63,25 +63,34 @@ final class MenuBarMonitorTests: XCTestCase {
         XCTAssertTrue(summary.headline.contains("1 sorun"))
     }
 
+    /// Three logos, three answers: color while agents work, yellow whenever
+    /// anything waits on the user, plain when idle. Waiting always outranks
+    /// working — a busy icon must not hide a question.
     func testIconEscalatesWithUrgency() {
         XCTAssertEqual(
-            MenuBarMonitorEngine.summary(statuses: [UUID(): .running]).symbolName,
-            "bolt.horizontal.circle.fill"
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .running]).icon,
+            .working
         )
         XCTAssertEqual(
-            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForInput]).symbolName,
-            "questionmark.circle.fill"
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForInput]).icon,
+            .waiting
         )
         XCTAssertEqual(
-            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForPermission]).symbolName,
-            "lock.circle.fill"
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForPermission]).icon,
+            .waiting
+        )
+        XCTAssertEqual(
+            MenuBarMonitorEngine.summary(
+                statuses: [UUID(): .running, UUID(): .waitingForInput]
+            ).icon,
+            .waiting
         )
         XCTAssertEqual(
             MenuBarMonitorEngine.summary(
                 statuses: [UUID(): .waitingForPermission],
                 attention: [attention(.runtime, id: "runtime")]
-            ).symbolName,
-            "exclamationmark.triangle.fill"
+            ).icon,
+            .waiting
         )
     }
 

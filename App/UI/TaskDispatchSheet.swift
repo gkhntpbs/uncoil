@@ -15,6 +15,9 @@ struct TaskDispatchSheet: View {
     @EnvironmentObject private var settings: SettingsStore
     @State private var request = TaskDispatchRequest()
     @State private var showsPreview = false
+    /// What the installed CLI of the chosen provider actually supports; the
+    /// pickers only offer what was detected.
+    @State private var capabilities = AgentLaunchCapabilities()
 
     private var eligible: (sameProject: [SessionRecord], otherProjects: [SessionRecord]) {
         TaskPromptBuilder.eligibleSessions(
@@ -86,6 +89,12 @@ struct TaskDispatchSheet: View {
         .onAppear {
             request.provider = settings.defaultProvider
             request.accountID = settings.defaultAccount(for: request.provider)?.id
+        }
+        .task(id: request.provider) {
+            capabilities = await AgentLaunchCatalog.detect(
+                provider: request.provider,
+                binaryPath: settings.binaryPath(for: request.provider)
+            )
         }
     }
 
@@ -174,7 +183,7 @@ struct TaskDispatchSheet: View {
         HStack(spacing: 9) {
             Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
                 .font(.system(size: 12))
-                .foregroundStyle(isSelected ? Theme.codex : Theme.textFaint)
+                .foregroundStyle(isSelected ? Theme.highlight : Theme.textFaint)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(Theme.mono(11.5))
@@ -207,6 +216,10 @@ struct TaskDispatchSheet: View {
                     .onChange(of: request.provider) { _, provider in
                         request.accountID = settings.defaultAccount(for: provider)?.id
                         request.workingMode = nil
+                        // A model or effort picked for one CLI means nothing to
+                        // the other.
+                        request.model = nil
+                        request.effort = nil
                     }
                     .accessibilityIdentifier("taskDispatch.provider")
                 }
@@ -226,18 +239,40 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.profile")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Model") {
-                    TextField("varsayılan", text: Binding(
-                        get: { request.model ?? "" },
-                        set: { request.model = $0.isEmpty ? nil : $0 }
-                    ))
-                    .textFieldStyle(.plain)
-                    .font(Theme.mono(11))
-                    .foregroundStyle(Theme.text)
-                    .frame(width: 180)
-                    .accessibilityIdentifier("taskDispatch.model")
+                if !capabilities.models.isEmpty {
+                    pickerRow("Model") {
+                        Picker("", selection: Binding(
+                            get: { request.model },
+                            set: { request.model = $0 }
+                        )) {
+                            Text(defaultModelLabel).tag(String?.none)
+                            ForEach(capabilities.models) { option in
+                                Text(option.label).tag(String?.some(option.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .accessibilityIdentifier("taskDispatch.model")
+                    }
+                    Divider().overlay(Theme.border)
                 }
-                Divider().overlay(Theme.border)
+                if !capabilities.efforts.isEmpty {
+                    pickerRow("Effort") {
+                        Picker("", selection: Binding(
+                            get: { request.effort },
+                            set: { request.effort = $0 }
+                        )) {
+                            Text("Varsayılan").tag(String?.none)
+                            ForEach(capabilities.efforts) { option in
+                                Text(option.label).tag(String?.some(option.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .accessibilityIdentifier("taskDispatch.effort")
+                    }
+                    Divider().overlay(Theme.border)
+                }
                 pickerRow("Çalışma modu") {
                     Picker("", selection: Binding(
                         get: { request.workingMode ?? settings.workingMode(for: request.provider) },
@@ -383,10 +418,24 @@ struct TaskDispatchSheet: View {
 
     private var footer: some View {
         HStack(spacing: 9) {
+            // Sending the prompt and *starting* the turn are different acts:
+            // sometimes the user wants to read and edit before Enter.
+            Toggle(isOn: $request.autoStart) {
+                Text("Otomatik başlat")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.textDim)
+            }
+            .toggleStyle(.checkbox)
+            .accessibilityIdentifier("taskDispatch.autoStart")
+            if !request.autoStart {
+                Text("Prompt yazılır, Enter'a sen basarsın.")
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textFaint)
+            }
             Spacer()
             Button("Vazgeç", action: onCancel)
                 .buttonStyle(GhostButtonStyle())
-            Button("Gönder") {
+            Button(request.autoStart ? "Gönder ve başlat" : "Gönder (bekle)") {
                 var finished = request
                 if finished.createsWorktree, finished.worktreeName == nil {
                     finished.worktreeName = TaskPromptBuilder.worktreeName(for: task)
@@ -397,6 +446,11 @@ struct TaskDispatchSheet: View {
             .accessibilityIdentifier("taskDispatch.send")
         }
         .padding(16)
+    }
+
+    /// What "Varsayılan" resolves to, when the CLI's own config says.
+    private var defaultModelLabel: String {
+        capabilities.defaultModelDetail.map { "Varsayılan (\($0))" } ?? "Varsayılan"
     }
 
     /// A preset decides the role's capabilities and arguments, so selecting one

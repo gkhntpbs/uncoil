@@ -190,6 +190,14 @@ struct MainWindow: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea(edges: .top)
+        // The toggle also lives in the title bar, which is its own SwiftUI tree:
+        // a `withAnimation` there cannot reach this one. Animating on the value
+        // means the sidebar slides whoever asked for it.
+        .animation(uncoilAnimation(.easeOut(duration: 0.2)), value: sidebarVisible)
+        .background(
+            TitlebarControls(onOpenPalette: { palette.open() })
+                .frame(width: 0, height: 0)
+        )
         .background(Theme.bg)
         .sheet(isPresented: $showFolderPicker) {
             FolderPickerSheet { url in
@@ -199,6 +207,7 @@ struct MainWindow: View {
                 }
             }
         }
+        .background(MainWindowFrame())
         .onAppear {
             // Deferred: mutating @Published stores inside the first view
             // update triggers "Publishing changes from within view updates".
@@ -209,7 +218,6 @@ struct MainWindow: View {
                 )
                 startServices()
                 applyLaunchRoute()
-                applyWindowFrame()
                 setupPalette()
             }
         }
@@ -394,6 +402,9 @@ struct MainWindow: View {
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("session.splitGroup")
+                // Opening the session is what "seen" means: the sidebar row
+                // stops pulsing here rather than when the banner was shown.
+                .task(id: id) { sessionStore.clearAttention(id) }
             } else {
                 EmptyDetailView(showFolderPicker: $showFolderPicker)
             }
@@ -434,6 +445,15 @@ struct MainWindow: View {
 
     private func applyLaunchRoute() {
         let config = LaunchConfig.shared
+        if config.route == "extensions" {
+            // Deterministic way into the Extensions window: the section it opens
+            // on is an argument rather than a click.
+            ExtensionsCommandBus.shared.open(
+                config.extensionsSection.flatMap(ExtensionsView.Section.init(rawValue:))
+                    ?? .overview
+            )
+            openWindow(id: "extensions")
+        }
         if config.route == "session",
            let record = projectStore.sessions.first {
             selection = .session(record.id)
@@ -480,22 +500,6 @@ struct MainWindow: View {
         }
     }
 
-    private func applyWindowFrame() {
-        let config = LaunchConfig.shared
-        DispatchQueue.main.async {
-            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
-            if let width = config.windowWidth, let height = config.windowHeight {
-                window.setFrame(
-                    NSRect(x: 80, y: 120, width: width, height: height),
-                    display: true
-                )
-                return
-            } else {
-                _ = window.setFrameUsingName("UncoilMainWindow", force: true)
-            }
-            window.setFrameAutosaveName("UncoilMainWindow")
-        }
-    }
 
     private func startServices() {
         if sessionStore.hookServer == nil {
@@ -649,6 +653,75 @@ struct MainWindow: View {
             sessionStore.extensionSecretServer = server
         } catch {
             NSLog("Uncoil extension secret server could not start: \(error)")
+        }
+    }
+}
+
+/// Restores and remembers the main window's frame.
+///
+/// It works from its own view's window rather than from `NSApp.windows`: that
+/// list also holds the menu-bar extra's status-item window, which is visible,
+/// tiny, and parked at the top of the screen. Naming *that* window
+/// "UncoilMainWindow" is what wrote a 32×30 frame at the screen's top edge into
+/// the saved defaults, and every later launch restored the app into the corner.
+struct MainWindowFrame: NSViewRepresentable {
+    static let autosaveName = "UncoilMainWindow"
+    /// Anything smaller than this is not an app window, whatever it claims.
+    private static let minimumSensibleSize = NSSize(width: 400, height: 300)
+
+    func makeNSView(context: Context) -> NSView {
+        let probe = NSView()
+        attach(probe, retries: 3)
+        return probe
+    }
+
+    /// The view is not in a window yet on the first turn of the run loop; a few
+    /// attempts cost nothing and beat never restoring the frame at all.
+    private func attach(_ probe: NSView, retries: Int) {
+        DispatchQueue.main.async {
+            guard let window = probe.window else {
+                if retries > 0 { attach(probe, retries: retries - 1) }
+                return
+            }
+            guard window.canBecomeMain else { return }
+            let config = LaunchConfig.shared
+            if let width = config.windowWidth, let height = config.windowHeight {
+                // A UI-test launch is placed exactly, and never remembered.
+                window.setFrame(
+                    NSRect(x: 80, y: 120, width: width, height: height), display: true
+                )
+                return
+            }
+            Self.forgetImplausibleFrame()
+            // With nothing saved, place it ourselves. `.defaultPosition(.center)`
+            // centres the window's *origin* before its content size is known, so
+            // the window then grows up and to the right and lands in the corner —
+            // which is exactly where every fresh launch was starting.
+            if !window.setFrameUsingName(Self.autosaveName, force: true) {
+                window.center()
+            }
+            window.setFrameAutosaveName(Self.autosaveName)
+            window.saveFrame(usingName: Self.autosaveName)
+        }
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    /// Drops a saved frame too small to be this window. Without this, the frame
+    /// the status-item window wrote would keep pulling the app into the corner.
+    static func forgetImplausibleFrame(
+        defaults: UserDefaults = .standard,
+        key: String? = nil
+    ) {
+        let key = key ?? "NSWindow Frame \(autosaveName)"
+        guard let saved = defaults.string(forKey: key) else { return }
+        let numbers = saved.split(separator: " ").compactMap { Double($0) }
+        guard numbers.count >= 4 else {
+            defaults.removeObject(forKey: key)
+            return
+        }
+        if numbers[2] < minimumSensibleSize.width || numbers[3] < minimumSensibleSize.height {
+            defaults.removeObject(forKey: key)
         }
     }
 }

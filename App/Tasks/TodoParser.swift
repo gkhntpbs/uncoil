@@ -82,6 +82,27 @@ enum TodoParser {
             passthroughStart = nil
         }
 
+        func emitHeading(_ heading: (level: Int, text: String), from startByte: Int, to endByte: Int) {
+            let headingRange = range(from: startByte, to: endByte, in: lines)
+            headings.append(ProjectTaskHeading(
+                level: heading.level, text: heading.text, range: headingRange
+            ))
+            blocks.append(ProjectTaskBlock(kind: .heading, range: headingRange))
+            while let last = headingStack.last, last.level >= heading.level {
+                headingStack.removeLast()
+            }
+            headingStack.append((heading.level, heading.text))
+            // Order and nesting are scoped to a heading.
+            openParents.removeAll()
+        }
+
+        // YAML frontmatter is delimited by the same `---` a setext heading uses,
+        // so it is consumed up front rather than guessed at line by line.
+        if let end = frontmatterEnd(in: lines) {
+            passthroughStart = 0
+            index = end
+        }
+
         while index < lines.count {
             let line = lines[index]
 
@@ -99,18 +120,24 @@ enum TodoParser {
 
             if let heading = headingComponents(line.text) {
                 flushPassthrough(upTo: line.startByte)
-                let headingRange = range(from: line.startByte, to: line.endByte, in: lines)
-                headings.append(ProjectTaskHeading(
-                    level: heading.level, text: heading.text, range: headingRange
-                ))
-                blocks.append(ProjectTaskBlock(kind: .heading, range: headingRange))
-                while let last = headingStack.last, last.level >= heading.level {
-                    headingStack.removeLast()
-                }
-                headingStack.append((heading.level, heading.text))
-                // Order and nesting are scoped to a heading.
-                openParents.removeAll()
+                emitHeading(heading, from: line.startByte, to: line.endByte)
                 index += 1
+                continue
+            }
+
+            // Setext: a plain paragraph line underlined with `===` or `---`. The
+            // heading block covers both lines so the underline is never orphaned.
+            if index + 1 < lines.count,
+               let level = setextLevel(lines[index + 1].text),
+               canBeSetextTitle(line.text) {
+                flushPassthrough(upTo: line.startByte)
+                let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                emitHeading(
+                    (level: level, text: text),
+                    from: line.startByte,
+                    to: lines[index + 1].endByte
+                )
+                index += 2
                 continue
             }
 
@@ -324,38 +351,69 @@ enum TodoParser {
         var markerByteLength: Int
     }
 
-    /// `- [ ] text`, `* [x] text`, `+ [X] text`, at any indent.
+    /// Characters a checkbox is allowed to hold.
+    ///
+    /// Beyond the canonical space/`x`, the marks people actually type are `-`
+    /// (dropped), and `~` or `/` (in progress). They used to be unreadable, which
+    /// meant those lines vanished from the app entirely — worse than showing them
+    /// with an approximate state.
+    static let checkboxMarkCharacters: Set<Character> = [" ", "x", "X", "-", "~", "/"]
+
+    /// Marks that count as "not open work any more". A dropped task (`-`) is
+    /// settled just like a finished one; `~` and `/` are work in flight and stay
+    /// open so they keep showing up on the board.
+    static let doneMarkCharacters: Set<Character> = ["x", "X", "-"]
+
+    /// `- [ ] text`, `* [x] text`, `+ [X] text`, `1. [ ] text`, `2) [~] text`,
+    /// `> - [ ] text`, at any indent and with tabs.
     static func checkboxComponents(_ line: String) -> CheckboxComponents? {
-        let indent = String(line.prefix { $0 == " " || $0 == "\t" })
+        // A quoted list is still a list. The quote markers are kept inside
+        // `indent` so every byte offset below stays counted from the line start.
+        let indent = String(line.prefix { $0 == " " || $0 == "\t" || $0 == ">" })
         var rest = Substring(line.dropFirst(indent.count))
-        guard let marker = rest.first, "-*+".contains(marker) else { return nil }
-        rest = rest.dropFirst()
-        // Exactly one space is required between the marker and the bracket group
-        // in the styles we accept; more is fine.
+        guard let listMarker = listMarkerToken(rest) else { return nil }
+        rest = rest.dropFirst(listMarker.count)
+        // At least one space is required between the marker and the bracket
+        // group in the styles we accept; more is fine.
         let spacesCount = rest.prefix { $0 == " " }.count
         guard spacesCount >= 1 else { return nil }
         rest = rest.dropFirst(spacesCount)
         guard rest.hasPrefix("[") else { return nil }
         let afterBracket = rest.dropFirst()
         guard let markerCharacter = afterBracket.first,
-              markerCharacter == " " || markerCharacter == "x" || markerCharacter == "X" else {
+              checkboxMarkCharacters.contains(markerCharacter) else {
             return nil
         }
         let afterCharacter = afterBracket.dropFirst()
         guard afterCharacter.hasPrefix("]") else { return nil }
         let text = afterCharacter.dropFirst().trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let prefix = indent + String(marker) + String(repeating: " ", count: spacesCount)
+        let prefix = indent + listMarker + String(repeating: " ", count: spacesCount)
         return CheckboxComponents(
             indent: indent,
-            indentWidth: indentWidth(line),
-            listMarker: String(marker),
+            indentWidth: indentWidth(indent),
+            listMarker: listMarker,
             markerCharacter: String(markerCharacter),
-            isDone: markerCharacter != " ",
+            isDone: doneMarkCharacters.contains(markerCharacter),
             text: text,
             markerByteOffset: prefix.utf8.count,
             markerByteLength: 3
         )
+    }
+
+    /// The list marker at the start of `rest`: a bullet, or an ordered-list
+    /// number with its `.`/`)` delimiter.
+    private static func listMarkerToken(_ rest: Substring) -> String? {
+        guard let first = rest.first else { return nil }
+        if "-*+".contains(first) { return String(first) }
+        guard first.isNumber else { return nil }
+        let digits = rest.prefix { $0.isNumber }
+        // CommonMark caps ordered-list numbers at nine digits; past that it is
+        // prose that happens to start with a number.
+        guard digits.count <= 9,
+              let delimiter = rest.dropFirst(digits.count).first,
+              delimiter == "." || delimiter == ")" else { return nil }
+        return String(digits) + String(delimiter)
     }
 
     static func headingComponents(_ line: String) -> (level: Int, text: String)? {
@@ -367,6 +425,50 @@ enum TodoParser {
         // `#hashtag` is not a heading.
         guard rest.first == " " || rest.isEmpty else { return nil }
         return (hashes.count, rest.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// The heading level a `===` / `---` underline gives the line above it.
+    ///
+    /// A single `-` is a list marker, so a dash underline needs at least two
+    /// characters before it can mean anything else.
+    static func setextLevel(_ line: String) -> Int? {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard indentWidth(line) < 4, !trimmed.isEmpty else { return nil }
+        if trimmed.allSatisfy({ $0 == "=" }) { return 1 }
+        if trimmed.count >= 2, trimmed.allSatisfy({ $0 == "-" }) { return 2 }
+        return nil
+    }
+
+    /// Whether a line may be underlined into a setext heading.
+    ///
+    /// Only a plain paragraph line qualifies. That restriction is the whole
+    /// reason a `---` after a blank line stays a thematic break instead of
+    /// turning a file's separators into headings.
+    static func canBeSetextTitle(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, indentWidth(line) < 4 else { return false }
+        guard headingComponents(line) == nil,
+              checkboxComponents(line) == nil,
+              fenceToken(line) == nil,
+              setextLevel(line) == nil else { return false }
+        // Lists, quotes, tables and HTML are structure of their own.
+        guard let first = trimmed.first, !">|<".contains(first) else { return false }
+        return listMarkerToken(Substring(trimmed)) == nil
+    }
+
+    /// The line index just past a leading YAML frontmatter block, if there is
+    /// one. Unterminated frontmatter is not frontmatter — the file is just prose
+    /// that starts with a rule.
+    private static func frontmatterEnd(in lines: [Line]) -> Int? {
+        guard let first = lines.first,
+              first.text.trimmingCharacters(in: .whitespacesAndNewlines) == "---" else {
+            return nil
+        }
+        for index in 1..<lines.count
+        where lines[index].text.trimmingCharacters(in: .whitespacesAndNewlines) == "---" {
+            return index + 1
+        }
+        return nil
     }
 
     /// The fence token (``` or ~~~ with its exact length), or nil.
@@ -387,6 +489,10 @@ enum TodoParser {
     }
 
     /// Tab counts as four columns, matching how the lists are written.
+    ///
+    /// Blockquote markers deliberately add no width: a quoted list is read as a
+    /// flat list at the top level, which keeps an unquoted `> …` line from being
+    /// swallowed as the previous task's continuation.
     static func indentWidth(_ line: String) -> Int {
         var width = 0
         for character in line {

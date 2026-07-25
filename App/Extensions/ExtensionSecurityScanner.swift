@@ -556,6 +556,8 @@ enum ExtensionSecurityScanner {
             "bundled:\(identifier)"
         case .local(let path):
             "local:\(path)"
+        case .adopted(let path):
+            "adopted:\(path)"
         case .detectedExternal(let path):
             "external:\(path)"
         case .remoteMCP(let url, _):

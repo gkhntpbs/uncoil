@@ -313,9 +313,10 @@ final class TaskFilterTests: XCTestCase {
 }
 
 final class ProjectTaskViewPreferencesTests: XCTestCase {
-    func testDefaultsToDocumentViewAndFileBackedBoard() {
+    func testDefaultsToListViewAndFileBackedBoard() {
         let preferences = ProjectTaskViewPreferences.default
-        XCTAssertEqual(preferences.mode, .document)
+        // List is the landing view; the raw document is the extra.
+        XCTAssertEqual(preferences.mode, .list)
         XCTAssertEqual(
             preferences.boardMode, .fileBacked,
             "the file's own headings are the board unless the user says otherwise"

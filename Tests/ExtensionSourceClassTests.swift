@@ -279,7 +279,7 @@ final class ExtensionAdoptionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: plan.destinationPath + "/SKILL.md"
         ))
-        guard case .local = package.source else {
+        guard case .adopted = package.source else {
             return XCTFail("adopting invents no repository: \(package.source)")
         }
         XCTAssertTrue(package.source.capabilities.canLinkToRepository)

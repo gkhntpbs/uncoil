@@ -41,7 +41,6 @@ final class TerminalRegistry {
             return existing
         }
         deadSessions.remove(record.id)
-        projectStore.markSessionStarted(record.id)
 
         let view: TerminalView
         let runtimePhase = RuntimeClient.shared.phase
@@ -77,8 +76,15 @@ final class TerminalRegistry {
         // The agent starts ready-and-waiting; hooks flip it to thinking/
         // running as real work happens. Deferred: this runs from makeNSView
         // (a view-update pass) where publishing changes is not allowed.
+        //
+        // Marking the session started belongs to the same hop, for the same
+        // reason — it clears `endedAt` and stamps the activity time on a
+        // published record. Doing it inline was what filled the console with
+        // "Publishing changes from within view updates is not allowed" every
+        // time a session was opened.
         let recordID = record.id
-        DispatchQueue.main.async { [weak sessionStore] in
+        DispatchQueue.main.async { [weak sessionStore, weak projectStore] in
+            projectStore?.markSessionStarted(recordID)
             sessionStore?.setStatus(.idle, for: recordID)
             if LaunchConfig.shared.codexApprovalFixture, record.provider == .codex {
                 sessionStore?.setCodexApproval(
@@ -156,6 +162,13 @@ final class TerminalRegistry {
     ) -> [String] {
         var env = Terminal.getEnvironmentVariables(termName: "xterm-256color")
         env.append("LANG=en_US.UTF-8")
+        // Tell the agent which way round this terminal is, the way every
+        // terminal emulator does. `COLORFGBG` is the old convention and the one
+        // TUIs read before they can ask; SwiftTerm answers the modern question
+        // (OSC 11) from the colours `applyTheme` installs. Between them, an
+        // agent starting inside a light Uncoil picks its light theme instead of
+        // painting a dark one into it.
+        env.append("COLORFGBG=\(ThemeStore.shared.palette.isLight ? "0;15" : "15;0")")
         let processEnv = ProcessInfo.processInfo.environment
         for key in ["HOME", "USER", "LOGNAME", "SHELL", "PATH", "TMPDIR"] {
             if let value = processEnv[key] {
@@ -252,10 +265,34 @@ final class TerminalRegistry {
         return (shell, args)
     }
 
+    /// Paints a terminal in the app's palette — and tells the terminal itself,
+    /// not just the view.
+    ///
+    /// `nativeBackgroundColor` is what AppKit draws; `terminal.backgroundColor`
+    /// is what SwiftTerm reports when an agent asks "what colour is this
+    /// terminal?" (OSC 11). Agent CLIs use that answer to pick their own light
+    /// or dark theme, so setting it is what keeps Claude Code and Codex from
+    /// rendering a dark theme inside a light Uncoil.
     private func applyTheme(_ view: TerminalView) {
         let palette = ThemeStore.shared.palette
         view.nativeBackgroundColor = NSColor(Color(hex: palette.terminalBg))
         view.nativeForegroundColor = NSColor(Color(hex: palette.terminalFg))
+        let terminal = view.getTerminal()
+        terminal.backgroundColor = SwiftTerm.Color(rgb24: palette.terminalBg)
+        terminal.foregroundColor = SwiftTerm.Color(rgb24: palette.terminalFg)
+    }
+
+    /// Re-paints every open terminal after a theme change.
+    ///
+    /// A running agent keeps the colours it chose when it started — nothing can
+    /// re-ask it without restarting the session, and a session's history is
+    /// worth more than its palette — but the terminal's own surface follows
+    /// immediately, and the next agent to start reads the new answer.
+    func applyThemeToLiveTerminals() {
+        for view in terminals.values {
+            applyTheme(view)
+            view.needsDisplay = true
+        }
     }
 
     private func makeCodexAppServerTerminal(
@@ -278,7 +315,8 @@ final class TerminalRegistry {
         }
         let view = UncoilTerminalView(frame: .zero)
         applyTheme(view)
-        let mode = settings.workingMode(for: .codex)
+        let mode = record.launchSelection?.workingMode?.normalized(for: .codex)
+            ?? settings.workingMode(for: .codex)
         let approvalPolicy: String
         let sandbox: String
         switch mode {
@@ -293,6 +331,13 @@ final class TerminalRegistry {
             sandbox = "workspace-write"
         }
         var config: [String: JSONValue] = [:]
+        // The app server takes no CLI flags; the same selection lands as config.
+        if let model = record.launchSelection?.model {
+            config["model"] = .string(model)
+        }
+        if let effort = record.launchSelection?.effort {
+            config["model_reasoning_effort"] = .string(effort)
+        }
         if let mcpBinaryPath = bundledMCPBinaryPath() {
             config["mcp_servers"] = .object([
                 "uncoil": .object([
@@ -484,6 +529,20 @@ final class TerminalRegistry {
         await RuntimeClient.shared.submitText(text, sid: recordID, provider: provider)
     }
 
+    /// Types a prompt into the session without submitting it: the user reads,
+    /// edits, and presses Enter. The structured Codex session prefills its own
+    /// line editor; everything else gets the text bytes minus the submit key.
+    func typeText(_ text: String, for recordID: UUID, provider: AgentProvider) async {
+        if codexSessions[recordID] != nil {
+            (delegates[recordID] as? CodexStructuredTerminalDelegate)?.prefill(text)
+            return
+        }
+        await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
+        RuntimeClient.shared.sendText(
+            RuntimeClient.submissionParts(text, provider: provider)[0], sid: recordID
+        )
+    }
+
     func sendRaw(_ data: Data, for recordID: UUID) {
         guard codexSessions[recordID] == nil else {
             if let text = String(data: data, encoding: .utf8) {
@@ -559,7 +618,16 @@ final class TerminalRegistry {
                 command += " -c '\(environmentOverride)'"
             }
         }
-        if !modeArguments.isEmpty {
+        // The dispatch-time selection (model / effort / mode) rides on the
+        // record. Its mode replaces the settings-wide default only when it set
+        // one — picking just a model must not silently drop the mode flags.
+        let selectionArguments = record.launchSelection.map {
+            AgentLaunchCatalog.launchArguments(for: record.provider, selection: $0)
+        } ?? []
+        if !selectionArguments.isEmpty {
+            command += " " + selectionArguments.map(shellQuote).joined(separator: " ")
+        }
+        if record.launchSelection?.workingMode == nil, !modeArguments.isEmpty {
             command += " " + modeArguments.joined(separator: " ")
         }
         if let presetArguments, !presetArguments.isEmpty {
@@ -661,4 +729,15 @@ struct TerminalHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: TerminalView, context: Context) {}
+}
+
+
+extension SwiftTerm.Color {
+    /// SwiftTerm keeps 16-bit channels; the palette stores 0xRRGGBB.
+    convenience init(rgb24 hex: UInt32) {
+        func channel(_ shift: UInt32) -> UInt16 {
+            UInt16((hex >> shift) & 0xFF) << 8 | UInt16((hex >> shift) & 0xFF)
+        }
+        self.init(red: channel(16), green: channel(8), blue: channel(0))
+    }
 }

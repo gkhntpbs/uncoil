@@ -43,6 +43,21 @@ struct ExtensionsView: View {
             }
         }
 
+        /// Extra words the sidebar search matches, so "güvenlik" finds Security.
+        var keywords: [String] {
+            switch self {
+            case .overview: ["genel", "durum", "özet", "health", "sağlık"]
+            case .agents: ["agent", "claude", "codex", "gemini", "cursor", "amp", "kurulum"]
+            case .skills: ["skill", "yetenek", "trigger", "prompt"]
+            case .mcpServers: ["mcp", "server", "sunucu", "stdio", "http"]
+            case .assignments: ["atama", "assignment", "proje", "matris"]
+            case .sources: ["kaynak", "github", "repo", "mirror"]
+            case .security: ["güvenlik", "security", "bumblebee", "tarama", "karantina", "finding"]
+            case .updates: ["güncelleme", "update", "rollback", "commit"]
+            case .activity: ["etkinlik", "activity", "log", "geçmiş", "audit"]
+            }
+        }
+
         var description: String {
             switch self {
             case .overview: "Agent extension sisteminin genel durumu"
@@ -59,18 +74,31 @@ struct ExtensionsView: View {
     }
 
     @EnvironmentObject private var projectStore: ProjectStore
-    @StateObject private var registry = {
+    // The shared lock file lives in the user's home; a test-made registry never
+    // gets one, which is why `skillLockHome` is set in `init` rather than
+    // defaulted.
+    @StateObject private var registry: ExtensionRegistry
+    @State private var selection: Section = .overview
+    @State private var selectedPackageID: String?
+    @StateObject private var notices = ExtensionNoticeCenter()
+    /// True while a health check is running, so the button can say so.
+    @State private var isCheckingHealth = false
+    /// Window-wide search: filters the sidebar and, while it has text, replaces
+    /// the screen with what it found across every section.
+    @State private var query = ""
+    /// One coordinator for the whole window: the Security screen and the
+    /// Extensions menu's quick scan have to be the same scan, not two.
+    @StateObject private var scans: BumblebeeScanCoordinator
+    @ObservedObject private var commands = ExtensionsCommandBus.shared
+
+    init() {
         let registry = ExtensionRegistry()
-        // The shared lock file lives in the user's home; a test-made registry
-        // never gets one, which is why this is set here rather than defaulted.
         registry.skillLockHome = LaunchConfig.shared.isUITesting
             ? nil
             : FileManager.default.homeDirectoryForCurrentUser
-        return registry
-    }()
-    @State private var selection: Section = .overview
-    @State private var selectedPackageID: String?
-    @State private var message: String?
+        _registry = StateObject(wrappedValue: registry)
+        _scans = StateObject(wrappedValue: BumblebeeScanCoordinator(registry: registry))
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -90,7 +118,87 @@ struct ExtensionsView: View {
             // Deferred so the first view update never mutates a published store.
             await Task.yield()
             registry.discover()
+            if query.isEmpty, let seeded = LaunchConfig.shared.extensionsQuery {
+                query = seeded
+            }
+            if selectedPackageID == nil {
+                selectedPackageID = LaunchConfig.shared.extensionsExpand
+            }
+            if let action = LaunchConfig.shared.extensionsAction
+                .flatMap(ExtensionsCommandBus.QuickAction.init(rawValue:)) {
+                commands.request = action
+            }
+            applyPendingCommands()
         }
+        .onChange(of: commands.route) { applyPendingCommands() }
+        .onChange(of: commands.request) { applyPendingCommands() }
+    }
+
+    /// Runs whatever the Extensions menu asked for. Each request is consumed, so
+    /// re-opening the window later does not repeat it.
+    private func applyPendingCommands() {
+        if let route = commands.route {
+            selection = route
+            commands.route = nil
+        }
+        guard let request = commands.request else { return }
+        commands.request = nil
+        switch request {
+        case .rediscover:
+            registry.discover()
+            notices.post(discoverySummary(), level: .success)
+        case .healthCheck:
+            runHealthCheck()
+        case .bumblebeeScan:
+            selection = .security
+            notices.post("Bumblebee taraması başladı…", level: .info)
+            Task {
+                let outcome = await scans.scanManually()
+                notices.post(
+                    outcome.message,
+                    level: outcome.didRun ? .success : .warning
+                )
+            }
+        }
+    }
+
+    /// Runs discovery and the health checks, then says what came out of it. The
+    /// button that starts it stays busy until it is done, and the result lands on
+    /// the Overview screen where the checks are listed.
+    private func runHealthCheck() {
+        guard !isCheckingHealth else { return }
+        isCheckingHealth = true
+        selection = .overview
+        query = ""
+        Task {
+            // Yielding first so the button shows its running state before the
+            // synchronous discovery pass takes the main thread.
+            await Task.yield()
+            registry.discover()
+            let results = registry.health
+            let failures = results.filter { $0.outcome == .failure }
+            let warnings = results.filter { $0.outcome == .warning }
+            isCheckingHealth = false
+            let summary = "Health check: \(results.count) kontrol · "
+                + "\(results.filter { $0.outcome == .ok }.count) sağlıklı"
+                + (warnings.isEmpty ? "" : ", \(warnings.count) uyarı")
+                + (failures.isEmpty ? "" : ", \(failures.count) hata")
+            notices.post(
+                summary,
+                level: failures.isEmpty ? (warnings.isEmpty ? .success : .warning) : .failure,
+                detail: results.isEmpty ? nil : results.map {
+                    "\($0.outcome.label.uppercased()) · \($0.name): \($0.detail)"
+                        + ($0.remedy.map { remedy in " → \(remedy)" } ?? "")
+                }.joined(separator: "\n")
+            )
+        }
+    }
+
+    /// What a rediscovery found, in one line.
+    private func discoverySummary() -> String {
+        let overview = registry.overview
+        return "Tarama bitti: \(registry.installations.count) agent · "
+            + "\(registry.skills.count) skill · \(overview.mcpServers) MCP server"
     }
 
     private var sidebar: some View {
@@ -100,9 +208,38 @@ struct ExtensionsView: View {
                 .font(Theme.mono(10, .semibold))
                 .foregroundStyle(Theme.textFaint)
                 .padding(.horizontal, 14)
-                .padding(.bottom, 10)
+                .padding(.bottom, 8)
 
-            ForEach(Section.allCases) { section in
+            HStack(spacing: 6) {
+                TablerIcon(name: "search", size: 11, color: Theme.textFaint)
+                TextField("Her yerde ara", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(Theme.mono(11.5))
+                    .foregroundStyle(Theme.text)
+                    .accessibilityIdentifier("extensions.search")
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.textFaint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("extensions.search.clear")
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(Theme.border, lineWidth: 1)
+            )
+            .padding(.horizontal, 6)
+            .padding(.bottom, 8)
+
+            ForEach(visibleSections) { section in
                 Button {
                     selection = section
                 } label: {
@@ -139,13 +276,15 @@ struct ExtensionsView: View {
 
             Spacer()
 
-            Button {
-                registry.discover()
-                message = "Health check çalıştı."
-            } label: {
+            Button(action: runHealthCheck) {
                 HStack(spacing: 7) {
-                    TablerIcon(name: "stethoscope", size: 12, color: Theme.text)
-                    Text("Run Health Check")
+                    if isCheckingHealth {
+                        ProgressView().controlSize(.small).scaleEffect(0.6)
+                            .frame(width: 12, height: 12)
+                    } else {
+                        TablerIcon(name: "stethoscope", size: 12, color: Theme.text)
+                    }
+                    Text(isCheckingHealth ? "Kontrol ediliyor…" : "Run Health Check")
                         .font(Theme.mono(11, .medium))
                         .foregroundStyle(Theme.text)
                 }
@@ -154,6 +293,7 @@ struct ExtensionsView: View {
                 .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
+            .disabled(isCheckingHealth)
             .padding(.bottom, 12)
             .accessibilityIdentifier("extensions.runHealthCheck")
         }
@@ -162,10 +302,27 @@ struct ExtensionsView: View {
         .background(Theme.panel.opacity(0.35))
     }
 
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Sections the sidebar shows: everything, or the ones the query names. A
+    /// query that names no section still leaves the list alone — the results are
+    /// what matters then, not the navigation.
+    private var visibleSections: [Section] {
+        let value = trimmedQuery.lowercased()
+        guard !value.isEmpty else { return Section.allCases }
+        let matches = Section.allCases.filter {
+            $0.title.lowercased().contains(value)
+                || $0.keywords.contains { $0.contains(value) }
+        }
+        return matches.isEmpty ? Section.allCases : matches
+    }
+
     private func badge(for section: Section) -> (count: Int, color: Color)? {
         switch section {
         case .updates:
-            registry.updateCandidates.isEmpty ? nil : (registry.updateCandidates.count, Theme.codex)
+            registry.updateCandidates.isEmpty ? nil : (registry.updateCandidates.count, Theme.highlight)
         case .security:
             registry.openFindings.isEmpty ? nil : (registry.openFindings.count, Theme.danger)
         default:
@@ -179,12 +336,16 @@ struct ExtensionsView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(selection.title)
+                    Text(isSearching ? "Arama" : selection.title)
                         .font(Theme.mono(18, .bold))
                         .foregroundStyle(Theme.text)
-                    Text(selection.description)
-                        .font(Theme.mono(11.5))
-                        .foregroundStyle(Theme.textDim)
+                    Text(
+                        isSearching
+                            ? "\"\(trimmedQuery)\" için tüm bölümlerdeki sonuçlar"
+                            : selection.description
+                    )
+                    .font(Theme.mono(11.5))
+                    .foregroundStyle(Theme.textDim)
                 }
                 Spacer()
                 if let lastDiscoveryAt = registry.lastDiscoveryAt {
@@ -196,28 +357,10 @@ struct ExtensionsView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 14)
 
-            if let message {
-                HStack(spacing: 8) {
-                    TablerIcon(name: "info-circle", size: 12, color: Theme.codex)
-                    Text(message)
-                        .font(Theme.mono(11))
-                        .foregroundStyle(Theme.textDim)
-                    Spacer()
-                    Button {
-                        self.message = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(Theme.textFaint)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
-                .padding(.horizontal, 24)
-                .padding(.bottom, 10)
-                .accessibilityIdentifier("extensions.message")
+            if !notices.notices.isEmpty {
+                ExtensionNoticeStack(center: notices)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 10)
             }
 
             ScrollView {
@@ -225,41 +368,62 @@ struct ExtensionsView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
+                    // Inside the content, not on the ScrollView: the styler finds
+                    // its scroll view by looking upwards from where it sits.
+                    .uncoilScrollers()
             }
-            .uncoilScrollers()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("extensions.content.\(selection.rawValue)")
     }
 
+    private var isSearching: Bool { !trimmedQuery.isEmpty }
+
     @ViewBuilder
     private var screen: some View {
+        if isSearching {
+            ExtensionSearchResults(
+                registry: registry,
+                query: trimmedQuery,
+                open: { section, packageID in
+                    selection = section
+                    selectedPackageID = packageID
+                    query = ""
+                }
+            )
+        } else {
+            sectionScreen
+        }
+    }
+
+    @ViewBuilder
+    private var sectionScreen: some View {
         switch selection {
         case .overview:
             OverviewScreen(registry: registry)
         case .agents:
-            AgentsScreen(registry: registry, message: $message)
+            AgentsScreen(registry: registry, message: notices.messageBinding)
         case .skills:
             PackagesScreen(
                 registry: registry, kind: .skill,
-                selectedPackageID: $selectedPackageID, message: $message
+                selectedPackageID: $selectedPackageID, message: notices.messageBinding
             )
         case .mcpServers:
             PackagesScreen(
                 registry: registry, kind: .mcpServer,
-                selectedPackageID: $selectedPackageID, message: $message
+                selectedPackageID: $selectedPackageID, message: notices.messageBinding
             )
         case .assignments:
             AssignmentsScreen(registry: registry)
         case .sources:
-            SourcesScreen(registry: registry, message: $message)
+            SourcesScreen(registry: registry, message: notices.messageBinding)
         case .security:
-            SecurityScreen(registry: registry, message: $message)
+            SecurityScreen(registry: registry, scans: scans, message: notices.messageBinding)
         case .updates:
-            UpdatesScreen(registry: registry, message: $message)
+            UpdatesScreen(registry: registry, message: notices.messageBinding)
         case .activity:
-            ActivityScreen(registry: registry, message: $message)
+            ActivityScreen(registry: registry, message: notices.messageBinding)
         }
     }
 }
@@ -272,23 +436,32 @@ private struct StatTile: View {
     var tint: Color?
     var detail: String?
 
+    /// Every tile is the same height whether or not it has a detail line, so the
+    /// grid stays a grid instead of a row of differently-sized cards.
+    static let height: CGFloat = 92
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
                 .font(Theme.mono(20, .bold))
                 .foregroundStyle(tint ?? Theme.text)
+                .lineLimit(1)
             Text(label)
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textDim)
-            if let detail {
-                Text(detail)
-                    .font(Theme.mono(9.5))
-                    .foregroundStyle(Theme.textFaint)
-                    .lineLimit(2)
-            }
+                .lineLimit(1)
+            // Reserved even when empty: the label of a tile without a detail
+            // still has to sit where the others' labels do.
+            Text(detail ?? " ")
+                .font(Theme.mono(9.5))
+                .foregroundStyle(Theme.textFaint)
+                .lineLimit(2)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: Self.height)
         .panel()
     }
 }
@@ -395,11 +568,24 @@ private struct SourceBadge: View {
     let source: ExtensionSource
 
     private var tint: Color {
-        source.isManaged ? Theme.codex : (source.isOwnedByUncoil ? Theme.ok : Theme.textFaint)
+        source.isManaged ? Theme.highlight : (source.isOwnedByUncoil ? Theme.ok : Theme.textFaint)
+    }
+
+    /// Each source class says what it is: "Bundled" for everything Uncoil owns
+    /// would call an adopted extension something it is not.
+    private var label: String {
+        switch source {
+        case .managedGitHub: "Managed"
+        case .bundled: "Bundled"
+        case .adopted: "Adopted"
+        case .local: "Local"
+        case .detectedExternal: "Unmanaged"
+        case .remoteMCP: "Remote"
+        }
     }
 
     var body: some View {
-        Text(source.isManaged ? "Managed" : (source.isOwnedByUncoil ? "Bundled" : "Unmanaged"))
+        Text(label)
             .font(Theme.mono(9, .semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, 5)
@@ -416,8 +602,11 @@ private struct OverviewScreen: View {
     var body: some View {
         let overview = registry.overview
         VStack(alignment: .leading, spacing: 18) {
+            // Adaptive rather than three fixed columns: on a wide window the
+            // tiles stay a readable width and gain a column instead of each one
+            // stretching to a different shape.
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
+                columns: [GridItem(.adaptive(minimum: 210, maximum: 340), spacing: 12)],
                 spacing: 12
             ) {
                 StatTile(
@@ -435,7 +624,7 @@ private struct OverviewScreen: View {
                 StatTile(
                     label: "Güncelleme bekleyen",
                     value: "\(overview.pendingUpdates)",
-                    tint: overview.pendingUpdates > 0 ? Theme.codex : nil
+                    tint: overview.pendingUpdates > 0 ? Theme.highlight : nil
                 )
                 StatTile(
                     label: "Bozuk extension",
@@ -555,7 +744,7 @@ private struct AgentsScreen: View {
                     KeyValueRow(
                         key: "Update durumu",
                         value: updateStatus(installation.agent),
-                        tint: registry.updateCandidates.isEmpty ? nil : Theme.codex
+                        tint: registry.updateCandidates.isEmpty ? nil : Theme.highlight
                     )
                     Divider().overlay(Theme.border)
                     KeyValueRow(
@@ -594,7 +783,7 @@ private struct AgentsScreen: View {
                     )
 
                     Divider().overlay(Theme.border)
-                    HStack(spacing: 9) {
+                    FlowRow(spacing: 9) {
                         Button("Validate") {
                             registry.discover()
                             let issues = registry.configurationIssues.count
@@ -629,7 +818,6 @@ private struct AgentsScreen: View {
                             ])
                         }
                         .buttonStyle(GhostButtonStyle())
-                        Spacer()
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
@@ -641,7 +829,7 @@ private struct AgentsScreen: View {
                                 TablerIcon(
                                     name: server.isEnabled ? "server" : "server-off",
                                     size: 11,
-                                    color: server.isEnabled ? Theme.codex : Theme.textFaint
+                                    color: server.isEnabled ? Theme.highlight : Theme.textFaint
                                 )
                                 Text(server.name)
                                     .font(Theme.mono(10.5))
@@ -932,7 +1120,11 @@ private struct AgentsScreen: View {
         let store = SkillStore(layout: registry.layout)
         var repaired: [String] = []
         var skipped: [String] = []
-        for package in registry.skills where package.source.isOwnedByUncoil {
+        // Only the skills this agent was actually given: repairing would
+        // otherwise hand it every skill in the store.
+        for package in registry.skills
+        where package.source.isOwnedByUncoil
+            && registry.agents(for: package.id).contains(installation.agent) {
             let status = store.status(name: package.name, inAgentDirectory: directory)
             guard status.needsRepair else { continue }
             guard status.isRepairable else {
@@ -988,13 +1180,31 @@ private struct PackagesScreen: View {
     let kind: ExtensionKind
     @Binding var selectedPackageID: String?
     @Binding var message: String?
+    @State private var confirmsAdoptAll = false
+    @State private var isCreatingSkill = false
 
     private var packages: [ExtensionPackage] {
         registry.packages.filter { $0.kind == kind }
     }
 
+    /// The ones an "adopt everything" pass would actually touch. A skill needs
+    /// files on disk to collect; an MCP server needs a definition in some agent's
+    /// config to take over. Anything else is not counted, so the button never
+    /// promises what it cannot do.
+    private var adoptable: [ExtensionPackage] {
+        packages.filter { package in
+            guard package.source.capabilities.canAdopt,
+                  case .detectedExternal(let path) = package.source else { return false }
+            return package.kind == .mcpServer
+                ? registry.definition(named: package.name) != nil
+                : FileManager.default.fileExists(atPath: path)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            toolbar
+
             if kind == .skill {
                 TriggerTesterCard(registry: registry)
             }
@@ -1020,6 +1230,142 @@ private struct PackagesScreen: View {
                     message: $message
                 )
             }
+        }
+        .sheet(isPresented: $isCreatingSkill) {
+            SkillCreateSheet(
+                registry: registry,
+                onFinish: { text in
+                    isCreatingSkill = false
+                    if let text { message = text }
+                }
+            )
+        }
+        .confirmationDialog(
+            "\(adoptable.count) \(kind.label.lowercased()) Uncoil'e alınsın mı?",
+            isPresented: $confirmsAdoptAll,
+            titleVisibility: .visible
+        ) {
+            Button("Hepsini sahiplen", role: .destructive) { adoptAll() }
+            Button("Vazgeç", role: .cancel) {}
+        } message: {
+            Text(
+                "Dosyalar Uncoil'in deposuna kopyalanır, önce yedeklenir ve"
+                    + " kaynak klasörlere dokunulmaz. Güvenlik bulgusu engelleyen"
+                    + " paketler atlanır."
+            )
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 9) {
+            if kind == .skill {
+                Button("Yeni skill…") { isCreatingSkill = true }
+                    .buttonStyle(AccentButtonStyle())
+                    .accessibilityIdentifier("extensions.skills.create")
+
+                Button("Klasörden ekle…") { importFolder() }
+                    .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("extensions.skills.import")
+            }
+
+            Button("Tümünü adopt et (\(adoptable.count))") { confirmsAdoptAll = true }
+                .buttonStyle(kind == .skill ? AnyButtonStyle(GhostButtonStyle()) : AnyButtonStyle(AccentButtonStyle()))
+                .disabled(adoptable.isEmpty)
+                .accessibilityIdentifier("extensions.\(kind.rawValue).adoptAll")
+
+            Spacer()
+            Text("\(packages.count) kayıt")
+                .font(Theme.mono(10))
+                .foregroundStyle(Theme.textFaint)
+        }
+    }
+
+    /// Adopts every unmanaged package of this kind, one plan at a time, and says
+    /// exactly what was skipped instead of reporting a clean sweep.
+    private func adoptAll() {
+        let service = ExtensionAdoptionService(layout: registry.layout)
+        var adopted: [String] = []
+        var failures: [String] = []
+        for package in adoptable {
+            guard case .detectedExternal(let path) = package.source else {
+                failures.append("\(package.name) (dış kurulum değil)")
+                continue
+            }
+            do {
+                let plan = try adoptionPlan(for: package, service: service, path: path)
+                let result = try service.adopt(plan)
+                // The old detected entry is replaced, not left beside the adopted
+                // one: they describe the same files.
+                registry.remove(packageID: package.id)
+                registry.upsert(result)
+                for copy in plan.agentCopies {
+                    registry.setAgentBinding(true, packageID: result.id, agent: copy.agent)
+                }
+                registry.record(AuditEvent(
+                    kind: package.kind == .skill ? .skillInstalled : .mcpEnabled,
+                    extensionID: result.id,
+                    detail: "toplu sahiplenme: \(plan.summary), yedek \(plan.backupPath ?? "-")"
+                ))
+                adopted.append(package.name)
+            } catch {
+                failures.append("\(package.name) (\(error.localizedDescription))")
+            }
+        }
+        registry.discover()
+        var parts: [String] = []
+        if !adopted.isEmpty {
+            parts.append("\(adopted.count) paket sahiplenildi: \(adopted.joined(separator: ", "))")
+        }
+        if !failures.isEmpty {
+            parts.append("yapılamadı: \(failures.joined(separator: ", "))")
+        }
+        message = parts.isEmpty ? "Sahiplenilecek paket yok." : parts.joined(separator: " · ")
+    }
+
+    /// The plan for one package, whichever kind it is: a skill's files, or an MCP
+    /// server's definition as the agent configs declare it.
+    private func adoptionPlan(
+        for package: ExtensionPackage,
+        service: ExtensionAdoptionService,
+        path: String
+    ) throws -> ExtensionAdoptionService.Plan {
+        let findings = registry.findings.filter { $0.extensionID == package.id }
+        if package.kind == .mcpServer {
+            guard let definition = registry.definition(named: package.name) else {
+                throw AgentAdapterError.unsupportedChange(
+                    "\(package.name) hiçbir agent config'inde tanımlı değil."
+                )
+            }
+            return try service.planDefinition(
+                definition,
+                agents: registry.agents(declaring: package.name),
+                findings: findings
+            )
+        }
+        return try service.plan(
+            name: package.name, kind: package.kind, externalPath: path,
+            findings: findings, installations: registry.installations
+        )
+    }
+
+    /// Takes in a skill folder the user picks. The folder itself is only read.
+    private func importFolder() {
+        let picker = NSOpenPanel()
+        picker.title = "Skill klasörünü seç"
+        picker.canChooseFiles = false
+        picker.canChooseDirectories = true
+        picker.allowsMultipleSelection = false
+        guard picker.runModal() == .OK, let url = picker.url else { return }
+        do {
+            let package = try SkillAuthoringService(layout: registry.layout).importFolder(at: url)
+            registry.upsert(package)
+            registry.record(AuditEvent(
+                kind: .skillInstalled, extensionID: package.id,
+                detail: "klasörden eklendi: \(url.path)"
+            ))
+            message = "\(package.name) eklendi; kaynak klasöre dokunulmadı."
+        } catch {
+            message = error.localizedDescription
         }
     }
 }
@@ -1102,10 +1448,23 @@ private struct PackageCard: View {
         guard case .detectedExternal(let path) = package.source else { return }
         let service = ExtensionAdoptionService(layout: registry.layout)
         do {
-            adoption = try service.plan(
-                name: package.name, kind: package.kind, externalPath: path,
-                findings: findings
-            )
+            if package.kind == .mcpServer {
+                guard let definition = registry.definition(named: package.name) else {
+                    message = "\(package.name) hiçbir agent config'inde tanımlı değil."
+                    return
+                }
+                adoption = try service.planDefinition(
+                    definition,
+                    agents: registry.agents(declaring: package.name),
+                    findings: findings
+                )
+            } else {
+                adoption = try service.plan(
+                    name: package.name, kind: package.kind, externalPath: path,
+                    findings: findings,
+                    installations: registry.installations
+                )
+            }
         } catch {
             message = error.localizedDescription
         }
@@ -1123,13 +1482,21 @@ private struct PackageCard: View {
         let service = ExtensionAdoptionService(layout: registry.layout)
         do {
             let adopted = try service.adopt(plan)
+            registry.remove(packageID: package.id)
             registry.upsert(adopted)
+            for copy in plan.agentCopies {
+                registry.setAgentBinding(true, packageID: adopted.id, agent: copy.agent)
+            }
             registry.record(AuditEvent(
                 kind: package.kind == .skill ? .skillInstalled : .mcpEnabled,
                 extensionID: adopted.id,
                 detail: "sahiplenildi: \(plan.summary), yedek \(plan.backupPath ?? "-")"
             ))
-            message = "\(package.name) sahiplenildi; \(plan.summary)."
+            registry.discover()
+            message = plan.agentCopies.isEmpty
+                ? "\(package.name) sahiplenildi; \(plan.summary)."
+                : "\(package.name) sahiplenildi; \(plan.summary). "
+                    + "\(plan.agentCopies.count) agent kopyası tek kopyaya bağlandı."
         } catch {
             message = error.localizedDescription
         }
@@ -1187,7 +1554,7 @@ private struct PackageCard: View {
                 if candidate != nil {
                     Text("update")
                         .font(Theme.mono(9, .semibold))
-                        .foregroundStyle(Theme.codex)
+                        .foregroundStyle(Theme.highlight)
                 }
                 if let highest = findings.filter({ !$0.isAccepted }).map(\.severity).max() {
                     Text(highest.label)
@@ -1228,7 +1595,7 @@ private struct PackageCard: View {
                 value: package.supportsUpdateCheck
                     ? (candidate?.availableCommitSHA.prefix(12).description ?? "güncel")
                     : "kapsam dışı",
-                tint: candidate == nil ? nil : Theme.codex
+                tint: candidate == nil ? nil : Theme.highlight
             )
             Divider().overlay(Theme.border)
             KeyValueRow(
@@ -1407,11 +1774,15 @@ private struct PackageCard: View {
     }
 
     private var actions: some View {
-        HStack(spacing: 9) {
+        // Wraps instead of squeezing: a package can offer up to nine actions and
+        // a squeezed row breaks their labels mid-word.
+        FlowRow(spacing: 9) {
             // An external install Uncoil did not adopt is shown, not wired up:
             // assigning it would mean managing files that are not ours.
             if package.source.capabilities.canAssign {
-                ForEach(ExtensionAgentID.supported) { agent in
+                // Only the agents that are actually installed: a toggle for an
+                // agent that is not here would bind an extension to nothing.
+                ForEach(registry.installedAgents) { agent in
                     let isOn = registry.agents(for: package.id).contains(agent)
                     Button(isOn ? "\(agent.displayName): açık" : "\(agent.displayName): kapalı") {
                         registry.setAgentBinding(!isOn, packageID: package.id, agent: agent)
@@ -1499,7 +1870,6 @@ private struct PackageCard: View {
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.package.uninstall.\(package.id)")
             }
-            Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
@@ -1632,9 +2002,26 @@ private struct TriggerTesterCard: View {
 private struct AssignmentsScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @EnvironmentObject private var projectStore: ProjectStore
+    /// Filters this screen only; the other screens keep their own state.
+    @State private var query = ""
+
+    /// Only the agents actually installed on this machine: an assignment to an
+    /// agent that is not here would manage nothing.
+    private var agents: [ExtensionAgentID] { registry.installedAgents }
+
+    private var packages: [ExtensionPackage] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return registry.packages }
+        return registry.packages.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmed)
+                || $0.id.localizedCaseInsensitiveContains(trimmed)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            searchField
+
             let conflicts = SkillAssignment.conflicts(registry.projectBindings)
             if !conflicts.isEmpty {
                 SectionCard(
@@ -1655,61 +2042,75 @@ private struct AssignmentsScreen: View {
                 title: "Extension → agent",
                 detail: "Bir extension'ın hangi agent'larda etkin olduğu."
             ) {
-                if registry.packages.isEmpty {
-                    EmptyRow(text: "Henüz extension yok.")
+                if agents.isEmpty {
+                    EmptyRow(
+                        text: "Kurulu agent bulunamadı; atanacak bir hedef yok."
+                    )
+                } else if packages.isEmpty {
+                    EmptyRow(
+                        text: registry.packages.isEmpty
+                            ? "Henüz extension yok."
+                            : "\"\(query)\" ile eşleşen extension yok."
+                    )
                 } else {
-                    HStack(spacing: 12) {
-                        Text("Extension")
-                            .font(Theme.mono(10, .semibold))
-                            .foregroundStyle(Theme.textFaint)
-                            .frame(width: 220, alignment: .leading)
-                        ForEach(ExtensionAgentID.supported) { agent in
-                            Text(agent.displayName)
+                    // A Grid rather than fixed widths: the name column takes what
+                    // is left, so the matrix follows the window instead of
+                    // spilling out of it.
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                        GridRow {
+                            Text("Extension")
                                 .font(Theme.mono(10, .semibold))
                                 .foregroundStyle(Theme.textFaint)
-                                .frame(width: 110, alignment: .leading)
+                                .gridColumnAlignment(.leading)
+                            ForEach(agents) { agent in
+                                Text(agent.displayName)
+                                    .font(Theme.mono(10, .semibold))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .lineLimit(1)
+                                    .frame(width: 110, alignment: .leading)
+                            }
                         }
-                        Spacer()
+                        .padding(.bottom, 2)
+
+                        ForEach(packages) { package in
+                            GridRow {
+                                Text(package.name)
+                                    .font(Theme.mono(11))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                ForEach(agents) { agent in
+                                    let isOn = registry.agents(for: package.id).contains(agent)
+                                    Button {
+                                        registry.setAgentBinding(
+                                            !isOn, packageID: package.id, agent: agent
+                                        )
+                                    } label: {
+                                        Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(isOn ? Theme.highlight : Theme.textFaint)
+                                            .frame(width: 110, alignment: .leading)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityIdentifier(
+                                        "extensions.matrix.\(package.id).\(agent.rawValue)"
+                                    )
+                                }
+                            }
+                        }
                     }
                     .padding(.horizontal, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
-
-                    ForEach(registry.packages) { package in
-                        HStack(spacing: 12) {
-                            Text(package.name)
-                                .font(Theme.mono(11))
-                                .foregroundStyle(Theme.text)
-                                .lineLimit(1)
-                                .frame(width: 220, alignment: .leading)
-                            ForEach(ExtensionAgentID.supported) { agent in
-                                let isOn = registry.agents(for: package.id).contains(agent)
-                                Button {
-                                    registry.setAgentBinding(
-                                        !isOn, packageID: package.id, agent: agent
-                                    )
-                                } label: {
-                                    Image(systemName: isOn ? "checkmark.square.fill" : "square")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(isOn ? Theme.codex : Theme.textFaint)
-                                }
-                                .buttonStyle(.plain)
-                                .frame(width: 110, alignment: .leading)
-                                .accessibilityIdentifier(
-                                    "extensions.matrix.\(package.id).\(agent.rawValue)"
-                                )
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                    }
+                    .padding(.vertical, 10)
 
                     Divider().overlay(Theme.border)
-                    HStack(spacing: 9) {
-                        ForEach(ExtensionAgentID.supported) { agent in
+                    // Wraps instead of running off the edge when several agents
+                    // are installed.
+                    FlowRow(spacing: 9) {
+                        ForEach(agents) { agent in
                             Button("Tümünü \(agent.displayName)'a ata") {
-                                for package in registry.packages {
+                                for package in packages {
                                     registry.setAgentBinding(
                                         true, packageID: package.id, agent: agent
                                     )
@@ -1717,7 +2118,6 @@ private struct AssignmentsScreen: View {
                             }
                             .buttonStyle(GhostButtonStyle())
                         }
-                        Spacer()
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
@@ -1730,42 +2130,151 @@ private struct AssignmentsScreen: View {
             ) {
                 if projectStore.projects.isEmpty {
                     EmptyRow(text: "Henüz proje yok.")
+                } else if packages.isEmpty {
+                    EmptyRow(text: "Eşleşen extension yok.")
                 } else {
-                    ForEach(registry.packages) { package in
-                        HStack(spacing: 12) {
+                    ForEach(packages) { package in
+                        VStack(alignment: .leading, spacing: 5) {
                             Text(package.name)
                                 .font(Theme.mono(11))
                                 .foregroundStyle(Theme.text)
-                                .frame(width: 220, alignment: .leading)
-                            ForEach(projectStore.projects) { project in
-                                let binding = registry.projectBindings.first {
-                                    $0.extensionID == package.id && $0.projectID == project.id
+                                .lineLimit(1)
+                            FlowRow(spacing: 6) {
+                                ForEach(projectStore.projects) { project in
+                                    let binding = registry.projectBindings.first {
+                                        $0.extensionID == package.id && $0.projectID == project.id
+                                    }
+                                    Button {
+                                        registry.setProjectBinding(ProjectBinding(
+                                            extensionID: package.id,
+                                            projectID: project.id,
+                                            isEnabled: !(binding?.isEnabled ?? true)
+                                        ))
+                                    } label: {
+                                        Text(project.name)
+                                            .font(Theme.mono(10))
+                                            .foregroundStyle(
+                                                binding == nil
+                                                    ? Theme.textFaint
+                                                    : (binding!.isEnabled ? Theme.ok : Theme.warn)
+                                            )
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .overlay(
+                                                Capsule().strokeBorder(
+                                                    Theme.border, lineWidth: 1
+                                                )
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityIdentifier(
+                                        "extensions.projectMatrix.\(package.id).\(project.id.uuidString)"
+                                    )
                                 }
-                                Button {
-                                    registry.setProjectBinding(ProjectBinding(
-                                        extensionID: package.id,
-                                        projectID: project.id,
-                                        isEnabled: !(binding?.isEnabled ?? true)
-                                    ))
-                                } label: {
-                                    Text(project.name)
-                                        .font(Theme.mono(10))
-                                        .foregroundStyle(
-                                            binding == nil
-                                                ? Theme.textFaint
-                                                : (binding!.isEnabled ? Theme.ok : Theme.warn)
-                                        )
-                                }
-                                .buttonStyle(.plain)
                             }
-                            Spacer()
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 7)
                     }
                 }
             }
         }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            TablerIcon(name: "search", size: 12, color: Theme.textFaint)
+            TextField("Bu sayfada ara…", text: $query)
+                .textFieldStyle(.plain)
+                .font(Theme.mono(11.5))
+                .foregroundStyle(Theme.text)
+                .accessibilityIdentifier("extensions.assignments.search")
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("extensions.assignments.search.clear")
+                Text("\(packages.count)/\(registry.packages.count)")
+                    .font(Theme.mono(9.5))
+                    .foregroundStyle(Theme.textFaint)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .panel()
+    }
+}
+
+/// A row that wraps onto the next line when it runs out of width.
+struct FlowRow: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let rows = arrange(subviews: subviews, width: width)
+        let height = rows.reduce(0) { $0 + $1.height } +
+            CGFloat(max(0, rows.count - 1)) * spacing
+        return CGSize(
+            width: proposal.width ?? rows.map(\.width).max() ?? 0,
+            height: height
+        )
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        var y = bounds.minY
+        for row in arrange(subviews: subviews, width: bounds.width) {
+            var x = bounds.minX
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(
+                    at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
+                    proposal: ProposedViewSize(size)
+                )
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(subviews: Subviews, width: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var current = Row()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let next = current.indices.isEmpty
+                ? size.width
+                : current.width + spacing + size.width
+            if !current.indices.isEmpty, next > width {
+                rows.append(current)
+                current = Row()
+                current.indices = [index]
+                current.width = size.width
+                current.height = size.height
+            } else {
+                current.indices.append(index)
+                current.width = next
+                current.height = max(current.height, size.height)
+            }
+        }
+        if !current.indices.isEmpty { rows.append(current) }
+        return rows
     }
 }
 
@@ -1995,18 +2504,22 @@ private struct SourceRow: View {
 
 private struct SecurityScreen: View {
     @ObservedObject var registry: ExtensionRegistry
+    @ObservedObject var scans: BumblebeeScanCoordinator
     @Binding var message: String?
     @EnvironmentObject private var projectStore: ProjectStore
-    @StateObject private var scans: BumblebeeScanCoordinator
-
-    init(registry: ExtensionRegistry, message: Binding<String?>) {
-        self.registry = registry
-        _message = message
-        _scans = StateObject(wrappedValue: BumblebeeScanCoordinator(registry: registry))
-    }
+    /// Bumped when the setup section installs a binary, so the cards below it
+    /// re-read whether Bumblebee is there.
+    @State private var installationToken = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            // Shown whether or not it is installed: after a fresh install this is
+            // where the version is verified, and re-downloading lives here too.
+            BumblebeeSetupSection(
+                onChange: { installationToken += 1 },
+                onVerify: { await scans.verifyBinary() }
+            )
+
             SectionCard(
                 title: "Tarama",
                 detail: scans.isInstalled
@@ -2033,7 +2546,7 @@ private struct SecurityScreen: View {
                     tint: registry.bumblebeeSelfTest?.passed == false ? Theme.danger : nil
                 )
                 Divider().overlay(Theme.border)
-                HStack(spacing: 9) {
+                FlowRow(spacing: 9) {
                     Button(scans.isScanning ? "Taranıyor…" : "Manuel scan") {
                         Task { message = await scans.scanManually().message }
                     }
@@ -2053,7 +2566,6 @@ private struct SecurityScreen: View {
                     }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(scans.isScanning)
-                    Spacer()
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
@@ -2256,7 +2768,7 @@ private struct UpdatesScreen: View {
                     KeyValueRow(
                         key: "Available commit",
                         value: candidate.availableCommitSHA.prefix(12).description,
-                        tint: Theme.codex
+                        tint: Theme.highlight
                     )
                     Divider().overlay(Theme.border)
                     KeyValueRow(key: "Commit sayısı", value: "\(candidate.commitCount)")
@@ -2316,7 +2828,7 @@ private struct UpdatesScreen: View {
                         tint: review?.breakingChangeRisk == .likely ? Theme.danger : nil
                     )
                     Divider().overlay(Theme.border)
-                    HStack(spacing: 9) {
+                    FlowRow(spacing: 9) {
                         Button(reviewed.contains(candidate.extensionID) ? "İncelendi ✓" : "İncele") {
                             makeReview(candidate, package: package)
                         }
@@ -2340,7 +2852,6 @@ private struct UpdatesScreen: View {
                             message = rollbackHistory(package)
                         }
                         .buttonStyle(GhostButtonStyle())
-                        Spacer()
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)

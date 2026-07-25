@@ -7,7 +7,11 @@ import SwiftUI
 ///   -ui-testing            isolate all state under a temp directory
 ///   -reset-state           wipe that directory before start
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
-///   -route <route>         "project" (default) | "session"
+///   -route <route>         "project" (default) | "session" | "extensions"
+///   -extensions-section <name>  section to show when routing to extensions
+///   -extensions-query <text>    prefills the Extensions search bar
+///   -extensions-expand <id>     expands that package's detail panel
+///   -extensions-action <name>   runs a quick action on open (healthCheck, …)
 ///   -window-width <pt> / -window-height <pt>
 ///   -disable-animations
 struct LaunchConfig {
@@ -17,6 +21,16 @@ struct LaunchConfig {
     let resetState: Bool
     let fixture: String?
     let route: String?
+    /// Which Extensions screen to open with `-route extensions`.
+    let extensionsSection: String?
+    /// Text the Extensions search bar starts with, for a deterministic run.
+    let extensionsQuery: String?
+    /// Package whose detail panel starts expanded.
+    let extensionsExpand: String?
+    /// Quick action to run as the Extensions window opens.
+    let extensionsAction: String?
+    /// Project dashboard area to open ("tasks"), for deterministic UI runs.
+    let projectArea: String?
     let windowWidth: Double?
     let windowHeight: Double?
     let disableAnimations: Bool
@@ -24,6 +38,8 @@ struct LaunchConfig {
     let codexAppServerEnabled: Bool
     let codexApprovalFixture: Bool
     let attentionFixture: Bool
+    /// Checks notification authorization and delivery, prints the result, exits.
+    let notificationSelfTest: Bool
 
     /// Isolated data root when UI testing; nil = normal App Support.
     var dataDirectoryOverride: URL? {
@@ -38,14 +54,26 @@ struct LaunchConfig {
         disableAnimations = arguments.contains("-disable-animations")
         runtimeMismatchFixture = isUITesting
             && arguments.contains("-runtime-mismatch-fixture")
-        codexAppServerEnabled = !isUITesting
-            || arguments.contains("-codex-app-server")
+        // Codex sessions run the Codex CLI, the way Claude sessions run theirs.
+        // The app-server path speaks JSON instead, which means Uncoil has to
+        // supply the prompt, the history and the editing that the CLI's own TUI
+        // already does — and a session opened onto a bare cursor with none of it
+        // is not the tool the user expects. The protocol client stays behind
+        // this flag rather than being deleted: it is what structured approvals
+        // and turn state are built on, and it is still covered by tests.
+        codexAppServerEnabled = arguments.contains("-codex-app-server")
         codexApprovalFixture = isUITesting
             && arguments.contains("-codex-approval-fixture")
         attentionFixture = isUITesting
             && arguments.contains("-attention-fixture")
+        notificationSelfTest = arguments.contains("-notification-selftest")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
+        extensionsSection = Self.value(after: "-extensions-section", in: arguments)
+        extensionsQuery = Self.value(after: "-extensions-query", in: arguments)
+        extensionsExpand = Self.value(after: "-extensions-expand", in: arguments)
+        extensionsAction = Self.value(after: "-extensions-action", in: arguments)
+        projectArea = Self.value(after: "-project-area", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
     }
@@ -73,6 +101,19 @@ struct LaunchConfig {
         let projectDir = root.appendingPathComponent("demo-project", isDirectory: true)
         try? FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
         try? Data("# Demo\n".utf8).write(to: projectDir.appendingPathComponent("README.md"))
+        // A small task file so the Tasks tab is exercisable in UI runs, with a
+        // numbered item because those were once silently dropped by the parser.
+        try? Data("""
+        # Demo TODO
+
+        ## Arayüz
+        - [ ] Oturum listesine arama ekle
+        - [x] Karanlık tema kontrastını düzelt
+        1. [ ] Ayarlar penceresine kısayol ekle
+
+        ## Altyapı
+        - [ ] Daemon heartbeat logla
+        """.utf8).write(to: projectDir.appendingPathComponent("TODO.md"))
         projectStore.addProject(at: projectDir)
         guard let project = projectStore.projects.first else { return }
         projectStore.createSession(
@@ -91,6 +132,17 @@ struct LaunchConfig {
             $0.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
         }
         projectStore.markSessionEnded(history.id, exitCode: 0)
+        // A group with something in it, and a pinned session: the sidebar's
+        // nesting and its pin marker are otherwise only reachable by hand.
+        if let group = projectStore.createGroup(projectID: project.id, name: "arka plan") {
+            projectStore.moveSessions(
+                [history.id], toGroup: group.id, inProject: project.id, at: -1
+            )
+        }
+        if let pinned = projectStore.sessions(for: project.id)
+            .first(where: { $0.provider == .terminal }) {
+            projectStore.togglePin(pinned.id)
+        }
     }
 
     /// Seeds one row per Attention Center source so the panel can be driven

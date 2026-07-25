@@ -128,6 +128,9 @@ enum ExtensionSource: Equatable, Codable {
     case bundled(identifier: String)
     /// Added by hand from a local folder: runnable and assignable, never updated.
     case local(path: String)
+    /// Was installed outside Uncoil and the user adopted it: the files now live
+    /// in Uncoil's store, and every agent sees them through a symlink.
+    case adopted(path: String)
     /// Installed outside Uncoil; read-only until adopted.
     case detectedExternal(path: String)
     /// Remote MCP endpoint: no local git, version comes from the server.
@@ -151,14 +154,14 @@ enum ExtensionSource: Equatable, Codable {
     var isManaged: Bool {
         switch self {
         case .managedGitHub: true
-        case .bundled, .local, .detectedExternal, .remoteMCP: false
+        case .bundled, .local, .adopted, .detectedExternal, .remoteMCP: false
         }
     }
 
     /// Uncoil owns the files (may relink, quarantine, remove).
     var isOwnedByUncoil: Bool {
         switch self {
-        case .managedGitHub, .bundled: true
+        case .managedGitHub, .bundled, .adopted: true
         case .local, .detectedExternal, .remoteMCP: false
         }
     }
@@ -172,6 +175,8 @@ enum ExtensionSource: Equatable, Codable {
             "Uncoil ile gelen"
         case .local:
             "Unmanaged (yerel)"
+        case .adopted:
+            "Sahiplenildi · Uncoil deposunda"
         case .detectedExternal:
             "Unmanaged (dışarıda kurulmuş)"
         case .remoteMCP(let url, _):

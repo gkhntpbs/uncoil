@@ -30,7 +30,7 @@ struct FolderPickerSheet: View {
             HStack(spacing: 6) {
                 Image(systemName: "folder.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(Theme.claude)
+                    .foregroundStyle(Theme.highlight)
                 Text(displayPath)
                     .font(Theme.mono(12))
                     .foregroundStyle(Theme.text)
@@ -175,34 +175,61 @@ private struct DirectoryRow: View {
 
 // MARK: - Button styles
 
+/// The primary button: the interactive highlight, not an agent's brand mark.
+///
+/// A `ButtonStyle` cannot observe anything itself — its `makeBody` is a plain
+/// function — so the label goes through a real view that watches the store.
+/// Otherwise a theme switch leaves buttons painted in the previous palette.
 struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.mono(12, .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(
-                Theme.claude.opacity(configuration.isPressed ? 0.75 : 1),
-                in: RoundedRectangle(cornerRadius: 7)
-            )
+        Rendered(configuration: configuration)
+    }
+
+    private struct Rendered: View {
+        let configuration: Configuration
+        @ObservedObject private var theme = ThemeStore.shared
+
+        init(configuration: Configuration) { self.configuration = configuration }
+
+        var body: some View {
+            configuration.label
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.textOnHighlight)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    configuration.isPressed ? Theme.highlightActive : Theme.highlight,
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
+        }
     }
 }
 
 struct GhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.mono(12))
-            .foregroundStyle(Theme.textDim)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                configuration.isPressed ? Theme.panelActive : Theme.panel,
-                in: RoundedRectangle(cornerRadius: 7)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(Theme.border, lineWidth: 1)
-            )
+        Rendered(configuration: configuration)
+    }
+
+    private struct Rendered: View {
+        let configuration: Configuration
+        @ObservedObject private var theme = ThemeStore.shared
+
+        init(configuration: Configuration) { self.configuration = configuration }
+
+        var body: some View {
+            configuration.label
+                .font(Theme.mono(12))
+                .foregroundStyle(Theme.textDim)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(
+                    configuration.isPressed ? Theme.panelActive : Theme.panel,
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .strokeBorder(Theme.border, lineWidth: 1)
+                )
+        }
     }
 }

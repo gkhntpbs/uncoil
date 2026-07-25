@@ -65,7 +65,7 @@ struct SessionGroupView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("group.backButton")
 
-            TablerIcon(name: "folder", size: 18, color: Theme.codex)
+            TablerIcon(name: "folder", size: 18, color: Theme.highlight)
             VStack(alignment: .leading, spacing: 3) {
                 Text(group.name)
                     .font(Theme.mono(14, .bold))
@@ -197,7 +197,7 @@ struct SessionGroupView: View {
             } label: {
                 Image(systemName: selected ? "checkmark.square.fill" : "square")
                     .font(.system(size: 14))
-                    .foregroundStyle(selected ? Theme.codex : Theme.textFaint)
+                    .foregroundStyle(selected ? Theme.highlight : Theme.textFaint)
             }
             .buttonStyle(.plain)
             ProviderMark(provider: record.provider, size: 12)

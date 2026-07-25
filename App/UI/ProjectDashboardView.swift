@@ -8,13 +8,23 @@ struct ProjectDashboardView: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
-    @State private var git = GitService.Snapshot()
-    @State private var worktrees: [GitService.Worktree] = []
+    /// Git state, worktrees, pull requests and task presence live in a store
+    /// that outlives the view, so leaving the screen and coming back draws the
+    /// last known page immediately instead of re-running a scan, three git
+    /// subprocesses and a GitHub request before showing anything.
+    @ObservedObject private var pages = ProjectPageStore.shared
     @State private var newWorktreeName = ""
     @State private var worktreeError: String?
     @State private var creatingWorktree = false
-    @State private var pullRequests: [GitHubService.PullRequest] = []
-    @State private var prMessage: String?
+
+    private var page: ProjectPageStore.Snapshot { pages.snapshot(for: project.id) }
+    private var git: GitService.Snapshot { page.git }
+    private var worktrees: [GitService.Worktree] { page.worktrees }
+    private var pullRequests: [GitHubService.PullRequest] { page.pullRequests }
+    private var prMessage: String? { page.prMessage }
+    /// True only before a project has ever been loaded — the one moment there
+    /// is nothing to draw and a skeleton belongs.
+    private var isFirstLoad: Bool { !page.hasLoaded }
 
     /// Which area of the project screen is showing. Tasks is a peer of the
     /// overview rather than a panel inside it, so a long TODO.md gets the room.
@@ -33,22 +43,16 @@ struct ProjectDashboardView: View {
     }
 
     @State private var area: Area = .overview
+    /// Whether the project has any task source on disk; without one the Tasks
+    /// tab is not offered at all, instead of opening onto an empty state.
+    private var hasTaskSources: Bool { page.hasTaskSources }
+    private var openTaskCount: Int { page.openTaskCount }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 header
-                Picker("", selection: $area) {
-                    ForEach(Area.allCases) { area in
-                        Text(area.title).tag(area)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .accessibilityIdentifier("dashboard.areaPicker")
-
-                if area == .tasks {
+                if area == .tasks, hasTaskSources {
                     ProjectTasksView(project: project, selection: $selection)
                 } else {
                     overviewContent
@@ -59,7 +63,71 @@ struct ProjectDashboardView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dashboard.container")
-        .task(id: project.id) { await refreshGit() }
+        // Cheap and idempotent: it returns straight away while the snapshot is
+        // fresh, so switching back to a project costs nothing.
+        .task(id: project.id) {
+            await pages.refreshIfNeeded(project: project)
+            if LaunchConfig.shared.projectArea == "tasks", hasTaskSources {
+                area = .tasks
+            }
+            if !hasTaskSources { area = .overview }
+        }
+    }
+
+    private func refreshGit() async {
+        await pages.refresh(project: project)
+    }
+
+    /// The tab row lives inside the header card: switching area is part of what
+    /// the project header is, not a floating control under it.
+    private var areaTabs: some View {
+        HStack(spacing: 2) {
+            ForEach(Area.allCases) { candidate in
+                if candidate == .overview || hasTaskSources {
+                    let isOn = area == candidate
+                    Button {
+                        area = candidate
+                    } label: {
+                        HStack(spacing: 6) {
+                            TablerIcon(
+                                name: candidate == .overview ? "layout-dashboard" : "checkbox",
+                                size: 12,
+                                color: isOn ? Theme.text : Theme.textFaint
+                            )
+                            Text(candidate.title)
+                                .font(Theme.mono(11.5, isOn ? .semibold : .regular))
+                                .foregroundStyle(isOn ? Theme.text : Theme.textDim)
+                            if candidate == .tasks, openTaskCount > 0 {
+                                Text("\(openTaskCount)")
+                                    .font(Theme.mono(9, .semibold))
+                                    .foregroundStyle(isOn ? Theme.bg : Theme.textFaint)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(
+                                        isOn ? Theme.highlight : Theme.panel,
+                                        in: Capsule()
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            isOn ? Theme.panelActive : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 7)
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("dashboard.area.\(candidate.rawValue)")
+                }
+            }
+        }
+        .padding(3)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 9))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.border, lineWidth: 1)
+        )
+        .accessibilityIdentifier("dashboard.areaPicker")
     }
 
     private var overviewContent: some View {
@@ -85,35 +153,6 @@ struct ProjectDashboardView: View {
         }
     }
 
-    private func refreshGit() async {
-        let path = project.rootPath
-        let (snapshot, trees, remote) = await Task.detached(priority: .utility) {
-            (
-                GitService.snapshot(repoPath: path),
-                GitService.worktrees(repoPath: path),
-                GitService.remoteURL(repoPath: path)
-            )
-        }.value
-        git = snapshot
-        worktrees = trees
-        await refreshPullRequests(remote: remote)
-    }
-
-    private func refreshPullRequests(remote: String?) async {
-        guard let remote, let slug = GitHubService.repoSlug(fromRemoteURL: remote) else {
-            prMessage = "Origin GitHub deposu değil ya da remote yok."
-            pullRequests = []
-            return
-        }
-        switch await GitHubService.openPullRequests(slug: slug) {
-        case .success(let prs):
-            pullRequests = prs
-            prMessage = prs.isEmpty ? "Açık PR yok." : nil
-        case .failure(let error):
-            pullRequests = []
-            prMessage = error.errorDescription
-        }
-    }
 
     // MARK: - Pull requests
 
@@ -121,7 +160,12 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             PanelHeading(title: "Pull Request'ler", count: pullRequests.count)
 
-            if let prMessage {
+            if isFirstLoad || (prMessage == nil && pullRequests.isEmpty) {
+                // Pull requests come off the network, so this panel is the last
+                // to fill in — and the one where a placeholder is worth most.
+                SkeletonListRows(count: 2)
+                    .padding(14)
+            } else if let prMessage {
                 Text(prMessage)
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
@@ -225,6 +269,10 @@ struct ProjectDashboardView: View {
 
             Spacer()
 
+            if hasTaskSources {
+                areaTabs
+            }
+
             if let branch = git.branch {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.triangle.branch")
@@ -243,6 +291,16 @@ struct ProjectDashboardView: View {
                 .background(Theme.panel, in: Capsule())
                 .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
             }
+
+            // The project's own root, in the same control the session header
+            // uses — one gesture means one thing wherever it appears.
+            EditorOpenControl(directory: project.rootPath)
+                .padding(3)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Theme.border, lineWidth: 1)
+                )
 
             AgentLauncherStrip(project: project, selection: $selection)
         }
@@ -272,7 +330,7 @@ struct ProjectDashboardView: View {
                     onOrganizeSessions()
                 } label: {
                     HStack(spacing: 6) {
-                        TablerIcon(name: "sparkles", size: 12, color: Theme.claude)
+                        TablerIcon(name: "sparkles", size: 12, color: Theme.highlight)
                         Text("Otomatik Düzenle")
                             .font(Theme.mono(10.5, .medium))
                     }
@@ -326,7 +384,13 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             PanelHeading(title: "Git", count: git.changedFiles.count)
 
-            if !git.isRepo {
+            if isFirstLoad {
+                // Nothing is known about this project yet — not even whether it
+                // is a repo — so the panel says "a list is coming" rather than
+                // asserting the wrong empty state for a second.
+                SkeletonRows(count: 4)
+                    .padding(14)
+            } else if !git.isRepo {
                 Text("Bu klasör bir git deposu değil.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
@@ -371,7 +435,7 @@ struct ProjectDashboardView: View {
                                 HStack(spacing: 8) {
                                     Text(commit.hash)
                                         .font(Theme.mono(10))
-                                        .foregroundStyle(Theme.codex)
+                                        .foregroundStyle(Theme.highlight)
                                     Text(commit.subject)
                                         .font(Theme.mono(11))
                                         .foregroundStyle(Theme.textDim)
@@ -505,7 +569,7 @@ private struct PullRequestRow: View {
                 )
                 Text("#\(pullRequest.number)")
                     .font(Theme.mono(10.5))
-                    .foregroundStyle(Theme.codex)
+                    .foregroundStyle(Theme.highlight)
                 Text(pullRequest.title)
                     .font(Theme.mono(11.5))
                     .foregroundStyle(Theme.text)
@@ -567,126 +631,6 @@ private struct WorktreeRow: View {
         .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
         .onHover { value in
             withAnimation(.easeOut(duration: 0.12)) { hovering = value }
-        }
-    }
-}
-
-// MARK: - File tree
-
-struct FileTreeView: View {
-    let rootURL: URL
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                FileTreeLevel(directoryURL: rootURL, depth: 0)
-            }
-            .uncoilScrollers()
-        }
-        .frame(maxHeight: 340)
-    }
-}
-
-private struct FileTreeLevel: View {
-    let directoryURL: URL
-    let depth: Int
-    private let entries: [FileEntry]
-
-    struct FileEntry: Identifiable {
-        let url: URL
-        let isDirectory: Bool
-        var id: String { url.path }
-    }
-
-    init(directoryURL: URL, depth: Int) {
-        self.directoryURL = directoryURL
-        self.depth = depth
-        // Synchronous listing at init: a capped local directory read is
-        // fast, and async .task proved unreliable inside nested lazy stacks.
-        entries = Self.list(directoryURL)
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(entries) { entry in
-                FileTreeRow(entry: entry, depth: depth)
-            }
-            if entries.isEmpty {
-                Text("boş")
-                    .font(Theme.mono(10))
-                    .foregroundStyle(Theme.textFaint)
-                    .padding(.vertical, 6)
-            }
-        }
-    }
-
-    private static func list(_ directoryURL: URL) -> [FileEntry] {
-        let contents = (try? FileManager.default.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        )) ?? []
-        return contents
-            .map { url in
-                FileEntry(
-                    url: url,
-                    isDirectory: (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-                )
-            }
-            .sorted {
-                if $0.isDirectory != $1.isDirectory { return $0.isDirectory }
-                return $0.url.lastPathComponent
-                    .localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending
-            }
-            .prefix(120)
-            .map { $0 }
-    }
-}
-
-private struct FileTreeRow: View {
-    let entry: FileTreeLevel.FileEntry
-    let depth: Int
-    @State private var expanded = false
-    @State private var hovering = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Button {
-                if entry.isDirectory {
-                    withAnimation(.easeOut(duration: 0.12)) { expanded.toggle() }
-                } else {
-                    NSWorkspace.shared.activateFileViewerSelecting([entry.url])
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    if entry.isDirectory {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(Theme.textFaint)
-                            .rotationEffect(.degrees(expanded ? 90 : 0))
-                    } else {
-                        Spacer().frame(width: 10)
-                    }
-                    Image(systemName: entry.isDirectory ? "folder" : "doc")
-                        .font(.system(size: 10))
-                        .foregroundStyle(entry.isDirectory ? Theme.warn.opacity(0.8) : Theme.textFaint)
-                    Text(entry.url.lastPathComponent)
-                        .font(Theme.mono(11))
-                        .foregroundStyle(Theme.textDim)
-                        .lineLimit(1)
-                    Spacer()
-                }
-                .padding(.leading, CGFloat(depth) * 14 + 8)
-                .padding(.trailing, 8)
-                .padding(.vertical, 3.5)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering = $0 }
-
-            if expanded {
-                FileTreeLevel(directoryURL: entry.url, depth: depth + 1)
-            }
         }
     }
 }

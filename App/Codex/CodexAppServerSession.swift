@@ -688,36 +688,38 @@ final class CodexAppServerSession {
 final class CodexStructuredTerminalDelegate: TerminalViewDelegate {
     private weak var session: CodexAppServerSession?
     private weak var terminal: TerminalView?
-    private var input = ""
+    private var editor = PromptLineEditor()
 
     init(session: CodexAppServerSession, terminal: TerminalView) {
         self.session = session
         self.terminal = terminal
     }
 
+    /// Puts a dispatched prompt into the line editor without submitting it, so
+    /// the user starts the turn themselves.
+    func prefill(_ text: String) {
+        editor.prefill(text)
+        redraw()
+    }
+
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
-        for byte in data {
-            switch byte {
-            case 0x03:
+        let actions = editor.consume(data)
+        redraw()
+        for action in actions {
+            switch action {
+            case .interrupt:
                 Task { @MainActor [weak session] in session?.interrupt() }
-            case 0x0D, 0x0A:
-                let submitted = input.trimmingCharacters(in: .whitespacesAndNewlines)
-                input = ""
+            case .submit(let prompt):
                 echo("\r\n")
-                guard !submitted.isEmpty else { continue }
-                Task { @MainActor [weak session] in session?.submit(submitted) }
-            case 0x7F, 0x08:
-                guard !input.isEmpty else { continue }
-                input.removeLast()
-                echo("\u{8} \u{8}")
-            case 0x20...0x7E:
-                let character = String(UnicodeScalar(byte))
-                input += character
-                echo(character)
-            default:
-                continue
+                Task { @MainActor [weak session] in session?.submit(prompt) }
             }
         }
+    }
+
+    /// Repaints the prompt line from the editor's state, which is what lets an
+    /// edit happen anywhere in the line rather than only at its end.
+    private func redraw() {
+        echo(PromptLineRenderer.render(text: editor.text, cursor: editor.cursor))
     }
 
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {}

@@ -212,6 +212,9 @@ final class ExtensionRegistryTests: XCTestCase {
         let home = try claudeHome()
         let skills = home.appendingPathComponent(".claude/skills", isDirectory: true)
         try store.link(name: "writer", intoAgentDirectory: skills)
+        // The assignment is what says this agent is meant to have the link; a
+        // missing link only means "broken" for an agent the skill was given to.
+        registry.setAgentBinding(true, packageID: "acme/writer", agent: .claudeCode)
 
         registry.discover(adapters: adapters(home: home), launcherPath: launcherPath, now: now)
         XCTAssertTrue(registry.brokenPackages.isEmpty)

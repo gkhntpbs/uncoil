@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import Uncoil
 
@@ -225,6 +226,60 @@ final class TodoSourceStoreTests: XCTestCase {
         store.refresh(trackedFingerprints: ["assignment": tracked.fingerprint], now: tick())
         XCTAssertTrue(store.needsRelinking.isEmpty)
     }
+
+    // MARK: - Cost of a refresh
+
+    func testUnchangedSourcesAreNotReadAgain() throws {
+        try write("TODO.md", "- [ ] bir\n")
+        let firstTick = tick()
+        store.refresh(now: firstTick)
+        store.refresh(now: tick())
+        // A reused source keeps the read timestamp of the scan that parsed it.
+        XCTAssertEqual(store.sources.first?.lastReadAt, firstTick)
+    }
+
+    func testAnUnchangedRefreshPublishesNothing() throws {
+        try write("TODO.md", "- [ ] bir\n")
+        store.refresh(now: tick())
+        // The second scan is the first one that can report "unchanged"; the
+        // first still has to publish the sources it discovered.
+        store.refresh(now: tick())
+
+        var emissions = 0
+        let cancellable = store.objectWillChange.sink { _ in emissions += 1 }
+        defer { cancellable.cancel() }
+        store.refresh(now: tick())
+        XCTAssertEqual(emissions, 0, "boş bir tarama SwiftUI'yi yeniden çizdirmemeli")
+    }
+
+    func testHasLoadedOnceFlipsEvenWhenNoSourcesExist() async {
+        XCTAssertFalse(store.hasLoadedOnce)
+        XCTAssertFalse(store.isLoading)
+        await store.refreshAsync()
+        XCTAssertTrue(store.hasLoadedOnce)
+        XCTAssertFalse(store.isLoading)
+        XCTAssertTrue(store.sources.isEmpty)
+    }
+
+    func testRefreshAsyncLoadsSourcesOffTheMainActor() async throws {
+        try write("TODO.md", "- [ ] bir\n")
+        await store.refreshAsync()
+        XCTAssertEqual(store.sources.map(\.displayPath), ["TODO.md"])
+        XCTAssertEqual(store.allTasks.map(\.text), ["bir"])
+    }
+
+    func testOverlappingRefreshesCoalesceIntoOneExtraScan() async throws {
+        try write("TODO.md", "- [ ] bir\n")
+        async let first: Void = store.refreshAsync()
+        async let second: Void = store.refreshAsync()
+        async let third: Void = store.refreshAsync()
+        async let fourth: Void = store.refreshAsync()
+        _ = await (first, second, third, fourth)
+        // One scan for the first call, at most one more for everything that
+        // arrived while it ran.
+        XCTAssertLessThanOrEqual(store.completedScanCount, 2)
+        XCTAssertEqual(store.sources.count, 1)
+    }
 }
 
 @MainActor
@@ -272,13 +327,48 @@ final class TodoSourceWatcherTests: XCTestCase {
         XCTAssertGreaterThan(fired, afterFirst, "the watch re-arms after a replacement")
     }
 
-    func testPollFiresEvenWithoutFilesystemEvents() async throws {
+    func testPollStaysQuietWhileNothingOnDiskMoves() async throws {
+        let url = root.appendingPathComponent("TODO.md")
+        try Data("- [ ] bir\n".utf8).write(to: url)
+
         var fired = 0
         let watcher = TodoSourceWatcher(pollInterval: 0.05) { fired += 1 }
-        watcher.start(paths: [])
+        watcher.start(paths: [url.path])
         defer { watcher.stop() }
+        // Several poll ticks with an untouched tree: the poll used to force a
+        // full rescan on each one.
+        try await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(fired, 0)
+    }
+
+    func testPollFiresWhenAFileAppearsWithoutAnEventOnIt() async throws {
+        let url = root.appendingPathComponent("TODO.md")
+        var fired = 0
+        let watcher = TodoSourceWatcher(pollInterval: 0.05) { fired += 1 }
+        watcher.start(paths: [url.path])
+        defer { watcher.stop() }
+        try await Task.sleep(nanoseconds: 120_000_000)
+        try Data("- [ ] bir\n".utf8).write(to: url)
         try await waitUntil { fired > 0 }
         XCTAssertGreaterThan(fired, 0)
+    }
+
+    func testBurstsOfEventsCoalesceIntoOneRefresh() async throws {
+        let url = root.appendingPathComponent("TODO.md")
+        try Data("- [ ] bir\n".utf8).write(to: url)
+
+        var fired = 0
+        let watcher = TodoSourceWatcher(pollInterval: 3600) { fired += 1 }
+        watcher.watch(paths: [url.path])
+        defer { watcher.stop() }
+
+        for index in 0..<5 {
+            try Data("- [ ] \(index)\n".utf8).write(to: url, options: .atomic)
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        try await waitUntil { fired > 0 }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(fired, 1, "bir düzenleme dizisi tek bir taramaya inmeli")
     }
 
     func testStoppingSilencesTheWatcher() async throws {
@@ -287,6 +377,7 @@ final class TodoSourceWatcherTests: XCTestCase {
         var fired = 0
         let watcher = TodoSourceWatcher(pollInterval: 0.05) { fired += 1 }
         watcher.start(paths: [url.path])
+        try Data("- [x] bir\n".utf8).write(to: url, options: .atomic)
         try await waitUntil { fired > 0 }
         watcher.stop()
         let afterStop = fired

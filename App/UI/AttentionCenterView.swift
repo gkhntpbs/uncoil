@@ -36,7 +36,7 @@ struct AttentionCenterView: View {
                     .foregroundStyle(Theme.bg)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1.5)
-                    .background(Theme.claude, in: Capsule())
+                    .background(Theme.highlight, in: Capsule())
             }
             Spacer()
             if !store.items.isEmpty {
@@ -169,14 +169,14 @@ struct AttentionRailButton: View {
             ZStack(alignment: .topTrailing) {
                 TablerIcon(
                     name: store.items.isEmpty ? "bell" : "bell-ringing",
-                    size: 13,
+                    size: 12,
                     color: badgeColor ?? (hovering ? Theme.text : Theme.textDim)
                 )
-                .frame(width: 24, height: 24)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .frame(width: 20, height: 20)
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
                 if store.unreadCount > 0 {
                     Circle()
-                        .fill(badgeColor ?? Theme.claude)
+                        .fill(badgeColor ?? Theme.highlight)
                         .frame(width: 6, height: 6)
                         .offset(x: -2, y: 2)
                 }

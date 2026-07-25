@@ -12,6 +12,22 @@ final class ApplicationLifecycle {
 
 @MainActor
 final class UncoilApplicationDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // The notification delegate has to be installed before anything can be
+        // delivered, or a banner that arrives while Uncoil is frontmost is
+        // swallowed by the system default. Permission is read here and asked for
+        // once, deliberately, rather than from inside whichever notification
+        // happened to be first.
+        PermissionNotificationCenter.shared.activate()
+        NotificationSelfTest.runIfRequested()
+        Task {
+            await NotificationAuthorization.shared.refresh()
+            if NotificationAuthorization.shared.status.canRequest {
+                await NotificationAuthorization.shared.request()
+            }
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let terminateSessions =
             ApplicationLifecycle.shared.sessionQuitBehavior == .terminateAllAgents

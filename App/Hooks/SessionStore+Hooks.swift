@@ -88,6 +88,7 @@ extension SessionStore {
                         title: project.name,
                         body: "İzin bekliyor · \(sessionTitle)",
                         projectID: project.id,
+                        sessionID: sessionID,
                         prefs: prefs
                     )
                 }
@@ -99,6 +100,7 @@ extension SessionStore {
                         title: project.name,
                         body: "Girdi bekliyor · \(sessionTitle)",
                         projectID: project.id,
+                        sessionID: sessionID,
                         prefs: prefs
                     )
                 }
@@ -114,6 +116,7 @@ extension SessionStore {
                     title: project.name,
                     body: "Tur tamamlandı · \(sessionTitle)",
                     projectID: project.id,
+                    sessionID: sessionID,
                     prefs: prefs
                 )
             }
@@ -132,11 +135,17 @@ extension SessionStore {
         title: String,
         body: String,
         projectID: UUID,
+        sessionID: UUID,
         prefs: NotificationPrefs
     ) {
         guard !sentNotificationKeys.contains(key) else { return }
         sentNotificationKeys.insert(key)
-        AttentionNotifier.post(title: title, body: body, projectID: projectID, prefs: prefs)
+        // The banner is easy to miss; the sidebar row keeps saying it until the
+        // session is opened.
+        markAttention(sessionID)
+        AttentionNotifier.post(
+            title: title, body: body, projectID: projectID, prefs: prefs, sessionID: sessionID
+        )
     }
 
     @MainActor

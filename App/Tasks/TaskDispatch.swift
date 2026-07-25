@@ -5,7 +5,11 @@ struct TaskDispatchRequest: Equatable {
     var provider: AgentProvider = .claude
     var accountID: UUID?
     var model: String?
+    var effort: String?
     var workingMode: AgentWorkingMode?
+    /// When false the prompt is typed into the session but not submitted: the
+    /// user reads it, edits if they like, and presses Enter themselves.
+    var autoStart = true
     /// Named preset to launch with; when set, its arguments and capabilities win.
     var presetID: String?
     /// Capability grants the session should get, by name.

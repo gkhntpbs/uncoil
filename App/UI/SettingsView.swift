@@ -10,6 +10,7 @@ final class SettingsRoute: ObservableObject {
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
+    @EnvironmentObject private var theme: ThemeStore
     @State private var hookStatus = HookInstaller.status()
     @State private var hookMessage: String?
     @State private var newAccountName = ""
@@ -79,6 +80,20 @@ struct SettingsView: View {
 
     @State private var pane: Pane = .accounts
     @State private var search = ""
+
+    /// Identity is what makes a theme change reach views that read `Theme.*`,
+    /// since those are static reads SwiftUI cannot track. The main window gets
+    /// it from `ThemedWindow`; Settings cannot use that wholesale, because
+    /// re-identifying the pane while a colour picker is open tears the picker
+    /// out from under the drag.
+    ///
+    /// So the key is the whole palette everywhere except the Tema pane — the
+    /// one place colours change continuously — where it is the mode alone. A
+    /// preset switch still rebuilds; a single picker edit leaves identity
+    /// alone and is carried by the surfaces that observe the store.
+    private var paletteIdentity: AnyHashable {
+        pane == .theme ? AnyHashable(theme.palette.isLight) : AnyHashable(theme.palette)
+    }
 
     private var visiblePanes: [Pane] {
         let query = search.trimmingCharacters(in: .whitespaces).lowercased()
@@ -169,6 +184,7 @@ struct SettingsView: View {
                 .uncoilScrollers()
             }
         }
+        .id(paletteIdentity)
         .frame(width: 660, height: 620)
         .background(Theme.bg)
         .ignoresSafeArea(edges: .top)
@@ -842,6 +858,8 @@ private struct NotificationSettingsSection: View {
             Text("Her durum değişimi için yalnızca bir bildirim gönderilir.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
+
+            NotificationPermissionRow()
 
             VStack(spacing: 0) {
                 toggleRow(

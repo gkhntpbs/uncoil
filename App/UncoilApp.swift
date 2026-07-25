@@ -62,12 +62,12 @@ struct UncoilApp: App {
 
     var body: some Scene {
         WindowGroup(id: "main") {
-            MainWindow()
-                .environmentObject(projectStore)
-                .environmentObject(sessionStore)
-                .environmentObject(settings)
-                .environmentObject(theme)
-                .preferredColorScheme(theme.palette.isLight ? .light : .dark)
+            ThemedWindow {
+                MainWindow()
+                    .environmentObject(projectStore)
+                    .environmentObject(sessionStore)
+                    .environmentObject(settings)
+            }
                 .onAppear {
                     applyApplicationIcon()
                 }
@@ -92,16 +92,20 @@ struct UncoilApp: App {
         // window lives here; the PTY is shared via TerminalRegistry.
         WindowGroup("Oturum", id: "session-window", for: UUID.self) { $sessionID in
             if let sessionID {
-                SessionPopoutWindow(sessionID: sessionID)
-                    .environmentObject(projectStore)
-                    .environmentObject(sessionStore)
-                    .environmentObject(settings)
-                    .environmentObject(theme)
+                ThemedWindow {
+                    SessionPopoutWindow(sessionID: sessionID)
+                        .environmentObject(projectStore)
+                        .environmentObject(sessionStore)
+                        .environmentObject(settings)
+                }
                 }
         }
         .windowStyle(.hiddenTitleBar)
 
         Window("Uncoil Ayarları", id: "settings") {
+            // Not wrapped in ThemedWindow on purpose: Settings owns the colour
+            // pickers, and rebuilding it on every value change would tear the
+            // picker down mid-drag. It observes the store directly instead.
             SettingsView()
                 .environmentObject(settings)
                 .environmentObject(projectStore)
@@ -113,17 +117,17 @@ struct UncoilApp: App {
         .windowResizability(.contentSize)
 
         Window("Uncoil Extensions", id: "extensions") {
-            ExtensionsView()
-                .environmentObject(projectStore)
-                .environmentObject(sessionStore)
-                .environmentObject(settings)
-                .environmentObject(theme)
-                .preferredColorScheme(theme.palette.isLight ? .light : .dark)
+            ThemedWindow {
+                ExtensionsView()
+                    .environmentObject(projectStore)
+                    .environmentObject(sessionStore)
+                    .environmentObject(settings)
+            }
         }
         .defaultSize(width: 920, height: 640)
         .windowStyle(.hiddenTitleBar)
         .commands {
-            ExtensionsWindowCommands()
+            ExtensionsMenuCommands()
         }
 
         // Menu-bar monitor: counts at a glance plus quick launch/interrupt,
@@ -180,18 +184,6 @@ struct MainWindowCommands: Commands {
                 openWindow(id: "main")
             }
             .keyboardShortcut("n", modifiers: .command)
-        }
-    }
-}
-
-struct ExtensionsWindowCommands: Commands {
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some Commands {
-        CommandGroup(after: .windowArrangement) {
-            Button("Extensions") {
-                openWindow(id: "extensions")
-            }
         }
     }
 }

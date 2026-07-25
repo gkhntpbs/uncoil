@@ -39,6 +39,20 @@ struct BumblebeeLocator {
         return nil
     }
 
+    /// The exposure catalog that ships with the release, which lives next to the
+    /// binary as `threat_intel/`. Without it a scan reports inventory and never a
+    /// finding, so this is not optional detail — it is what makes a scan a scan.
+    func catalogDirectory(for binary: BumblebeeBinary) -> String? {
+        let candidate = URL(fileURLWithPath: binary.path)
+            .deletingLastPathComponent()
+            .appendingPathComponent("threat_intel", isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(
+            atPath: candidate.path, isDirectory: &isDirectory
+        ), isDirectory.boolValue else { return nil }
+        return candidate.path
+    }
+
     /// Every source that has one, for the UI to explain which was chosen.
     func available() -> [BumblebeeBinary] {
         var result: [BumblebeeBinary] = []
@@ -96,13 +110,44 @@ struct BumblebeeRunner {
     var run: (Invocation) async throws -> Output
     /// Shared across a process; what stops two scans running at once.
     var lock: BumblebeeScanLock
+    /// The exposure catalog directory shipped with the binary. Without it the
+    /// scanner emits inventory only and never a single finding, so a scan run
+    /// without one is not a clean bill of health.
+    var catalogPath: String?
+
+    // MARK: - Command line
+
+    /// The exact command line for a scan.
+    ///
+    /// Pure and separate because it is the one place Uncoil has to match a binary
+    /// it does not own: `bumblebee scan --profile <p> [--exposure-catalog <c>]
+    /// [--root <path>]…`.
+    static func scanArguments(
+        kind: BumblebeeScanKind,
+        paths: [String],
+        catalogPath: String?
+    ) -> [String] {
+        var arguments = ["scan", "--profile", profile(for: kind, paths: paths)]
+        if let catalogPath { arguments += ["--exposure-catalog", catalogPath] }
+        for path in paths { arguments += ["--root", path] }
+        return arguments
+    }
+
+    /// Bumblebee's own profiles: `baseline` for the machine's known roots,
+    /// `project` for the roots we hand it, `deep` for the incident sweep.
+    static func profile(for kind: BumblebeeScanKind, paths: [String]) -> String {
+        switch kind {
+        case .deep: "deep"
+        default: paths.isEmpty ? "baseline" : "project"
+        }
+    }
 
     // MARK: - Verification
 
     /// Reads the version, so a finding can be traced to the build that made it.
     func version(now: Date = .now) async throws -> BumblebeeVersion {
         guard binary != nil else { throw RunError.notInstalled }
-        let output = try await run(Invocation(arguments: ["version", "--json"], timeout: 15))
+        let output = try await run(Invocation(arguments: ["version"], timeout: 15))
         guard let version = BumblebeeVersion.parse(output.stdout)
             ?? BumblebeeVersion.parse(output.stderr) else {
             throw RunError.selfTestFailed("version okunamadı")
@@ -112,7 +157,9 @@ struct BumblebeeRunner {
 
     func selfTest(now: Date = .now) async throws -> BumblebeeSelfTest {
         guard binary != nil else { throw RunError.notInstalled }
-        let output = try await run(Invocation(arguments: ["selftest", "--json"], timeout: 60))
+        // `-quiet` is the only flag this subcommand takes; the exit code is the
+        // verdict.
+        let output = try await run(Invocation(arguments: ["selftest", "-quiet"], timeout: 60))
         return BumblebeeSelfTest.parse(
             output.stdout.isEmpty ? output.stderr : output.stdout,
             exitCode: output.exitCode,
@@ -128,7 +175,6 @@ struct BumblebeeRunner {
     func scan(
         kind: BumblebeeScanKind,
         paths: [String],
-        lockFile: String? = nil,
         now: Date = .now
     ) async throws -> BumblebeeScanResult {
         guard binary != nil else { throw RunError.notInstalled }
@@ -143,10 +189,9 @@ struct BumblebeeRunner {
         lock.acquire(kind)
         defer { lock.release() }
 
-        var arguments = ["scan", "--ndjson"]
-        if let lockFile { arguments += ["--lock-file", lockFile] }
-        if kind == .deep { arguments.append("--deep") }
-        arguments += paths
+        let arguments = Self.scanArguments(
+            kind: kind, paths: paths, catalogPath: catalogPath
+        )
 
         let started = now
         let output = try await run(Invocation(arguments: arguments, timeout: kind.timeout))
@@ -160,6 +205,7 @@ struct BumblebeeRunner {
             case .finding(let finding): findings.append(finding)
             case .diagnostic(let message): diagnostics.append(message)
             case .summary(let value): summary = value
+            case .package: break
             case .unknown(let line): unknown.append(line)
             }
         }

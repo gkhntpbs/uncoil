@@ -48,6 +48,26 @@ struct ExtensionAdoptionSheet: View {
                                 .foregroundStyle(color(change.kind))
                         }
                     }
+                    if !plan.agentCopies.isEmpty {
+                        Divider().overlay(Theme.border).padding(.vertical, 6)
+                        Text("Ortak kopyaya alınacak agent klasörleri")
+                            .font(Theme.mono(10, .semibold))
+                            .foregroundStyle(Theme.textFaint)
+                        ForEach(plan.agentCopies) { copy in
+                            HStack(spacing: 6) {
+                                TablerIcon(name: "link", size: 10, color: Theme.highlight)
+                                Text("\(copy.agent.displayName): \(copy.path)")
+                                    .font(Theme.mono(10))
+                                    .foregroundStyle(Theme.textDim)
+                                    .lineLimit(1)
+                                    .truncationMode(.head)
+                                Spacer()
+                            }
+                        }
+                        Text("Her klasör önce yedeklenir, sonra tek kopyaya symlink olur.")
+                            .font(Theme.mono(9.5))
+                            .foregroundStyle(Theme.textFaint)
+                    }
                     if !plan.findings.isEmpty {
                         Divider().overlay(Theme.border).padding(.vertical, 6)
                         ForEach(plan.findings) { finding in
@@ -66,8 +86,8 @@ struct ExtensionAdoptionSheet: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .uncoilScrollers()
             }
-            .uncoilScrollers()
             .accessibilityIdentifier("adoption.changes")
 
             Divider().overlay(Theme.border)

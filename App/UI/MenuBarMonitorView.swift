@@ -23,15 +23,19 @@ struct MenuBarMonitorLabel: View {
     let summary: MenuBarSummary
 
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: summary.symbolName)
-            if !summary.label.isEmpty {
-                Text(summary.label)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-            }
-        }
-        .accessibilityIdentifier("menuBar.label")
-        .accessibilityValue(summary.headline)
+        // The state lives in the logo itself — color while agents work, yellow
+        // while something waits on the user, plain when idle — so no counters
+        // or exclamation marks crowd the menu bar.
+        Image(summary.icon.rawValue)
+            .resizable()
+            .scaledToFit()
+            // The menu bar scales this label to its own height, so the frame is
+            // not what sets the icon's size: the inset baked into the artwork
+            // is (the `menu-bar-inset` group in the assets), which is what keeps
+            // the glyph lighter than the system symbols around it.
+            .frame(height: 18)
+            .accessibilityIdentifier("menuBar.label")
+            .accessibilityValue(summary.headline)
     }
 }
 

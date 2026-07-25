@@ -70,6 +70,16 @@ struct ExtensionSourceCapabilities: Equatable {
                 canManageFiles: false, isReadOnly: false, canAdopt: false,
                 canLinkToRepository: true, canHealthCheck: true, versionSource: .none
             )
+        case .adopted:
+            // The files are Uncoil's copies now: it may relink, quarantine or
+            // remove them. There is still nothing to update from — adopting
+            // takes over a copy, it does not invent a repository.
+            ExtensionSourceCapabilities(
+                canCheckForUpdates: false, canUpdate: false, canRollback: false,
+                canCompareCommits: false, canScan: true, canRun: true, canAssign: true,
+                canManageFiles: true, isReadOnly: false, canAdopt: false,
+                canLinkToRepository: true, canHealthCheck: true, versionSource: .none
+            )
         case .detectedExternal:
             // Uncoil did not install it, so it is shown and left alone until the
             // user adopts it.

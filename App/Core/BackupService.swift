@@ -312,7 +312,7 @@ struct BackupService {
                         name: package.name, detail: "\(repository) için commit kaydı yok"
                     ))
                 }
-            case .local(let path), .detectedExternal(let path):
+            case .local(let path), .adopted(let path), .detectedExternal(let path):
                 if !FileManager.default.fileExists(atPath: path) {
                     problems.append(
                         .manualExtensionFilesMissing(name: package.name, path: path)

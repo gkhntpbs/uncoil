@@ -87,12 +87,20 @@ struct MenuBarSummary: Equatable {
     }
 
     /// SF Symbol for the menu-bar icon; escalates with urgency.
-    var symbolName: String {
-        if hasProblem { return "exclamationmark.triangle.fill" }
-        if waitingPermission > 0 { return "lock.circle.fill" }
-        if waitingInput > 0 { return "questionmark.circle.fill" }
-        if running > 0 { return "bolt.horizontal.circle.fill" }
-        return "circle.dotted"
+    /// Which of the three menu-bar logos to show. One glance, three answers:
+    /// yellow = something waits on the user (input, permission, or a problem),
+    /// color = agents are working, plain = nothing is happening.
+    enum Icon: String, Equatable {
+        /// Template asset: the system renders it white on a dark menu bar.
+        case idle = "MenuBarIconTemplate"
+        case working = "MenuBarIconColor"
+        case waiting = "MenuBarIconWaiting"
+    }
+
+    var icon: Icon {
+        if waitingPermission > 0 || waitingInput > 0 || hasProblem { return .waiting }
+        if running > 0 { return .working }
+        return .idle
     }
 }
 

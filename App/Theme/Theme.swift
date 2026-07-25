@@ -18,13 +18,31 @@ enum Theme {
     static var textDim: Color { Color(hex: p.textDim) }
     static var textFaint: Color { Color(hex: p.textFaint) }
 
-    // Accents
+    // Brand — the product's own mark, the one colour that does not change with
+    // the theme.
+    static var brand: Color { Color(hex: p.brand) }
+
+    // Highlight: the interactive accent, in the states a control moves through.
+    static var highlight: Color { Color(hex: p.highlight) }
+    static var highlightHover: Color { Color(hex: p.highlightHover) }
+    static var highlightActive: Color { Color(hex: p.highlightActive) }
+    /// Filled surface drawn from the highlight — a selected row, a chip.
+    static var highlightMuted: Color { Color(hex: p.highlightMuted) }
+    static var highlightBorder: Color { Color(hex: p.highlightBorder) }
+    /// Text that sits on top of a highlight fill.
+    static var textOnHighlight: Color { Color(hex: p.textOnHighlight) }
+
+    // Agent marks
     static var claude: Color { Color(hex: p.claude) }
     static var codex: Color { Color(hex: p.codex) }
     static let terminal = Color(hex: 0x8A8A93)
-    static let ok = Color(hex: 0x4CAF7A)
-    static let warn = Color(hex: 0xD9A63F)
-    static let danger = Color(hex: 0xD95757)
+
+    // Meanings. Read from the palette rather than fixed: the green that reads on
+    // black is unreadable on white.
+    static var ok: Color { Color(hex: p.ok) }
+    static var warn: Color { Color(hex: p.warn) }
+    static var danger: Color { Color(hex: p.danger) }
+    static var info: Color { Color(hex: p.info) }
 
     // Status surfaces — the same four meanings as fills rather than as text.
     //
@@ -32,6 +50,7 @@ enum Theme {
     // full-strength fill shouts. These are the accent at low opacity, so a badge
     // reads as a surface while the text on it stays the accent itself.
     static var statusSurface: Color { textDim.opacity(0.12) }
+    static var infoSurface: Color { info.opacity(0.14) }
     static var successSurface: Color { ok.opacity(0.14) }
     static var warnSurface: Color { warn.opacity(0.16) }
     static var dangerSurface: Color { danger.opacity(0.16) }
@@ -59,8 +78,14 @@ extension Color {
 }
 
 /// Rounded panel with hairline border — the app's basic building block.
+///
+/// `Theme`'s colours are static reads of a global, which SwiftUI cannot track as
+/// a dependency: without observing the store, a panel keeps the surface it was
+/// first drawn with and a theme switch leaves it stranded in the old palette.
 struct PanelStyle: ViewModifier {
     var radius: CGFloat = 10
+
+    @ObservedObject private var theme = ThemeStore.shared
 
     func body(content: Content) -> some View {
         content

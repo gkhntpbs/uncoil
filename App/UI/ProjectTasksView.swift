@@ -14,9 +14,11 @@ struct ProjectTasksView: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
-    @StateObject private var sources: TodoSourceStore
-    @StateObject private var metadata: ProjectTaskMetadataStore
-    @StateObject private var results: TaskResultStore
+    // Observed rather than owned: the stores outlive this view so returning to
+    // the Tasks screen shows the last scan instead of re-reading every file.
+    @ObservedObject private var sources: TodoSourceStore
+    @ObservedObject private var metadata: ProjectTaskMetadataStore
+    @ObservedObject private var results: TaskResultStore
     @State private var watcher: TodoSourceWatcher?
     @State private var message: String?
     @State private var conflictTaskIDs: Set<String> = []
@@ -32,6 +34,11 @@ struct ProjectTasksView: View {
     @State private var orchestratorPlan: OrchestratorPlan?
     /// Task whose merge screen is open. Merging never happens without it.
     @State private var mergeTarget: ProjectTask?
+    /// Task whose quick-commit sheet is open, and the repo it commits into.
+    @State private var commitTarget: (task: ProjectTask, repoRoot: String)?
+    @State private var isCreatingTask = false
+    /// Board column a card is currently hovering over.
+    @State private var targetedColumn: String?
     /// Diffs of the patches this screen wrote, newest per task, so "Show Diff"
     /// shows what actually changed rather than a list of touched files.
     @State private var writtenDiffs: [String: String] = [:]
@@ -43,11 +50,11 @@ struct ProjectTasksView: View {
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
         _selection = selection
-        _sources = StateObject(wrappedValue: TodoSourceStore(
+        _sources = ObservedObject(wrappedValue: ProjectTaskStores.sources(
             projectID: project.id, projectRoot: project.rootPath
         ))
-        _metadata = StateObject(wrappedValue: ProjectTaskMetadataStore(projectID: project.id))
-        _results = StateObject(wrappedValue: TaskResultStore(projectID: project.id))
+        _metadata = ObservedObject(wrappedValue: ProjectTaskStores.metadata(projectID: project.id))
+        _results = ObservedObject(wrappedValue: ProjectTaskStores.results(projectID: project.id))
     }
 
     private var preferences: ProjectTaskViewPreferences { metadata.preferences }
@@ -72,7 +79,21 @@ struct ProjectTasksView: View {
                 banner(message)
             }
             if sources.sources.isEmpty {
-                emptyState
+                // Before the first scan finishes there is nothing to say yet;
+                // "bulunamadı" belongs only to a scan that actually came back empty.
+                if !sources.hasLoadedOnce {
+                    // The shape of what is coming — a list of tasks — instead of
+                    // a spinner that says only that something is happening.
+                    VStack(alignment: .leading, spacing: 14) {
+                        SkeletonBlock(width: 180, height: 13)
+                        SkeletonListRows(count: 5)
+                    }
+                    .padding(16)
+                    .panel()
+                    .accessibilityIdentifier("tasks.loading")
+                } else {
+                    emptyState
+                }
             } else {
                 switch preferences.mode {
                 case .document: documentView
@@ -85,27 +106,35 @@ struct ProjectTasksView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tasks.container")
         .task(id: project.id) {
-            await Task.yield()
-            refresh()
+            // The store survives this view, so a return does not have to rescan:
+            // the watcher reports real edits, and a stale scan is only rebuilt
+            // once the freshness window has passed.
+            if ProjectPageFreshness.needsRefresh(loadedAt: sources.lastRefreshAt) {
+                await refreshNow()
+            }
             let watcher = TodoSourceWatcher { refresh() }
             watcher.start(paths: sources.sources.map(\.path) + [project.rootPath])
             self.watcher = watcher
         }
         .onDisappear { watcher?.stop() }
-        .alert(
-            "Orchestrator planı",
+        .sheet(
             isPresented: Binding(
                 get: { orchestratorPlan != nil },
                 set: { if !$0 { orchestratorPlan = nil } }
             )
         ) {
-            Button("Kapat", role: .cancel) { orchestratorPlan = nil }
-        } message: {
-            Text(
-                orchestratorPlan?.isEmpty == true
-                    ? "Planlanacak açık görev yok."
-                    : orchestratorPlan?.summary() ?? ""
-            )
+            if let plan = orchestratorPlan {
+                TaskOrchestratorSheet(
+                    plan: plan,
+                    tasks: visibleTasks.filter { !$0.isDone },
+                    onStart: { tasks, provider, launch, autoStart in
+                        orchestratorPlan = nil
+                        startPlanned(tasks, provider: provider, launch: launch, autoStart: autoStart)
+                    },
+                    onCancel: { orchestratorPlan = nil }
+                )
+                .environmentObject(settings)
+            }
         }
         .sheet(
             isPresented: Binding(
@@ -157,6 +186,34 @@ struct ProjectTasksView: View {
                 )
             }
         }
+        .sheet(isPresented: $isCreatingTask) {
+            TaskCreateSheet(
+                documents: selectedDocuments,
+                onCreate: { document, headingPath, text in
+                    isCreatingTask = false
+                    createTask(text, under: headingPath, in: document)
+                },
+                onCancel: { isCreatingTask = false }
+            )
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { commitTarget != nil },
+                set: { if !$0 { commitTarget = nil } }
+            )
+        ) {
+            if let target = commitTarget {
+                TaskCommitSheet(
+                    task: target.task,
+                    repoRoot: target.repoRoot,
+                    onDone: { note in
+                        commitTarget = nil
+                        message = note
+                    },
+                    onCancel: { commitTarget = nil }
+                )
+            }
+        }
         .sheet(
             isPresented: Binding(
                 get: { dispatchTarget != nil },
@@ -190,7 +247,7 @@ struct ProjectTasksView: View {
                     get: { preferences.mode },
                     set: { metadata.preferences.mode = $0; metadata.savePreferences() }
                 )) {
-                    ForEach(ProjectTaskViewPreferences.Mode.allCases) { mode in
+                    ForEach(ProjectTaskViewPreferences.Mode.displayOrder) { mode in
                         Text(mode.title).tag(mode)
                     }
                 }
@@ -230,17 +287,32 @@ struct ProjectTasksView: View {
                     .foregroundStyle(Theme.textDim)
 
                 Button {
-                    previewOrchestratorPlan()
+                    isCreatingTask = true
                 } label: {
                     HStack(spacing: 5) {
-                        TablerIcon(name: "sitemap", size: 12, color: Theme.codex)
-                        Text("Run Orchestrator")
+                        TablerIcon(name: "plus", size: 12, color: Theme.text)
+                        Text("Yeni görev")
                             .font(Theme.mono(10.5, .medium))
-                            .foregroundStyle(Theme.codex)
+                            .foregroundStyle(Theme.text)
                     }
                 }
                 .buttonStyle(.plain)
-                .help("Açık görevler için dispatch planı hazırla")
+                .disabled(selectedDocuments.isEmpty)
+                .help("TODO dosyasına yeni bir görev satırı ekle")
+                .accessibilityIdentifier("tasks.newTask")
+
+                Button {
+                    previewOrchestratorPlan()
+                } label: {
+                    HStack(spacing: 5) {
+                        TablerIcon(name: "sitemap", size: 12, color: Theme.highlight)
+                        Text("Görevleri başlat…")
+                            .font(Theme.mono(10.5, .medium))
+                            .foregroundStyle(Theme.highlight)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Açık görevleri seç, agent'ını seç ve topluca başlat")
                 .accessibilityIdentifier("tasks.runOrchestrator")
 
                 Button {
@@ -339,7 +411,7 @@ struct ProjectTasksView: View {
             }
             .buttonStyle(.plain)
             .font(Theme.mono(9.5, .semibold))
-            .foregroundStyle(Theme.codex)
+            .foregroundStyle(Theme.highlight)
             .accessibilityIdentifier("tasks.conflict.open")
             Spacer()
         }
@@ -360,7 +432,7 @@ struct ProjectTasksView: View {
 
     private func banner(_ text: String) -> some View {
         HStack(spacing: 8) {
-            TablerIcon(name: "info-circle", size: 12, color: Theme.codex)
+            TablerIcon(name: "info-circle", size: 12, color: Theme.highlight)
             Text(text)
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textDim)
@@ -499,7 +571,7 @@ struct ProjectTasksView: View {
                 if state != .unassigned {
                     StatusBadge(
                         text: state.label,
-                        level: state.needsAttention ? .warning : .accent(Theme.codex)
+                        level: state.needsAttention ? .warning : .accent(Theme.highlight)
                     )
                 }
 
@@ -603,7 +675,7 @@ struct ProjectTasksView: View {
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
                                 .background(
-                                    isOn ? Theme.codex : Theme.panel,
+                                    isOn ? Theme.highlight : Theme.panel,
                                     in: Capsule()
                                 )
                         }
@@ -638,7 +710,7 @@ struct ProjectTasksView: View {
                     if state != .unassigned {
                         Text(state.label)
                             .font(Theme.mono(9, .semibold))
-                            .foregroundStyle(state.needsAttention ? Theme.warn : Theme.codex)
+                            .foregroundStyle(state.needsAttention ? Theme.warn : Theme.highlight)
                     }
                     if assignments.contains(where: \.needsRelinking) {
                         Text("Needs relinking")
@@ -654,9 +726,31 @@ struct ProjectTasksView: View {
                 } label: {
                     Text(assignment.role.label)
                         .font(Theme.mono(9))
-                        .foregroundStyle(Theme.codex)
+                        .foregroundStyle(Theme.highlight)
                 }
                 .buttonStyle(.plain)
+            }
+            // Starting a task must not require finding the context menu: the
+            // play button says which agent it will use before it is clicked.
+            if !task.isDone, assignments.isEmpty {
+                Menu {
+                    ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
+                        Button("\(provider.displayName) ile başlat") {
+                            sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
+                        }
+                    }
+                    Button("Ayrıntılı gönder…") { dispatchTarget = (task, documentFor(task)) }
+                } label: {
+                    HStack(spacing: 4) {
+                        TablerIcon(name: "player-play", size: 10, color: Theme.highlight)
+                        Text("Başlat")
+                            .font(Theme.mono(9.5, .medium))
+                            .foregroundStyle(Theme.highlight)
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityIdentifier("tasks.row.start.\(task.id)")
             }
         }
         .padding(.horizontal, 12)
@@ -743,8 +837,24 @@ struct ProjectTasksView: View {
         .frame(width: 240, alignment: .topLeading)
         .padding(10)
         .panel()
-        .onDrop(of: [.text], isTargeted: nil) { providers in
-            handleDrop(providers, to: column, in: document)
+        // Which column is about to take the card, before the write happens:
+        // the drop used to be silent until the file had already changed.
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(
+                    targetedColumn == column.heading ? Theme.highlight : .clear,
+                    lineWidth: 1.5
+                )
+        )
+        .onDrop(
+            of: [.text],
+            isTargeted: Binding(
+                get: { targetedColumn == column.heading },
+                set: { targetedColumn = $0 ? column.heading : nil }
+            )
+        ) { providers in
+            targetedColumn = nil
+            return handleDrop(providers, to: column, in: document)
         }
         .accessibilityIdentifier("tasks.column.\(column.heading)")
     }
@@ -784,12 +894,12 @@ struct ProjectTasksView: View {
                 if state != .unassigned {
                     Text(state.label)
                         .font(Theme.mono(9, .semibold))
-                        .foregroundStyle(state.needsAttention ? Theme.warn : Theme.codex)
+                        .foregroundStyle(state.needsAttention ? Theme.warn : Theme.highlight)
                 }
                 if !assignments.isEmpty {
                     Text("\(assignments.count) session")
                         .font(Theme.mono(9))
-                        .foregroundStyle(Theme.codex)
+                        .foregroundStyle(Theme.highlight)
                 }
                 if gitTouched(task) {
                     TablerIcon(name: "git-commit", size: 9, color: Theme.warn)
@@ -884,7 +994,7 @@ struct ProjectTasksView: View {
                         HStack(spacing: 8) {
                             Text(assignment.role.label)
                                 .font(Theme.mono(9.5, .semibold))
-                                .foregroundStyle(Theme.codex)
+                                .foregroundStyle(Theme.highlight)
                                 .frame(width: 70, alignment: .leading)
                             Text(taskText(assignment))
                                 .font(Theme.mono(10.5))
@@ -925,8 +1035,16 @@ struct ProjectTasksView: View {
     @ViewBuilder
     private func cardActions(_ task: ProjectTask, in document: TaskDocument) -> some View {
         Button("Send to Agent…") { dispatchTarget = (task, document) }
-        Button("Send to Agent (hızlı)") { sendToAgent(task, role: .implementer, reuseSession: true) }
-        Button("Create New Session") { sendToAgent(task, role: .implementer, reuseSession: false) }
+        Button("\(settings.defaultProvider.displayName) ile başlat (hızlı)") {
+            sendToAgent(task, role: .implementer, reuseSession: true)
+        }
+        Menu("Yeni oturumda başlat") {
+            ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
+                Button(provider.displayName) {
+                    sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
+                }
+            }
+        }
         Menu("Assign Existing Session") {
             let candidates = projectStore.sessions(for: project.id)
             if candidates.isEmpty {
@@ -987,6 +1105,11 @@ struct ProjectTasksView: View {
         if assignments.contains(where: { $0.worktreePath != nil }) {
             Button("Merge…") { mergeTarget = task }
         }
+        Button("Commit / PR…") {
+            let root = metadata.assignments(for: task.id)
+                .compactMap(\.worktreePath).first ?? project.rootPath
+            commitTarget = (task, root)
+        }
 
         Divider()
 
@@ -1011,18 +1134,34 @@ struct ProjectTasksView: View {
         task: ProjectTask,
         document: TaskDocument
     ) {
-        var worktreePath = request.worktreePath
-        if request.createsWorktree, worktreePath == nil {
-            let name = request.worktreeName ?? TaskPromptBuilder.worktreeName(for: task)
-            switch GitService.createWorktree(repoPath: project.rootPath, name: name) {
-            case .success(let worktree):
-                worktreePath = worktree.path
-            case .failure(let error):
-                message = "Worktree oluşturulamadı: \(error.message)"
-                return
+        // `git worktree add` is a blocking shell-out; run it off the main thread
+        // so the click never freezes the window, then finish on the main actor.
+        let repoPath = project.rootPath
+        Task {
+            var worktreePath = request.worktreePath
+            if request.createsWorktree, worktreePath == nil {
+                let name = request.worktreeName ?? TaskPromptBuilder.worktreeName(for: task)
+                let result = await Task.detached(priority: .userInitiated) {
+                    GitService.createWorktree(repoPath: repoPath, name: name)
+                }.value
+                switch result {
+                case .success(let worktree):
+                    worktreePath = worktree.path
+                case .failure(let error):
+                    message = "Worktree oluşturulamadı: \(error.message)"
+                    return
+                }
             }
+            finishDispatch(request, task: task, document: document, worktreePath: worktreePath)
         }
+    }
 
+    private func finishDispatch(
+        _ request: TaskDispatchRequest,
+        task: ProjectTask,
+        document: TaskDocument,
+        worktreePath: String?
+    ) {
         let record: SessionRecord
         if let sessionID = request.existingSessionID,
            let existing = projectStore.sessions.first(where: { $0.id == sessionID }) {
@@ -1033,7 +1172,12 @@ struct ProjectTasksView: View {
                 provider: request.provider,
                 accountID: request.accountID,
                 title: "\(request.provider.rawValue): \(task.text)",
-                worktreePath: worktreePath
+                worktreePath: worktreePath,
+                launchSelection: AgentLaunchSelection(
+                    model: request.model,
+                    effort: request.effort,
+                    workingMode: request.workingMode
+                )
             )
         }
 
@@ -1067,7 +1211,10 @@ struct ProjectTasksView: View {
             worktreePath: worktreePath ?? record.worktreePath,
             permissionProfile: request.permissionProfile
         ))
-        deliver(prompt: prompt, to: record)
+        deliver(prompt: prompt, to: record, autoStart: request.autoStart)
+        if !request.autoStart {
+            message = "Prompt yazıldı; başlatmak için oturumda Enter'a bas."
+        }
     }
 
     private func sessionLabel(_ assignment: TaskSessionAssignment) -> String {
@@ -1079,8 +1226,36 @@ struct ProjectTasksView: View {
     /// Starts (or reuses) a session and hands it the task as a prompt. The task
     /// text and its heading chain are all the agent is told — Uncoil writes
     /// nothing of its own into the file.
-    private func sendToAgent(_ task: ProjectTask, role: TaskAgentRole, reuseSession: Bool) {
-        let provider = settings.defaultProvider
+    /// Starts every selected task on its own session with the chosen provider.
+    /// Selection stays put — jumping to the last of ten sessions helps nobody —
+    /// and the message says exactly what was started where.
+    private func startPlanned(
+        _ tasks: [ProjectTask],
+        provider: AgentProvider,
+        launch: AgentLaunchSelection = .providerDefault,
+        autoStart: Bool = true
+    ) {
+        guard !tasks.isEmpty else { return }
+        for task in tasks {
+            sendToAgent(task, role: .implementer, reuseSession: false,
+                        provider: provider, switchToSession: false,
+                        launch: launch, autoStart: autoStart)
+        }
+        message = autoStart
+            ? "\(tasks.count) görev \(provider.displayName) oturumlarına gönderildi."
+            : "\(tasks.count) oturum açıldı; prompt'lar yazıldı, başlatmak sende."
+    }
+
+    private func sendToAgent(
+        _ task: ProjectTask,
+        role: TaskAgentRole,
+        reuseSession: Bool,
+        provider overrideProvider: AgentProvider? = nil,
+        switchToSession: Bool = true,
+        launch: AgentLaunchSelection = .providerDefault,
+        autoStart: Bool = true
+    ) {
+        let provider = overrideProvider ?? settings.defaultProvider
         let existing = reuseSession
             ? projectStore.sessions(for: project.id).first(where: {
                 $0.provider == provider && sessionStore.status(of: $0.id) != .terminated
@@ -1090,7 +1265,8 @@ struct ProjectTasksView: View {
             projectID: project.id,
             provider: provider,
             accountID: settings.defaultAccount(for: provider)?.id,
-            title: "\(provider.rawValue): \(task.text)"
+            title: "\(provider.rawValue): \(task.text)",
+            launchSelection: launch
         )
         metadata.assign(
             taskID: task.id, sourcePath: task.sourcePath, sessionID: record.id,
@@ -1100,8 +1276,12 @@ struct ProjectTasksView: View {
             .first(where: { $0.sessionID == record.id && $0.role == role }) {
             metadata.setState(.agentStarting, assignmentID: assignment.id)
         }
-        selection = .session(record.id)
-        deliver(prompt: prompt(for: task, role: role), to: record)
+        if switchToSession { selection = .session(record.id) }
+        // Which agent took the task is the first thing the user asks; say it
+        // instead of leaving a silent screen switch.
+        let launchNote = launch.summary.map { " · \($0)" } ?? ""
+        message = "\(task.text.prefix(60)) → \(provider.displayName) (\(record.displayTitle))\(launchNote)"
+        deliver(prompt: prompt(for: task, role: role), to: record, autoStart: autoStart)
     }
 
     private func reviewOrTest(
@@ -1154,7 +1334,7 @@ struct ProjectTasksView: View {
         }
     }
 
-    private func deliver(prompt: String, to record: SessionRecord) {
+    private func deliver(prompt: String, to record: SessionRecord, autoStart: Bool = true) {
         guard let project = projectStore.projects.first(where: { $0.id == record.projectID }) else {
             return
         }
@@ -1171,7 +1351,11 @@ struct ProjectTasksView: View {
             while Date() < deadline, sessionStore.status(of: sid) == .terminated {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
-            await TerminalRegistry.shared.submitText(prompt, for: sid, provider: provider)
+            if autoStart {
+                await TerminalRegistry.shared.submitText(prompt, for: sid, provider: provider)
+            } else {
+                await TerminalRegistry.shared.typeText(prompt, for: sid, provider: provider)
+            }
         }
     }
 
@@ -1232,9 +1416,15 @@ struct ProjectTasksView: View {
         orchestratorPlan = plan
     }
 
+    /// Fire-and-forget wrapper for the places that cannot await (watcher
+    /// callbacks, button actions). The scan itself runs off the main thread.
     private func refresh() {
+        Task { await refreshNow() }
+    }
+
+    private func refreshNow() async {
         let tracked = metadata.trackedFingerprints(in: sources.allTasks)
-        sources.refresh(trackedFingerprints: tracked)
+        await sources.refreshAsync(trackedFingerprints: tracked)
         metadata.markNeedsRelinking(assignmentIDs: sources.needsRelinking)
         watcher?.watch(paths: sources.sources.map(\.path) + [project.rootPath])
         let path = project.rootPath
@@ -1270,8 +1460,7 @@ struct ProjectTasksView: View {
             }
         }
         guard !resolved.isEmpty else { return }
-        sources.refresh(trackedFingerprints: metadata.trackedFingerprints(in: sources.allTasks))
-        metadata.markNeedsRelinking(assignmentIDs: sources.needsRelinking)
+        refresh()
         let names = resolved.map { URL(fileURLWithPath: $0).lastPathComponent }
         message = "Conflict çözüldü: \(names.joined(separator: ", ")) yeniden okundu."
     }
@@ -1328,6 +1517,44 @@ struct ProjectTasksView: View {
             }
         }
         return true
+    }
+
+    /// Appends a task line through the same byte-range patch path as every
+    /// other edit; when the file changed underneath, the insert is recomputed
+    /// against the current content instead of clobbering it.
+    private func createTask(_ text: String, under headingPath: [String], in document: TaskDocument) {
+        guard isEditable(document.path) else {
+            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict içeriyor; önce çözülmeli."
+            return
+        }
+        do {
+            let patch = try TodoEditor.insertTaskPatch(
+                text: text, under: headingPath, in: document
+            )
+            let outcome = try TodoEditor.write(
+                patches: [patch],
+                to: document.path,
+                expectedHash: document.contentHash,
+                rebuild: { current in
+                    try? [TodoEditor.insertTaskPatch(
+                        text: text, under: headingPath, in: current
+                    )]
+                },
+                backupDirectory: ProjectStore.defaultDirectory()
+                    .appendingPathComponent("todo-backups", isDirectory: true)
+            )
+            switch outcome {
+            case .written:
+                message = "Görev eklendi: \(text.prefix(60))"
+            case .recomputed:
+                message = "Dosya dışarıdan değişmişti; görev güncel içeriğe eklendi."
+            case .conflict(let detail):
+                message = "Görev eklenemedi: \(detail)"
+            }
+        } catch {
+            message = error.localizedDescription
+        }
+        refresh()
     }
 
     /// Single write path: patches go through `TodoEditor`, a stale file is

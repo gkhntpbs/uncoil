@@ -55,11 +55,50 @@ enum TodoDiscovery {
         var id: String { path }
     }
 
+    /// Cheap on-disk fingerprint of a file: enough to decide "nothing happened
+    /// here" without opening and reparsing it.
+    struct FileStamp: Equatable, Sendable {
+        var modified: TimeInterval
+        var size: Int64
+    }
+
+    /// One source served by a scan, plus how it was obtained.
+    struct LoadedSource: Equatable {
+        var source: ProjectTaskSource
+        var document: TaskDocument
+    }
+
+    /// What a previous scan already knows about a path, so an unchanged file is
+    /// never read again.
+    struct CachedSource {
+        var stamp: FileStamp
+        var source: ProjectTaskSource
+        var document: TaskDocument
+
+        init(stamp: FileStamp, source: ProjectTaskSource, document: TaskDocument) {
+            self.stamp = stamp
+            self.source = source
+            self.document = document
+        }
+    }
+
+    struct ScanResult {
+        var entries: [LoadedSource]
+        var stamps: [String: FileStamp]
+        /// Paths answered from the cache — not read or parsed this time.
+        var reusedPaths: Set<String>
+
+        var loaded: [(source: ProjectTaskSource, document: TaskDocument)] {
+            entries.map { ($0.source, $0.document) }
+        }
+    }
+
     /// Walks the project for task files. Blocking; call from a background task.
     static func find(
         projectRoot: String,
         rules: Rules = .default,
-        ignoredPaths: Set<String>? = nil
+        ignoredPaths: Set<String>? = nil,
+        firstMatchOnly: Bool = false
     ) -> [Found] {
         let manager = FileManager.default
         let root = URL(fileURLWithPath: projectRoot)
@@ -108,6 +147,9 @@ enum TodoDiscovery {
                     displayPath: relative,
                     isRoot: !relative.contains("/")
                 ))
+                // An existence check has its answer; walking the rest of the
+                // tree would cost the same as a full scan.
+                if firstMatchOnly { return found }
             }
         }
         // The project's own TODO first, then the rest alphabetically.
@@ -116,16 +158,61 @@ enum TodoDiscovery {
         }
     }
 
-    /// Reads each found file into a parsed document plus its source record.
-    static func load(
+    /// True when the project has at least one task source. Stops at the first
+    /// hit and never opens a file, so the UI can decide whether a Tasks tab is
+    /// worth showing without paying for a parse.
+    static func hasSources(projectRoot: String, rules: Rules = .default) -> Bool {
+        !find(projectRoot: projectRoot, rules: rules, firstMatchOnly: true).isEmpty
+    }
+
+    /// mtime and size of a path, or nil when it is gone.
+    static func stamp(atPath path: String) -> FileStamp? {
+        var info = stat()
+        guard stat(path, &info) == 0 else { return nil }
+        let modified = TimeInterval(info.st_mtimespec.tv_sec)
+            + TimeInterval(info.st_mtimespec.tv_nsec) / 1_000_000_000
+        return FileStamp(modified: modified, size: Int64(info.st_size))
+    }
+
+    /// Stamps every task source without reading any of them — the poll's "did
+    /// anything actually change?" question.
+    static func stamps(projectRoot: String, rules: Rules = .default) -> [String: FileStamp] {
+        var result: [String: FileStamp] = [:]
+        for entry in find(projectRoot: projectRoot, rules: rules) {
+            result[entry.path] = stamp(atPath: entry.path)
+        }
+        return result
+    }
+
+    /// Reads each found file into a parsed document plus its source record,
+    /// reusing anything in `cache` whose mtime and size are untouched.
+    ///
+    /// Blocking: walks the tree and parses Markdown, so it belongs off the main
+    /// actor.
+    static func scan(
         projectID: UUID,
         projectRoot: String,
         rules: Rules = .default,
-        now: Date = .now
-    ) -> [(source: ProjectTaskSource, document: TaskDocument)] {
-        find(projectRoot: projectRoot, rules: rules).compactMap { entry in
+        now: Date = .now,
+        cache: [String: CachedSource] = [:]
+    ) -> ScanResult {
+        var entries: [LoadedSource] = []
+        var stamps: [String: FileStamp] = [:]
+        var reused: Set<String> = []
+
+        for entry in find(projectRoot: projectRoot, rules: rules) {
+            let current = stamp(atPath: entry.path)
+            stamps[entry.path] = current
+            // An untouched file is by far the common case on a poll; re-reading
+            // and reparsing it is what made every tick cost a full scan.
+            if let current, let cached = cache[entry.path], cached.stamp == current {
+                reused.insert(entry.path)
+                entries.append(LoadedSource(source: cached.source, document: cached.document))
+                continue
+            }
             guard let raw = try? String(contentsOfFile: entry.path, encoding: .utf8) else {
-                return nil
+                stamps[entry.path] = nil
+                continue
             }
             let document = TodoParser.parse(raw, path: entry.path)
             let source = ProjectTaskSource(
@@ -137,8 +224,19 @@ enum TodoDiscovery {
                 taskCount: document.tasks.count,
                 openTaskCount: document.openTasks.count
             )
-            return (source, document)
+            entries.append(LoadedSource(source: source, document: document))
         }
+        return ScanResult(entries: entries, stamps: stamps, reusedPaths: reused)
+    }
+
+    /// Reads each found file into a parsed document plus its source record.
+    static func load(
+        projectID: UUID,
+        projectRoot: String,
+        rules: Rules = .default,
+        now: Date = .now
+    ) -> [(source: ProjectTaskSource, document: TaskDocument)] {
+        scan(projectID: projectID, projectRoot: projectRoot, rules: rules, now: now).loaded
     }
 
     /// Every task across every source, in source order — the aggregate view.

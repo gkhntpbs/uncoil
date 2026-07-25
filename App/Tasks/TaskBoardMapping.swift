@@ -222,6 +222,9 @@ struct ProjectTaskViewPreferences: Equatable, Codable {
             case .sessions: "Sessions"
             }
         }
+
+        /// Picker order: working views first, the raw document last.
+        static var displayOrder: [Mode] { [.list, .kanban, .sessions, .document] }
     }
 
     /// Whether the board reflects the file's headings (default) or a board Uncoil
@@ -231,7 +234,9 @@ struct ProjectTaskViewPreferences: Equatable, Codable {
         case virtual
     }
 
-    var mode: Mode = .document
+    // List is the default: it answers "what is open" at a glance. The document
+    // view is the raw file for whoever wants it, not the landing screen.
+    var mode: Mode = .list
     var boardMode: BoardMode = .fileBacked
     /// Selected source path, or nil for the aggregate view.
     var selectedSourcePath: String?

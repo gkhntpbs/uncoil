@@ -70,7 +70,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .testFailure, .runtime, .taskFailed: Theme.danger
         case .mergeConflict: Theme.warn
         case .authentication: Theme.warn
-        case .completed, .taskCompleted, .mergeReady: Theme.codex
+        case .completed, .taskCompleted, .mergeReady: Theme.highlight
         case .taskAssigned: Theme.textDim
         case .reviewRequested, .changesRequested, .taskBlocked, .relinkNeeded: Theme.warn
         }

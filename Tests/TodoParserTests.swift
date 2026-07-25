@@ -63,6 +63,41 @@ final class TodoParserTests: XCTestCase {
         XCTAssertGreaterThan(document.tasks.count, 500)
     }
 
+    /// The real file is the fixture that matters: every line that looks like a
+    /// checkbox outside a fence has to become a task. Counting independently of
+    /// the parse is what catches a construct being silently dropped.
+    func testNothingInThisProjectsOwnTodoFileIsSilentlyDropped() throws {
+        let url = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("TODO.md")
+        let raw = try XCTUnwrap(try? String(contentsOf: url, encoding: .utf8))
+        let document = parse(raw, path: url.path)
+
+        var insideFence = false
+        var expected: [String] = []
+        for line in raw.components(separatedBy: "\n") {
+            if TodoParser.fenceToken(line) != nil {
+                insideFence.toggle()
+                continue
+            }
+            guard !insideFence, let checkbox = TodoParser.checkboxComponents(line) else { continue }
+            expected.append(checkbox.text)
+        }
+        XCTAssertEqual(
+            document.tasks.map(\.text), expected,
+            "every checkbox line outside a fence has to reach the app"
+        )
+        XCTAssertFalse(
+            document.tasks.filter { $0.checkbox.listMarker.hasSuffix(".") }.isEmpty,
+            "the numbered list at the end of the file is real work, not prose"
+        )
+        XCTAssertTrue(
+            document.tasks.allSatisfy { !$0.headingPath.isEmpty },
+            "no task ends up outside the heading it was written under"
+        )
+    }
+
     func testBlocksCoverTheWholeFileWithoutOverlapping() {
         let raw = "# A\n\n- [ ] bir\n  devam\n\n## B\n\n- [x] iki\n"
         let document = parse(raw)
@@ -89,6 +124,84 @@ final class TodoParserTests: XCTestCase {
         XCTAssertEqual(document.tasks.map(\.checkbox.listMarker), ["-", "-", "-", "*", "+"])
         XCTAssertEqual(document.tasks.map(\.isDone), [false, true, true, false, true])
         XCTAssertEqual(document.tasks[2].checkbox.markerCharacter, "X")
+    }
+
+    func testOrderedListsAreTasksToo() {
+        let document = parse("""
+        1. [ ] birinci
+        2. [x] ikinci
+        10) [ ] onuncu
+        """)
+        XCTAssertEqual(document.tasks.map(\.text), ["birinci", "ikinci", "onuncu"])
+        XCTAssertEqual(document.tasks.map(\.checkbox.listMarker), ["1.", "2.", "10)"])
+        XCTAssertEqual(document.tasks.map(\.isDone), [false, true, false])
+    }
+
+    func testAnOrderedNumberWithoutADelimiterOrACheckboxIsNotATask() {
+        let document = parse("""
+        1 [ ] nokta yok
+        1. sadece numaralı madde
+        2026. yılında yapılacaklar
+        """)
+        XCTAssertTrue(document.tasks.isEmpty)
+    }
+
+    func testAlternateMarksAreRecognisedRatherThanDropped() {
+        let document = parse("""
+        - [-] iptal edildi
+        - [~] devam ediyor
+        - [/] devam ediyor iki
+        """)
+        XCTAssertEqual(document.tasks.count, 3)
+        XCTAssertEqual(document.tasks.map(\.checkbox.markerCharacter), ["-", "~", "/"])
+        XCTAssertEqual(
+            document.tasks.map(\.isDone), [true, false, false],
+            "iptal edilen iş bitmiştir; devam eden iş hâlâ açıktır"
+        )
+    }
+
+    func testTabIndentedAndDeeplyNestedTasksAreParsed() {
+        let document = parse("- [ ] kök\n\t- [ ] tab çocuk\n\t\t- [ ] tab torun\n        - [ ] sekiz boşluk\n")
+        XCTAssertEqual(document.tasks.count, 4)
+        XCTAssertEqual(document.tasks.map(\.depth), [0, 1, 2, 2])
+        XCTAssertEqual(document.tasks[1].parentID, document.tasks[0].id)
+        XCTAssertEqual(document.tasks[2].parentID, document.tasks[1].id)
+    }
+
+    func testTasksInsideABlockquoteAreStillTasks() {
+        let raw = "> - [ ] alıntı içinde\n> - [x] ikinci\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["alıntı içinde", "ikinci"])
+        XCTAssertEqual(document.tasks[0].checkbox.indent, "> ")
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    func testAQuotedParagraphDoesNotBecomeThePreviousTasksContinuation() {
+        // The blockquote marker adds no indent width on purpose.
+        let raw = "- [ ] görev\n\n> alıntı, göreve ait değil\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.count, 1)
+        XCTAssertFalse(document.tasks[0].rawBlock.contains("alıntı"))
+    }
+
+    func testCheckboxesRightUnderAHeadingWithNoBlankLine() {
+        let document = parse("## Başlık\n- [ ] hemen altında\n1. [ ] numaralı da\n")
+        XCTAssertEqual(document.tasks.count, 2)
+        XCTAssertTrue(document.tasks.allSatisfy { $0.headingPath == ["Başlık"] })
+    }
+
+    func testCRLFFileParsesAndRoundTrips() {
+        let raw = "# A\r\n\r\n- [ ] bir\r\n1. [ ] iki\r\n\t- [x] üç\r\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["bir", "iki", "üç"])
+        XCTAssertEqual(document.render(), raw)
+        let bytes = Array(raw.utf8)
+        for task in document.tasks {
+            let range = task.checkbox.markerRange
+            XCTAssertEqual(
+                String(decoding: bytes[range.startByte..<range.endByte], as: UTF8.self).count, 3
+            )
+        }
     }
 
     func testTogglingKeepsTheAuthorsCapitalisation() {
@@ -138,6 +251,22 @@ final class TodoParserTests: XCTestCase {
         XCTAssertEqual(document.tasks.map(\.text), ["gerçek görev"])
     }
 
+    func testAnIndentedFenceStillHidesItsContents() {
+        let raw = """
+        Örnek:
+
+          ```md
+          1. [ ] örnek
+          * [ ] örnek
+          ```
+
+        - [ ] gerçek görev
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["gerçek görev"])
+        XCTAssertEqual(document.render(), raw)
+    }
+
     // MARK: - Headings and ordering
 
     func testHeadingChainIsRecorded() {
@@ -171,6 +300,41 @@ final class TodoParserTests: XCTestCase {
         - [ ] b1
         """)
         XCTAssertEqual(document.tasks.map(\.orderUnderHeading), [0, 1, 0])
+    }
+
+    func testSetextHeadingsGiveTheirTasksAHeadingPath() {
+        let raw = """
+        Üst başlık
+        ==========
+
+        - [ ] bir
+
+        Alt başlık
+        ----------
+
+        - [ ] iki
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.headings.map(\.level), [1, 2])
+        XCTAssertEqual(document.tasks[0].headingPath, ["Üst başlık"])
+        XCTAssertEqual(document.tasks[1].headingPath, ["Üst başlık", "Alt başlık"])
+        XCTAssertEqual(document.render(), raw, "the underline is part of the heading block")
+    }
+
+    func testAThematicBreakStaysAThematicBreak() {
+        // The `---` in this project's own TODO.md separates sections; reading it
+        // as a heading would rewrite the whole heading tree.
+        let document = parse("# A\n\nParagraf.\n\n---\n\n- [ ] görev\n")
+        XCTAssertEqual(document.headings.map(\.text), ["A"])
+        XCTAssertEqual(document.tasks[0].headingPath, ["A"])
+    }
+
+    func testFrontmatterIsPassthroughAndNotAHeading() {
+        let raw = "---\ntitle: Yapılacaklar\n---\n\n# A\n\n- [ ] görev\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.headings.map(\.text), ["A"])
+        XCTAssertEqual(document.tasks.count, 1)
+        XCTAssertEqual(document.render(), raw)
     }
 
     func testHashtagIsNotAHeading() {

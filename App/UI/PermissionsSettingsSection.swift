@@ -203,7 +203,7 @@ struct PermissionsSettingsSection: View {
                 ProviderMark(provider: session.provider, size: 12)
                     .frame(width: 18, height: 18)
                     .background(
-                        (isSelected ? Theme.codex : Theme.panelHover).opacity(0.14),
+                        (isSelected ? Theme.highlight : Theme.panelHover).opacity(0.14),
                         in: RoundedRectangle(cornerRadius: 5)
                     )
                 VStack(alignment: .leading, spacing: 2) {
@@ -226,18 +226,18 @@ struct PermissionsSettingsSection: View {
                 }
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(isSelected ? Theme.codex : Theme.textFaint)
+                    .foregroundStyle(isSelected ? Theme.highlight : Theme.textFaint)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .background(
-                isSelected ? Theme.codex.opacity(0.09) : Theme.panel.opacity(0.65),
+                isSelected ? Theme.highlight.opacity(0.09) : Theme.panel.opacity(0.65),
                 in: RoundedRectangle(cornerRadius: 8)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(
-                        isSelected ? Theme.codex.opacity(0.45) : Theme.border,
+                        isSelected ? Theme.highlight.opacity(0.45) : Theme.border,
                         lineWidth: 1
                     )
             )

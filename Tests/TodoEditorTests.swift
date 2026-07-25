@@ -53,6 +53,35 @@ final class TodoEditorTests: XCTestCase {
         XCTAssertEqual(reset, "- [x] bitmiş\n")
     }
 
+    /// Every list style the parser accepts has to be patchable by byte range —
+    /// an off-by-one here corrupts the user's file rather than failing loudly.
+    func testTogglingEveryListStyleTouchesOnlyThatLine() throws {
+        let cases: [(raw: String, expected: String)] = [
+            ("* [ ] yıldız\n* [ ] ikinci\n", "* [x] yıldız\n* [ ] ikinci\n"),
+            ("+ [ ] artı\n+ [ ] ikinci\n", "+ [x] artı\n+ [ ] ikinci\n"),
+            ("1. [ ] bir\n2. [ ] iki\n", "1. [x] bir\n2. [ ] iki\n"),
+            ("10) [ ] on\n11) [ ] on bir\n", "10) [x] on\n11) [ ] on bir\n"),
+            ("\t- [ ] tab\n\t- [ ] tab iki\n", "\t- [x] tab\n\t- [ ] tab iki\n"),
+            ("> - [ ] alıntı\n> - [ ] alıntı iki\n", "> - [x] alıntı\n> - [ ] alıntı iki\n"),
+            ("- [~] devam\n- [ ] ikinci\n", "- [x] devam\n- [ ] ikinci\n"),
+            ("- [-] iptal\n- [ ] ikinci\n", "- [ ] iptal\n- [ ] ikinci\n"),
+        ]
+        for (raw, expected) in cases {
+            let (_, document) = try file(raw)
+            let task = try XCTUnwrap(document.tasks.first)
+            let patch = TodoEditor.togglePatch(for: task)
+            XCTAssertEqual(patch.range.byteCount, 3, raw.debugDescription)
+            XCTAssertEqual(try TodoEditor.apply([patch], to: raw), expected, raw.debugDescription)
+        }
+    }
+
+    func testRenamingAnOrderedTaskLeavesItsNumberAlone() throws {
+        let raw = "1. [ ] eski metin\n2. [ ] sonraki\n"
+        let (_, document) = try file(raw)
+        let patch = try XCTUnwrap(TodoEditor.renamePatch(for: document.tasks[0], to: "yeni metin"))
+        XCTAssertEqual(try TodoEditor.apply([patch], to: raw), "1. [ ] yeni metin\n2. [ ] sonraki\n")
+    }
+
     func testTogglingANestedTaskLeavesTheParentAlone() throws {
         let raw = "- [ ] parent\n  - [ ] child\n- [ ] kardeş\n"
         let (_, document) = try file(raw)

@@ -85,36 +85,46 @@ enum AttentionNotifier {
         NSClassFromString("XCTestCase") != nil
     }
 
+    /// Posts a session-attention banner.
+    ///
+    /// It does not ask for permission: macOS shows that prompt exactly once, and
+    /// asking for it here meant it appeared at whatever moment an agent finished
+    /// — or, if it had already been dismissed, never again, with every later
+    /// notification dropped silently. Permission is asked for at launch and from
+    /// Settings; an unauthorised post is simply discarded by the system, and
+    /// Settings is where the user finds out why.
     static func post(
         title: String,
         body: String,
         projectID: UUID,
-        prefs: NotificationPrefs
+        prefs: NotificationPrefs,
+        sessionID: UUID? = nil
     ) {
         guard !isRunningTests else { return }
         guard prefs.isEnabled(project: projectID) else { return }
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = title
-            content.body = body
-            content.interruptionLevel = prefs.priority(project: projectID).interruptionLevel
-            switch prefs.sound(project: projectID) {
-            case "none":
-                break
-            case "default":
-                content.sound = .default
-            case let name:
-                content.sound = UNNotificationSound(
-                    named: UNNotificationSoundName("\(name).aiff")
-                )
-            }
-            center.add(UNNotificationRequest(
-                identifier: UUID().uuidString,
-                content: content,
-                trigger: nil
-            ))
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.interruptionLevel = prefs.priority(project: projectID).interruptionLevel
+        // Tapping the banner opens the session it is about; the delegate reads
+        // this the same way it does for permission banners.
+        if let sessionID {
+            content.userInfo = ["session_id": sessionID.uuidString]
         }
+        switch prefs.sound(project: projectID) {
+        case "none":
+            break
+        case "default":
+            content.sound = .default
+        case let name:
+            content.sound = UNNotificationSound(
+                named: UNNotificationSoundName("\(name).aiff")
+            )
+        }
+        UNUserNotificationCenter.current().add(UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        ))
     }
 }

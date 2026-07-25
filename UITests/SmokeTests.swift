@@ -169,6 +169,56 @@ final class SmokeTests: XCTestCase {
         XCTAssertEqual(terminateAll.value as? String, "selected")
     }
 
+    /// Switching multi-select on has to put a checkbox on every session row.
+    /// The rows are hosted inside an outline view, so they are built once and
+    /// keep what they were given: without an explicit rebuild the mode turned on
+    /// and nothing about the rows changed.
+    func testMultiSelectModePutsCheckboxesOnSessionRows() {
+        let toggle = app.descendants(matching: .any)["sidebar.multiSelectButton"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+
+        let checkbox = app.descendants(matching: .any)["sidebar.select.terminal"]
+        XCTAssertFalse(checkbox.exists, "The checkbox is there before the mode is on")
+
+        toggle.click()
+        XCTAssertTrue(
+            checkbox.waitForExistence(timeout: 5),
+            "Turning multi-select on left the session rows without their checkboxes"
+        )
+
+        toggle.click()
+        XCTAssertTrue(
+            checkbox.waitForNonExistence(timeout: 5),
+            "Turning multi-select off left the checkboxes behind"
+        )
+    }
+
+    /// Selecting a session moves the sidebar's highlight to it. The row that had
+    /// it has to give it up — it kept it while the rows were never rebuilt.
+    func testSelectingASessionMovesTheSidebarHighlight() {
+        let terminal = app.descendants(matching: .any)["sidebar.session.terminal"]
+        let claude = app.descendants(matching: .any)["sidebar.session.claude: demo görev"]
+        XCTAssertTrue(terminal.waitForExistence(timeout: 10))
+        XCTAssertTrue(claude.waitForExistence(timeout: 5))
+
+        terminal.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["session.splitGroup"].waitForExistence(timeout: 10),
+            "Clicking a sidebar session did not open it"
+        )
+        XCTAssertTrue(terminal.isSelected, "The clicked row is not marked as selected")
+
+        claude.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["session.splitGroup"].waitForExistence(timeout: 10)
+        )
+        XCTAssertTrue(claude.isSelected)
+        XCTAssertFalse(
+            terminal.isSelected,
+            "The row that lost the selection kept its highlight"
+        )
+    }
+
     func testNewWindowCommandRestoresClosedMainWindow() {
         let mainWindow = app.windows["Uncoil"]
         XCTAssertTrue(mainWindow.waitForExistence(timeout: 10))

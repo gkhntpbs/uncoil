@@ -182,7 +182,7 @@ struct AgentBehaviorSettingsSection: View {
                                 .font(.system(size: 13))
                                 .foregroundStyle(
                                     settings.sessionQuitBehavior == behavior
-                                        ? Theme.claude : Theme.textFaint
+                                        ? Theme.highlight : Theme.textFaint
                                 )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(behavior.title)
@@ -515,7 +515,7 @@ private struct HotkeyRecorder: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(recording ? Theme.claude : Theme.border, lineWidth: 1)
+                        .strokeBorder(recording ? Theme.highlight : Theme.border, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)

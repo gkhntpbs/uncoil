@@ -157,6 +157,69 @@ final class TodoDiscoveryTests: XCTestCase {
         XCTAssertEqual(Set(aggregate.map(\.sourcePath)).count, 2)
     }
 
+    // MARK: - Cheap checks and incremental scans
+
+    func testHasSourcesAnswersWithoutAFullWalk() throws {
+        XCTAssertFalse(TodoDiscovery.hasSources(projectRoot: root.path))
+        try write("docs/TODO.md")
+        XCTAssertTrue(TodoDiscovery.hasSources(projectRoot: root.path))
+        XCTAssertFalse(TodoDiscovery.hasSources(projectRoot: "/nope/does/not/exist"))
+    }
+
+    func testFirstMatchOnlyStopsAtTheFirstSource() throws {
+        try write("TODO.md")
+        try write("docs/TODO.md")
+        let found = TodoDiscovery.find(
+            projectRoot: root.path, ignoredPaths: [], firstMatchOnly: true
+        )
+        XCTAssertEqual(found.count, 1)
+    }
+
+    func testScanReusesCachedSourcesForUntouchedFiles() throws {
+        try write("TODO.md", "- [ ] bir\n")
+        let projectID = UUID()
+        let first = TodoDiscovery.scan(
+            projectID: projectID, projectRoot: root.path, now: Date(timeIntervalSince1970: 0)
+        )
+        XCTAssertTrue(first.reusedPaths.isEmpty)
+
+        var cache: [String: TodoDiscovery.CachedSource] = [:]
+        for entry in first.entries {
+            guard let stamp = first.stamps[entry.source.path] else { continue }
+            cache[entry.source.path] = TodoDiscovery.CachedSource(
+                stamp: stamp, source: entry.source, document: entry.document
+            )
+        }
+        let second = TodoDiscovery.scan(
+            projectID: projectID,
+            projectRoot: root.path,
+            now: Date(timeIntervalSince1970: 100),
+            cache: cache
+        )
+        XCTAssertEqual(second.reusedPaths, Set(cache.keys))
+        // Reused means never re-read: the read timestamp is the original one.
+        XCTAssertEqual(second.entries.first?.source.lastReadAt, Date(timeIntervalSince1970: 0))
+    }
+
+    func testScanRereadsAFileWhoseStampMoved() throws {
+        try write("TODO.md", "- [ ] bir\n")
+        let projectID = UUID()
+        let first = TodoDiscovery.scan(projectID: projectID, projectRoot: root.path)
+        var cache: [String: TodoDiscovery.CachedSource] = [:]
+        for entry in first.entries {
+            guard let stamp = first.stamps[entry.source.path] else { continue }
+            cache[entry.source.path] = TodoDiscovery.CachedSource(
+                stamp: stamp, source: entry.source, document: entry.document
+            )
+        }
+        try write("TODO.md", "- [ ] bir\n- [ ] iki\n")
+        let second = TodoDiscovery.scan(
+            projectID: projectID, projectRoot: root.path, cache: cache
+        )
+        XCTAssertTrue(second.reusedPaths.isEmpty)
+        XCTAssertEqual(second.entries.first?.document.tasks.count, 2)
+    }
+
     func testRelativePathFallsBackToTheFileNameOutsideTheRoot() {
         XCTAssertEqual(
             TodoDiscovery.relativePath(

@@ -401,9 +401,25 @@ final class ExtensionRegistry: ObservableObject {
                 .validate(configuration) ?? []
         }
 
-        var discovered = packages.filter { $0.source.isOwnedByUncoil }
+        // Uncoil's own packages survive a rescan, and so do the ones it created
+        // or adopted: those live in the store as `.local`, and dropping them here
+        // would make a created skill disappear on the next discovery pass.
+        var discovered = packages.filter { package in
+            if package.source.isOwnedByUncoil { return true }
+            if case .local = package.source { return true }
+            return false
+        }
         var unmanaged: [ExtensionAgentID: [String]] = [:]
         var statuses: [String: SkillLinkStatus] = [:]
+        // Names Uncoil already adopted. Without this, the same server would come
+        // back as a second, "unmanaged" entry on every pass: the agent config
+        // still declares it, which is exactly what adoption took over.
+        let adoptedNames = Set(
+            discovered.filter {
+                if case .adopted = $0.source { return true }
+                return false
+            }.map { "\($0.kind.rawValue):\($0.name)" }
+        )
 
         for configuration in configurations {
             let agent = configuration.installation.agent
@@ -414,8 +430,10 @@ final class ExtensionRegistry: ObservableObject {
                 let id = isOurs
                     ? (server.arguments.count >= 2 ? server.arguments[1] : "\(agent.rawValue):\(server.name)")
                     : "\(agent.rawValue):\(server.name)"
-                if isOurs, discovered.contains(where: { $0.id == id }) { continue }
                 if discovered.contains(where: { $0.id == id }) { continue }
+                if adoptedNames.contains("\(ExtensionKind.mcpServer.rawValue):\(server.name)") {
+                    continue
+                }
                 let source: ExtensionSource = {
                     if server.transport == .http, let url = server.url {
                         return .remoteMCP(url: url, transport: .http)
@@ -438,7 +456,10 @@ final class ExtensionRegistry: ObservableObject {
             unmanaged[agent] = store.unmanagedSkills(in: directory)
             for name in unmanaged[agent] ?? [] {
                 let id = "local:\(name)"
-                guard !discovered.contains(where: { $0.id == id }) else { continue }
+                guard !discovered.contains(where: { $0.id == id }),
+                      !adoptedNames.contains("\(ExtensionKind.skill.rawValue):\(name)") else {
+                    continue
+                }
                 discovered.append(ExtensionPackage(
                     id: id, kind: .skill, name: name,
                     source: .detectedExternal(
@@ -446,7 +467,14 @@ final class ExtensionRegistry: ObservableObject {
                     )
                 ))
             }
-            for package in discovered where package.kind == .skill {
+            // Only where the user actually assigned the skill: a skill that was
+            // never given to this agent has no link to be missing, and counting
+            // it as broken turned "not assigned" into a red health check.
+            for package in discovered
+            where package.kind == .skill
+                && SkillAssignment.activeAgents(
+                    extensionID: package.id, agentBindings: agentBindings
+                ).contains(agent) {
                 let status = store.status(name: package.name, inAgentDirectory: directory)
                 statuses["\(package.id)@\(agent.rawValue)"] = status
             }
@@ -500,6 +528,13 @@ final class ExtensionRegistry: ObservableObject {
         ))
         save()
         return true
+    }
+
+    /// Records what the binary said about itself, without a scan attached.
+    func record(verification version: BumblebeeVersion?, selfTest: BumblebeeSelfTest?) {
+        bumblebeeVersion = version ?? bumblebeeVersion
+        if let selfTest { bumblebeeSelfTest = selfTest }
+        save()
     }
 
     /// Where `~/.agents/.skill-lock.json` goes.
@@ -711,6 +746,26 @@ final class ExtensionRegistry: ObservableObject {
 
     var openFindings: [SecurityFinding] {
         findings.filter { !$0.isAccepted }.sorted { $0.severity > $1.severity }
+    }
+
+    /// Agents actually found on this machine, in the UI's usual order. The
+    /// assignment screens use this rather than the full list: assigning an
+    /// extension to an agent that is not installed manages nothing.
+    var installedAgents: [ExtensionAgentID] {
+        let found = Set(installations.map(\.agent))
+        return ExtensionAgentID.supported.filter { found.contains($0) }
+    }
+
+    /// An MCP server definition as some agent's config declares it, by name.
+    func definition(named name: String) -> MCPServerDefinition? {
+        configurations.flatMap(\.mcpServers).first { $0.name == name }
+    }
+
+    /// Which agents declare an MCP server of this name.
+    func agents(declaring serverName: String) -> [ExtensionAgentID] {
+        configurations
+            .filter { $0.mcpServers.contains { $0.name == serverName } }
+            .map { $0.installation.agent }
     }
 
     func agents(for packageID: String) -> [ExtensionAgentID] {

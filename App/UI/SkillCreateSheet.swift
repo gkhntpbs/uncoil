@@ -1,0 +1,154 @@
+import SwiftUI
+
+/// Writing a new skill from inside Uncoil.
+///
+/// The description is treated as the important field: it is what an agent reads
+/// when deciding whether to use the skill at all, so it is required and the
+/// preview shows exactly the SKILL.md that will be written.
+struct SkillCreateSheet: View {
+    @ObservedObject var registry: ExtensionRegistry
+    /// Called with the message to show, or nil when the user cancelled.
+    var onFinish: (String?) -> Void
+
+    @State private var draft = SkillAuthoringService.Draft()
+    @State private var assigned: Set<ExtensionAgentID> = []
+    @State private var error: String?
+
+    private var slug: String { SkillAuthoringService.slug(draft.name) }
+
+    private var canCreate: Bool {
+        !slug.isEmpty && !draft.summary.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Yeni skill")
+                    .font(Theme.mono(14, .bold))
+                    .foregroundStyle(Theme.text)
+                Text("Uncoil'in deposunda oluşturulur; seçtiğin agent'lara bağlanır.")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.textDim)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                field("Ad") {
+                    TextField("örn. release-checklist", text: $draft.name)
+                        .textFieldStyle(.roundedBorder)
+                        .font(Theme.mono(11.5))
+                        .accessibilityIdentifier("extensions.skills.create.name")
+                }
+                if !draft.name.isEmpty {
+                    Text("Klasör adı: \(slug.isEmpty ? "geçersiz" : slug)")
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(slug.isEmpty ? Theme.danger : Theme.textFaint)
+                }
+
+                field("Açıklama") {
+                    TextField("Agent bunu ne zaman kullanmalı?", text: $draft.summary)
+                        .textFieldStyle(.roundedBorder)
+                        .font(Theme.mono(11.5))
+                        .accessibilityIdentifier("extensions.skills.create.summary")
+                }
+
+                field("İçerik") {
+                    TextEditor(text: $draft.body)
+                        .font(Theme.mono(11))
+                        .frame(height: 150)
+                        .scrollContentBackground(.hidden)
+                        .padding(6)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
+                        .accessibilityIdentifier("extensions.skills.create.body")
+                }
+
+                if registry.installedAgents.isEmpty {
+                    Text("Kurulu agent bulunamadı; skill oluşturulur ama kimseye bağlanmaz.")
+                        .font(Theme.mono(10))
+                        .foregroundStyle(Theme.warn)
+                } else {
+                    field("Ata") {
+                        HStack(spacing: 10) {
+                            ForEach(registry.installedAgents) { agent in
+                                Toggle(agent.displayName, isOn: Binding(
+                                    get: { assigned.contains(agent) },
+                                    set: { isOn in
+                                        if isOn { assigned.insert(agent) } else { assigned.remove(agent) }
+                                    }
+                                ))
+                                .toggleStyle(.checkbox)
+                                .font(Theme.mono(10.5))
+                                .foregroundStyle(Theme.textDim)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
+
+            if let error {
+                Text(error)
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 9) {
+                Spacer()
+                Button("Vazgeç") { onFinish(nil) }
+                    .buttonStyle(GhostButtonStyle())
+                    .keyboardShortcut(.escape, modifiers: [])
+                Button("Oluştur") { create() }
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(!canCreate)
+                    .accessibilityIdentifier("extensions.skills.create.confirm")
+            }
+        }
+        .padding(18)
+        .frame(width: 520)
+        .background(Theme.bg)
+        .accessibilityIdentifier("extensions.skills.createSheet")
+    }
+
+    private func field<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(Theme.mono(10, .semibold))
+                .foregroundStyle(Theme.textFaint)
+            content()
+        }
+    }
+
+    private func create() {
+        let service = SkillAuthoringService(layout: registry.layout)
+        do {
+            let package = try service.create(draft)
+            registry.upsert(package)
+            registry.record(AuditEvent(
+                kind: .skillInstalled, extensionID: package.id,
+                detail: "Uncoil içinde oluşturuldu"
+            ))
+            var linked: [String] = []
+            for installation in registry.installations
+            where assigned.contains(installation.agent) {
+                registry.setAgentBinding(true, packageID: package.id, agent: installation.agent)
+                if service.link(name: package.name, into: installation) {
+                    linked.append(installation.agent.displayName)
+                }
+            }
+            onFinish(
+                linked.isEmpty
+                    ? "\(package.name) oluşturuldu."
+                    : "\(package.name) oluşturuldu ve bağlandı: \(linked.joined(separator: ", "))."
+            )
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}

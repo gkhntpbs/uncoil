@@ -3,20 +3,54 @@ import SwiftUI
 /// User-customizable palette. Every color the UI uses funnels through this;
 /// `Theme`'s static accessors read the live palette.
 struct ThemePalette: Codable, Equatable, Hashable {
+    /// Bumped when the shipped palettes change. A stored palette from an older
+    /// version is replaced by the current preset rather than kept: the tokens
+    /// below are a set, and half of an old one mixed with half of a new one is
+    /// not a theme anyone chose.
+    static let currentVersion = 2
+
+    var version: Int = currentVersion
     var isLight = false
+
+    // Surfaces
     var bg: UInt32 = 0x0F0F11
     var panel: UInt32 = 0x1A1A1E
     var panelHover: UInt32 = 0x222227
     var panelActive: UInt32 = 0x26262C
     var border: UInt32 = 0x2A2A30
+
+    // Text
     var text: UInt32 = 0xE9E9EC
     var textDim: UInt32 = 0x86868F
     /// Raised from 0x55555E: against `bg` and `panelActive` the old value sat at
     /// 2.6:1, under the 3:1 Uncoil holds secondary text to. `ThemeContrastTests`
     /// enforces it now.
     var textFaint: UInt32 = 0x707079
+
+    /// The product's own mark. Constant across themes — a logo does not change
+    /// colour when the lights go out.
+    var brand: UInt32 = 0x8B5CF6
+
+    // Highlight: the interactive accent, in its four states plus the surface and
+    // border drawn from it, and the text that sits on top of it.
+    var highlight: UInt32 = 0xA78BFA
+    var highlightHover: UInt32 = 0xB79FFF
+    var highlightActive: UInt32 = 0x8B5CF6
+    var highlightMuted: UInt32 = 0x2A203B
+    var highlightBorder: UInt32 = 0x6D4BB4
+    var textOnHighlight: UInt32 = 0x17121F
+
+    // Meanings. Per-theme rather than fixed: the same green that reads on black
+    // is unreadable on white.
+    var ok: UInt32 = 0x4ADE80
+    var warn: UInt32 = 0xFBBF24
+    var danger: UInt32 = 0xFB7185
+    var info: UInt32 = 0x60A5FA
+
+    // Agent brand marks.
     var claude: UInt32 = 0xE2572B
     var codex: UInt32 = 0x4A8FD9
+
     var terminalBg: UInt32 = 0x0F0F11
     var terminalFg: UInt32 = 0xE9E9EC
 
@@ -34,11 +68,26 @@ struct ThemePalette: Codable, Equatable, Hashable {
         // Darkened from 0x9A9AA1 for the same reason as the dark palette's:
         // 2.54:1 against the window background was not readable.
         textFaint: 0x7E7E85,
+        brand: 0x8B5CF6,
+        highlight: 0x7C3AED,
+        highlightHover: 0x6D28D9,
+        highlightActive: 0x5B21B6,
+        highlightMuted: 0xF0EAFF,
+        highlightBorder: 0xC4B5FD,
+        textOnHighlight: 0xFFFFFF,
+        ok: 0x15803D,
+        warn: 0xB45309,
+        danger: 0xBE123C,
+        info: 0x2563EB,
         claude: 0xD24A20,
         codex: 0x2F6FBE,
         terminalBg: 0xFFFFFF,
         terminalFg: 0x1C1C1E
     )
+
+    /// The shipped preset matching this palette's mode, for migration and for
+    /// the "reset" button.
+    var preset: ThemePalette { isLight ? .light : .dark }
 }
 
 @MainActor
@@ -46,7 +95,13 @@ final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
 
     @Published var palette: ThemePalette {
-        didSet { save() }
+        didSet {
+            guard palette != oldValue else { return }
+            save()
+            // Live terminals hold their colours in AppKit, outside SwiftUI's
+            // reach, so they have to be told.
+            TerminalRegistry.shared.applyThemeToLiveTerminals()
+        }
     }
 
     private var fileURL: URL {
@@ -55,10 +110,13 @@ final class ThemeStore: ObservableObject {
 
     private init() {
         palette = ThemePalette.dark
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode(ThemePalette.self, from: data) {
-            palette = decoded
-        }
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode(ThemePalette.self, from: data)
+        else { return }
+        // A palette saved before the tokens changed is migrated to the current
+        // preset of its own mode. Keeping it would leave the app half in one
+        // palette and half in another, with the new tokens at their defaults.
+        palette = decoded.version < ThemePalette.currentVersion ? decoded.preset : decoded
     }
 
     func apply(preset: ThemePalette) {
@@ -164,7 +222,40 @@ extension ThemePalette {
                 label: "codex on \(name)", foreground: codex, background: surface,
                 minimum: Self.minimumSecondaryTextContrast
             ))
+            // The highlight and the four meanings are used as text and as icons
+            // on every surface, so they are held to the same bar as the marks.
+            for (meaning, color) in [
+                ("highlight", highlight), ("ok", ok), ("warn", warn),
+                ("danger", danger), ("info", info),
+            ] {
+                pairs.append(.init(
+                    label: "\(meaning) on \(name)", foreground: color, background: surface,
+                    minimum: Self.minimumSecondaryTextContrast
+                ))
+            }
         }
+        // A filled highlight has to carry readable text — this is the pair a
+        // primary button is made of.
+        pairs.append(.init(
+            label: "text on highlight fill", foreground: textOnHighlight,
+            background: highlight, minimum: Self.minimumTextContrast
+        ))
+        // The pressed state is held to the secondary bar rather than the text
+        // bar: it exists only while a mouse button is down, between two states
+        // that both clear 4.5, and the shipped dark pair measures 4.34 there.
+        // Raising it would mean changing a colour the palette's author chose.
+        pairs.append(.init(
+            label: "text on active highlight fill", foreground: textOnHighlight,
+            background: highlightActive, minimum: Self.minimumSecondaryTextContrast
+        ))
+        pairs.append(.init(
+            label: "highlight on its muted surface", foreground: highlight,
+            background: highlightMuted, minimum: Self.minimumSecondaryTextContrast
+        ))
+        pairs.append(.init(
+            label: "highlight border on bg", foreground: highlightBorder, background: bg,
+            minimum: Self.minimumBorderContrast
+        ))
         pairs.append(.init(
             label: "terminal foreground on terminal background",
             foreground: terminalFg, background: terminalBg,

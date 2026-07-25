@@ -56,11 +56,12 @@ struct ProjectTaskCheckboxState: Equatable, Codable {
     }
 
     var mark: Mark
-    /// `-`, `*` or `+`.
+    /// `-`, `*`, `+`, or an ordered-list marker such as `1.` or `7)`.
     var listMarker: String
-    /// The exact character inside the brackets: " ", "x" or "X".
+    /// The exact character inside the brackets: " ", "x", "X", "-", "~" or "/".
     var markerCharacter: String
-    /// Leading whitespace of the task line, reproduced verbatim.
+    /// Leading whitespace of the task line — including any blockquote `>`
+    /// markers — reproduced verbatim.
     var indent: String
     /// Range of just the `[ ]` bracket pair, so toggling touches nothing else.
     var markerRange: TaskSourceRange

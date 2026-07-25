@@ -1,6 +1,14 @@
 # Codex app-server entegrasyonu
 
-Uncoil, Codex oturumlarında birincil olarak resmi `codex app-server` protokolünü kullanır. İnteraktif Codex PTY yolu uyumluluk ve çalışma zamanı fallback’i olarak korunur.
+> **Durum: opt-in.** Codex oturumları varsayılan olarak Codex CLI'sini bir PTY'de
+> çalıştırır — Claude oturumlarının kendi CLI'sini çalıştırdığı gibi. App-server
+> yolu JSON konuşur, yani prompt'u, geçmişi ve satır düzenlemeyi CLI'nin kendi
+> TUI'si yerine Uncoil'in sağlaması gerekir; bunlar olmadan oturum boş bir
+> imleçle açılıyordu. Protokol istemcisi silinmedi: yapılandırılmış onaylar ve
+> turn durumu bunun üzerine kurulu ve testleri duruyor. Açmak için
+> `-codex-app-server` argümanı (`LaunchConfig.codexAppServerEnabled`).
+
+Uncoil'in `codex app-server` protokol entegrasyonu bu argümanla devreye girer. İnteraktif Codex PTY yolu varsayılandır; app-server açıkken de uyumluluk ve çalışma zamanı fallback'i olarak korunur.
 
 ## Protokol eşlemesi
 
