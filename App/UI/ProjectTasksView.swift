@@ -497,9 +497,10 @@ struct ProjectTasksView: View {
                 }
 
                 if state != .unassigned {
-                    Text(state.label)
-                        .font(Theme.mono(9, .semibold))
-                        .foregroundStyle(state.needsAttention ? Theme.warn : Theme.codex)
+                    StatusBadge(
+                        text: state.label,
+                        level: state.needsAttention ? .warning : .accent(Theme.codex)
+                    )
                 }
 
                 Spacer(minLength: 4)
@@ -823,10 +824,11 @@ struct ProjectTasksView: View {
             .accessibilityIdentifier("tasks.test.\(task.id)")
         }
         if let review = results.latestReview(for: task.id) {
-            Text(review.verdict.label)
-                .font(Theme.mono(9, .semibold))
-                .foregroundStyle(review.verdict == .changesRequested ? Theme.warn : Theme.codex)
-                .accessibilityIdentifier("tasks.review.\(task.id)")
+            StatusBadge(
+                text: review.verdict.label,
+                level: review.verdict == .changesRequested ? .warning : .success
+            )
+            .accessibilityIdentifier("tasks.review.\(task.id)")
         }
     }
 

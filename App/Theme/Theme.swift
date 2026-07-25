@@ -26,6 +26,21 @@ enum Theme {
     static let warn = Color(hex: 0xD9A63F)
     static let danger = Color(hex: 0xD95757)
 
+    // Status surfaces — the same four meanings as fills rather than as text.
+    //
+    // A status told only by tinted text disappears against a busy panel, and a
+    // full-strength fill shouts. These are the accent at low opacity, so a badge
+    // reads as a surface while the text on it stays the accent itself.
+    static var statusSurface: Color { textDim.opacity(0.12) }
+    static var successSurface: Color { ok.opacity(0.14) }
+    static var warnSurface: Color { warn.opacity(0.16) }
+    static var dangerSurface: Color { danger.opacity(0.16) }
+
+    /// Surface for a severity, so a caller does not pick opacities by hand.
+    static func surface(for tint: Color) -> Color {
+        tint.opacity(0.15)
+    }
+
     // Type — mono carries the product's voice.
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
@@ -96,5 +111,59 @@ enum RelativeClock {
         case ..<86_400: return "\(Int(seconds / 3600))sa"
         default: return "\(Int(seconds / 86_400))g"
         }
+    }
+}
+
+/// A short status word on its own surface.
+///
+/// One place decides how a status looks, so "test başarısız" in the Tasks screen
+/// and in the Extensions screen cannot drift apart.
+struct StatusBadge: View {
+    enum Level {
+        case neutral
+        case success
+        case warning
+        case danger
+        case accent(Color)
+
+        @MainActor
+        var foreground: Color {
+            switch self {
+            case .neutral: Theme.textDim
+            case .success: Theme.ok
+            case .warning: Theme.warn
+            case .danger: Theme.danger
+            case .accent(let color): color
+            }
+        }
+
+        @MainActor
+        var surface: Color {
+            switch self {
+            case .neutral: Theme.statusSurface
+            case .success: Theme.successSurface
+            case .warning: Theme.warnSurface
+            case .danger: Theme.dangerSurface
+            case .accent(let color): Theme.surface(for: color)
+            }
+        }
+    }
+
+    let text: String
+    var level: Level = .neutral
+    var iconName: String?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let iconName {
+                TablerIcon(name: iconName, size: 9, color: level.foreground)
+            }
+            Text(text)
+                .font(Theme.mono(9, .semibold))
+                .foregroundStyle(level.foreground)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(level.surface, in: Capsule())
     }
 }

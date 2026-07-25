@@ -1166,14 +1166,16 @@ private struct PackageCard: View {
                             .foregroundStyle(Theme.text)
                         SourceBadge(source: package.source)
                         if package.state != .active {
-                            Text(package.state.label)
-                                .font(Theme.mono(9, .semibold))
-                                .foregroundStyle(Theme.warn)
+                            StatusBadge(
+                                text: package.state.label,
+                                level: package.state == .quarantined ? .danger : .warning
+                            )
                         }
                         if package.hasLocalModification {
-                            Text("Modified Locally")
-                                .font(Theme.mono(9, .semibold))
-                                .foregroundStyle(Theme.warn)
+                            StatusBadge(text: "Modified Locally", level: .warning)
+                        }
+                        if let coverage = BumblebeeCoverage.label(for: package) {
+                            StatusBadge(text: coverage, level: .neutral)
                         }
                     }
                     Text(package.summary ?? package.source.label)
