@@ -274,17 +274,25 @@ enum BrowserApp: String, CaseIterable, Identifiable {
 
 /// Minimal Keychain wrapper — secrets never land in settings.json.
 enum KeychainStore {
-    private static let service = "com.gkhntpbs.uncoil"
+    private static let service = "com.gkhntpbs.uncoil.github.v2"
 
     static func save(key: String, value: String) {
-        delete(key: key)
-        let query: [String: Any] = [
+        let identity: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
-            kSecValueData as String: Data(value.utf8),
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        var match = identity
+        match[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
+        if SecItemUpdate(match as CFDictionary, attributes as CFDictionary) == errSecItemNotFound {
+            var query = identity
+            attributes.forEach { query[$0.key] = $0.value }
+            SecItemAdd(query as CFDictionary, nil)
+        }
     }
 
     static func read(key: String, allowingUserInteraction: Bool = false) -> String? {
