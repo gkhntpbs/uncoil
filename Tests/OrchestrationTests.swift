@@ -6,7 +6,7 @@ import XCTest
 final class SessionPresetTests: XCTestCase {
     func testBuiltInDefaults() {
         let ids = SessionPreset.builtInDefaults.map(\.id)
-        XCTAssertEqual(ids, ["claude-worker", "codex-reviewer"])
+        XCTAssertEqual(ids, ["claude-worker", "codex-reviewer", "task-orchestrator"])
         let worker = SessionPreset.builtInDefaults[0]
         XCTAssertEqual(worker.provider, .claude)
         XCTAssertTrue(worker.grantedCapabilities.contains("sessions.read"))
@@ -280,7 +280,7 @@ final class OrchestrationRouterTests: XCTestCase {
             caller_session_id: caller.id.uuidString))
         XCTAssertTrue(env.ok)
         if case let .object(data)? = env.data, case let .array(presets)? = data["presets"] {
-            XCTAssertEqual(presets.count, 2)
+            XCTAssertEqual(presets.count, 3)
         } else { XCTFail("no presets") }
     }
 

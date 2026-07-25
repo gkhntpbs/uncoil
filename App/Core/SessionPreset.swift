@@ -54,6 +54,18 @@ struct SessionPreset: Codable, Equatable, Identifiable {
             provider: .codex,
             grantedCapabilities: Array(PolicyEngine.defaultGrants) + ["sessions.read"]
         ),
+        // The orchestrator reads tasks, projects, sessions and worktrees, and
+        // may spawn agents and cut worktrees for them. It deliberately does NOT
+        // get `tasks.delete` or `tasks.merge`: destroying work and merging stay
+        // with the user.
+        SessionPreset(
+            id: "task-orchestrator",
+            name: "Task Orchestrator",
+            provider: .claude,
+            grantedCapabilities: Array(PolicyEngine.defaultGrants) + [
+                "sessions.read", "tasks.orchestrate", "tasks.worktree",
+            ]
+        ),
     ]
 
     /// JSON payload for `list_presets` / `inspect_preset`.
