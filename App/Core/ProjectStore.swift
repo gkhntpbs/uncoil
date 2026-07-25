@@ -330,6 +330,7 @@ final class SessionStore: ObservableObject {
     var hookServer: HookServer?
     /// Retains the control-plane socket server (MCP → app) for its lifetime.
     var controlServer: ControlPlaneServer?
+    var extensionSecretServer: ExtensionSecretServer?
     /// Directional control-plane permission requests (shared with the UI).
     var permissionService: PermissionService?
     /// Once-per-state notification dedup keys ("<sessionID>-permission" …).

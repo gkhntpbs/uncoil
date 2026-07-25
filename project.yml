@@ -50,6 +50,17 @@ targets:
         PRODUCT_NAME: uncoil-mcp
         SKIP_INSTALL: true
 
+  uncoil-extension:
+    type: tool
+    platform: macOS
+    sources:
+      - path: ExtensionHelper
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: uncoil-extension
+        SKIP_INSTALL: true
+
   Uncoil:
     type: application
     platform: macOS
@@ -64,6 +75,8 @@ targets:
         embed: false
       - target: uncoil-mcp
         embed: false
+      - target: uncoil-extension
+        embed: false
     postBuildScripts:
       - name: Embed uncoil-hook helper
         script: |
@@ -72,14 +85,17 @@ targets:
           cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$HELPERS_DIR/uncoil-hook"
           cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$HELPERS_DIR/uncoil-runtimed"
           cp "$BUILT_PRODUCTS_DIR/uncoil-mcp" "$HELPERS_DIR/uncoil-mcp"
+          cp "$BUILT_PRODUCTS_DIR/uncoil-extension" "$HELPERS_DIR/uncoil-extension"
         inputFiles:
           - $(BUILT_PRODUCTS_DIR)/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/uncoil-runtimed
           - $(BUILT_PRODUCTS_DIR)/uncoil-mcp
+          - $(BUILT_PRODUCTS_DIR)/uncoil-extension
         outputFiles:
           - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-runtimed
           - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-mcp
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil

@@ -597,5 +597,41 @@ struct MainWindow: View {
         } catch {
             NSLog("Uncoil control plane could not start: \(error)")
         }
+        startExtensionSecretServer()
+    }
+
+    /// Serves MCP secrets to `uncoil-extension`. Secret values live in the
+    /// Keychain and are handed over per launch, so they never reach a config
+    /// file, a manifest or a log.
+    private func startExtensionSecretServer() {
+        guard sessionStore.extensionSecretServer == nil else { return }
+        let launcher = ExtensionLauncherService(
+            layout: .default(),
+            launcherPath: ExtensionLauncherService.bundledLauncherPath()
+        )
+        let store = ExtensionSecretStore()
+        let server = ExtensionSecretServer(
+            socketPath: ExtensionSecretServer.defaultSocketPath()
+        ) { extensionID in
+            guard let entry = launcher.readManifest()?.entry(id: extensionID) else {
+                return .failure("bilinmeyen extension: \(extensionID)")
+            }
+            guard !entry.isQuarantined else {
+                return .failure("\(extensionID) karantinada")
+            }
+            let resolved = store.environment(for: extensionID, keys: entry.secretKeys)
+            guard resolved.missing.isEmpty else {
+                return .failure(
+                    "eksik secret: \(resolved.missing.joined(separator: ", "))"
+                )
+            }
+            return .success(resolved.environment)
+        }
+        do {
+            try server.start()
+            sessionStore.extensionSecretServer = server
+        } catch {
+            NSLog("Uncoil extension secret server could not start: \(error)")
+        }
     }
 }
