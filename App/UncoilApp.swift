@@ -14,7 +14,9 @@ struct UncoilApp: App {
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
     @StateObject private var theme = ThemeStore.shared
+    @ObservedObject private var attention = AttentionStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
+    @AppStorage("menuBarMonitorEnabled") private var menuBarMonitorEnabled = true
 
     init() {
         LaunchConfig.shared.prepareEnvironment()
@@ -123,6 +125,24 @@ struct UncoilApp: App {
         .commands {
             ExtensionsWindowCommands()
         }
+
+        // Menu-bar monitor: counts at a glance plus quick launch/interrupt,
+        // so agents can be watched while Uncoil's window is hidden.
+        MenuBarExtra(isInserted: $menuBarMonitorEnabled) {
+            MenuBarMonitorMenu(summary: menuBarSummary)
+                .environmentObject(projectStore)
+                .environmentObject(sessionStore)
+                .environmentObject(settings)
+        } label: {
+            MenuBarMonitorLabel(summary: menuBarSummary)
+        }
+    }
+
+    private var menuBarSummary: MenuBarSummary {
+        MenuBarMonitorEngine.summary(
+            statuses: sessionStore.statuses,
+            attention: attention.items
+        )
     }
 
     private func applyApplicationIcon() {

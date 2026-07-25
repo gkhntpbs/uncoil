@@ -832,6 +832,7 @@ struct GitHubLoginView: View {
 private struct NotificationSettingsSection: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
+    @AppStorage("menuBarMonitorEnabled") private var menuBarMonitorEnabled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -843,6 +844,14 @@ private struct NotificationSettingsSection: View {
                 .foregroundStyle(Theme.textFaint)
 
             VStack(spacing: 0) {
+                toggleRow(
+                    "Menü çubuğu monitörü",
+                    Binding(
+                        get: { menuBarMonitorEnabled },
+                        set: { menuBarMonitorEnabled = $0 }
+                    )
+                )
+                Divider().overlay(Theme.border)
                 toggleRow("Bildirimler açık", binding(\.enabled))
                 Divider().overlay(Theme.border)
                 toggleRow("İzin beklerken", binding(\.notifyPermission))

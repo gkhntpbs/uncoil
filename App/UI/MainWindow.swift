@@ -85,6 +85,12 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
             runtimeCompatibilityError = $0.object as? String
         }
+        .onReceive(MainRoute.shared.$requestCounter) { _ in
+            guard let requested = MainRoute.shared.requestedSelection else { return }
+            selectedSessionIDs.removeAll()
+            selection = requested
+            MainRoute.shared.requestedSelection = nil
+        }
         .onChange(of: sessionStore.statuses) { _, _ in refreshAttention() }
         .onChange(of: sessionStore.codexAuthentication) { _, _ in refreshAttention() }
         .task {

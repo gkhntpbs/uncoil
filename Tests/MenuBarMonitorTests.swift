@@ -1,0 +1,101 @@
+import XCTest
+@testable import Uncoil
+
+final class MenuBarMonitorTests: XCTestCase {
+    private let projectID = UUID()
+
+    private func session() -> SessionRecord {
+        SessionRecord(projectID: projectID, provider: .claude, accountID: nil, title: "claude: iş")
+    }
+
+    private func attention(_ kind: AttentionKind, id: String) -> AttentionItem {
+        AttentionItem(
+            id: id, kind: kind, title: "t", detail: nil,
+            projectID: nil, sessionID: nil, createdAt: Date(timeIntervalSince1970: 0)
+        )
+    }
+
+    func testCountsEveryCategory() {
+        let running = UUID(), thinking = UUID(), permission = UUID()
+        let input = UUID(), completed = UUID(), idle = UUID(), dead = UUID()
+        let summary = MenuBarMonitorEngine.summary(
+            statuses: [
+                running: .running,
+                thinking: .thinking,
+                permission: .waitingForPermission,
+                input: .waitingForInput,
+                completed: .completed,
+                idle: .idle,
+                dead: .terminated,
+            ],
+            attention: [
+                attention(.runtime, id: "runtime"),
+                attention(.testFailure, id: "test:1"),
+                attention(.permission, id: "permission:1"),
+            ]
+        )
+        XCTAssertEqual(summary.running, 2, "running and thinking both count as working")
+        XCTAssertEqual(summary.waitingPermission, 1)
+        XCTAssertEqual(summary.waitingInput, 1)
+        XCTAssertEqual(summary.completed, 1)
+        XCTAssertEqual(summary.problems, 2, "normal waits are not problems")
+        XCTAssertTrue(summary.hasProblem)
+        XCTAssertTrue(summary.needsUser)
+    }
+
+    func testIdleSummaryHasEmptyLabelAndRestingIcon() {
+        let summary = MenuBarMonitorEngine.summary(statuses: [UUID(): .idle])
+        XCTAssertEqual(summary.label, "")
+        XCTAssertEqual(summary.headline, "Bekleyen iş yok")
+        XCTAssertEqual(summary.symbolName, "circle.dotted")
+        XCTAssertFalse(summary.hasProblem)
+        XCTAssertFalse(summary.needsUser)
+    }
+
+    func testLabelAndHeadlineReportWhatIsHappening() {
+        let summary = MenuBarMonitorEngine.summary(
+            statuses: [UUID(): .running, UUID(): .waitingForPermission],
+            attention: [attention(.runtime, id: "runtime")]
+        )
+        XCTAssertEqual(summary.label, "1 1! 1×")
+        XCTAssertTrue(summary.headline.contains("1 çalışıyor"))
+        XCTAssertTrue(summary.headline.contains("1 izin bekliyor"))
+        XCTAssertTrue(summary.headline.contains("1 sorun"))
+    }
+
+    func testIconEscalatesWithUrgency() {
+        XCTAssertEqual(
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .running]).symbolName,
+            "bolt.horizontal.circle.fill"
+        )
+        XCTAssertEqual(
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForInput]).symbolName,
+            "questionmark.circle.fill"
+        )
+        XCTAssertEqual(
+            MenuBarMonitorEngine.summary(statuses: [UUID(): .waitingForPermission]).symbolName,
+            "lock.circle.fill"
+        )
+        XCTAssertEqual(
+            MenuBarMonitorEngine.summary(
+                statuses: [UUID(): .waitingForPermission],
+                attention: [attention(.runtime, id: "runtime")]
+            ).symbolName,
+            "exclamationmark.triangle.fill"
+        )
+    }
+
+    func testOnlyBusySessionsAreInterruptible() {
+        let busy = session(), waiting = session(), idle = session(), dead = session()
+        let interruptible = MenuBarMonitorEngine.interruptible(
+            [busy, waiting, idle, dead],
+            statuses: [
+                busy.id: .running,
+                waiting.id: .waitingForPermission,
+                idle.id: .idle,
+                dead.id: .terminated,
+            ]
+        )
+        XCTAssertEqual(Set(interruptible.map(\.id)), [busy.id, waiting.id])
+    }
+}
