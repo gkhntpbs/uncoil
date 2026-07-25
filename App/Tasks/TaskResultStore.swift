@@ -154,7 +154,15 @@ final class TaskResultStore: ObservableObject {
     /// and nothing else. "No test was ever run" is a policy preference for
     /// orchestrated work, not a reason to refuse an ordinary edit.
     func failingTestBlockers(taskID: String) -> [TaskCompletionGate.Blocker] {
-        TaskCompletionGate.mayComplete(tests: tests(for: taskID), requiresTests: false)
+        var blockers = TaskCompletionGate.mayComplete(
+            tests: tests(for: taskID), requiresTests: false
+        )
+        // A review that asked for changes also stands in the way: a task whose
+        // last word was "fix this" is not done, whoever ticks the box.
+        if latestReview(for: taskID)?.verdict == .changesRequested {
+            blockers.append(.changesRequested)
+        }
+        return blockers
     }
 
     /// Blockers standing between this task and a ticked checkbox, under the

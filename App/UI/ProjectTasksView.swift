@@ -32,6 +32,10 @@ struct ProjectTasksView: View {
     @State private var orchestratorPlan: OrchestratorPlan?
     /// Task whose merge screen is open. Merging never happens without it.
     @State private var mergeTarget: ProjectTask?
+    /// Diffs of the patches this screen wrote, newest per task, so "Show Diff"
+    /// shows what actually changed rather than a list of touched files.
+    @State private var writtenDiffs: [String: String] = [:]
+    @State private var diffPreview: (task: ProjectTask, diff: String)?
 
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
@@ -99,6 +103,20 @@ struct ProjectTasksView: View {
                     ? "Planlanacak açık görev yok."
                     : orchestratorPlan?.summary() ?? ""
             )
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { diffPreview != nil },
+                set: { if !$0 { diffPreview = nil } }
+            )
+        ) {
+            if let preview = diffPreview {
+                TaskDiffSheet(
+                    taskText: preview.task.text,
+                    diff: preview.diff,
+                    onClose: { diffPreview = nil }
+                )
+            }
         }
         .sheet(
             isPresented: Binding(
@@ -1138,11 +1156,31 @@ struct ProjectTasksView: View {
         }
     }
 
+    /// The task's own change first — the patch Uncoil wrote — and the worktree's
+    /// git state underneath it.
     private func showDiff(_ task: ProjectTask) {
         let worktree = metadata.assignments(for: task.id).compactMap(\.worktreePath).first
         let path = worktree ?? project.rootPath
-        let changed = gitChangedPaths.isEmpty ? "değişiklik yok" : gitChangedPaths.joined(separator: ", ")
-        message = "\(URL(fileURLWithPath: path).lastPathComponent): \(changed)"
+        var sections: [String] = []
+        if let written = writtenDiffs[task.id] {
+            sections.append("# TODO.md değişikliği\n\(written)")
+        }
+        let git = worktreeDiff(path: path)
+        if !git.isEmpty {
+            sections.append("# \(URL(fileURLWithPath: path).lastPathComponent) çalışma ağacı\n\(git)")
+        }
+        diffPreview = (
+            task,
+            sections.isEmpty
+                ? "Bu görev için kayıtlı bir değişiklik yok."
+                : sections.joined(separator: "\n\n")
+        )
+    }
+
+    /// Reads the worktree diff. Blocking git call kept short by the line cap in
+    /// `GitService.diff`; the sheet is opened from a user action, not a refresh.
+    private func worktreeDiff(path: String) -> String {
+        GitService.diff(repoPath: path)
     }
 
     // MARK: - Actions
@@ -1287,6 +1325,7 @@ struct ProjectTasksView: View {
                 + "içeriyor (\(regions) bölge); önce çözülmeli."
             return
         }
+        writtenDiffs[task.id] = TodoEditor.diff(patches, in: document.raw)
         do {
             let outcome = try TodoEditor.write(
                 patches: patches,
