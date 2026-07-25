@@ -39,6 +39,7 @@ final class PaletteModelTests: XCTestCase {
         XCTAssertTrue(items(groups).contains { $0.action == .addProject })
         XCTAssertTrue(items(groups).contains { $0.action == .createTestWorkspace })
         XCTAssertTrue(items(groups).contains { $0.action == .createDebugBundle })
+        XCTAssertTrue(items(groups).contains { $0.action == .openExtensions })
     }
 
     func testSessionsRankedByAttention() {

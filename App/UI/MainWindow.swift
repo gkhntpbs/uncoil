@@ -221,6 +221,8 @@ struct MainWindow: View {
                 debugBundleURL = nil
                 debugBundleMessage = error.localizedDescription
             }
+        case .openExtensions:
+            openWindow(id: "extensions")
         case .openProject(let id):
             selection = .project(id)
         case .focusSession(let id):

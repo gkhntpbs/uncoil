@@ -9,6 +9,7 @@ enum PaletteAction: Equatable {
     case addProject
     case createTestWorkspace
     case createDebugBundle
+    case openExtensions
     case openProject(UUID)
     case focusSession(UUID)
     case newSession(UUID, AgentProvider)
@@ -184,6 +185,8 @@ enum PaletteEngine {
                         iconName: "flask", kind: .command, action: .createTestWorkspace),
             PaletteItem(id: "cmd.debugBundle", title: "Debug Bundle Oluştur",
                         iconName: "package-export", kind: .command, action: .createDebugBundle),
+            PaletteItem(id: "cmd.extensions", title: "Extensions",
+                        iconName: "puzzle", kind: .command, action: .openExtensions),
             PaletteItem(id: "cmd.settings", title: "Ayarlar",
                         iconName: "settings", kind: .command, action: .openSettings(nil)),
         ]

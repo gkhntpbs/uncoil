@@ -97,6 +97,20 @@ struct UncoilApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+
+        Window("Uncoil Extensions", id: "extensions") {
+            ExtensionsView()
+                .environmentObject(projectStore)
+                .environmentObject(sessionStore)
+                .environmentObject(settings)
+                .environmentObject(theme)
+                .preferredColorScheme(theme.palette.isLight ? .light : .dark)
+        }
+        .defaultSize(width: 920, height: 640)
+        .windowStyle(.hiddenTitleBar)
+        .commands {
+            ExtensionsWindowCommands()
+        }
     }
 
     private func applyApplicationIcon() {
@@ -134,6 +148,18 @@ struct MainWindowCommands: Commands {
                 openWindow(id: "main")
             }
             .keyboardShortcut("n", modifiers: .command)
+        }
+    }
+}
+
+struct ExtensionsWindowCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            Button("Extensions") {
+                openWindow(id: "extensions")
+            }
         }
     }
 }

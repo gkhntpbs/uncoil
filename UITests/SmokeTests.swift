@@ -59,6 +59,26 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings window did not open")
     }
 
+    func testExtensionsWindowOpensFromCommandPaletteAndNavigates() {
+        app.typeKey("k", modifierFlags: .command)
+        app.typeText("extensions")
+
+        let result = app.staticTexts["Extensions"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        result.click()
+
+        let extensions = app.descendants(matching: .any)["extensions.container"]
+        XCTAssertTrue(extensions.waitForExistence(timeout: 10))
+
+        let skills = app.descendants(matching: .any)["extensions.section.skills"]
+        XCTAssertTrue(skills.waitForExistence(timeout: 5))
+        skills.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["extensions.content.skills"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
     func testClosedSessionHistoryCanBeResumed() {
         let history = app.descendants(matching: .any)["dashboard.sessionHistory"]
         XCTAssertTrue(history.waitForExistence(timeout: 10))
