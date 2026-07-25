@@ -214,6 +214,9 @@ enum SkillTriggerTester {
 /// across sessions. Off by default — a prompt is user content.
 @MainActor
 final class SkillTriggerHistory: ObservableObject {
+    /// Shared so a skill's card can show the last test that mentioned it.
+    static let shared = SkillTriggerHistory()
+
     struct Entry: Codable, Equatable, Identifiable {
         var id: UUID
         var prompt: String

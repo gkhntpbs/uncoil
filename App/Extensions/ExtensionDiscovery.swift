@@ -260,6 +260,62 @@ enum ExtensionInstallPreviewBuilder {
         return ([], [])
     }
 
+    /// Dependencies the extension's own manifest declares. Uncoil does not
+    /// install them; it shows what the extension expects to find.
+    static func dependencies(at root: URL) -> [String] {
+        for name in ["uncoil.json", "package.json", "SKILL.md", "skill.md"] {
+            let url = root.appendingPathComponent(name)
+            guard let data = FileManager.default.contents(atPath: url.path) else { continue }
+            if name.hasSuffix(".json") {
+                guard let object = try? JSONSerialization
+                    .jsonObject(with: data) as? [String: Any] else { continue }
+                if let list = object["dependencies"] as? [String], !list.isEmpty {
+                    return list.sorted()
+                }
+                if let map = object["dependencies"] as? [String: Any], !map.isEmpty {
+                    return map.keys.sorted()
+                }
+                continue
+            }
+            let claims = frontMatterList(
+                key: "dependencies", in: String(decoding: data, as: UTF8.self)
+            )
+            if !claims.isEmpty { return claims }
+        }
+        return []
+    }
+
+    /// One list value from YAML front matter, inline or dashed.
+    static func frontMatterList(key: String, in text: String) -> [String] {
+        let lines = text.components(separatedBy: "\n")
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return [] }
+        var values: [String] = []
+        var inKey = false
+        for line in lines.dropFirst() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed == "---" { break }
+            if inKey, trimmed.hasPrefix("- ") {
+                values.append(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+                continue
+            }
+            guard let colon = trimmed.firstIndex(of: ":") else { continue }
+            let name = String(trimmed[trimmed.startIndex..<colon])
+                .trimmingCharacters(in: .whitespaces)
+            guard name == key else {
+                inKey = false
+                continue
+            }
+            inKey = true
+            values.append(contentsOf: String(trimmed[trimmed.index(after: colon)...])
+                .trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty })
+        }
+        return values
+    }
+
     /// Reads `permissions:` and `agents:` from YAML front matter, as lists on one
     /// line or as dashed items.
     static func frontMatterClaims(

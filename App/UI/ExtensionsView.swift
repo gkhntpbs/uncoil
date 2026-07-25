@@ -251,7 +251,7 @@ struct ExtensionsView: View {
         case .updates:
             UpdatesScreen(registry: registry, message: $message)
         case .activity:
-            ActivityScreen(registry: registry)
+            ActivityScreen(registry: registry, message: $message)
         }
     }
 }
@@ -505,6 +505,8 @@ private struct OverviewScreen: View {
 private struct AgentsScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @Binding var message: String?
+    @EnvironmentObject private var settings: SettingsStore
+    @State private var versions: [ExtensionAgentID: String] = [:]
     /// A planned config change awaiting the user's word, with the changes it was
     /// built from so a stale config can be re-planned on top of the user's edit.
     @State private var plan: (
@@ -535,7 +537,17 @@ private struct AgentsScreen: View {
                     Divider().overlay(Theme.border)
                     KeyValueRow(
                         key: "Binary sürümü",
-                        value: installation.version ?? "sorgulanmadı"
+                        value: installation.version
+                            ?? versions[installation.agent]
+                            ?? "sorgulanmadı"
+                    )
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(key: "Aktif profil", value: activeProfile(installation.agent))
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Update durumu",
+                        value: updateStatus(installation.agent),
+                        tint: registry.updateCandidates.isEmpty ? nil : Theme.codex
                     )
                     Divider().overlay(Theme.border)
                     KeyValueRow(
@@ -595,6 +607,12 @@ private struct AgentsScreen: View {
                             message = exportSetup(installation)
                         }
                         .buttonStyle(GhostButtonStyle())
+
+                        Button("Import setup") {
+                            importSetup(installation)
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier("extensions.agent.import.\(installation.agent.rawValue)")
 
                         Button("Config'i Göster") {
                             guard let path = installation.mcpConfigPath else { return }
@@ -694,6 +712,7 @@ private struct AgentsScreen: View {
                 }
             }
         }
+        .task { loadVersions() }
         .sheet(
             isPresented: Binding(
                 get: { plan != nil },
@@ -710,6 +729,90 @@ private struct AgentsScreen: View {
                 )
             }
         }
+    }
+
+    /// CLI versions, asked once per appearance and off the main thread.
+    private func loadVersions() {
+        for installation in registry.installations where versions[installation.agent] == nil {
+            let path = installation.binaryPath
+            Task {
+                let version = await Task.detached(priority: .utility) {
+                    CLIToolService.version(binaryPath: path)
+                }.value
+                versions[installation.agent] = version ?? "okunamadı"
+            }
+        }
+    }
+
+    /// The preset Uncoil would launch this agent with. "Profile" is that preset
+    /// plus the permission mode it carries.
+    private func activeProfile(_ agent: ExtensionAgentID) -> String {
+        guard let provider = agent.provider else { return "Uncoil bu agent'ı başlatmıyor" }
+        guard let preset = settings.presets.first(where: { $0.provider == provider }) else {
+            return "preset yok"
+        }
+        return "\(preset.name) · \(preset.grantedCapabilities.count) yetki"
+    }
+
+    /// What Uncoil knows about updates for this agent: its extensions, not the
+    /// CLI itself — Uncoil does not update someone else's binary.
+    private func updateStatus(_ agent: ExtensionAgentID) -> String {
+        let ids = Set(
+            registry.agentBindings
+                .filter { $0.agent == agent && $0.isEnabled }
+                .map(\.extensionID)
+        )
+        let pending = registry.updateCandidates.filter { ids.contains($0.extensionID) }
+        if pending.isEmpty {
+            return registry.lastDiscoveryAt == nil
+                ? "kontrol edilmedi"
+                : "extension'lar güncel"
+        }
+        return "\(pending.count) extension güncellenebilir"
+    }
+
+    /// Reads a setup export and proposes it as a plan. Nothing is applied here:
+    /// an import is a config change like any other.
+    private func importSetup(_ installation: AgentInstallation) {
+        let picker = NSOpenPanel()
+        picker.allowedContentTypes = [.json]
+        picker.allowsMultipleSelection = false
+        guard picker.runModal() == .OK, let url = picker.url,
+              let data = FileManager.default.contents(atPath: url.path),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            message = "Setup dosyası okunamadı."
+            return
+        }
+        guard let servers = root["mcp_servers"] as? [[String: String]], !servers.isEmpty else {
+            message = "Setup dosyasında MCP server yok."
+            return
+        }
+        let changes: [ConfigurationChange] = servers.compactMap { entry in
+            guard let name = entry["name"], let transport = entry["transport"],
+                  let target = entry["target"] else { return nil }
+            let isHTTP = transport == MCPTransport.http.rawValue
+            return .addMCPServer(MCPServerDefinition(
+                id: "\(installation.agent.rawValue):\(name)",
+                name: name,
+                transport: isHTTP ? .http : .stdio,
+                command: isHTTP ? nil : target,
+                url: isHTTP ? target : nil,
+                // Secret VALUES are not in an export; only their names travel, and
+                // the launcher fills them from the Keychain at start-up.
+                environmentKeys: (entry["secret_keys"] ?? "")
+                    .split(separator: ",")
+                    .map(String.init)
+                    .filter { !$0.isEmpty }
+            ))
+        }
+        guard !changes.isEmpty else {
+            message = "Setup dosyasındaki sunucular okunamadı."
+            return
+        }
+        planChange(
+            changes, installation: installation,
+            summary: "\(changes.count) MCP server içe alınıyor"
+        )
     }
 
     /// Builds the plan and shows it. Nothing is written until the sheet's Apply.
@@ -925,6 +1028,7 @@ private struct PackageCard: View {
     @State private var adoption: ExtensionAdoptionService.Plan?
     /// Repository the user is typing to attach to a local source.
     @State private var linkingRepository: String?
+    @State private var showsLogs = false
 
     private var candidate: UpdateCandidate? {
         registry.updateCandidate(for: package.id)
@@ -949,6 +1053,13 @@ private struct PackageCard: View {
         }
         .panel()
         .accessibilityIdentifier("extensions.package.\(package.id)")
+        .sheet(isPresented: $showsLogs) {
+            TaskDiffSheet(
+                taskText: "\(package.name) — MCP log",
+                diff: registry.logTail(for: package) ?? "Log yok.",
+                onClose: { showsLogs = false }
+            )
+        }
         .sheet(
             isPresented: Binding(
                 get: { adoption != nil },
@@ -1118,6 +1229,21 @@ private struct PackageCard: View {
                 KeyValueRow(key: "Authentication", value: authenticationSummary)
                 Divider().overlay(Theme.border)
                 KeyValueRow(key: "Tool listesi", value: toolSummary)
+                Divider().overlay(Theme.border)
+                KeyValueRow(key: "Prompt/resource listesi", value: promptResourceSummary)
+                Divider().overlay(Theme.border)
+                KeyValueRow(
+                    key: "Last health check",
+                    value: registry.lastHealthCheckAt[package.id]
+                        .map { "\(RelativeClock.short(since: $0)) · \(processStateLabel)" }
+                        ?? "hiç çalıştırılmadı"
+                )
+                Divider().overlay(Theme.border)
+                KeyValueRow(
+                    key: "Last error",
+                    value: registry.lastErrors[package.id] ?? "—",
+                    tint: registry.lastErrors[package.id] == nil ? nil : Theme.danger
+                )
             }
             if package.kind == .skill {
                 Divider().overlay(Theme.border)
@@ -1125,6 +1251,10 @@ private struct PackageCard: View {
                     key: "Dosyalar",
                     value: files.isEmpty ? "—" : files.joined(separator: ", ")
                 )
+                Divider().overlay(Theme.border)
+                KeyValueRow(key: "Dependency listesi", value: dependencySummary)
+                Divider().overlay(Theme.border)
+                KeyValueRow(key: "Trigger test sonucu", value: triggerSummary)
             }
             Divider().overlay(Theme.border)
             KeyValueRow(
@@ -1137,6 +1267,77 @@ private struct PackageCard: View {
 
             Divider().overlay(Theme.border)
             actions
+        }
+    }
+
+    private var processStateLabel: String {
+        registry.processHealth[package.id]?.state.label ?? "bilinmiyor"
+    }
+
+    /// Prompts and resources the server reports having. Absent when nothing has
+    /// asked it yet — not the same as "it has none".
+    private var promptResourceSummary: String {
+        let reported = registry.reportedCapabilities[package.id] ?? []
+        guard !reported.isEmpty else { return "sunucu bildirmedi" }
+        let interesting = reported.filter { $0 == "prompts" || $0 == "resources" }
+        return interesting.isEmpty ? "yok" : interesting.joined(separator: ", ")
+    }
+
+    /// Dependencies the skill's own manifest declares.
+    private var dependencySummary: String {
+        guard let path = package.activeRevision?.path else { return "—" }
+        let dependencies = ExtensionInstallPreviewBuilder
+            .dependencies(at: URL(fileURLWithPath: path))
+        return dependencies.isEmpty ? "—" : dependencies.joined(separator: ", ")
+    }
+
+    /// The last trigger test that mentioned this skill.
+    private var triggerSummary: String {
+        guard let entry = SkillTriggerHistory.shared.entries.first(where: {
+            $0.matchedNames.contains(package.name)
+        }) else { return "test edilmedi" }
+        return "\(entry.verdict) · \"\(entry.prompt)\" · \(RelativeClock.short(since: entry.testedAt))"
+    }
+
+    private func update() -> String {
+        guard let candidate = registry.updateCandidate(for: package.id) else {
+            return "Güncelleme yok."
+        }
+        let engine = ExtensionUpdateEngine(
+            mirror: ExtensionMirror(layout: registry.layout),
+            store: SkillStore(layout: registry.layout),
+            scan: { ExtensionSecurityScanner.scan(packageAt: $0).findings }
+        )
+        do {
+            let staged = try engine.stage(candidate, package: package)
+            let updated = try engine.activate(staged, package: package, skillName: package.name)
+            registry.upsert(updated)
+            registry.record(AuditEvent(
+                kind: .updateApplied, extensionID: package.id,
+                detail: "\(candidate.availableCommitSHA.prefix(12)) sürümüne güncellendi"
+            ))
+            registry.discover()
+            return "\(package.name) güncellendi."
+        } catch {
+            return "Güncelleme yapılmadı: \(error.localizedDescription)"
+        }
+    }
+
+    private func rollback() -> String {
+        let engine = ExtensionUpdateEngine(
+            mirror: ExtensionMirror(layout: registry.layout),
+            store: SkillStore(layout: registry.layout)
+        )
+        do {
+            let restored = try engine.rollback(package, skillName: package.name).package
+            registry.upsert(restored)
+            registry.record(AuditEvent(
+                kind: .rolledBack, extensionID: package.id, detail: "önceki revizyona dönüldü"
+            ))
+            registry.discover()
+            return "\(package.name) önceki revizyona döndü."
+        } catch {
+            return "Rollback yapılmadı: \(error.localizedDescription)"
         }
     }
 
@@ -1229,6 +1430,33 @@ private struct PackageCard: View {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
                 }
                 .buttonStyle(GhostButtonStyle())
+            }
+
+            if package.source.capabilities.canUpdate {
+                Button("Update") { message = update() }
+                    .buttonStyle(GhostButtonStyle())
+                    .disabled(registry.updateCandidate(for: package.id) == nil)
+                    .accessibilityIdentifier("extensions.package.update.\(package.id)")
+                Button("Rollback") { message = rollback() }
+                    .buttonStyle(GhostButtonStyle())
+                    .disabled(package.previousRevision == nil)
+                    .accessibilityIdentifier("extensions.package.rollback.\(package.id)")
+            }
+
+            if package.kind == .mcpServer {
+                if registry.logURL(for: package) != nil {
+                    Button("Logs") { showsLogs = true }
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier("extensions.package.logs.\(package.id)")
+                }
+                Button("Restart") {
+                    let stopped = registry.restart(package)
+                    message = stopped == 0
+                        ? "Çalışan süreç yoktu; agent bir sonraki çağrıda yenisini başlatır."
+                        : "\(stopped) süreç durduruldu; agent yenisini başlatacak."
+                }
+                .buttonStyle(GhostButtonStyle())
+                .accessibilityIdentifier("extensions.package.restart.\(package.id)")
             }
 
             if package.source.isOwnedByUncoil {
@@ -1586,6 +1814,16 @@ private struct SourceRow: View {
     @ObservedObject var registry: ExtensionRegistry
     let repository: String
     @Binding var message: String?
+    /// Which retracking sheet is open, if any.
+    @State private var retracking: RetrackKind?
+    @State private var reference = ""
+
+    enum RetrackKind: String, Identifiable {
+        case commit, branch
+        var id: String { rawValue }
+        var title: String { self == .commit ? "Commit'e sabitle" : "Branch veya tag değiştir" }
+        var placeholder: String { self == .commit ? "commit SHA" : "branch veya tag adı" }
+    }
 
     private var packages: [ExtensionPackage] {
         registry.packages.filter {
@@ -1616,12 +1854,22 @@ private struct SourceRow: View {
             )
             .font(Theme.mono(10.5))
             .foregroundStyle(Theme.textDim)
+            Text("Last fetch: \(lastFetchSummary)")
+                .font(Theme.mono(9.5))
+                .foregroundStyle(Theme.textFaint)
             HStack(spacing: 9) {
                 Button("Fetch now") {
                     message = fetch()
                 }
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.sources.fetch.\(repository)")
+                if !packages.isEmpty {
+                    Button("Pin commit…") { retracking = .commit }
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier("extensions.sources.pin.\(repository)")
+                    Button("Branch/tag değiştir…") { retracking = .branch }
+                        .buttonStyle(GhostButtonStyle())
+                }
                 Button("Remove source") {
                     registry.removeSource(repository)
                     message = "\(repository) kaldırıldı; kurulu extension'lara dokunulmadı."
@@ -1632,6 +1880,61 @@ private struct SourceRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .sheet(item: $retracking) { kind in
+            VStack(alignment: .leading, spacing: 12) {
+                Text(kind.title)
+                    .font(Theme.mono(13, .bold))
+                    .foregroundStyle(Theme.text)
+                Text("\(repository) — \(packages.count) extension etkilenecek.")
+                    .font(Theme.mono(10.5))
+                    .foregroundStyle(Theme.textDim)
+                TextField(kind.placeholder, text: $reference)
+                    .font(Theme.mono(11))
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("extensions.sources.reference")
+                HStack(spacing: 9) {
+                    Spacer()
+                    Button("Vazgeç") { retracking = nil }
+                        .buttonStyle(GhostButtonStyle())
+                        .keyboardShortcut(.escape, modifiers: [])
+                    Button("Uygula") { applyTracking(kind) }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(reference.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("extensions.sources.applyTracking")
+                }
+            }
+            .padding(18)
+            .frame(width: 420)
+            .background(Theme.bg)
+        }
+    }
+
+    /// The newest fetch across this repository's extensions: what "last fetch"
+    /// means for a mirror several extensions share.
+    private var lastFetchSummary: String {
+        guard let newest = packages.compactMap(\.lastFetchedAt).max() else {
+            return "hiç yapılmadı"
+        }
+        return RelativeClock.short(since: newest)
+    }
+
+    /// Pinning and moving what is followed are both the user's call, and neither
+    /// fetches on its own: the next update check does that.
+    private func applyTracking(_ kind: RetrackKind) {
+        let value = reference.trimmingCharacters(in: .whitespaces)
+        let tracking: ExtensionSource.TrackingMode = kind == .commit
+            ? .pinnedCommit(value)
+            : (value.first == "v" ? .tag(value) : .branch(value))
+        var changed = 0
+        for package in packages
+        where registry.setTracking(tracking, packageID: package.id) {
+            changed += 1
+        }
+        retracking = nil
+        reference = ""
+        message = changed == 0
+            ? "Takip değişmedi."
+            : "\(changed) extension artık \(tracking.label) takip ediyor."
     }
 
     private var trackingSummary: String {
@@ -1799,6 +2102,10 @@ private struct FindingRow: View {
 private struct UpdatesScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @Binding var message: String?
+    /// Reviews the user has looked at, so "Update all reviewed" means exactly
+    /// that and nothing else.
+    @State private var reviewed: Set<String> = []
+    @State private var reviews: [String: UpdateReview] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -1839,14 +2146,70 @@ private struct UpdatesScreen: View {
                         key: "Changelog",
                         value: candidate.changelog ?? "—"
                     )
+                    let review = reviews[candidate.extensionID]
                     Divider().overlay(Theme.border)
                     KeyValueRow(
                         key: "Security diff",
-                        value: "Staging sırasında hesaplanır; blocked bulgu aktivasyonu durdurur.",
-                        tint: Theme.textDim
+                        value: review.map { current in
+                            current.securityDiff.isEmpty
+                                ? "Yeni bulgu yok"
+                                : current.securityDiff
+                                    .map { "\($0.severity.label): \($0.rule)" }
+                                    .joined(separator: ", ")
+                        } ?? "Henüz incelenmedi",
+                        tint: (review?.securityDiff.contains { $0.severity >= .high } ?? false)
+                            ? Theme.danger : nil
+                    )
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Yeni permission'lar",
+                        value: review.map {
+                            $0.addedPermissions.isEmpty ? "—" : $0.addedPermissions.joined(separator: ", ")
+                        } ?? "—",
+                        tint: (review?.addedPermissions.isEmpty == false) ? Theme.warn : nil
+                    )
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Yeni tool'lar",
+                        value: review.map {
+                            $0.addedTools.isEmpty ? "—" : $0.addedTools.joined(separator: ", ")
+                        } ?? "—"
+                    )
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Kaldırılan tool'lar",
+                        value: review.map {
+                            $0.removedTools.isEmpty ? "—" : $0.removedTools.joined(separator: ", ")
+                        } ?? "—",
+                        tint: (review?.removedTools.isEmpty == false) ? Theme.danger : nil
+                    )
+                    Divider().overlay(Theme.border)
+                    KeyValueRow(
+                        key: "Breaking-change ihtimali",
+                        value: review?.breakingChangeRisk.label ?? "incelenmedi",
+                        tint: review?.breakingChangeRisk == .likely ? Theme.danger : nil
                     )
                     Divider().overlay(Theme.border)
                     HStack(spacing: 9) {
+                        Button(reviewed.contains(candidate.extensionID) ? "İncelendi ✓" : "İncele") {
+                            makeReview(candidate, package: package)
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier("extensions.update.review.\(candidate.extensionID)")
+
+                        Button("Update selected") {
+                            message = apply(candidate, package: package)
+                        }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(package == nil)
+                        .accessibilityIdentifier("extensions.update.apply.\(candidate.extensionID)")
+
+                        Button("Rollback") {
+                            message = rollback(package)
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                        .disabled(package?.previousRevision == nil)
+
                         Button("Rollback history") {
                             message = rollbackHistory(package)
                         }
@@ -1855,6 +2218,19 @@ private struct UpdatesScreen: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
+                }
+            }
+
+            if !registry.updateCandidates.isEmpty {
+                HStack(spacing: 9) {
+                    Button("Update all reviewed") { updateAllReviewed() }
+                        .buttonStyle(AccentButtonStyle())
+                        .disabled(reviewed.isEmpty)
+                        .accessibilityIdentifier("extensions.update.applyReviewed")
+                    Text("\(reviewed.count) incelendi")
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(Theme.textFaint)
+                    Spacer()
                 }
             }
 
@@ -1877,6 +2253,100 @@ private struct UpdatesScreen: View {
         }
     }
 
+    /// Computes what the update would change. Nothing is applied.
+    private func makeReview(_ candidate: UpdateCandidate, package: ExtensionPackage?) {
+        guard let package, let active = package.activeRevision else {
+            message = "Bu paketin kurulu bir revizyonu yok; önce kurulmalı."
+            return
+        }
+        let staging = registry.layout.revisions
+            .appendingPathComponent(candidate.availableCommitSHA, isDirectory: true)
+        reviews[candidate.extensionID] = UpdateReview.between(
+            previous: URL(fileURLWithPath: active.path),
+            next: FileManager.default.fileExists(atPath: staging.path)
+                ? staging
+                : URL(fileURLWithPath: active.path),
+            candidate: candidate,
+            extensionID: package.id
+        )
+        reviewed.insert(candidate.extensionID)
+    }
+
+    private func apply(_ candidate: UpdateCandidate, package: ExtensionPackage?) -> String {
+        guard let package else { return "Paket bulunamadı." }
+        let engine = updateEngine()
+        do {
+            let staged = try engine.stage(candidate, package: package)
+            let updated = try engine.activate(
+                staged, package: package, skillName: package.name
+            )
+            registry.upsert(updated)
+            registry.record(AuditEvent(
+                kind: .updateApplied, extensionID: package.id,
+                detail: "\(candidate.availableCommitSHA.prefix(12)) sürümüne güncellendi"
+            ))
+            registry.discover()
+            return "\(package.name) güncellendi."
+        } catch {
+            return "Güncelleme yapılmadı: \(error.localizedDescription)"
+        }
+    }
+
+    private func rollback(_ package: ExtensionPackage?) -> String {
+        guard let package, package.previousRevision != nil else {
+            return "Geri dönülecek önceki revizyon yok."
+        }
+        let engine = updateEngine()
+        do {
+            let restored = try engine.rollback(package, skillName: package.name).package
+            registry.upsert(restored)
+            registry.record(AuditEvent(
+                kind: .rolledBack, extensionID: package.id,
+                detail: "önceki revizyona dönüldü"
+            ))
+            registry.discover()
+            return "\(package.name) önceki revizyona döndü."
+        } catch {
+            return "Rollback yapılmadı: \(error.localizedDescription)"
+        }
+    }
+
+    /// Applies only what the user actually reviewed, and says what it skipped.
+    private func updateAllReviewed() {
+        var applied: [String] = []
+        var failed: [String] = []
+        for candidate in registry.updateCandidates
+        where reviewed.contains(candidate.extensionID) {
+            let package = registry.package(id: candidate.extensionID)
+            let result = apply(candidate, package: package)
+            if result.contains("güncellendi") {
+                applied.append(package?.name ?? candidate.extensionID)
+            } else {
+                failed.append(package?.name ?? candidate.extensionID)
+            }
+        }
+        let skipped = registry.updateCandidates
+            .filter { !reviewed.contains($0.extensionID) }
+            .count
+        var parts: [String] = []
+        if !applied.isEmpty { parts.append("güncellendi: \(applied.joined(separator: ", "))") }
+        if !failed.isEmpty { parts.append("başarısız: \(failed.joined(separator: ", "))") }
+        if skipped > 0 { parts.append("\(skipped) paket incelenmediği için atlandı") }
+        message = parts.isEmpty ? "Güncellenecek incelenmiş paket yok." : parts.joined(separator: " · ")
+        reviewed.removeAll()
+    }
+
+    /// The engine, wired to Uncoil's own store and to the real scanner.
+    private func updateEngine() -> ExtensionUpdateEngine {
+        ExtensionUpdateEngine(
+            mirror: ExtensionMirror(layout: registry.layout),
+            store: SkillStore(layout: registry.layout),
+            scan: { root in
+                ExtensionSecurityScanner.scan(packageAt: root).findings
+            }
+        )
+    }
+
     private func rollbackHistory(_ package: ExtensionPackage?) -> String {
         guard let package else { return "Paket bulunamadı." }
         guard let previous = package.previousRevision else {
@@ -1890,6 +2360,7 @@ private struct UpdatesScreen: View {
 
 private struct ActivityScreen: View {
     @ObservedObject var registry: ExtensionRegistry
+    @Binding var message: String?
 
     var body: some View {
         SectionCard(
@@ -1925,10 +2396,13 @@ private struct ActivityScreen: View {
                         Text(RelativeClock.short(since: event.at))
                             .font(Theme.mono(9.5))
                             .foregroundStyle(Theme.textFaint)
-                        if event.isUndoable {
-                            Text("undo edilebilir")
-                                .font(Theme.mono(9))
-                                .foregroundStyle(Theme.codex)
+                        if ExtensionRegistry.isUndoable(event) {
+                            Button("Undo") {
+                                message = registry.undo(event) ?? "Bu işlem geri alınamıyor."
+                            }
+                            .buttonStyle(GhostButtonStyle())
+                            .font(Theme.mono(9.5))
+                            .accessibilityIdentifier("extensions.activity.undo.\(event.id.uuidString)")
                         }
                     }
                     .padding(.horizontal, 12)

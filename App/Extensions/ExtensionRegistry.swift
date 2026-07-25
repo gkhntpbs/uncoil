@@ -43,6 +43,14 @@ final class ExtensionRegistry: ObservableObject {
     @Published private(set) var unmanagedSkills: [ExtensionAgentID: [String]] = [:]
     @Published private(set) var linkStatuses: [String: SkillLinkStatus] = [:]
     @Published private(set) var health: [HealthCheckResult] = []
+    /// Per-MCP process health, refreshed by `discover`.
+    @Published private(set) var processHealth: [String: MCPProcessHealth] = [:]
+    /// When each MCP server was last checked, and what it last said went wrong.
+    @Published private(set) var lastHealthCheckAt: [String: Date] = [:]
+    @Published private(set) var lastErrors: [String: String] = [:]
+    /// What a remote MCP server reported having, keyed by package id. Empty means
+    /// nothing asked it yet — not that it has nothing.
+    @Published private(set) var reportedCapabilities: [String: [String]] = [:]
     @Published private(set) var lastDiscoveryAt: Date?
 
     let layout: ExtensionStoreLayout
@@ -345,8 +353,151 @@ final class ExtensionRegistry: ObservableObject {
         unmanagedSkills = unmanaged
         linkStatuses = statuses
         lastDiscoveryAt = now
+        refreshProcessHealth(launcherPath: launcherPath, now: now)
         health = healthChecks(now: now)
         save()
+    }
+
+    // MARK: - MCP process health
+
+    /// Reads what the launcher recorded about each MCP process: whether it is
+    /// running, what it last exited with, and when we looked.
+    func refreshProcessHealth(launcherPath: String, now: Date = .now) {
+        let launcher = ExtensionLauncherService(layout: layout, launcherPath: launcherPath)
+        let records = launcher.runRecords()
+        guard !records.isEmpty else { return }
+        let supervisor = MCPProcessSupervisor()
+        let revisions = Dictionary(
+            packages.compactMap { package -> (String, String)? in
+                package.activeRevision.map { (package.id, $0.id) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for health in supervisor.healthByExtension(
+            records: records, activeRevisions: revisions, now: now
+        ) {
+            processHealth[health.id] = health
+            lastHealthCheckAt[health.id] = now
+            if let exitCode = health.lastExitCode, exitCode != 0 {
+                lastErrors[health.id] = "çıkış kodu \(exitCode)"
+            } else if let signal = health.lastSignal {
+                lastErrors[health.id] = "sinyal \(signal) ile sonlandı"
+            } else if health.crashCount > 0 {
+                lastErrors[health.id] = "\(health.crashCount) kez çöktü"
+            }
+        }
+    }
+
+    /// Records what a probe learned from a remote server.
+    func record(probe: RemoteMCPStatus, packageID: String, now: Date = .now) {
+        reportedCapabilities[packageID] = probe.reportedCapabilities
+        lastHealthCheckAt[packageID] = probe.checkedAt
+        switch probe.reachability {
+        case .reachable, .localProcess:
+            lastErrors.removeValue(forKey: packageID)
+        case .authenticationRequired(let message), .unreachable(let message):
+            lastErrors[packageID] = message
+        }
+    }
+
+    /// The log the launcher tees an MCP server's stderr into.
+    func logURL(for package: ExtensionPackage) -> URL? {
+        let url = layout.root
+            .appendingPathComponent("logs", isDirectory: true)
+            .appendingPathComponent("\(package.name).log")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// Last lines of that log, for the panel.
+    func logTail(for package: ExtensionPackage, lines: Int = 40) -> String? {
+        guard let url = logURL(for: package),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let all = text.components(separatedBy: "\n")
+        return all.suffix(lines).joined(separator: "\n")
+    }
+
+    /// Asks the launcher's children to stop; the agent starts a fresh one on its
+    /// next call, which is how a restart happens without Uncoil owning the
+    /// process.
+    @discardableResult
+    func restart(_ package: ExtensionPackage, launcherPath: String? = nil) -> Int {
+        guard let health = processHealth[package.id] else { return 0 }
+        let stopped = MCPProcessSupervisor().shutdown(health)
+        record(AuditEvent(
+            kind: .mcpEnabled, extensionID: package.id,
+            detail: "\(stopped.count) süreç durduruldu; agent yeniden başlatacak"
+        ))
+        return stopped.count
+    }
+
+    // MARK: - Sources
+
+    /// Pins a package to an exact commit, or moves what it follows. Both are the
+    /// user's call and neither fetches anything on its own.
+    func setTracking(
+        _ tracking: ExtensionSource.TrackingMode,
+        packageID: String
+    ) -> Bool {
+        guard let index = packages.firstIndex(where: { $0.id == packageID }),
+              case .managedGitHub(let repository, let subpath, let previous) =
+                packages[index].source else { return false }
+        guard previous != tracking else { return false }
+        packages[index].source = .managedGitHub(
+            repository: repository, subpath: subpath, tracking: tracking
+        )
+        record(AuditEvent(
+            kind: .configChanged, extensionID: packageID,
+            detail: "takip değişti: \(previous.label) → \(tracking.label)"
+        ))
+        save()
+        return true
+    }
+
+    // MARK: - Undo
+
+    /// Whether an audit event describes something Uncoil can put back.
+    static func isUndoable(_ event: AuditEvent) -> Bool {
+        switch event.kind {
+        case .quarantined, .restored, .assignmentChanged, .updateApplied, .findingAccepted:
+            true
+        case .skillInstalled, .skillRemoved, .mcpEnabled, .mcpDisabled, .configChanged,
+             .rolledBack, .scanCompleted:
+            false
+        }
+    }
+
+    /// Undoes what an event did, when that is possible. Returns what happened, or
+    /// nil when there is nothing Uncoil can safely reverse.
+    @discardableResult
+    func undo(_ event: AuditEvent) -> String? {
+        guard Self.isUndoable(event), let extensionID = event.extensionID else { return nil }
+        switch event.kind {
+        case .quarantined:
+            setState(.active, packageID: extensionID)
+            return "Karantina geri alındı."
+        case .restored:
+            setState(.quarantined, packageID: extensionID)
+            return "Geri yükleme geri alındı; paket yeniden karantinada."
+        case .assignmentChanged:
+            // The detail carries the agent and the direction it moved.
+            guard let agent = ExtensionAgentID.allCases.first(where: {
+                event.detail.contains($0.displayName) || event.detail.contains($0.rawValue)
+            }) else { return nil }
+            let isOn = agents(for: extensionID).contains(agent)
+            setAgentBinding(!isOn, packageID: extensionID, agent: agent)
+            return "Atama geri alındı: \(agent.displayName)."
+        case .findingAccepted:
+            guard let index = findings.firstIndex(where: {
+                $0.extensionID == extensionID && $0.isAccepted
+            }) else { return nil }
+            findings[index].isAccepted = false
+            save()
+            return "Bulgu kabulü geri alındı."
+        case .updateApplied:
+            return nil
+        default:
+            return nil
+        }
     }
 
     // MARK: - Derived views
