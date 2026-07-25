@@ -26,7 +26,7 @@ enum HelpRegistry {
 
     static let capabilities: [String: CapabilityDoc] = {
         var map: [String: CapabilityDoc] = [:]
-        for doc in [projects, sessions, artifacts, system, browser, computer] {
+        for doc in [projects, sessions, artifacts, tasks, system, browser, computer] {
             map[doc.capability] = doc
         }
         return map
@@ -167,6 +167,103 @@ enum HelpRegistry {
                     doc: "# register\nRequires `artifacts.write`. Args: `name` (required), `kind` (optional), `description` (optional), `status` (optional — `passed`/`failed`). Appends to `artifacts.json` in the caller's session artifact dir. A failed status also raises a row in Uncoil's Attention Center, so report test runs here."),
                 ActionDoc(action: "resolve_path", summary: "Resolve a name to an approved absolute path.",
                     doc: "# resolve_path\nArgs: `session_id` (optional), `name` (required). Returns the absolute path only if it resolves inside an approved artifact root."),
+            ])
+    }()
+
+
+    // MARK: - uncoil_tasks
+
+    static let tasks: CapabilityDoc = {
+        let names = [
+            "help",
+            "list_todo_files", "list_tasks", "get_task", "get_task_context", "get_board",
+            "list_task_sessions", "list_unassigned_tasks", "list_blocked_tasks",
+            "list_tasks_by_status", "get_task_diff",
+            "create_task", "create_subtask", "update_task", "complete_task", "reopen_task",
+            "move_task", "delete_task", "add_task_note",
+            "assign_session", "unassign_session",
+            "set_task_blocked", "request_task_review", "report_task_progress",
+            "complete_task_execution",
+            "claim_task", "release_task", "dispatch_task", "spawn_task_agent",
+            "wait_for_task_agents", "summarize_task_results",
+            "create_task_worktree", "submit_task_for_merge",
+        ]
+        let overview = """
+        Read and edit the project's own TODO.md tasks. The file stays the source of \
+        truth: writes are byte-range patches, so formatting, headings and comments \
+        survive, and every patch is audited with its diff.
+        """
+        return CapabilityDoc(
+            capability: "uncoil_tasks",
+            overview: overview,
+            actions: [
+                helpAction(overview, names),
+                ActionDoc(action: "list_todo_files", summary: "TODO.md sources in the project.",
+                    doc: "# list_todo_files\nRequires `tasks.read`. Args: `project_id` (optional). Returns `todo_files:[{path, display_path, task_count, open_task_count, content_hash}]`."),
+                ActionDoc(action: "list_tasks", summary: "Tasks, optionally filtered.",
+                    doc: "# list_tasks\nRequires `tasks.read`. Args: `source_path`, `heading`, `open_only` (bool), `limit` (≤500). Returns `tasks:[...]` plus `total` and `truncated` — a cap is always reported, never silent."),
+                ActionDoc(action: "get_task", summary: "One task with its raw block.",
+                    doc: "# get_task\nRequires `tasks.read`. Args: `task_id` (required)."),
+                ActionDoc(action: "get_task_context", summary: "The full prompt context for a task.",
+                    doc: "# get_task_context\nRequires `tasks.read`. Args: `task_id` (required), `role` (optional). Returns the same prompt Uncoil would send, including the rule that TODO.md formatting must be preserved."),
+                ActionDoc(action: "get_board", summary: "Headings as board columns.",
+                    doc: "# get_board\nRequires `tasks.read`. Args: `source_path` (optional). Columns come from the file's own headings; an unrecognised heading is its own column."),
+                ActionDoc(action: "list_task_sessions", summary: "Task ↔ session assignments.",
+                    doc: "# list_task_sessions\nRequires `tasks.read`. Args: `task_id` (optional)."),
+                ActionDoc(action: "list_unassigned_tasks", summary: "Tasks nobody is working on.",
+                    doc: "# list_unassigned_tasks\nRequires `tasks.read`."),
+                ActionDoc(action: "list_blocked_tasks", summary: "Tasks reported blocked or failing.",
+                    doc: "# list_blocked_tasks\nRequires `tasks.read`."),
+                ActionDoc(action: "list_tasks_by_status", summary: "Tasks by execution status.",
+                    doc: "# list_tasks_by_status\nRequires `tasks.read`. Args: `status` (required): all, open, done, assigned, unassigned, running, awaitingReview, blocked."),
+                ActionDoc(action: "get_task_diff", summary: "Git state plus the patches Uncoil wrote.",
+                    doc: "# get_task_diff\nRequires `tasks.read`. Args: `task_id` (required). Reports the task's worktree (or the project root), its changed files, and the summaries of every patch made through MCP."),
+                ActionDoc(action: "create_task", summary: "Add a task under a heading.",
+                    doc: "# create_task\nRequires `tasks.write`. Args: `text` (required), `source_path`, `heading`. Inserted after the last task under that heading; nothing else in the file is touched."),
+                ActionDoc(action: "create_subtask", summary: "Add a nested task.",
+                    doc: "# create_subtask\nRequires `tasks.write`. Args: `parent_task_id` (required), `text` (required). Indented under the parent, using the parent's own list marker."),
+                ActionDoc(action: "update_task", summary: "Change a task's text or description.",
+                    doc: "# update_task\nRequires `tasks.write`. Args: `task_id` (required), `text`, `description`. Only the task's own line and continuation are rewritten."),
+                ActionDoc(action: "complete_task", summary: "Tick the checkbox.",
+                    doc: "# complete_task\nRequires `tasks.write`. Args: `task_id`. Changes exactly the three bytes of `[ ]`."),
+                ActionDoc(action: "reopen_task", summary: "Clear the checkbox.",
+                    doc: "# reopen_task\nRequires `tasks.write`. Args: `task_id`."),
+                ActionDoc(action: "move_task", summary: "Move a task under another heading.",
+                    doc: "# move_task\nRequires `tasks.write`. Args: `task_id`, `heading`. The whole block moves, children and description included."),
+                ActionDoc(action: "delete_task", summary: "Remove a task block.",
+                    doc: "# delete_task\nRequires the opt-in `tasks.delete` grant. Args: `task_id`. Removes the block with its children; the diff is stored."),
+                ActionDoc(action: "add_task_note", summary: "Append a note to a task.",
+                    doc: "# add_task_note\nRequires `tasks.write`. Args: `task_id`, `note`. Existing description lines are kept."),
+                ActionDoc(action: "assign_session", summary: "Link a session to a task.",
+                    doc: "# assign_session\nRequires `tasks.write`. Args: `task_id`, `session_id` (defaults to caller), `role`, `worktree_path`. Stored in Uncoil's metadata, never in the file."),
+                ActionDoc(action: "unassign_session", summary: "Unlink a session.",
+                    doc: "# unassign_session\nRequires `tasks.write`. Args: `task_id`, `session_id` (defaults to caller). The task itself is unchanged."),
+                ActionDoc(action: "set_task_blocked", summary: "Report a task blocked.",
+                    doc: "# set_task_blocked\nRequires `tasks.write`. Args: `task_id`, `reason`. Also available as `mark_task_blocked`."),
+                ActionDoc(action: "request_task_review", summary: "Ask for review.",
+                    doc: "# request_task_review\nRequires `tasks.write`. Args: `task_id`, `detail`."),
+                ActionDoc(action: "report_task_progress", summary: "Report work in flight.",
+                    doc: "# report_task_progress\nRequires `tasks.write`. Args: `task_id`, `detail`."),
+                ActionDoc(action: "complete_task_execution", summary: "Report execution finished.",
+                    doc: "# complete_task_execution\nRequires `tasks.write`. Args: `task_id`. Records the execution state; ticking the checkbox is `complete_task`."),
+                ActionDoc(action: "claim_task", summary: "Take an exclusive claim.",
+                    doc: "# claim_task\nRequires `tasks.write`. Args: `task_id`, `duration_seconds` (60…3600). Fails while another session holds a live claim; the same session renews."),
+                ActionDoc(action: "release_task", summary: "Give up a claim.",
+                    doc: "# release_task\nRequires `tasks.write`. Args: `task_id`."),
+                ActionDoc(action: "dispatch_task", summary: "Start an agent on a task.",
+                    doc: "# dispatch_task\nRequires the opt-in `tasks.orchestrate` grant. Args: `task_id`, `role`, `preset_id`, `worktree_path`. Creates a child through the preset path, so its capabilities are the preset intersected with yours — never more. Same as `spawn_task_agent`."),
+                ActionDoc(action: "wait_for_task_agents", summary: "Check whether a task's agents settled.",
+                    doc: "# wait_for_task_agents\nRequires `tasks.orchestrate`. Args: `task_id`. Returns immediately with `settled` and what is still pending — polling, because a blocking wait would hold the control socket."),
+                ActionDoc(action: "summarize_task_results", summary: "Assignments and history for a task.",
+                    doc: "# summarize_task_results\nRequires `tasks.orchestrate`. Args: `task_id`."),
+                ActionDoc(action: "spawn_task_agent", summary: "Alias of dispatch_task.",
+                    doc: "# spawn_task_agent\nIdentical to `dispatch_task`; both require `tasks.orchestrate`."),
+                ActionDoc(action: "mark_task_blocked", summary: "Alias of set_task_blocked.",
+                    doc: "# mark_task_blocked\nIdentical to `set_task_blocked`; both require `tasks.write`."),
+                ActionDoc(action: "create_task_worktree", summary: "Cut a worktree for a task.",
+                    doc: "# create_task_worktree\nRequires the opt-in `tasks.worktree` grant. Args: `task_id`, `name` (optional)."),
+                ActionDoc(action: "submit_task_for_merge", summary: "Report a task ready to merge.",
+                    doc: "# submit_task_for_merge\nRequires the opt-in `tasks.merge` grant. Args: `task_id`. Uncoil does NOT merge or push: it reports the branch and whether the worktree is clean, and puts the task up for review — merging stays the user's decision."),
             ])
     }()
 

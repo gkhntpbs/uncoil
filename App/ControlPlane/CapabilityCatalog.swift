@@ -8,7 +8,7 @@ import Foundation
 enum CapabilityCatalog {
     /// Capability domains, in display order.
     enum Domain: String, CaseIterable, Identifiable {
-        case projects, worktrees, sessions, browser, computer, artifacts
+        case projects, worktrees, sessions, tasks, browser, computer, artifacts
         var id: String { rawValue }
 
         var title: String {
@@ -16,6 +16,7 @@ enum CapabilityCatalog {
             case .projects: "Projeler"
             case .worktrees: "Worktree"
             case .sessions: "Oturumlar"
+            case .tasks: "Görevler"
             case .browser: "Tarayıcı"
             case .computer: "Bilgisayar"
             case .artifacts: "Artifact"
@@ -27,6 +28,7 @@ enum CapabilityCatalog {
             case .projects: "folders"
             case .worktrees: "git-branch"
             case .sessions: "messages"
+            case .tasks: "list-check"
             case .browser: "world"
             case .computer: "device-desktop"
             case .artifacts: "file-text"
@@ -81,6 +83,25 @@ enum CapabilityCatalog {
         .init(key: "sessions.organize", domain: .sessions,
               label: "Oturumları düzenle",
               detail: "Grupları oluşturur ve oturumları gruplara taşır.", risky: false),
+
+        .init(key: "tasks.read", domain: .tasks,
+              label: "Görevleri oku",
+              detail: "Projenin TODO.md dosyalarını ve görev durumlarını okur.", risky: false),
+        .init(key: "tasks.write", domain: .tasks,
+              label: "Görevleri düzenle",
+              detail: "Görev ekler, metnini değiştirir, tamamlar ve taşır.", risky: false),
+        .init(key: "tasks.delete", domain: .tasks,
+              label: "Görev sil",
+              detail: "Görev bloğunu TODO.md'den kaldırır; geri alınamaz.", risky: true),
+        .init(key: "tasks.orchestrate", domain: .tasks,
+              label: "Görev için agent başlat",
+              detail: "Görevi alt oturumlara dağıtır ve sonuçlarını toplar.", risky: true),
+        .init(key: "tasks.worktree", domain: .tasks,
+              label: "Görev worktree'si aç",
+              detail: "Görev için ayrı git worktree oluşturur.", risky: false),
+        .init(key: "tasks.merge", domain: .tasks,
+              label: "Görevi merge'e gönder",
+              detail: "Görevin dalını merge için hazırlar.", risky: true),
 
         .init(key: "browser.use", domain: .browser,
               label: "Tarayıcı kullan",

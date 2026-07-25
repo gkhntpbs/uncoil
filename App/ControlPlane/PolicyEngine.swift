@@ -33,6 +33,9 @@ enum PolicyEngine {
         "sessions.organize",
         "artifacts.read", "artifacts.write",
         "browser.use", "browser.persistent_state",
+        // Reading and editing the project's own TODO.md is ordinary work; the
+        // destructive and orchestrating halves are opt-in below.
+        "tasks.read", "tasks.write",
     ]
 
     /// Opt-in grants that are OFF by default; a session must explicitly list
@@ -40,6 +43,9 @@ enum PolicyEngine {
     /// the earlier control grants live here for discoverability.
     static let optionalGrants: Set<String> = [
         "computer.inspect", "computer.background_control", "computer.foreground_control",
+        // Deleting a task, spawning agents for it, cutting a worktree or asking
+        // for a merge all need to be granted deliberately.
+        "tasks.delete", "tasks.orchestrate", "tasks.worktree", "tasks.merge",
     ]
 
     static func grants(for record: SessionRecord) -> Set<String> {

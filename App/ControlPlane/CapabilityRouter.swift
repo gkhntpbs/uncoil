@@ -33,6 +33,10 @@ final class CapabilityRouter {
     /// the child session id already created for that key.
     var childIdempotency: [String: UUID] = [:]
 
+    /// Per-project task metadata, cached so repeated task calls share one
+    /// in-memory view of the assignments they mutate.
+    var taskMetadataStores: [UUID: ProjectTaskMetadataStore] = [:]
+
     /// Launches a freshly-created child session's terminal (and delivers its
     /// initial prompt). Injected by the app; nil in tests, where the child
     /// record is still created but no PTY is spawned.
@@ -93,6 +97,7 @@ final class CapabilityRouter {
         case "uncoil_projects": return handleProjects(request)
         case "uncoil_sessions": return await handleSessions(request)
         case "uncoil_artifacts": return handleArtifacts(request)
+        case "uncoil_tasks": return await handleTasks(request)
         case "uncoil_system": return handleSystem(request)
         case "uncoil_browser": return await handleBrowser(request)
         case "uncoil_computer": return await handleComputer(request)
