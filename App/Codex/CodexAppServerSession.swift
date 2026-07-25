@@ -476,6 +476,7 @@ final class CodexAppServerSession {
         )
         sessionStore?.setCodexApproval(request, for: recordID)
         sessionStore?.setStatus(.waitingForPermission, detail: title, for: recordID)
+        PermissionNotificationCenter.shared.post(request, projectID: record.projectID)
     }
 
     private func handleItemStarted(_ params: JSONValue) {

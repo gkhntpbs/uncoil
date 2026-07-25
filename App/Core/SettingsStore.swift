@@ -45,6 +45,9 @@ final class SettingsStore: ObservableObject {
         var commandPaletteHotkey: HotkeyBinding? = nil
         var sessionQuitBehavior: SessionQuitBehavior? = nil
         var transcriptRetentionPolicy: TranscriptRetentionPolicy? = nil
+        /// Minutes a permission request may sit unanswered; 0 = never
+        /// expires. Optional for backward compatibility; nil ⇒ 10 minutes.
+        var permissionTimeoutMinutes: Int? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -63,6 +66,8 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     @Published private(set) var sessionQuitBehavior: SessionQuitBehavior = .keepSessionsRunning
     @Published private(set) var transcriptRetentionPolicy: TranscriptRetentionPolicy = .disabled
+    /// Minutes before an unanswered permission request expires; 0 = never.
+    @Published private(set) var permissionTimeoutMinutes = 10
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -185,6 +190,16 @@ final class SettingsStore: ObservableObject {
     func setTranscriptRetentionPolicy(_ policy: TranscriptRetentionPolicy) {
         transcriptRetentionPolicy = policy
         transcriptStore.prune(policy: policy)
+        save()
+    }
+
+    /// Answer window handed to `PermissionService`; nil = no expiry.
+    var permissionTimeout: TimeInterval? {
+        permissionTimeoutMinutes <= 0 ? nil : TimeInterval(permissionTimeoutMinutes * 60)
+    }
+
+    func setPermissionTimeoutMinutes(_ minutes: Int) {
+        permissionTimeoutMinutes = max(0, minutes)
         save()
     }
 
@@ -444,6 +459,7 @@ final class SettingsStore: ObservableObject {
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
+        permissionTimeoutMinutes = decoded.permissionTimeoutMinutes ?? 10
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
 
@@ -463,7 +479,9 @@ final class SettingsStore: ObservableObject {
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
                 ? nil : sessionQuitBehavior,
             transcriptRetentionPolicy: transcriptRetentionPolicy == .disabled
-                ? nil : transcriptRetentionPolicy
+                ? nil : transcriptRetentionPolicy,
+            permissionTimeoutMinutes: permissionTimeoutMinutes == 10
+                ? nil : permissionTimeoutMinutes
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

@@ -11,12 +11,36 @@ struct PermissionRequest: Codable, Equatable, Identifiable {
     var status: Status
     let createdAt: Date
     var decidedAt: Date?
+    /// How long the grant lasts. Optional for backward compatibility with
+    /// permissions.json written before scopes existed; nil ⇒ `.persistent`.
+    var scope: Scope?
 
     enum Status: String, Codable {
         case pending
         case granted
         case denied
+        /// Nobody answered in time. Kept (rather than deleted) so the pane can
+        /// say what happened instead of the request silently vanishing.
+        case expired
+        /// A one-time grant that has been used up.
+        case consumed
     }
+
+    enum Scope: String, Codable, CaseIterable, Identifiable {
+        case once
+        case persistent
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .once: "Bir kez"
+            case .persistent: "Kalıcı"
+            }
+        }
+    }
+
+    var effectiveScope: Scope { scope ?? .persistent }
 
     func matches(from: String, to: String?, key: String) -> Bool {
         fromSessionID == from && targetSessionID == to && grantKey == key
@@ -29,10 +53,17 @@ struct PermissionRequest: Codable, Equatable, Identifiable {
 /// them; the PolicyEngine consults `isGranted` on every call (no caching).
 @MainActor
 final class PermissionService: ObservableObject {
-    /// Pending requests older than this are dropped when the list is read.
-    static let pendingTTL: TimeInterval = 10 * 60
+    /// Default answer window for a pending request.
+    static let defaultPendingTTL: TimeInterval = 10 * 60
+
+    /// How long a request may sit unanswered before it expires. Configurable
+    /// from Ayarlar → İzinler; `nil` disables expiry entirely.
+    var pendingTTL: TimeInterval? = PermissionService.defaultPendingTTL
 
     @Published private(set) var requests: [PermissionRequest] = []
+
+    /// Called when a fresh request is created, so the app can raise a banner.
+    var onRequestCreated: ((PermissionRequest) -> Void)?
 
     private let fileURL: URL
 
@@ -43,13 +74,21 @@ final class PermissionService: ObservableObject {
 
     // MARK: - Queries
 
-    /// True when a non-expired GRANTED record authorizes `from` to act on `to`
-    /// under `key`. Directional and exact: never widens to other callers.
+    /// True when a GRANTED record authorizes `from` to act on `to` under `key`.
+    /// Directional and exact: never widens to other callers. A one-time grant
+    /// authorizes exactly this call and is marked consumed here, so the next
+    /// check needs a fresh approval.
     func isGranted(from: String, to: String?, key: String) -> Bool {
         pruneExpired()
-        return requests.contains {
+        guard let index = requests.firstIndex(where: {
             $0.status == .granted && $0.matches(from: from, to: to, key: key)
+        }) else { return false }
+        if requests[index].effectiveScope == .once {
+            requests[index].status = .consumed
+            requests[index].decidedAt = Date()
+            save()
         }
+        return true
     }
 
     /// Non-mutating: filters out expired pending records for display WITHOUT
@@ -59,8 +98,19 @@ final class PermissionService: ObservableObject {
     /// happens lazily on the control-plane paths (`isGranted`/`request`) and via
     /// `pruneExpiredIfNeeded()` scheduled outside any view update.
     func pending() -> [PermissionRequest] {
-        let cutoff = Date().addingTimeInterval(-Self.pendingTTL)
+        guard let ttl = pendingTTL else {
+            return requests.filter { $0.status == .pending }
+        }
+        let cutoff = Date().addingTimeInterval(-ttl)
         return requests.filter { $0.status == .pending && $0.createdAt >= cutoff }
+    }
+
+    /// Requests nobody answered in time, newest first — shown so a timeout
+    /// reads as a decision rather than a disappearance.
+    func expired() -> [PermissionRequest] {
+        requests
+            .filter { $0.status == .expired }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     func granted() -> [PermissionRequest] {
@@ -100,10 +150,18 @@ final class PermissionService: ObservableObject {
             targetSessionID: target, status: .pending, createdAt: Date(), decidedAt: nil)
         requests.append(record)
         save()
+        onRequestCreated?(record)
         return record
     }
 
-    func grant(id: String) { setStatus(.granted, id: id) }
+    /// Approves a request. `.once` authorizes a single call; `.persistent`
+    /// lasts until revoked.
+    func grant(id: String, scope: PermissionRequest.Scope = .persistent) {
+        guard let index = requests.firstIndex(where: { $0.id == id }) else { return }
+        requests[index].scope = scope
+        setStatus(.granted, id: id)
+    }
+
     func deny(id: String) { setStatus(.denied, id: id) }
 
     /// Proactively creates a GRANTED directional record without an agent asking
@@ -154,13 +212,19 @@ final class PermissionService: ObservableObject {
 
     // MARK: - Expiry
 
-    /// Drops pending requests past their TTL. Granted/denied records are kept
-    /// (a grant is durable until revoked).
+    /// Marks pending requests past their TTL as expired. Granted/denied records
+    /// are untouched (a persistent grant is durable until revoked).
     private func pruneExpired() {
-        let cutoff = Date().addingTimeInterval(-Self.pendingTTL)
-        let before = requests.count
-        requests.removeAll { $0.status == .pending && $0.createdAt < cutoff }
-        if requests.count != before { save() }
+        guard let ttl = pendingTTL else { return }
+        let cutoff = Date().addingTimeInterval(-ttl)
+        var changed = false
+        for index in requests.indices
+        where requests[index].status == .pending && requests[index].createdAt < cutoff {
+            requests[index].status = .expired
+            requests[index].decidedAt = Date()
+            changed = true
+        }
+        if changed { save() }
     }
 
     // MARK: - Persistence (atomic write-temp-rename)

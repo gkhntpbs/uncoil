@@ -539,8 +539,29 @@ struct MainWindow: View {
 
         // Directional permission service, shared with the Settings → İzinler pane.
         let permissions = PermissionService(dataDirectory: dataDir)
+        permissions.pendingTTL = settings.permissionTimeout
         sessionStore.permissionService = permissions
         router.permissions = permissions
+
+        // Permission banners: tapping opens the session; only non-sensitive
+        // grants can be answered from the notification itself.
+        let notifications = PermissionNotificationCenter.shared
+        notifications.permissions = permissions
+        notifications.notificationPrefs = { [weak settings] in
+            settings?.notifications ?? NotificationPrefs()
+        }
+        notifications.sessionResolver = { [weak projectStore] raw in
+            guard let id = UUID(uuidString: raw) else { return nil }
+            return projectStore?.sessions.first { $0.id == id }
+        }
+        notifications.activate()
+        permissions.onRequestCreated = { [weak projectStore] request in
+            let target = request.targetSessionID ?? request.fromSessionID
+            let projectID = UUID(uuidString: target).flatMap { id in
+                projectStore?.sessions.first { $0.id == id }?.projectID
+            }
+            notifications.post(request, projectID: projectID)
+        }
 
         // Child-session launcher: spawn the PTY through the normal terminal
         // path so the child shows up in the sidebar like any session, then

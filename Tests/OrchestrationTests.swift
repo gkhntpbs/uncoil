@@ -93,10 +93,10 @@ final class PermissionServiceTests: XCTestCase {
 
     func testPendingExpiry() {
         // Write a permissions.json with an old pending request, then reload.
-        let old = Date().addingTimeInterval(-(PermissionService.pendingTTL + 60))
+        let old = Date().addingTimeInterval(-(PermissionService.defaultPendingTTL + 60))
         let record = PermissionRequest(
             id: "e1", grantKey: "k", fromSessionID: "A", targetSessionID: "B",
-            status: .pending, createdAt: old, decidedAt: nil)
+            status: .pending, createdAt: old, decidedAt: nil, scope: nil)
         let data = try! JSONEncoder().encode([record])
         try! data.write(to: dir.appendingPathComponent("permissions.json"))
         let reloaded = PermissionService(dataDirectory: dir)

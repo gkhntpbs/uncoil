@@ -3,6 +3,7 @@ import SwiftUI
 struct PermissionsSettingsSection: View {
     @ObservedObject var service: PermissionService
     @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @State private var selectedSessionID: UUID?
     @State private var showDrivers = false
     @State private var showAdvanced = false
@@ -73,11 +74,16 @@ struct PermissionsSettingsSection: View {
             if !service.pending().isEmpty {
                 pendingRequests
             }
+            if !service.expired().isEmpty {
+                expiredRequests
+            }
+            timeoutRow
             sessionAccess
             drivers
             advanced
         }
         .task {
+            service.pendingTTL = settings.permissionTimeout
             service.pruneExpiredIfNeeded()
             if selectedSessionID == nil {
                 selectedSessionID = projectStore.sessions.first?.id
@@ -295,8 +301,12 @@ struct PermissionsSettingsSection: View {
             VStack(spacing: 0) {
                 ForEach(Array(service.pending().enumerated()), id: \.element.id) { index, request in
                     requestRow(request) {
-                        Button("Onayla") { service.grant(id: request.id) }
+                        Button("Bir Kez") { service.grant(id: request.id, scope: .once) }
                             .foregroundStyle(Theme.ok)
+                            .accessibilityIdentifier("settings.permissions.grantOnce")
+                        Button("Kalıcı") { service.grant(id: request.id, scope: .persistent) }
+                            .foregroundStyle(Theme.ok)
+                            .accessibilityIdentifier("settings.permissions.grantPersistent")
                         Button("Reddet") { service.deny(id: request.id) }
                             .foregroundStyle(Theme.warn)
                     }
@@ -308,6 +318,65 @@ struct PermissionsSettingsSection: View {
             .panel(radius: 10)
         }
         .accessibilityIdentifier("settings.permissions.pending")
+    }
+
+    private var timeoutRow: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            sectionHeader(
+                "İzin Zaman Aşımı",
+                "Cevaplanmayan istek bu süre sonunda zaman aşımına düşer."
+            )
+            HStack {
+                Text("Süre")
+                    .font(Theme.mono(12))
+                    .foregroundStyle(Theme.textDim)
+                Spacer()
+                Menu {
+                    ForEach([0, 1, 5, 10, 30], id: \.self) { minutes in
+                        Button(minutes == 0 ? "Kapalı" : "\(minutes) dk") {
+                            settings.setPermissionTimeoutMinutes(minutes)
+                            service.pendingTTL = settings.permissionTimeout
+                        }
+                    }
+                } label: {
+                    Text(
+                        settings.permissionTimeoutMinutes == 0
+                            ? "Kapalı"
+                            : "\(settings.permissionTimeoutMinutes) dk"
+                    )
+                    .font(Theme.mono(11, .medium))
+                    .foregroundStyle(Theme.text)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .accessibilityIdentifier("settings.permissions.timeout")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .panel(radius: 10)
+        }
+    }
+
+    private var expiredRequests: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            sectionHeader(
+                "Zaman Aşımına Düşenler",
+                "Kimse zamanında cevaplamadı; agent yeniden istemek zorunda."
+            )
+            VStack(spacing: 0) {
+                ForEach(Array(service.expired().prefix(5).enumerated()), id: \.element.id) { index, request in
+                    requestRow(request) {
+                        Button("Kaldır") { service.revoke(id: request.id) }
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    if index != min(service.expired().count, 5) - 1 {
+                        Divider().overlay(Theme.border)
+                    }
+                }
+            }
+            .panel(radius: 10)
+        }
+        .accessibilityIdentifier("settings.permissions.expired")
     }
 
     private var drivers: some View {
@@ -419,9 +488,18 @@ struct PermissionsSettingsSection: View {
                      ?? request.grantKey)
                     .font(Theme.mono(11.5, .medium))
                     .foregroundStyle(Theme.text)
-                Text("\(short(request.fromSessionID)) → \(short(request.targetSessionID))")
-                    .font(Theme.mono(9.5))
-                    .foregroundStyle(Theme.textFaint)
+                HStack(spacing: 6) {
+                    Text("\(short(request.fromSessionID)) → \(short(request.targetSessionID))")
+                        .font(Theme.mono(9.5))
+                        .foregroundStyle(Theme.textFaint)
+                    if request.status == .granted {
+                        Text(request.effectiveScope.label)
+                            .font(Theme.mono(9, .semibold))
+                            .foregroundStyle(
+                                request.effectiveScope == .once ? Theme.warn : Theme.ok
+                            )
+                    }
+                }
             }
             Spacer()
             HStack(spacing: 9) {
