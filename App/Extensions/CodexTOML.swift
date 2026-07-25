@@ -180,11 +180,16 @@ enum CodexTOML {
         if !definition.isEnabled {
             lines.append("enabled = false")
         }
-        if !definition.environment.isEmpty {
+        // Secret VALUES never reach an agent config, even if a caller put one in
+        // `environment`: the launcher injects them from the Keychain instead.
+        let safeEnvironment = definition.environment.filter {
+            !AgentAdapterSupport.isSecretKey($0.key)
+        }
+        if !safeEnvironment.isEmpty {
             lines.append("")
             lines.append("[\(serversTable).\(quoteIfNeeded(definition.name)).env]")
-            for key in definition.environment.keys.sorted() {
-                lines.append("\(key) = \(Value.string(definition.environment[key] ?? "").rendered)")
+            for key in safeEnvironment.keys.sorted() {
+                lines.append("\(key) = \(Value.string(safeEnvironment[key] ?? "").rendered)")
             }
         }
         return lines.joined(separator: "\n")

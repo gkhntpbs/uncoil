@@ -253,8 +253,13 @@ struct ClaudeCodeAdapter: AgentAdapter {
                     }
                     entry["url"] = url
                 }
-                // Secret VALUES are never written: only non-secret env pairs.
-                if !definition.environment.isEmpty { entry["env"] = definition.environment }
+                // Secret VALUES never reach an agent config, even if a caller
+                // put one in `environment`: the launcher injects them from the
+                // Keychain at start-up instead.
+                let safeEnvironment = definition.environment.filter {
+                    !AgentAdapterSupport.isSecretKey($0.key)
+                }
+                if !safeEnvironment.isEmpty { entry["env"] = safeEnvironment }
                 if !definition.isEnabled { entry["disabled"] = true }
                 servers[definition.name] = entry
             case .removeMCPServer(let name):
