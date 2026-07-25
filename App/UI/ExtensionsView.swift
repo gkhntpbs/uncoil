@@ -1412,14 +1412,19 @@ private struct PackageCard: View {
 
             if package.state == .quarantined {
                 Button("Karantinadan Çıkar") {
-                    registry.setState(.active, packageID: package.id)
-                    message = "\(package.name) geri yüklendi."
+                    message = registry.restoreFromQuarantine(packageID: package.id)
+                        ? "\(package.name) geri yüklendi ve yeniden bağlandı."
+                        : "\(package.name) geri yüklenemedi."
                 }
                 .buttonStyle(AccentButtonStyle())
             } else {
                 Button("Quarantine") {
-                    registry.setState(.quarantined, packageID: package.id)
-                    message = "\(package.name) karantinaya alındı; dosyalar silinmedi."
+                    let outcome = registry.quarantine(
+                        packageID: package.id,
+                        reason: findings.first?.rule ?? "kullanıcı isteği",
+                        findingID: findings.first?.id
+                    )
+                    message = "\(package.name): \(outcome.summary)"
                 }
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.package.quarantine.\(package.id)")

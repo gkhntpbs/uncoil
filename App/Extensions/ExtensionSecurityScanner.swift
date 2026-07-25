@@ -35,6 +35,9 @@ enum ExtensionSecurityScanner {
         var byteCount: Int
         /// Very long lines with almost no whitespace: minified or obfuscated.
         var looksObfuscated: Bool
+        /// Content hash, so a file whose commands changed is visible even when
+        /// the rules it matches did not.
+        var contentHash: String = ""
     }
 
     struct Report: Equatable {
@@ -224,7 +227,10 @@ enum ExtensionSecurityScanner {
 
             files.append(ScannedFile(
                 path: relative, kind: kind, isExecutable: isExecutable,
-                byteCount: byteCount, looksObfuscated: obfuscated
+                byteCount: byteCount, looksObfuscated: obfuscated,
+                contentHash: data.map { AgentAdapterSupport.hash(
+                    String(decoding: $0, as: UTF8.self)
+                ) } ?? ""
             ))
 
             if kind == .binary {
@@ -299,6 +305,62 @@ enum ExtensionSecurityScanner {
         dedupe(matches(
             instructionRules, in: text, extensionID: extensionID, path: nil, now: now
         ))
+    }
+
+    /// Script files whose content hash moved between two revisions. The rules may
+    /// say nothing new while the command itself changed completely.
+    static func shellCommandChanges(
+        from previous: Report,
+        to current: Report
+    ) -> [(path: String, detail: String)] {
+        let scriptKinds: Set<FileKind> = [.shell, .python, .node]
+        let before = Dictionary(
+            previous.files.filter { scriptKinds.contains($0.kind) }.map { ($0.path, $0.contentHash) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return current.files
+            .filter { scriptKinds.contains($0.kind) }
+            .compactMap { file in
+                guard let old = before[file.path], !old.isEmpty, old != file.contentHash else {
+                    return nil
+                }
+                return (file.path, "\(file.path) içeriği değişti")
+            }
+            .sorted { $0.path < $1.path }
+    }
+
+    /// A shipped binary with no valid code signature.
+    ///
+    /// The `codesign` call is injected: a unit test must not depend on what is
+    /// signed on the machine running it, and the app passes the real one.
+    static func unsignedBinaries(
+        in report: Report,
+        isSigned: (String) -> Bool,
+        now: Date = .now
+    ) -> [SecurityFinding] {
+        report.files
+            .filter { $0.kind == .binary }
+            .filter { !isSigned($0.path) }
+            .map { file in
+                finding(
+                    rule: "binary.unsigned", severity: .high,
+                    message: "İmzasız binary: \(file.path)",
+                    extensionID: report.extensionID, path: file.path, now: now
+                )
+            }
+    }
+
+    /// Whether macOS considers this file signed. Blocking; call off the main
+    /// thread.
+    static func isCodeSigned(_ path: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        process.arguments = ["-v", path]
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return false }
+        process.waitUntilExit()
+        return process.terminationStatus == 0
     }
 
     // MARK: - Update diff
@@ -385,6 +447,16 @@ enum ExtensionSecurityScanner {
                 rule: "diff.entrypoint-changed", severity: .high,
                 message: "Entrypoint değişti: \(previousEntrypoint) → \(currentEntrypoint)",
                 extensionID: extensionID, path: nil, now: now
+            ))
+        }
+
+        // A shell command that changed is not the same as one that appeared: the
+        // rule set is unchanged, so only a content comparison sees it.
+        for change in shellCommandChanges(from: previous, to: current) {
+            findings.append(finding(
+                rule: "diff.shell-command-changed", severity: .needsReview,
+                message: "Shell komutu değişti: \(change.detail)",
+                extensionID: extensionID, path: change.path, now: now
             ))
         }
 

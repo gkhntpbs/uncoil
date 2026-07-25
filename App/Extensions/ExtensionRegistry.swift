@@ -223,6 +223,103 @@ final class ExtensionRegistry: ObservableObject {
         ))
     }
 
+    /// Quarantines an extension: switched off for every agent, its active
+    /// symlink removed, refused by the launcher — and every file left where it
+    /// is. A quarantine is a stop, not a delete.
+    @discardableResult
+    func quarantine(
+        packageID: String,
+        reason: String,
+        findingID: String? = nil
+    ) -> QuarantineOutcome {
+        guard let package = package(id: packageID) else {
+            return QuarantineOutcome(disabledAgents: [], unlinked: false, filesKept: false)
+        }
+        var disabled: [ExtensionAgentID] = []
+        for binding in agentBindings
+        where binding.extensionID == packageID && binding.isEnabled {
+            agentBindings = SkillAssignment.setting(
+                false, extensionID: packageID, agent: binding.agent, in: agentBindings
+            )
+            disabled.append(binding.agent)
+        }
+        // The agent-side symlinks and the active link go; the revision stays.
+        var unlinked = false
+        for installation in installations {
+            guard let directory = installation.skillsDirectory else { continue }
+            let url = URL(fileURLWithPath: directory)
+            if (try? store.unlink(name: package.name, fromAgentDirectory: url)) != nil {
+                unlinked = true
+            }
+        }
+        if (try? store.deactivate(name: package.name)) != nil { unlinked = true }
+
+        if let index = packages.firstIndex(where: { $0.id == packageID }) {
+            packages[index].state = .quarantined
+        }
+        save()
+        record(AuditEvent(
+            kind: .quarantined, extensionID: packageID,
+            detail: "karantinaya alındı: \(reason)"
+                + (findingID.map { " (bulgu \($0))" } ?? "")
+                + "; dosyalar silinmedi"
+        ))
+        let filesKept = package.activeRevision
+            .map { FileManager.default.fileExists(atPath: $0.path) } ?? true
+        return QuarantineOutcome(
+            disabledAgents: disabled, unlinked: unlinked, filesKept: filesKept
+        )
+    }
+
+    struct QuarantineOutcome: Equatable {
+        var disabledAgents: [ExtensionAgentID]
+        var unlinked: Bool
+        /// Always true unless the revision was already missing: quarantine never
+        /// deletes anything.
+        var filesKept: Bool
+
+        var summary: String {
+            var parts: [String] = ["karantinaya alındı"]
+            if !disabledAgents.isEmpty {
+                parts.append(
+                    "kapatıldı: " + disabledAgents.map(\.displayName).joined(separator: ", ")
+                )
+            }
+            if unlinked { parts.append("bağlantılar kaldırıldı") }
+            parts.append("dosyalar korundu")
+            return parts.joined(separator: " · ")
+        }
+    }
+
+    /// Puts a quarantined extension back: active again, relinked for the agents
+    /// it was assigned to before, and the launcher accepts it once more.
+    @discardableResult
+    func restoreFromQuarantine(packageID: String) -> Bool {
+        guard let package = package(id: packageID), package.state == .quarantined else {
+            return false
+        }
+        if let revision = package.activeRevision {
+            try? store.activate(revisionID: revision.id, name: package.name)
+        }
+        for installation in installations {
+            guard let directory = installation.skillsDirectory,
+                  agents(for: packageID).contains(installation.agent) else { continue }
+            _ = try? store.link(
+                name: package.name, intoAgentDirectory: URL(fileURLWithPath: directory)
+            )
+        }
+        setState(.active, packageID: packageID)
+        return true
+    }
+
+    /// The findings behind a quarantine, for the detail the user reads before
+    /// deciding to restore.
+    func findings(for packageID: String) -> [SecurityFinding] {
+        findings
+            .filter { $0.extensionID == packageID }
+            .sorted { $0.severity > $1.severity }
+    }
+
     func setProjectBinding(_ binding: ProjectBinding) {
         projectBindings.removeAll { $0.id == binding.id }
         projectBindings.append(binding)

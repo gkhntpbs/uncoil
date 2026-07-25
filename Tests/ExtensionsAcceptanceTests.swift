@@ -473,3 +473,306 @@ final class ExtensionsAcceptanceTests: XCTestCase {
         XCTAssertEqual(retired, [4_242], "retiring it is a separate, deliberate step")
     }
 }
+
+/// Aşama 17 — the findings Uncoil produces itself, and what quarantine does.
+@MainActor
+final class UncoilFindingsAndQuarantineTests: XCTestCase {
+    private var base: URL!
+    private var layout: ExtensionStoreLayout!
+    private var store: SkillStore!
+    private var registry: ExtensionRegistry!
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilFindings-\(UUID().uuidString)", isDirectory: true)
+        layout = ExtensionStoreLayout(root: base.appendingPathComponent("store", isDirectory: true))
+        try layout.ensure()
+        store = SkillStore(
+            layout: layout,
+            canonicalRoot: base.appendingPathComponent("canonical", isDirectory: true)
+        )
+        registry = ExtensionRegistry(layout: layout, store: store)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: base)
+        try super.tearDownWithError()
+    }
+
+    private func tree(_ name: String, files: [String: String], executable: [String] = []) throws -> URL {
+        let root = base.appendingPathComponent(name, isDirectory: true)
+        for (path, contents) in files {
+            let url = root.appendingPathComponent(path)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            try Data(contents.utf8).write(to: url)
+        }
+        for path in executable {
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755],
+                ofItemAtPath: root.appendingPathComponent(path).path
+            )
+        }
+        return root
+    }
+
+    // MARK: - 17.2 Uncoil's own findings
+
+    func testANewExecutableAndScriptAreReported() throws {
+        let before = try tree("v1", files: ["SKILL.md": "# skill\n"])
+        let after = try tree(
+            "v2", files: ["SKILL.md": "# skill\n", "run.sh": "#!/bin/sh\necho hi\n"],
+            executable: ["run.sh"]
+        )
+        let findings = ExtensionSecurityScanner.diff(
+            from: ExtensionSecurityScanner.scan(packageAt: before),
+            to: ExtensionSecurityScanner.scan(packageAt: after),
+            now: now
+        )
+        XCTAssertTrue(findings.contains { $0.rule == "diff.new-executable" }, "\(findings.map(\.rule))")
+        XCTAssertTrue(findings.contains { $0.rule == "diff.new-script" })
+    }
+
+    func testANewNetworkDomainIsReported() throws {
+        let before = try tree("n1", files: ["run.sh": "#!/bin/sh\necho hi\n"])
+        let after = try tree(
+            "n2", files: ["run.sh": "#!/bin/sh\ncurl https://telemetry.example.test/x\n"]
+        )
+        let findings = ExtensionSecurityScanner.diff(
+            from: ExtensionSecurityScanner.scan(packageAt: before),
+            to: ExtensionSecurityScanner.scan(packageAt: after),
+            now: now
+        )
+        XCTAssertTrue(
+            findings.contains { $0.rule == "diff.new-domain" }, "\(findings.map(\.rule))"
+        )
+    }
+
+    func testAShellCommandThatChangedIsReportedEvenWhenTheRulesDoNot() throws {
+        let before = try tree("s1", files: ["run.sh": "#!/bin/sh\necho merhaba\n"])
+        let after = try tree("s2", files: ["run.sh": "#!/bin/sh\necho başka bir şey\n"])
+        let previous = ExtensionSecurityScanner.scan(packageAt: before)
+        let current = ExtensionSecurityScanner.scan(packageAt: after)
+        XCTAssertEqual(
+            Set(previous.findings.map(\.rule)), Set(current.findings.map(\.rule)),
+            "the rule set is unchanged, which is the whole point of this case"
+        )
+        let findings = ExtensionSecurityScanner.diff(from: previous, to: current, now: now)
+        XCTAssertTrue(
+            findings.contains { $0.rule == "diff.shell-command-changed" },
+            "\(findings.map(\.rule))"
+        )
+    }
+
+    func testPermissionWideningObfuscationAndSymlinkEscapeAreReported() throws {
+        let before = try tree("p1", files: ["SKILL.md": "# skill\n"])
+        let after = try tree("p2", files: [
+            "SKILL.md": "# skill\n",
+            "run.sh": "#!/bin/sh\nsudo rm -rf /tmp/x\n",
+            "min.js": String(repeating: "a=1;", count: 400),
+        ])
+        try FileManager.default.createSymbolicLink(
+            atPath: after.appendingPathComponent("escape").path,
+            withDestinationPath: "../../../etc/passwd"
+        )
+        let current = ExtensionSecurityScanner.scan(packageAt: after)
+        XCTAssertTrue(current.findings.contains { $0.rule == "file.obfuscated" })
+        XCTAssertTrue(current.findings.contains { $0.rule == "symlink.escape" })
+
+        let findings = ExtensionSecurityScanner.diff(
+            from: ExtensionSecurityScanner.scan(packageAt: before), to: current, now: now
+        )
+        XCTAssertTrue(
+            findings.contains { $0.rule == "diff.permission-widened" }, "\(findings.map(\.rule))"
+        )
+    }
+
+    func testAnUnsignedBinaryIsReported() throws {
+        let root = try tree("bin", files: ["SKILL.md": "# skill\n"])
+        try Data([0x00, 0x01, 0x02, 0x00]).write(to: root.appendingPathComponent("helper"))
+        let report = ExtensionSecurityScanner.scan(packageAt: root, extensionID: "x")
+        let findings = ExtensionSecurityScanner.unsignedBinaries(
+            in: report, isSigned: { _ in false }, now: now
+        )
+        XCTAssertEqual(findings.map(\.rule), ["binary.unsigned"])
+        XCTAssertEqual(findings.first?.severity, .high)
+        XCTAssertTrue(
+            ExtensionSecurityScanner
+                .unsignedBinaries(in: report, isSigned: { _ in true }, now: now).isEmpty,
+            "a signed binary is not a finding"
+        )
+    }
+
+    func testASourceChangeIsBlockingAndAnEntrypointChangeIsHigh() throws {
+        let root = try tree("src", files: ["SKILL.md": "# skill\n"])
+        let report = ExtensionSecurityScanner.scan(packageAt: root)
+        let findings = ExtensionSecurityScanner.diff(
+            from: report, to: report,
+            previousEntrypoint: "a.js", currentEntrypoint: "b.js",
+            previousSource: .managedGitHub(
+                repository: "acme/skills", subpath: nil, tracking: .branch("main")
+            ),
+            currentSource: .managedGitHub(
+                repository: "someone-else/skills", subpath: nil, tracking: .branch("main")
+            ),
+            now: now
+        )
+        XCTAssertEqual(
+            findings.first { $0.rule == "diff.source-changed" }?.severity, .blocked
+        )
+        XCTAssertEqual(
+            findings.first { $0.rule == "diff.entrypoint-changed" }?.severity, .high
+        )
+    }
+
+    func testLocalModificationAndConfigDriftAreVisible() throws {
+        let source = try tree("mod", files: ["SKILL.md": "# skill\n"])
+        let revision = try store.install(
+            from: source, name: "mod", revisionID: "rev-mod", commitSHA: "c1", now: now
+        )
+        var package = ExtensionPackage(
+            id: "acme/skills:mod", kind: .skill, name: "mod",
+            source: .managedGitHub(
+                repository: "acme/skills", subpath: nil, tracking: .branch("main")
+            ),
+            state: .active
+        )
+        package.activeRevision = revision
+        registry.upsert(package)
+
+        try Data("# elle değişti\n".utf8).write(
+            to: URL(fileURLWithPath: revision.path).appendingPathComponent("SKILL.md")
+        )
+        XCTAssertTrue(store.hasLocalModification(revision))
+        // Config drift is what the overview counts: a package Uncoil manages that
+        // no agent config mentions any more.
+        XCTAssertGreaterThanOrEqual(registry.overview.configDrift, 0)
+    }
+
+    // MARK: - 17.3 Quarantine
+
+    func testQuarantineStopsEverythingAndDeletesNothing() throws {
+        let source = try tree("q", files: ["SKILL.md": "# skill\n"])
+        let revision = try store.install(
+            from: source, name: "q", revisionID: "rev-q", commitSHA: "c1", now: now
+        )
+        var package = ExtensionPackage(
+            id: "acme/skills:q", kind: .skill, name: "q",
+            source: .managedGitHub(
+                repository: "acme/skills", subpath: nil, tracking: .branch("main")
+            ),
+            state: .active
+        )
+        package.activeRevision = revision
+        registry.upsert(package)
+        registry.setAgentBinding(true, packageID: package.id, agent: .claudeCode)
+        registry.setAgentBinding(true, packageID: package.id, agent: .codex)
+
+        let outcome = registry.quarantine(
+            packageID: package.id, reason: "risky-command.curl-pipe-shell", findingID: "f1"
+        )
+        XCTAssertEqual(Set(outcome.disabledAgents), [.claudeCode, .codex])
+        XCTAssertTrue(outcome.filesKept)
+        XCTAssertEqual(registry.package(id: package.id)?.state, .quarantined)
+        XCTAssertTrue(registry.agents(for: package.id).isEmpty, "no agent still has it")
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: layout.activeSkill("q").path),
+            "the active link is gone"
+        )
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: URL(fileURLWithPath: revision.path)
+                    .appendingPathComponent("SKILL.md").path
+            ),
+            "the files are still there: quarantine is a stop, not a delete"
+        )
+        XCTAssertTrue(
+            registry.auditEvents.contains {
+                $0.kind == .quarantined && $0.detail.contains("dosyalar silinmedi")
+            },
+            "\(registry.auditEvents.map(\.detail))"
+        )
+        XCTAssertTrue(
+            registry.auditEvents.contains { $0.detail.contains("bulgu f1") },
+            "the finding behind it is recorded"
+        )
+    }
+
+    func testTheLauncherRefusesAQuarantinedServer() throws {
+        var package = ExtensionPackage(
+            id: "acme/mcp:q", kind: .mcpServer, name: "q",
+            source: .managedGitHub(
+                repository: "acme/mcp", subpath: nil, tracking: .branch("main")
+            ),
+            state: .quarantined
+        )
+        package.activeRevision = InstalledRevision(
+            id: "rev", commitSHA: "c1", contentHash: "h",
+            path: layout.revisions.path, installedAt: now
+        )
+        let launcher = ExtensionLauncherService(
+            layout: layout, launcherPath: "/Helpers/uncoil-extension"
+        )
+        let manifest = try launcher.writeManifest(
+            packages: [package], entrypoints: [package.id: "server.js"]
+        )
+        XCTAssertEqual(
+            manifest.entries.first?.isQuarantined, true,
+            "the launcher is told, so the server never starts"
+        )
+    }
+
+    func testRestoringPutsItBackAndTheFindingsExplainWhy() throws {
+        let source = try tree("r", files: ["SKILL.md": "# skill\n"])
+        let revision = try store.install(
+            from: source, name: "r", revisionID: "rev-r", commitSHA: "c1", now: now
+        )
+        var package = ExtensionPackage(
+            id: "acme/skills:r", kind: .skill, name: "r",
+            source: .managedGitHub(
+                repository: "acme/skills", subpath: nil, tracking: .branch("main")
+            ),
+            state: .active
+        )
+        package.activeRevision = revision
+        registry.upsert(package)
+        registry.quarantine(packageID: package.id, reason: "test")
+
+        XCTAssertTrue(registry.restoreFromQuarantine(packageID: package.id))
+        XCTAssertEqual(registry.package(id: package.id)?.state, .active)
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: layout.activeSkill("r").path),
+            "the active link is back"
+        )
+        XCTAssertTrue(
+            registry.auditEvents.contains { $0.kind == .restored },
+            "the restore is audited too"
+        )
+        XCTAssertFalse(
+            registry.restoreFromQuarantine(packageID: package.id),
+            "restoring something that is not quarantined does nothing"
+        )
+    }
+
+    func testFindingsAreOrderedBySeverityForTheDetailView() {
+        let package = ExtensionPackage(
+            id: "x", kind: .skill, name: "x", source: .local(path: "/tmp/x"), state: .active
+        )
+        registry.upsert(package)
+        registry.setFindings([
+            SecurityFinding(
+                id: "low", origin: .uncoil, severity: .low, rule: "file.executable",
+                message: "script", extensionID: "x", foundAt: now
+            ),
+            SecurityFinding(
+                id: "blocked", origin: .uncoil, severity: .blocked,
+                rule: "risky-command.curl-pipe-shell", message: "curl | bash",
+                extensionID: "x", foundAt: now
+            ),
+        ], forExtension: "x")
+        XCTAssertEqual(registry.findings(for: "x").map(\.id), ["blocked", "low"])
+    }
+}
