@@ -21,6 +21,8 @@ struct ProjectTasksView: View {
     @State private var conflictTaskIDs: Set<String> = []
     @State private var editingTaskID: String?
     @State private var editingText = ""
+    /// Task awaiting a dispatch decision, with the document it came from.
+    @State private var dispatchTarget: (task: ProjectTask, document: TaskDocument)?
 
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
@@ -73,6 +75,28 @@ struct ProjectTasksView: View {
             self.watcher = watcher
         }
         .onDisappear { watcher?.stop() }
+        .sheet(
+            isPresented: Binding(
+                get: { dispatchTarget != nil },
+                set: { if !$0 { dispatchTarget = nil } }
+            )
+        ) {
+            if let target = dispatchTarget {
+                TaskDispatchSheet(
+                    task: target.task,
+                    document: target.document,
+                    project: project,
+                    onSend: { request in
+                        dispatchTarget = nil
+                        dispatch(request, task: target.task, document: target.document)
+                    },
+                    onCancel: { dispatchTarget = nil }
+                )
+                .environmentObject(projectStore)
+                .environmentObject(sessionStore)
+                .environmentObject(settings)
+            }
+        }
     }
 
     // MARK: - Toolbar
@@ -737,7 +761,8 @@ struct ProjectTasksView: View {
     /// card cannot drift apart.
     @ViewBuilder
     private func cardActions(_ task: ProjectTask, in document: TaskDocument) -> some View {
-        Button("Send to Agent") { sendToAgent(task, role: .implementer, reuseSession: true) }
+        Button("Send to Agent…") { dispatchTarget = (task, document) }
+        Button("Send to Agent (hızlı)") { sendToAgent(task, role: .implementer, reuseSession: true) }
         Button("Create New Session") { sendToAgent(task, role: .implementer, reuseSession: false) }
         Menu("Assign Existing Session") {
             let candidates = projectStore.sessions(for: project.id)
@@ -807,6 +832,74 @@ struct ProjectTasksView: View {
                 }
             }
         }
+    }
+
+
+    /// Performs a dispatch the sheet configured: creates a worktree if asked,
+    /// finds or creates the session, records the assignment, raises an attention
+    /// row, and delivers the full task context.
+    private func dispatch(
+        _ request: TaskDispatchRequest,
+        task: ProjectTask,
+        document: TaskDocument
+    ) {
+        var worktreePath = request.worktreePath
+        if request.createsWorktree, worktreePath == nil {
+            let name = request.worktreeName ?? TaskPromptBuilder.worktreeName(for: task)
+            switch GitService.createWorktree(repoPath: project.rootPath, name: name) {
+            case .success(let worktree):
+                worktreePath = worktree.path
+            case .failure(let error):
+                message = "Worktree oluşturulamadı: \(error.message)"
+                return
+            }
+        }
+
+        let record: SessionRecord
+        if let sessionID = request.existingSessionID,
+           let existing = projectStore.sessions.first(where: { $0.id == sessionID }) {
+            record = existing
+        } else {
+            record = projectStore.createSession(
+                projectID: project.id,
+                provider: request.provider,
+                accountID: request.accountID,
+                title: "\(request.provider.rawValue): \(task.text)",
+                worktreePath: worktreePath
+            )
+        }
+
+        let assignment = metadata.assign(
+            taskID: task.id,
+            sourcePath: task.sourcePath,
+            sessionID: record.id,
+            role: request.role,
+            worktreePath: worktreePath ?? record.worktreePath,
+            fingerprint: task.fingerprint
+        )
+        metadata.setState(.agentStarting, assignmentID: assignment.id)
+
+        // The assignment is worth surfacing: an agent just started on the user's
+        // behalf, and the Attention Center is where that belongs.
+        AttentionStore.shared.report(
+            kind: .input,
+            title: "\(project.name) › \(task.text)",
+            detail: "\(request.role.label) olarak \(record.displayTitle) oturumuna atandı",
+            projectID: project.id,
+            sessionID: record.id,
+            id: "task-assigned:\(assignment.id.uuidString)"
+        )
+
+        selection = .session(record.id)
+        let prompt = TaskPromptBuilder.prompt(TaskPromptBuilder.context(
+            for: task,
+            in: document,
+            project: project,
+            role: request.role,
+            worktreePath: worktreePath ?? record.worktreePath,
+            permissionProfile: request.permissionProfile
+        ))
+        deliver(prompt: prompt, to: record)
     }
 
     private func sessionLabel(_ assignment: TaskSessionAssignment) -> String {
