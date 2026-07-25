@@ -319,6 +319,8 @@ final class ProjectStore: ObservableObject {
 final class SessionStore: ObservableObject {
     @Published private(set) var statuses: [UUID: AgentSessionStatus] = [:]
     @Published private(set) var details: [UUID: String] = [:]
+    @Published private(set) var codexAuthentication: [UUID: CodexAuthenticationState] = [:]
+    @Published private(set) var codexApprovals: [UUID: CodexApprovalRequest] = [:]
     /// Bumped to force a session's terminal view to rebuild (palette "restart").
     @Published private(set) var restartCounter: [UUID: Int] = [:]
 
@@ -344,6 +346,14 @@ final class SessionStore: ObservableObject {
     func setStatus(_ status: AgentSessionStatus, detail: String? = nil, for recordID: UUID) {
         statuses[recordID] = status
         details[recordID] = detail
+    }
+
+    func setCodexAuthentication(_ state: CodexAuthenticationState, for recordID: UUID) {
+        codexAuthentication[recordID] = state
+    }
+
+    func setCodexApproval(_ request: CodexApprovalRequest?, for recordID: UUID) {
+        codexApprovals[recordID] = request
     }
 
     /// The session that should receive hook events for a project: the most

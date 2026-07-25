@@ -21,6 +21,8 @@ struct LaunchConfig {
     let windowHeight: Double?
     let disableAnimations: Bool
     let runtimeMismatchFixture: Bool
+    let codexAppServerEnabled: Bool
+    let codexApprovalFixture: Bool
 
     /// Isolated data root when UI testing; nil = normal App Support.
     var dataDirectoryOverride: URL? {
@@ -35,6 +37,10 @@ struct LaunchConfig {
         disableAnimations = arguments.contains("-disable-animations")
         runtimeMismatchFixture = isUITesting
             && arguments.contains("-runtime-mismatch-fixture")
+        codexAppServerEnabled = !isUITesting
+            || arguments.contains("-codex-app-server")
+        codexApprovalFixture = isUITesting
+            && arguments.contains("-codex-approval-fixture")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)

@@ -312,6 +312,30 @@ enum AgentSessionStatus: String, Codable {
     }
 }
 
+enum CodexAuthenticationState: Equatable {
+    case unknown
+    case authenticated(String?)
+    case required
+    case error(String)
+}
+
+enum CodexApprovalKind: String, Equatable {
+    case command
+    case fileChange
+    case permissions
+}
+
+struct CodexApprovalRequest: Identifiable, Equatable {
+    let id: String
+    let sessionID: UUID
+    let requestID: JSONValue
+    let kind: CodexApprovalKind
+    let title: String
+    let detail: String?
+    let permissions: JSONValue?
+    let availableDecisions: [String]
+}
+
 /// Persisted record of a session. Survives app restarts; the live terminal
 /// does not (yet), so a reopened record starts as `.terminated`.
 struct SessionRecord: Identifiable, Codable, Equatable {

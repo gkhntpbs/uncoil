@@ -32,6 +32,34 @@ struct SessionDetailView: View {
                     .padding(.top, 14)
                     .padding(.bottom, 12)
 
+                if let approval = sessionStore.codexApprovals[record.id] {
+                    CodexApprovalPanel(
+                        request: approval,
+                        respond: { decision in
+                            if LaunchConfig.shared.codexApprovalFixture {
+                                sessionStore.setCodexApproval(nil, for: record.id)
+                                sessionStore.setStatus(
+                                    .idle,
+                                    detail: "Fixture onayı: \(decision)",
+                                    for: record.id
+                                )
+                                return
+                            }
+                            TerminalRegistry.shared.respondToCodexApproval(
+                                sessionID: record.id,
+                                request: approval,
+                                decision: decision
+                            )
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                } else if sessionStore.codexAuthentication[record.id] == .required {
+                    CodexAuthenticationBanner()
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                }
+
                 // Selecting a session always (re)starts its agent: the registry
                 // reuses a live terminal or launches fresh (resuming Claude when
                 // a provider session id is known). No "restart" screen.
@@ -249,6 +277,68 @@ struct SessionDetailView: View {
         withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
             showChangesPanel = show
         }
+    }
+}
+
+private struct CodexApprovalPanel: View {
+    let request: CodexApprovalRequest
+    let respond: (String) -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            TablerIcon(name: "shield-lock", size: 16, color: Theme.warn)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(request.title)
+                    .font(Theme.mono(12, .semibold))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(2)
+                if let detail = request.detail {
+                    Text(detail)
+                        .font(Theme.mono(10.5))
+                        .foregroundStyle(Theme.textDim)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+            if request.availableDecisions.contains("decline") {
+                Button("Reddet") { respond("decline") }
+                    .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("session.codexApproval.decline")
+            }
+            if request.availableDecisions.contains("acceptForSession") {
+                Button("Oturum Boyunca") { respond("acceptForSession") }
+                    .buttonStyle(GhostButtonStyle())
+                    .accessibilityIdentifier("session.codexApproval.session")
+            }
+            if request.availableDecisions.contains("accept") {
+                Button("Bir Kez İzin Ver") { respond("accept") }
+                    .buttonStyle(AccentButtonStyle())
+                    .accessibilityIdentifier("session.codexApproval.accept")
+            }
+        }
+        .padding(12)
+        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Theme.warn.opacity(0.35), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("session.codexApproval")
+    }
+}
+
+private struct CodexAuthenticationBanner: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            TablerIcon(name: "user-exclamation", size: 15, color: Theme.warn)
+            Text("Codex hesabında oturum açılması gerekiyor. Terminal fallback üzerinden `codex login` çalıştırabilirsin.")
+                .font(Theme.mono(11))
+                .foregroundStyle(Theme.textDim)
+            Spacer()
+        }
+        .padding(11)
+        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("session.codexAuthentication.required")
     }
 }
 

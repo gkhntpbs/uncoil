@@ -224,7 +224,7 @@ extension CapabilityRouter {
         let children = projectStore.sessions.filter { $0.parentSessionID == caller.id }
         var summaries: [JSONValue] = []
         for child in children {
-            let buffer = await RuntimeClient.shared.peek(sid: child.id)
+            let buffer = await TerminalRegistry.shared.output(for: child.id)
             let tailText: String
             if let buffer {
                 let tail = buffer.count > 2048 ? buffer.suffix(2048) : buffer

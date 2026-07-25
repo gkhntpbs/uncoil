@@ -13,8 +13,13 @@ final class ApplicationLifecycle {
 @MainActor
 final class UncoilApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let terminateSessions =
+            ApplicationLifecycle.shared.sessionQuitBehavior == .terminateAllAgents
+        TerminalRegistry.shared.prepareForApplicationTermination(
+            terminateSessions: terminateSessions
+        )
         RuntimeClient.shared.prepareForApplicationTermination(
-            terminateSessions: ApplicationLifecycle.shared.sessionQuitBehavior == .terminateAllAgents
+            terminateSessions: terminateSessions
         )
         return .terminateNow
     }

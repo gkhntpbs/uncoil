@@ -244,13 +244,19 @@ struct SessionGroupView: View {
         let targets = records.filter { targetIDs.contains($0.id) }
         prompt = ""
         for record in targets {
-            RuntimeClient.shared.sendText(Data((text + "\n").utf8), sid: record.id)
+            Task { @MainActor in
+                await TerminalRegistry.shared.submitText(
+                    text,
+                    for: record.id,
+                    provider: record.provider
+                )
+            }
         }
     }
 
     private func interruptTargets() {
         for id in targetIDs {
-            RuntimeClient.shared.interrupt(sid: id)
+            TerminalRegistry.shared.interrupt(id)
         }
     }
 

@@ -63,7 +63,7 @@ extension CapabilityRouter {
             }
             var bytes = request.args["bytes"]?.intValue ?? 8192
             bytes = max(1, min(bytes, 262_144))
-            guard let buffer = await RuntimeClient.shared.peek(sid: target.id) else {
+            guard let buffer = await TerminalRegistry.shared.output(for: target.id) else {
                 return .failure(request, code: .sessionNotRunning,
                     message: "no live PTY for this session", retryable: true,
                     target_session_id: target.id.uuidString)
@@ -86,12 +86,12 @@ extension CapabilityRouter {
                 let sentBytes: Int
                 if raw {
                     let payload = Data(text.utf8)
-                    RuntimeClient.shared.sendText(payload, sid: target.id)
+                    TerminalRegistry.shared.sendRaw(payload, for: target.id)
                     sentBytes = payload.count
                 } else {
                     let parts = RuntimeClient.submissionParts(text, provider: target.provider)
-                    await RuntimeClient.shared.submitText(
-                        text, sid: target.id, provider: target.provider)
+                    await TerminalRegistry.shared.submitText(
+                        text, for: target.id, provider: target.provider)
                     sentBytes = parts.reduce(0) { $0 + $1.count }
                 }
                 return .success(request, data: .object(["sent_bytes": .int(sentBytes)]),
@@ -101,7 +101,7 @@ extension CapabilityRouter {
 
         case "interrupt":
             return await controlWrite(request, caller: caller, all: all, grants: grants) { target in
-                RuntimeClient.shared.interrupt(sid: target.id)
+                TerminalRegistry.shared.interrupt(target.id)
                 return .success(request, data: .object(["interrupted": .bool(true)]),
                                 project_id: target.projectID.uuidString,
                                 target_session_id: target.id.uuidString)

@@ -16,6 +16,7 @@ final class TerminalRegistry {
 
     private var terminals: [UUID: TerminalView] = [:]
     private var delegates: [UUID: AnyObject] = [:]
+    private var codexSessions: [UUID: CodexAppServerSession] = [:]
     /// Sessions whose process exited; the next request recreates the terminal
     /// (auto-relaunch — the user never sees a "restart" screen).
     private var deadSessions: Set<UUID> = []
@@ -43,10 +44,17 @@ final class TerminalRegistry {
         projectStore.markSessionStarted(record.id)
 
         let view: TerminalView
-        // Runtime path only when the daemon was actually started (not in UI
-        // tests) and hasn't failed; anything else uses the in-process PTY.
         let runtimePhase = RuntimeClient.shared.phase
-        if runtimePhase == .connecting || runtimePhase == .ready {
+        if shouldUseCodexAppServer(record: record, settings: settings) {
+            view = makeCodexAppServerTerminal(
+                record: record,
+                project: project,
+                account: account,
+                settings: settings,
+                sessionStore: sessionStore,
+                projectStore: projectStore
+            )
+        } else if runtimePhase == .connecting || runtimePhase == .ready {
             view = makeRuntimeTerminal(record: record, project: project, account: account,
                                        settings: settings, sessionStore: sessionStore,
                                        projectStore: projectStore)
@@ -56,13 +64,15 @@ final class TerminalRegistry {
                                          projectStore: projectStore)
         }
         terminals[record.id] = view
-        discoverCodexSessionID(
-            for: record,
-            project: project,
-            account: account,
-            settings: settings,
-            projectStore: projectStore
-        )
+        if codexSessions[record.id] == nil {
+            discoverCodexSessionID(
+                for: record,
+                project: project,
+                account: account,
+                settings: settings,
+                projectStore: projectStore
+            )
+        }
 
         // The agent starts ready-and-waiting; hooks flip it to thinking/
         // running as real work happens. Deferred: this runs from makeNSView
@@ -70,8 +80,37 @@ final class TerminalRegistry {
         let recordID = record.id
         DispatchQueue.main.async { [weak sessionStore] in
             sessionStore?.setStatus(.idle, for: recordID)
+            if LaunchConfig.shared.codexApprovalFixture, record.provider == .codex {
+                sessionStore?.setCodexApproval(
+                    CodexApprovalRequest(
+                        id: "fixture-approval",
+                        sessionID: recordID,
+                        requestID: .string("fixture-approval"),
+                        kind: .command,
+                        title: "git status",
+                        detail: "Proje durumunu okumak için izin istiyor.",
+                        permissions: nil,
+                        availableDecisions: ["accept", "acceptForSession", "decline"]
+                    ),
+                    for: recordID
+                )
+                sessionStore?.setStatus(
+                    .waitingForPermission,
+                    detail: "git status",
+                    for: recordID
+                )
+            }
         }
         return view
+    }
+
+    private func shouldUseCodexAppServer(record: SessionRecord, settings: SettingsStore) -> Bool {
+        guard record.provider == .codex,
+              LaunchConfig.shared.codexAppServerEnabled,
+              settings.binaryPath(for: .codex) != nil else { return false }
+        let providerArguments = settings.extraArguments[AgentProvider.codex.rawValue]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return providerArguments?.isEmpty != false && (record.extraArguments?.isEmpty ?? true)
     }
 
     private func discoverCodexSessionID(
@@ -136,6 +175,19 @@ final class TerminalRegistry {
             env.append("UNCOIL_CONTROL_SOCKET=\(ControlPlaneServer.defaultSocketPath())")
         }
         return env
+    }
+
+    private func environmentDictionary(
+        for account: AccountProfile?,
+        settings: SettingsStore,
+        record: SessionRecord
+    ) -> [String: String] {
+        var result = ProcessInfo.processInfo.environment
+        for entry in environment(for: account, settings: settings, record: record) {
+            guard let separator = entry.firstIndex(of: "=") else { continue }
+            result[String(entry[..<separator])] = String(entry[entry.index(after: separator)...])
+        }
+        return result
     }
 
     /// Writes a per-session MCP config registering the bundled `uncoil-mcp`
@@ -206,6 +258,89 @@ final class TerminalRegistry {
         view.nativeForegroundColor = NSColor(Color(hex: palette.terminalFg))
     }
 
+    private func makeCodexAppServerTerminal(
+        record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
+    ) -> TerminalView {
+        guard let binaryPath = settings.binaryPath(for: .codex) else {
+            return makeRuntimeTerminal(
+                record: record,
+                project: project,
+                account: account,
+                settings: settings,
+                sessionStore: sessionStore,
+                projectStore: projectStore
+            )
+        }
+        let view = UncoilTerminalView(frame: .zero)
+        applyTheme(view)
+        let mode = settings.workingMode(for: .codex)
+        let approvalPolicy: String
+        let sandbox: String
+        switch mode {
+        case .approveForMe:
+            approvalPolicy = "never"
+            sandbox = "workspace-write"
+        case .fullAccess:
+            approvalPolicy = "never"
+            sandbox = "danger-full-access"
+        default:
+            approvalPolicy = "on-request"
+            sandbox = "workspace-write"
+        }
+        var config: [String: JSONValue] = [:]
+        if let mcpBinaryPath = bundledMCPBinaryPath() {
+            config["mcp_servers"] = .object([
+                "uncoil": .object([
+                    "command": .string(mcpBinaryPath),
+                    "env": .object([
+                        "UNCOIL_CONTROL_SOCKET": .string(ControlPlaneServer.defaultSocketPath()),
+                        "UNCOIL_PROJECT_ID": .string(record.projectID.uuidString),
+                        "UNCOIL_SESSION_ID": .string(record.id.uuidString),
+                    ]),
+                ]),
+            ])
+        }
+        let recordID = record.id
+        let session = CodexAppServerSession(
+            record: record,
+            project: project,
+            binaryPath: binaryPath,
+            environment: environmentDictionary(for: account, settings: settings, record: record),
+            config: .object(config),
+            approvalPolicy: approvalPolicy,
+            sandbox: sandbox,
+            terminal: view,
+            settings: settings,
+            sessionStore: sessionStore,
+            projectStore: projectStore,
+            fallback: { [weak view, weak settings, weak sessionStore, weak projectStore] reason in
+                guard let view, let settings, let sessionStore, let projectStore else { return }
+                TerminalRegistry.shared.codexSessions[recordID] = nil
+                TerminalRegistry.shared.configureRuntimeTerminal(
+                    view,
+                    record: record,
+                    project: project,
+                    account: account,
+                    settings: settings,
+                    sessionStore: sessionStore,
+                    projectStore: projectStore
+                )
+                sessionStore.setStatus(.idle, detail: "PTY fallback: \(reason)", for: recordID)
+            }
+        )
+        let delegate = CodexStructuredTerminalDelegate(session: session, terminal: view)
+        view.terminalDelegate = delegate
+        delegates[record.id] = delegate
+        codexSessions[record.id] = session
+        session.start()
+        return view
+    }
+
     // MARK: - Daemon-backed terminal
 
     private func makeRuntimeTerminal(
@@ -217,6 +352,27 @@ final class TerminalRegistry {
         projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilTerminalView(frame: .zero)
+        configureRuntimeTerminal(
+            view,
+            record: record,
+            project: project,
+            account: account,
+            settings: settings,
+            sessionStore: sessionStore,
+            projectStore: projectStore
+        )
+        return view
+    }
+
+    private func configureRuntimeTerminal(
+        _ view: UncoilTerminalView,
+        record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
+    ) {
         applyTheme(view)
         let provider = record.provider
         view.resolveShiftEnterNewline = { [weak settings] in
@@ -257,7 +413,6 @@ final class TerminalRegistry {
                 TerminalRegistry.shared.markDead(recordID)
             }
         )
-        return view
     }
 
     // MARK: - In-process fallback (daemon unreachable)
@@ -305,10 +460,61 @@ final class TerminalRegistry {
     }
 
     func closeTerminal(for recordID: UUID) {
+        codexSessions[recordID]?.stop()
+        codexSessions[recordID] = nil
         RuntimeClient.shared.kill(sid: recordID)
         terminals[recordID] = nil
         delegates[recordID] = nil
         deadSessions.remove(recordID)
+    }
+
+    func prepareForApplicationTermination(terminateSessions: Bool) {
+        codexSessions.values.forEach {
+            $0.prepareForApplicationTermination(terminateServer: terminateSessions)
+        }
+        codexSessions.removeAll()
+    }
+
+    func submitText(_ text: String, for recordID: UUID, provider: AgentProvider) async {
+        if let session = codexSessions[recordID] {
+            session.submit(text)
+            return
+        }
+        await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
+        await RuntimeClient.shared.submitText(text, sid: recordID, provider: provider)
+    }
+
+    func sendRaw(_ data: Data, for recordID: UUID) {
+        guard codexSessions[recordID] == nil else {
+            if let text = String(data: data, encoding: .utf8) {
+                codexSessions[recordID]?.submit(text.trimmingCharacters(in: .newlines))
+            }
+            return
+        }
+        RuntimeClient.shared.sendText(data, sid: recordID)
+    }
+
+    func interrupt(_ recordID: UUID) {
+        if let session = codexSessions[recordID] {
+            session.interrupt()
+        } else {
+            RuntimeClient.shared.interrupt(sid: recordID)
+        }
+    }
+
+    func respondToCodexApproval(
+        sessionID: UUID,
+        request: CodexApprovalRequest,
+        decision: String
+    ) {
+        codexSessions[sessionID]?.respondToApproval(request, decision: decision)
+    }
+
+    func output(for recordID: UUID) async -> Data? {
+        if let session = codexSessions[recordID] {
+            return await session.outputSnapshot()
+        }
+        return await RuntimeClient.shared.peek(sid: recordID)
     }
 
     /// Full command line for a provider session (nil = plain shell).

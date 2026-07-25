@@ -171,4 +171,27 @@ final class SmokeTests: XCTestCase {
         let splitPane = app.descendants(matching: .any)["session.splitPane"]
         XCTAssertTrue(splitPane.waitForExistence(timeout: 10), "Split session pane did not appear")
     }
+
+    func testCodexStructuredApprovalPanelCanBeResolved() {
+        app.terminate()
+        app.launchArguments.append("-codex-approval-fixture")
+        app.launch()
+
+        let launcher = app.descendants(matching: .any)["launcher.codex"]
+        XCTAssertTrue(launcher.waitForExistence(timeout: 10))
+        launcher.click()
+
+        let panel = app.descendants(matching: .any)["session.codexApproval"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["session.codexApproval.accept"].exists
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["session.codexApproval.session"].exists
+        )
+        let decline = app.descendants(matching: .any)["session.codexApproval.decline"]
+        XCTAssertTrue(decline.exists)
+        decline.click()
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5))
+    }
 }
