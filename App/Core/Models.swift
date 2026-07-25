@@ -315,6 +315,8 @@ enum AgentSessionStatus: String, Codable {
 /// Persisted record of a session. Survives app restarts; the live terminal
 /// does not (yet), so a reopened record starts as `.terminated`.
 struct SessionRecord: Identifiable, Codable, Equatable {
+    static let currentMetadataVersion = 2
+
     let id: UUID
     let projectID: UUID
     var provider: AgentProvider
@@ -340,6 +342,10 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Appended after the provider's default arguments. Backward-compatible.
     var extraArguments: [String]?
     var groupID: UUID?
+    var endedAt: Date?
+    var exitCode: Int32?
+    var restartCount: Int?
+    var metadataVersion: Int?
 
     init(
         id: UUID = UUID(),
@@ -358,6 +364,7 @@ struct SessionRecord: Identifiable, Codable, Equatable {
         self.worktreePath = worktreePath
         self.createdAt = createdAt
         self.lastActivityAt = createdAt
+        self.metadataVersion = Self.currentMetadataVersion
     }
 
     func workingDirectory(in project: Project) -> String {

@@ -59,6 +59,55 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings window did not open")
     }
 
+    func testClosedSessionHistoryCanBeResumed() {
+        let history = app.descendants(matching: .any)["dashboard.sessionHistory"]
+        XCTAssertTrue(history.waitForExistence(timeout: 10))
+
+        let closedSession = app.descendants(matching: .any)[
+            "dashboard.session.codex: geçmiş görev"
+        ]
+        for _ in 0..<4 where !closedSession.exists {
+            app.descendants(matching: .any)["dashboard.container"].swipeUp()
+        }
+        XCTAssertTrue(closedSession.waitForExistence(timeout: 5))
+        closedSession.click()
+
+        let terminal = app.descendants(matching: .any)["session.splitGroup"]
+        XCTAssertTrue(terminal.waitForExistence(timeout: 10))
+    }
+
+    func testPresetAndTranscriptSettingsAreAvailable() {
+        let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+        settingsButton.click()
+
+        let agentBehavior = app.descendants(matching: .any)["settings.pane.agentBehavior"]
+        XCTAssertTrue(agentBehavior.waitForExistence(timeout: 10))
+        agentBehavior.click()
+
+        let addPreset = app.descendants(matching: .any)["settings.presets.add"]
+        for _ in 0..<5 where !addPreset.exists {
+            app.windows["Uncoil Ayarları"].swipeUp()
+        }
+        XCTAssertTrue(addPreset.waitForExistence(timeout: 5))
+        addPreset.click()
+
+        let presetID = app.descendants(matching: .any)["settings.presets.editor.id"]
+        let savePreset = app.descendants(matching: .any)["settings.presets.editor.save"]
+        XCTAssertTrue(presetID.waitForExistence(timeout: 5))
+        XCTAssertTrue(savePreset.exists)
+        app.typeKey(.escape, modifierFlags: [])
+
+        let retention = app.descendants(matching: .any)["settings.transcripts.retention"]
+        for _ in 0..<5 where !retention.exists {
+            app.windows["Uncoil Ayarları"].swipeUp()
+        }
+        XCTAssertTrue(retention.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["settings.transcripts.clear"].exists
+        )
+    }
+
     func testQuitBehaviorOptionsAreAvailable() {
         let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))

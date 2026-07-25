@@ -21,6 +21,9 @@ struct ProjectDashboardView: View {
             VStack(alignment: .leading, spacing: 14) {
                 header
                 sessionsPanel
+                if !projectStore.sessionHistory(for: project.id).isEmpty {
+                    historyPanel
+                }
                 if git.isRepo {
                     worktreesPanel
                 }
@@ -222,7 +225,10 @@ struct ProjectDashboardView: View {
     private var sessionsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                PanelHeading(title: "Oturumlar", count: projectStore.sessions(for: project.id).count)
+                PanelHeading(
+                    title: "Oturumlar",
+                    count: projectStore.activeSessions(for: project.id).count
+                )
                 Spacer()
                 Button {
                     onOrganizeSessions()
@@ -238,7 +244,7 @@ struct ProjectDashboardView: View {
                 .padding(.trailing, 10)
             }
 
-            let records = projectStore.sessions(for: project.id)
+            let records = projectStore.activeSessions(for: project.id)
             if records.isEmpty {
                 Text("Henüz oturum yok — sağ üstten bir agent başlat.")
                     .font(Theme.mono(11))
@@ -256,6 +262,24 @@ struct ProjectDashboardView: View {
             }
         }
         .panel(radius: 12)
+    }
+
+    private var historyPanel: some View {
+        let records = projectStore.sessionHistory(for: project.id)
+        return VStack(alignment: .leading, spacing: 0) {
+            PanelHeading(title: "Kapanmış Oturumlar", count: records.count)
+            VStack(spacing: 1) {
+                ForEach(records) { record in
+                    SessionCard(record: record) {
+                        selection = .session(record.id)
+                    }
+                }
+            }
+            .padding(6)
+        }
+        .panel(radius: 12)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard.sessionHistory")
     }
 
     // MARK: - Git

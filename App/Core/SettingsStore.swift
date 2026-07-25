@@ -44,6 +44,7 @@ final class SettingsStore: ObservableObject {
         /// settings.json written before it was configurable; nil ⇒ ⌘K.
         var commandPaletteHotkey: HotkeyBinding? = nil
         var sessionQuitBehavior: SessionQuitBehavior? = nil
+        var transcriptRetentionPolicy: TranscriptRetentionPolicy? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -61,6 +62,7 @@ final class SettingsStore: ObservableObject {
     /// The hotkey that toggles the command palette. Defaults to ⌘K.
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     @Published private(set) var sessionQuitBehavior: SessionQuitBehavior = .keepSessionsRunning
+    @Published private(set) var transcriptRetentionPolicy: TranscriptRetentionPolicy = .disabled
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -73,13 +75,16 @@ final class SettingsStore: ObservableObject {
 
     private let fileURL: URL
     private let profilesRoot: URL
+    let transcriptStore: SessionTranscriptStore
 
     init(directory: URL? = nil) {
         let base = directory ?? ProjectStore.defaultDirectory()
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         fileURL = base.appendingPathComponent("settings.json")
         profilesRoot = base.appendingPathComponent("profiles", isDirectory: true)
+        transcriptStore = SessionTranscriptStore(dataDirectory: base)
         load()
+        transcriptStore.prune(policy: transcriptRetentionPolicy)
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
         ensureDefaultAccounts()
     }
@@ -95,6 +100,29 @@ final class SettingsStore: ObservableObject {
 
     func preset(id: String) -> SessionPreset? {
         presets.first { $0.id == id }
+    }
+
+    func upsertPreset(_ preset: SessionPreset) {
+        var configured = configuredPresets ?? SessionPreset.builtInDefaults
+        if let index = configured.firstIndex(where: { $0.id == preset.id }) {
+            configured[index] = preset
+        } else {
+            configured.append(preset)
+        }
+        configuredPresets = configured
+        save()
+    }
+
+    func removePreset(id: String) {
+        var configured = configuredPresets ?? SessionPreset.builtInDefaults
+        configured.removeAll { $0.id == id }
+        configuredPresets = configured.isEmpty ? nil : configured
+        save()
+    }
+
+    func resetPresets() {
+        configuredPresets = nil
+        save()
     }
 
     // MARK: - Provider behavior
@@ -152,6 +180,16 @@ final class SettingsStore: ObservableObject {
         sessionQuitBehavior = behavior
         ApplicationLifecycle.shared.sessionQuitBehavior = behavior
         save()
+    }
+
+    func setTranscriptRetentionPolicy(_ policy: TranscriptRetentionPolicy) {
+        transcriptRetentionPolicy = policy
+        transcriptStore.prune(policy: policy)
+        save()
+    }
+
+    func clearTranscripts() {
+        transcriptStore.clearAll()
     }
 
     // MARK: - Accounts
@@ -405,6 +443,7 @@ final class SettingsStore: ObservableObject {
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
+        transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
 
@@ -422,7 +461,9 @@ final class SettingsStore: ObservableObject {
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
                 ? nil : commandPaletteHotkey,
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
-                ? nil : sessionQuitBehavior
+                ? nil : sessionQuitBehavior,
+            transcriptRetentionPolicy: transcriptRetentionPolicy == .disabled
+                ? nil : transcriptRetentionPolicy
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

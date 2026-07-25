@@ -239,6 +239,7 @@ struct MainWindow: View {
         case .closeSession(let id):
             TerminalRegistry.shared.closeTerminal(for: id)
             sessionStore.setStatus(.terminated, for: id)
+            projectStore.markSessionEnded(id, exitCode: nil)
         case .popoutSession(let id):
             openWindow(id: "session-window", value: id)
         case .openFile(let url), .openArtifact(let url):
@@ -277,7 +278,8 @@ struct MainWindow: View {
         _ = TerminalRegistry.shared.terminal(
             for: record, project: project,
             account: settings.account(id: record.accountID),
-            settings: settings, sessionStore: sessionStore)
+            settings: settings, sessionStore: sessionStore,
+            projectStore: projectStore)
 
         let sid = record.id
         Task { @MainActor in
@@ -368,7 +370,8 @@ struct MainWindow: View {
             project: project,
             account: settings.account(id: record.accountID),
             settings: settings,
-            sessionStore: sessionStore
+            sessionStore: sessionStore,
+            projectStore: projectStore
         )
         let prompt = """
         Bu projedeki Uncoil oturumlarını düzenle. Yalnızca Uncoil MCP araçlarını kullan. Önce uncoil_sessions list ve list_groups çağır. Oturum başlıkları, sağlayıcıları ve amaçlarına göre az sayıda, anlaşılır grup belirle. Gereken grupları create_group ile oluştur, sonra assign_group ile oturumları taşı. Bu düzenleyici oturumunu gruplama. Mevcut anlamlı grupları koru, boş veya yinelenen grup oluşturma. Bittiğinde yaptığın düzeni kısa bir tabloyla bildir.
@@ -474,6 +477,9 @@ struct MainWindow: View {
                             record.title = titleCandidate
                         }
                     }
+                },
+                endSession: { id in
+                    projects.markSessionEnded(id, exitCode: nil)
                 }
             )
         }
@@ -516,7 +522,8 @@ struct MainWindow: View {
             let account = settings.account(id: record.accountID)
             _ = TerminalRegistry.shared.terminal(
                 for: record, project: project, account: account,
-                settings: settings, sessionStore: sessionStore)
+                settings: settings, sessionStore: sessionStore,
+                projectStore: projectStore)
             guard let prompt, !prompt.isEmpty else { return }
             let sid = record.id
             Task { @MainActor in

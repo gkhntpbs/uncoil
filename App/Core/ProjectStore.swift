@@ -3,6 +3,13 @@ import Foundation
 /// Persists projects and session records as JSON under Application Support/Uncoil.
 @MainActor
 final class ProjectStore: ObservableObject {
+    nonisolated static let currentSessionSchemaVersion = SessionRecord.currentMetadataVersion
+
+    struct SessionDocument: Codable, Equatable {
+        var schemaVersion: Int
+        var sessions: [SessionRecord]
+    }
+
     @Published private(set) var projects: [Project] = []
     @Published private(set) var sessions: [SessionRecord] = []
     @Published private(set) var sessionGroups: [SessionGroup] = []
@@ -131,6 +138,16 @@ final class ProjectStore: ObservableObject {
         return sessions(for: group.projectID).filter { $0.groupID == groupID }
     }
 
+    func activeSessions(for projectID: UUID) -> [SessionRecord] {
+        sessions(for: projectID).filter { $0.endedAt == nil }
+    }
+
+    func sessionHistory(for projectID: UUID) -> [SessionRecord] {
+        sessions(for: projectID)
+            .filter { $0.endedAt != nil }
+            .sorted { ($0.endedAt ?? .distantPast) > ($1.endedAt ?? .distantPast) }
+    }
+
     /// Drag-reorder: places `draggedID` before `targetID` in its project.
     /// The first manual move freezes the current display order into indexes.
     func moveSession(_ draggedID: UUID, before targetID: UUID) {
@@ -184,6 +201,43 @@ final class ProjectStore: ObservableObject {
         save()
     }
 
+    func markSessionStarted(_ id: UUID) {
+        updateSession(id) {
+            if $0.endedAt != nil {
+                $0.restartCount = ($0.restartCount ?? 0) + 1
+            }
+            $0.endedAt = nil
+            $0.exitCode = nil
+            $0.lastActivityAt = .now
+            $0.metadataVersion = Self.currentSessionSchemaVersion
+        }
+    }
+
+    func markSessionEnded(_ id: UUID, exitCode: Int32?) {
+        updateSession(id) {
+            $0.endedAt = .now
+            $0.exitCode = exitCode
+            $0.lastActivityAt = .now
+            $0.metadataVersion = Self.currentSessionSchemaVersion
+        }
+    }
+
+    @discardableResult
+    func claimProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
+        guard !providerSessionID.isEmpty,
+              !sessions.contains(where: {
+                  $0.id != id && $0.providerSessionID == providerSessionID
+              }),
+              let index = sessions.firstIndex(where: { $0.id == id }),
+              sessions[index].providerSessionID == nil
+        else { return false }
+        sessions[index].providerSessionID = providerSessionID
+        sessions[index].metadataVersion = Self.currentSessionSchemaVersion
+        saveSessions()
+        objectWillChange.send()
+        return true
+    }
+
     func removeSession(_ id: UUID) {
         sessions.removeAll { $0.id == id }
         save()
@@ -197,17 +251,31 @@ final class ProjectStore: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
+        var needsSessionSave = false
         if let data = try? Data(contentsOf: projectsURL),
            let decoded = try? JSONDecoder().decode([Project].self, from: data) {
             projects = decoded
         }
-        if let data = try? Data(contentsOf: sessionsURL),
-           let decoded = try? JSONDecoder().decode([SessionRecord].self, from: data) {
-            sessions = decoded
+        if let data = try? Data(contentsOf: sessionsURL) {
+            if let document = try? JSONDecoder().decode(SessionDocument.self, from: data) {
+                sessions = migrate(
+                    document.sessions,
+                    from: document.schemaVersion
+                )
+                if document.schemaVersion < Self.currentSessionSchemaVersion {
+                    needsSessionSave = true
+                }
+            } else if let legacy = try? JSONDecoder().decode([SessionRecord].self, from: data) {
+                sessions = migrate(legacy, from: 1)
+                needsSessionSave = true
+            }
         }
         if let data = try? Data(contentsOf: sessionGroupsURL),
            let decoded = try? JSONDecoder().decode([SessionGroup].self, from: data) {
             sessionGroups = decoded
+        }
+        if needsSessionSave {
+            saveSessions()
         }
     }
 
@@ -215,11 +283,33 @@ final class ProjectStore: ObservableObject {
         if let data = try? JSONEncoder().encode(projects) {
             try? data.write(to: projectsURL, options: .atomic)
         }
-        if let data = try? JSONEncoder().encode(sessions) {
-            try? data.write(to: sessionsURL, options: .atomic)
-        }
+        saveSessions()
         if let data = try? JSONEncoder().encode(sessionGroups) {
             try? data.write(to: sessionGroupsURL, options: .atomic)
+        }
+    }
+
+    private func saveSessions() {
+        let document = SessionDocument(
+            schemaVersion: Self.currentSessionSchemaVersion,
+            sessions: sessions
+        )
+        if let data = try? JSONEncoder().encode(document) {
+            try? data.write(to: sessionsURL, options: .atomic)
+        }
+    }
+
+    private func migrate(
+        _ records: [SessionRecord],
+        from schemaVersion: Int
+    ) -> [SessionRecord] {
+        records.map { record in
+            var migrated = record
+            if schemaVersion < 2 {
+                migrated.metadataVersion = Self.currentSessionSchemaVersion
+                migrated.restartCount = migrated.restartCount ?? 0
+            }
+            return migrated
         }
     }
 }

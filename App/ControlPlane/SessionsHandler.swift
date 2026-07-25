@@ -159,6 +159,7 @@ extension CapabilityRouter {
             }
             RuntimeClient.shared.kill(sid: target.id)
             sessionStore.setStatus(.terminated, for: target.id)
+            projectStore.markSessionEnded(target.id, exitCode: nil)
             return .success(request, data: .object(["stopped": .bool(true)]),
                             project_id: target.projectID.uuidString,
                             target_session_id: target.id.uuidString)

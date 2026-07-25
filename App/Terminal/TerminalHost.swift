@@ -33,12 +33,14 @@ final class TerminalRegistry {
         project: Project,
         account: AccountProfile?,
         settings: SettingsStore,
-        sessionStore: SessionStore
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
     ) -> TerminalView {
         if let existing = terminals[record.id], !deadSessions.contains(record.id) {
             return existing
         }
         deadSessions.remove(record.id)
+        projectStore.markSessionStarted(record.id)
 
         let view: TerminalView
         // Runtime path only when the daemon was actually started (not in UI
@@ -46,12 +48,21 @@ final class TerminalRegistry {
         let runtimePhase = RuntimeClient.shared.phase
         if runtimePhase == .connecting || runtimePhase == .ready {
             view = makeRuntimeTerminal(record: record, project: project, account: account,
-                                       settings: settings, sessionStore: sessionStore)
+                                       settings: settings, sessionStore: sessionStore,
+                                       projectStore: projectStore)
         } else {
             view = makeInProcessTerminal(record: record, project: project, account: account,
-                                         settings: settings, sessionStore: sessionStore)
+                                         settings: settings, sessionStore: sessionStore,
+                                         projectStore: projectStore)
         }
         terminals[record.id] = view
+        discoverCodexSessionID(
+            for: record,
+            project: project,
+            account: account,
+            settings: settings,
+            projectStore: projectStore
+        )
 
         // The agent starts ready-and-waiting; hooks flip it to thinking/
         // running as real work happens. Deferred: this runs from makeNSView
@@ -61,6 +72,39 @@ final class TerminalRegistry {
             sessionStore?.setStatus(.idle, for: recordID)
         }
         return view
+    }
+
+    private func discoverCodexSessionID(
+        for record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        projectStore: ProjectStore
+    ) {
+        guard record.provider == .codex, record.providerSessionID == nil else { return }
+        let codexHome = account?.configDirectory(profilesRoot: settings.profilesRootURL)
+            ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".codex", isDirectory: true)
+        let cwd = record.workingDirectory(in: project)
+        let launchedAfter = Date().addingTimeInterval(-2)
+        let recordID = record.id
+
+        Task.detached(priority: .utility) {
+            for _ in 0..<60 {
+                let candidates = CodexSessionLocator.candidates(
+                    codexHome: codexHome,
+                    cwd: cwd,
+                    modifiedAfter: launchedAfter
+                )
+                for candidate in candidates {
+                    let claimed = await MainActor.run {
+                        projectStore.claimProviderSessionID(candidate.id, for: recordID)
+                    }
+                    if claimed { return }
+                }
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
     }
 
     /// PTY environment: SwiftTerm's helper env has no HOME/USER/PATH —
@@ -169,7 +213,8 @@ final class TerminalRegistry {
         project: Project,
         account: AccountProfile?,
         settings: SettingsStore,
-        sessionStore: SessionStore
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilTerminalView(frame: .zero)
         applyTheme(view)
@@ -196,11 +241,19 @@ final class TerminalRegistry {
             spec: spec,
             cols: view.getTerminal().cols,
             rows: view.getTerminal().rows,
-            onData: { [weak view] data in
+            onData: { [weak view, weak settings] data in
+                if let settings {
+                    settings.transcriptStore.append(
+                        data,
+                        sessionID: recordID,
+                        policy: settings.transcriptRetentionPolicy
+                    )
+                }
                 view?.feed(byteArray: ArraySlice([UInt8](data)))
             },
-            onExit: { [weak sessionStore] _ in
+            onExit: { [weak sessionStore, weak projectStore] code in
                 sessionStore?.setStatus(.terminated, for: recordID)
+                projectStore?.markSessionEnded(recordID, exitCode: code)
                 TerminalRegistry.shared.markDead(recordID)
             }
         )
@@ -214,13 +267,24 @@ final class TerminalRegistry {
         project: Project,
         account: AccountProfile?,
         settings: SettingsStore,
-        sessionStore: SessionStore
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilLocalTerminalView(frame: .zero)
         applyTheme(view)
         let provider = record.provider
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
+        }
+        let recordID = record.id
+        view.onDataReceived = { [weak settings] data in
+            if let settings {
+                settings.transcriptStore.append(
+                    data,
+                    sessionID: recordID,
+                    policy: settings.transcriptRetentionPolicy
+                )
+            }
         }
         let (shell, args) = shellArguments(for: record, settings: settings)
         view.startProcess(
@@ -230,7 +294,11 @@ final class TerminalRegistry {
             execName: nil,
             currentDirectory: record.workingDirectory(in: project)
         )
-        let delegate = SessionProcessDelegate(recordID: record.id, sessionStore: sessionStore)
+        let delegate = SessionProcessDelegate(
+            recordID: record.id,
+            sessionStore: sessionStore,
+            projectStore: projectStore
+        )
         view.processDelegate = delegate
         delegates[record.id] = delegate
         return view
@@ -260,7 +328,10 @@ final class TerminalRegistry {
         guard let name = record.provider.launchCommand else { return nil }
         var command = binaryPath.map { "\"\($0)\"" } ?? name
         if record.provider == .claude, let sid = record.providerSessionID {
-            command += " --resume \(sid)"
+            command += " --resume \(shellQuote(sid))"
+        }
+        if record.provider == .codex, let sid = record.providerSessionID {
+            command += " resume \(shellQuote(sid))"
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""
@@ -286,12 +357,16 @@ final class TerminalRegistry {
             command += " " + modeArguments.joined(separator: " ")
         }
         if let presetArguments, !presetArguments.isEmpty {
-            command += " " + presetArguments.joined(separator: " ")
+            command += " " + presetArguments.map(shellQuote).joined(separator: " ")
         }
         if let extra = extraArguments?.trimmingCharacters(in: .whitespaces), !extra.isEmpty {
             command += " " + extra
         }
         return command
+    }
+
+    nonisolated private static func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
     }
 }
 
@@ -332,16 +407,23 @@ final class RuntimeTerminalDelegate: TerminalViewDelegate {
 final class SessionProcessDelegate: LocalProcessTerminalViewDelegate {
     private let recordID: UUID
     private weak var sessionStore: SessionStore?
+    private weak var projectStore: ProjectStore?
 
-    init(recordID: UUID, sessionStore: SessionStore) {
+    init(
+        recordID: UUID,
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
+    ) {
         self.recordID = recordID
         self.sessionStore = sessionStore
+        self.projectStore = projectStore
     }
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         let id = recordID
-        Task { @MainActor [weak sessionStore] in
+        Task { @MainActor [weak sessionStore, weak projectStore] in
             sessionStore?.setStatus(.terminated, for: id)
+            projectStore?.markSessionEnded(id, exitCode: exitCode)
             // Keep the frozen output visible; the next selection recreates
             // the terminal automatically (resuming Claude when possible).
             TerminalRegistry.shared.markDead(id)
@@ -359,6 +441,7 @@ struct TerminalHostView: NSViewRepresentable {
     let account: AccountProfile?
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
+    @EnvironmentObject private var projectStore: ProjectStore
 
     func makeNSView(context: Context) -> TerminalView {
         TerminalRegistry.shared.terminal(
@@ -366,7 +449,8 @@ struct TerminalHostView: NSViewRepresentable {
             project: project,
             account: account,
             settings: settings,
-            sessionStore: sessionStore
+            sessionStore: sessionStore,
+            projectStore: projectStore
         )
     }
 

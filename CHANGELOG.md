@@ -12,11 +12,16 @@ All notable changes to Uncoil are recorded here.
 - Added runtime protocol negotiation, heartbeat, crash recovery, sleep/wake reconnect, graceful upgrade drain, bounded replay storage, log rotation, process limits, and real daemon integration tests.
 - Added persisted quit behavior with “Keep sessions running” and “Terminate all agents on quit” choices.
 - Added explicit main-window recreation, frame autosave, and project/group/session selection restoration.
+- Added closed-session history with persisted exit/restart metadata and safe versioned metadata migration.
+- Added deterministic Claude and Codex session resume, including Codex rollout metadata discovery.
+- Added a session preset editor for provider, arguments, prompt template, permission mode, and capability boundaries.
+- Added opt-in transcript retention with 7-day, 30-day, and unlimited policies plus confirmed sensitive transcript cleanup.
 
 ### Changed
 
 - Reorganized active product, MCP, and historical reference documentation.
 - Made background GitHub Keychain reads non-interactive so development builds no longer repeatedly request the login password.
+- Moved transcript writes off the UI thread and shell-quoted preset arguments before launching child sessions.
 
 ### Fixed
 

@@ -72,6 +72,16 @@ struct LaunchConfig {
         projectStore.createSession(
             projectID: project.id, provider: .claude, accountID: nil, title: "claude: demo görev"
         )
+        let history = projectStore.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "codex: geçmiş görev"
+        )
+        projectStore.updateSession(history.id) {
+            $0.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
+        }
+        projectStore.markSessionEnded(history.id, exitCode: 0)
     }
 }
 

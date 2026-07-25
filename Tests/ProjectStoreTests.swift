@@ -107,6 +107,151 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertTrue(store.sessions.isEmpty)
     }
 
+    func testLegacySessionArrayMigratesToVersionedDocument() throws {
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+        let record = SessionRecord(
+            projectID: UUID(),
+            provider: .claude,
+            accountID: nil,
+            title: "legacy"
+        )
+        var object = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode([record])
+        ) as! [[String: Any]]
+        object[0].removeValue(forKey: "metadataVersion")
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        try legacy.write(to: tempDir.appendingPathComponent("sessions.json"))
+
+        let store = ProjectStore(directory: tempDir)
+
+        XCTAssertEqual(store.sessions.count, 1)
+        XCTAssertEqual(
+            store.sessions[0].metadataVersion,
+            ProjectStore.currentSessionSchemaVersion
+        )
+        let migrated = try JSONDecoder().decode(
+            ProjectStore.SessionDocument.self,
+            from: Data(contentsOf: tempDir.appendingPathComponent("sessions.json"))
+        )
+        XCTAssertEqual(
+            migrated.schemaVersion,
+            ProjectStore.currentSessionSchemaVersion
+        )
+    }
+
+    func testFutureSessionSchemaIsLoadedWithoutDowngrade() throws {
+        try FileManager.default.createDirectory(
+            at: tempDir,
+            withIntermediateDirectories: true
+        )
+        let record = SessionRecord(
+            projectID: UUID(),
+            provider: .claude,
+            accountID: nil,
+            title: "future"
+        )
+        let document = ProjectStore.SessionDocument(
+            schemaVersion: 99,
+            sessions: [record]
+        )
+        let file = tempDir.appendingPathComponent("sessions.json")
+        try JSONEncoder().encode(document).write(to: file)
+
+        let store = ProjectStore(directory: tempDir)
+
+        XCTAssertEqual(store.sessions.map(\.id), [record.id])
+        let persisted = try JSONDecoder().decode(
+            ProjectStore.SessionDocument.self,
+            from: Data(contentsOf: file)
+        )
+        XCTAssertEqual(persisted.schemaVersion, 99)
+    }
+
+    func testClosedSessionHistoryPersistsAndRestartClearsEndState() {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/history"))
+        let project = store.projects[0]
+        let record = store.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "history"
+        )
+
+        store.markSessionEnded(record.id, exitCode: 17)
+
+        XCTAssertTrue(store.activeSessions(for: project.id).isEmpty)
+        XCTAssertEqual(store.sessionHistory(for: project.id).map(\.id), [record.id])
+        XCTAssertEqual(store.sessionHistory(for: project.id)[0].exitCode, 17)
+
+        let reloaded = ProjectStore(directory: tempDir)
+        XCTAssertEqual(reloaded.sessionHistory(for: project.id).map(\.id), [record.id])
+
+        reloaded.markSessionStarted(record.id)
+
+        XCTAssertEqual(reloaded.activeSessions(for: project.id).map(\.id), [record.id])
+        XCTAssertNil(reloaded.sessions[0].endedAt)
+        XCTAssertEqual(reloaded.sessions[0].restartCount, 1)
+    }
+
+    func testProviderSessionIDCanOnlyBeClaimedOnce() {
+        let store = ProjectStore(directory: tempDir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/claims"))
+        let project = store.projects[0]
+        let first = store.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "first"
+        )
+        let second = store.createSession(
+            projectID: project.id,
+            provider: .codex,
+            accountID: nil,
+            title: "second"
+        )
+
+        XCTAssertTrue(store.claimProviderSessionID("codex-session", for: first.id))
+        XCTAssertFalse(store.claimProviderSessionID("codex-session", for: second.id))
+        XCTAssertFalse(store.claimProviderSessionID("other", for: first.id))
+        XCTAssertEqual(
+            store.sessions.first(where: { $0.id == first.id })?.providerSessionID,
+            "codex-session"
+        )
+    }
+
+    func testCodexSessionLocatorFindsMatchingRecentMetadata() throws {
+        let codexHome = tempDir.appendingPathComponent("codex", isDirectory: true)
+        let sessionDir = codexHome
+            .appendingPathComponent("sessions/2026/07/25", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: sessionDir,
+            withIntermediateDirectories: true
+        )
+        let matching = sessionDir.appendingPathComponent("matching.jsonl")
+        let other = sessionDir.appendingPathComponent("other.jsonl")
+        let matchingLine = """
+        {"type":"session_meta","payload":{"id":"match-id","cwd":"/repo/worktree"}}
+        {"type":"event_msg","payload":{"type":"task_started"}}
+        """
+        let otherLine = """
+        {"type":"session_meta","payload":{"id":"other-id","cwd":"/repo/other"}}
+        """
+        try matchingLine.write(to: matching, atomically: true, encoding: .utf8)
+        try otherLine.write(to: other, atomically: true, encoding: .utf8)
+
+        let candidates = CodexSessionLocator.candidates(
+            codexHome: codexHome,
+            cwd: "/repo/worktree",
+            modifiedAfter: Date().addingTimeInterval(-5)
+        )
+
+        XCTAssertEqual(candidates.map(\.id), ["match-id"])
+    }
+
     func testWorktreePorcelainParsing() {
         let porcelain = """
         worktree /repo
@@ -139,7 +284,7 @@ final class ProjectStoreTests: XCTestCase {
         record.providerSessionID = "abc-1"
         XCTAssertEqual(
             TerminalRegistry.launchCommand(for: record, extraArguments: " --model opus "),
-            "claude --resume abc-1 --model opus"
+            "claude --resume 'abc-1' --model opus"
         )
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
@@ -149,7 +294,15 @@ final class ProjectStoreTests: XCTestCase {
                 presetArguments: ["--model", "sonnet"],
                 modeArguments: ["--permission-mode", "auto"]
             ),
-            "\"/Users/x/.local/bin/claude\" --resume abc-1 --permission-mode auto --model sonnet"
+            "\"/Users/x/.local/bin/claude\" --resume 'abc-1' --permission-mode auto '--model' 'sonnet'"
+        )
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: record,
+                extraArguments: nil,
+                presetArguments: ["--label", "review'; touch /tmp/unsafe; echo '"]
+            ),
+            "claude --resume 'abc-1' '--label' 'review'\"'\"'; touch /tmp/unsafe; echo '\"'\"''"
         )
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
@@ -157,9 +310,19 @@ final class ProjectStoreTests: XCTestCase {
                 binaryPath: "/Users/x/.local/bin/claude",
                 extraArguments: nil
             ),
-            "\"/Users/x/.local/bin/claude\" --resume abc-1"
+            "\"/Users/x/.local/bin/claude\" --resume 'abc-1'"
         )
         let codex = SessionRecord(projectID: UUID(), provider: .codex, accountID: nil, title: "c")
+        var resumedCodex = codex
+        resumedCodex.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: resumedCodex,
+                binaryPath: "/opt/homebrew/bin/codex",
+                extraArguments: nil
+            ),
+            "\"/opt/homebrew/bin/codex\" resume '019efe2f-5276-77c2-bd90-5191ecd4b7a0'"
+        )
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
                 for: codex,
@@ -312,6 +475,82 @@ final class SettingsStoreTests: XCTestCase {
             ApplicationLifecycle.shared.sessionQuitBehavior,
             .terminateAllAgents
         )
+    }
+
+    func testSessionPresetEditorOperationsPersist() {
+        let store = SettingsStore(directory: tempDir)
+        let preset = SessionPreset(
+            id: "review",
+            name: "Review",
+            provider: .codex,
+            extraArguments: ["--model", "gpt-5"],
+            initialPromptTemplate: "Review the change",
+            grantedCapabilities: ["sessions.read", "artifacts.read"],
+            permissionMode: "standard"
+        )
+
+        store.upsertPreset(preset)
+        XCTAssertEqual(store.preset(id: "review"), preset)
+
+        let reloaded = SettingsStore(directory: tempDir)
+        XCTAssertEqual(reloaded.preset(id: "review"), preset)
+
+        reloaded.removePreset(id: "review")
+        XCTAssertNil(reloaded.preset(id: "review"))
+
+        reloaded.resetPresets()
+        XCTAssertEqual(reloaded.presets, SessionPreset.builtInDefaults)
+    }
+
+    func testTranscriptRetentionDefaultsDisabledAndPersists() {
+        let store = SettingsStore(directory: tempDir)
+        XCTAssertEqual(store.transcriptRetentionPolicy, .disabled)
+
+        store.setTranscriptRetentionPolicy(.thirtyDays)
+
+        let reloaded = SettingsStore(directory: tempDir)
+        XCTAssertEqual(reloaded.transcriptRetentionPolicy, .thirtyDays)
+    }
+
+    func testTranscriptStoreHonorsPolicyPrunesAndClears() throws {
+        let transcriptStore = SessionTranscriptStore(dataDirectory: tempDir)
+        let disabledID = UUID()
+        transcriptStore.append(
+            Data("secret-disabled".utf8),
+            sessionID: disabledID,
+            policy: .disabled
+        )
+        XCTAssertNil(transcriptStore.data(for: disabledID))
+
+        let retainedID = UUID()
+        transcriptStore.append(
+            Data("secret-retained".utf8),
+            sessionID: retainedID,
+            policy: .sevenDays
+        )
+        XCTAssertEqual(
+            String(data: transcriptStore.data(for: retainedID)!, encoding: .utf8),
+            "secret-retained"
+        )
+        let file = tempDir
+            .appendingPathComponent("transcripts", isDirectory: true)
+            .appendingPathComponent("\(retainedID.uuidString).log")
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-8 * 24 * 60 * 60)],
+            ofItemAtPath: file.path
+        )
+
+        transcriptStore.prune(policy: .sevenDays)
+        XCTAssertNil(transcriptStore.data(for: retainedID))
+
+        transcriptStore.append(
+            Data("secret-clear".utf8),
+            sessionID: retainedID,
+            policy: .forever
+        )
+        XCTAssertTrue(transcriptStore.containsTranscripts())
+        transcriptStore.clearAll()
+        XCTAssertFalse(transcriptStore.containsTranscripts())
     }
 
     func testUnsupportedWorkingModeIsIgnored() {

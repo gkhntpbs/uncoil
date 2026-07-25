@@ -51,7 +51,13 @@ final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
 /// In-process fallback terminal view.
 final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
+    var onDataReceived: (Data) -> Void = { _ in }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        onDataReceived(Data(slice))
+        super.dataReceived(slice: slice)
+    }
 }
 
 /// Installs (once) a local key-down monitor that intercepts Return/Enter for the

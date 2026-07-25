@@ -10,7 +10,8 @@ extension SessionStore {
         touchSession: @escaping @MainActor (UUID) -> Void,
         notificationPrefs: @escaping @MainActor () -> NotificationPrefs = { NotificationPrefs() },
         sessionTitle: @escaping @MainActor (UUID) -> String? = { _ in nil },
-        applyMeta: @escaping @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
+        applyMeta: @escaping @MainActor (UUID, String?, String?) -> Void = { _, _, _ in },
+        endSession: @escaping @MainActor (UUID) -> Void = { _ in }
     ) {
         let server = HookServer(socketPath: HookInstaller.socketPath)
         server.onEvent = { [weak self] event in
@@ -22,7 +23,8 @@ extension SessionStore {
                     touchSession: touchSession,
                     notificationPrefs: notificationPrefs,
                     sessionTitle: sessionTitle,
-                    applyMeta: applyMeta
+                    applyMeta: applyMeta,
+                    endSession: endSession
                 )
             }
         }
@@ -49,7 +51,8 @@ extension SessionStore {
         touchSession: @MainActor (UUID) -> Void,
         notificationPrefs: @MainActor () -> NotificationPrefs = { NotificationPrefs() },
         sessionTitle: @MainActor (UUID) -> String? = { _ in nil },
-        applyMeta: @MainActor (UUID, String?, String?) -> Void = { _, _, _ in }
+        applyMeta: @MainActor (UUID, String?, String?) -> Void = { _, _, _ in },
+        endSession: @MainActor (UUID) -> Void = { _ in }
     ) {
         guard
             let cwd = event.cwd,
@@ -116,6 +119,7 @@ extension SessionStore {
             }
         case .sessionEnd:
             setStatus(.terminated, for: sessionID)
+            endSession(sessionID)
             clearNotificationDedup(sessionID)
         }
     }

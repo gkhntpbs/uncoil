@@ -1,6 +1,6 @@
 # Uncoil — Durum ve Yol Haritası
 
-> Son güncelleme: 2026-07-25 · Testler: 190/190 unit+entegrasyon + 6/6 UI + Computer Use kabul akışı
+> Son güncelleme: 2026-07-25 · Testler: 198/198 unit+entegrasyon + 8/8 UI + Computer Use kabul akışı
 > `docs/roadmap/FOUNDATION_PLAN.md` belgesinin güncel gerçeklik karşılığı budur.
 > Yeni oturumlar önce bu dosyayı, ardından ilgili ajan yönergesini okumalı.
 
@@ -39,13 +39,21 @@
 - Ana pencere konumu/boyutu AppKit frame autosave ile, son proje/grup/oturum seçimi geçerli kayıt kontrolüyle restore edilir; UI fixture’ları gerçek kullanıcı restorasyon durumunu değiştirmez
 - Doğrulama: gerçek daemon ile iki quit-policy testi, daemon single-instance testi, 6/6 XCUITest ve Computer Use ile kapatılan `main-AppWindow-1` penceresinin `main-AppWindow-2` olarak yeniden oluşturulması
 
+### Session sistemi
+- Kapanan oturumlar exit metadata’sıyla ayrı geçmiş panelinde tutulur; yeniden açıldığında aktif listeye döner ve restart sayacı güncellenir
+- Session kayıtları sürümlü `SessionDocument` içinde saklanır; eski düz dizi formatı güvenli biçimde migrate edilir, gelecekteki bilinmeyen sürümler downgrade edilmez
+- Claude hook session kimliğiyle `--resume`, Codex rollout `session_meta` kimliğiyle `codex resume` kullanır; Codex eşleştirmesi hesap kökü ve tam çalışma diziniyle sınırlıdır
+- Agent Ayarları altında provider, CLI argümanları, başlangıç promptu, permission modu ve capability sınırlarını düzenleyen kalıcı session preset editörü bulunur
+- Terminal transcript saklama varsayılan olarak kapalıdır; 7 gün, 30 gün veya süresiz retention seçilebilir. Dosyalar 0600 izinle, ana UI thread’i dışında yazılır; hassas transcriptlerin tamamı onaylı tek işlemle silinebilir
+- Doğrulama: migration, future-schema, history/restart, resume komutları, Codex metadata eşleştirmesi, preset persistence, transcript retention/prune/clear testleri; 8/8 XCUITest ve Computer Use ile history → Codex resume, dolu preset editörü ve transcript temizleme onayı
+
 ### MCP kontrol düzlemi (plan §16–17 — ajan işbirliği)
 - **Altı MCP aracı** ajanlara sınırlı bir yüzey açar: `uncoil_projects / uncoil_sessions / uncoil_artifacts / uncoil_system / uncoil_browser / uncoil_computer`. Her oturuma pakete gömülü `uncoil-mcp` stdio sunucusu kaydedilir; app içi kontrol düzlemine `control.sock` (0600 + euid kontrolü) üzerinden satır-JSON ile ulaşır. Tel biçimleri tek yerde (`Shared/ControlProtocol.swift`), hem app hem `uncoil-mcp` derler
 - **Katmanlar:** `ControlPlaneServer` → `CapabilityRouter` → saf `PolicyEngine` (izin/ilişki kararları) + `PermissionService` (yönlü kullanıcı izinleri) + handler'lar; her istek denetim günlüğüne (`audit/*.jsonl`, yalnız arg anahtarları) yazılır
 - **Orkestrasyon (M5):** `create_child` ham shell KABUL ETMEZ — yalnız adlandırılmış `SessionPreset`'ler (yerleşik `claude-worker` / `codex-reviewer`); yetenekler kesişimle daraltılır (preset ∩ çağıran, asla yükseltmez), idempotency_key ile tekrar-üretim engellenir. Çocuk oturum kenar çubuğunda normal oturum gibi görünür. Çocuk koordinasyonu: `inspect_child`, `wait_for_children` (settled durum bekleme + TIMEOUT), `summarize_children` (durum + çıktı kuyruğu + artefakt sayısı), tek yönlü `report_to_parent` / `read_reports` (parent inbox.jsonl; `pending_reports` inspect'te)
 - **İzin akışı:** kardeş/ilgisiz kontrol → `PERMISSION_REQUIRED`; ajan `uncoil_system request_permission` çağırır, kullanıcı **Ayarlar → İzinler**'de onaylar/reddeder/iptal eder. İzinler yönlü (A→B, C→B'yi kapsamaz), iptal edilebilir, her çağrıda yeniden kontrol edilir (önbelleksiz), bekleyenler 10 dk sonra düşer. `permissions.json` atomik yazılır
 - **Sağlamlaştırma (M6):** wait'ler sokete engel olmaz (her istek ayrı `Task { @MainActor }`, `Task.sleep` aktörü serbest bırakır); `permissions.json` / `artifacts.json` write-temp-rename (`AtomicFile`)
-- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). `UncoilTests` paketinde 190/190 test geçti; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
+- **Belgeler:** `docs/current/mcp/` (ARCHITECTURE / CAPABILITIES / PERMISSIONS / ARTIFACTS / SECURITY / TROUBLESHOOTING). `UncoilTests` paketinde 198/198 test geçti; altı MCP aracı gerçek kontrol soketi üzerinden kabul testinden geçti
 
 ### Çoklu hesap
 - Profil başına izole config kökü: `CLAUDE_CONFIG_DIR` / `CODEX_HOME` (profiles/<provider>/<ad>)
@@ -75,7 +83,7 @@
 ### Geliştirme altyapısı
 - XcodeBuildMCP (build/test/launch) + Computer Use (görsel kabul ve kullanıcı akışları)
 - Deterministik başlatma: `-ui-testing -reset-state -fixture demo -route -window-width/height -disable-animations` (durum `$TMPDIR/UncoilUITest`)
-- Hiyerarşik accessibility kimlikleri; `UncoilUI` şemasında 6 UI testi
+- Hiyerarşik accessibility kimlikleri; `UncoilUI` şemasında 8 UI testi
 - Komut paletinden tek tıkla oluşturulan geçici kabul workspace'i; Swift ve JavaScript örnekleri, başarılı/başarısız/uzun/büyük çıktı/crash process fixture'ları ve izin sınıflandırmalı sahte MCP araçları
 - Computer Use ile tamamlanan guided acceptance akışı; Claude/Codex session, grup ve toplu işlemler, ayrı pencere, yeniden başlatma/reconnect/replay, worktree, MCP, Browser, Computer Use izin reddi/onayı, harici process sonlandırma/recovery ve session artifact sonucu
 - Codex oturumları bundled `uncoil-mcp` komutu ve oturuma özel kontrol-plane environment override'larıyla başlatılıyor; global Codex config değiştirilmiyor
@@ -89,5 +97,5 @@ Güncel ve öncelikli iş listesi kök dizindeki `TODO.md` belgesinde tutulur.
 
 ## Bilinen kısıtlar
 
-- Persistent runtime v1: daemon'a ulaşılamazsa in-process PTY'ye düşülür (o durumda terminaller app ile ölür); oturumlar reboot'ta her hâlükârda ölür (kayıtlar kalır, Claude resume ile döner)
+- Persistent runtime v1: daemon'a ulaşılamazsa in-process PTY'ye düşülür (o durumda terminaller app ile ölür); oturumlar reboot'ta her hâlükârda ölür (kayıtlar kalır, Claude/Codex resume ile döner)
 - Xcode'dan çalıştırırken DerivedData dahili diskte (Xcode ayarından `.build-cache`'e yönlendirilebilir); launch args yalnız taze süreçte etkili
