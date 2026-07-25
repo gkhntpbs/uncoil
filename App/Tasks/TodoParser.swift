@@ -203,30 +203,35 @@ enum TodoParser {
 
     // MARK: - Line scanning
 
+    /// Splits on UTF-8 bytes, not Characters.
+    ///
+    /// Swift treats `\r\n` as a single Character, so a Character-based scan never
+    /// sees a newline in a CRLF file and collapses the whole thing into one line.
+    /// Splitting on the `\n` byte keeps any `\r` inside the line's own text, which
+    /// is also what preserves the file's line-ending style through an edit.
     private static func split(_ raw: String) -> [Line] {
+        let bytes = Array(raw.utf8)
         var lines: [Line] = []
-        var byte = 0
+        var start = 0
         var number = 1
-        var current = ""
-        for character in raw {
-            if character == "\n" {
-                let text = current
-                let contentBytes = text.utf8.count
-                lines.append(Line(
-                    text: text, startByte: byte, endByte: byte + contentBytes + 1,
-                    number: number, hasNewline: true
-                ))
-                byte += contentBytes + 1
-                number += 1
-                current = ""
-            } else {
-                current.append(character)
-            }
-        }
-        if !current.isEmpty {
+        for index in bytes.indices where bytes[index] == 0x0A {
             lines.append(Line(
-                text: current, startByte: byte, endByte: byte + current.utf8.count,
-                number: number, hasNewline: false
+                text: String(decoding: bytes[start..<index], as: UTF8.self),
+                startByte: start,
+                endByte: index + 1,
+                number: number,
+                hasNewline: true
+            ))
+            number += 1
+            start = index + 1
+        }
+        if start < bytes.count {
+            lines.append(Line(
+                text: String(decoding: bytes[start..<bytes.count], as: UTF8.self),
+                startByte: start,
+                endByte: bytes.count,
+                number: number,
+                hasNewline: false
             ))
         }
         return lines
@@ -267,7 +272,7 @@ enum TodoParser {
 
         while cursor < lines.count {
             let line = lines[cursor]
-            let trimmed = line.text.trimmingCharacters(in: .whitespaces)
+            let trimmed = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if trimmed.isEmpty {
                 // A blank line only stays inside the block if indented content
@@ -338,7 +343,7 @@ enum TodoParser {
         }
         let afterCharacter = afterBracket.dropFirst()
         guard afterCharacter.hasPrefix("]") else { return nil }
-        let text = afterCharacter.dropFirst().trimmingCharacters(in: .whitespaces)
+        let text = afterCharacter.dropFirst().trimmingCharacters(in: .whitespacesAndNewlines)
 
         let prefix = indent + String(marker) + String(repeating: " ", count: spacesCount)
         return CheckboxComponents(
@@ -354,19 +359,19 @@ enum TodoParser {
     }
 
     static func headingComponents(_ line: String) -> (level: Int, text: String)? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.hasPrefix("#") else { return nil }
         let hashes = trimmed.prefix { $0 == "#" }
         guard hashes.count <= 6 else { return nil }
         let rest = trimmed.dropFirst(hashes.count)
         // `#hashtag` is not a heading.
         guard rest.first == " " || rest.isEmpty else { return nil }
-        return (hashes.count, rest.trimmingCharacters(in: .whitespaces))
+        return (hashes.count, rest.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     /// The fence token (``` or ~~~ with its exact length), or nil.
     static func fenceToken(_ line: String) -> String? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         for character in ["`", "~"] {
             let run = trimmed.prefix { String($0) == character }
             if run.count >= 3 { return String(run) }
@@ -375,7 +380,7 @@ enum TodoParser {
     }
 
     static func closesFence(_ line: String, token: String) -> Bool {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let first = token.first else { return false }
         let run = trimmed.prefix { $0 == first }
         return run.count >= token.count && trimmed.dropFirst(run.count).isEmpty
