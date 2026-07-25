@@ -116,6 +116,18 @@ extension CapabilityRouter {
             return requiring("tasks.worktree", grants, request) {
                 createTaskWorktree(request, caller: caller)
             }
+        case "report_test_result":
+            return requiring("tasks.write", grants, request) {
+                reportTestResult(request, caller: caller)
+            }
+        case "submit_task_review":
+            return requiring("tasks.write", grants, request) {
+                submitTaskReview(request, caller: caller)
+            }
+        case "get_task_results":
+            return requiring("tasks.read", grants, request) {
+                getTaskResults(request, caller: caller)
+            }
         case "submit_task_for_merge":
             return requiring("tasks.merge", grants, request) {
                 submitForMerge(request, caller: caller)
@@ -180,6 +192,17 @@ extension CapabilityRouter {
         let store = ProjectTaskMetadataStore(projectID: project.id, dataDirectory: dataDirectory)
         taskMetadataStores[project.id] = store
         return store
+    }
+
+    private func results(for project: Project) -> TaskResultStore {
+        if let existing = taskResultStores[project.id] { return existing }
+        let store = TaskResultStore(projectID: project.id, dataDirectory: dataDirectory)
+        taskResultStores[project.id] = store
+        return store
+    }
+
+    private func orchestratorSettings(for project: Project) -> OrchestratorSettings {
+        OrchestratorStore(projectID: project.id, dataDirectory: dataDirectory).settings
     }
 
     private func taskJSON(
@@ -517,6 +540,20 @@ extension CapabilityRouter {
                 data: .object(["changed": .bool(false), "done": .bool(done)]),
                 project_id: project.id.uuidString
             )
+        }
+        // A failing test run refuses the tick. The gate is enforced here, in the
+        // write path, rather than only being available to callers who ask.
+        if done {
+            let blockers = results(for: project).failingTestBlockers(taskID: taskID)
+            if !blockers.isEmpty {
+                return .failure(
+                    request, code: .invalidArgument,
+                    message: "görev tamamlanamaz: "
+                        + blockers.map(\.message).joined(separator: " ")
+                        + " Düzeltip test sonucunu tekrar bildir.",
+                    retryable: true
+                )
+            }
         }
         let store = metadata(for: project)
         store.setState(done ? .completed : .queued, taskID: taskID)
@@ -979,6 +1016,149 @@ extension CapabilityRouter {
         }
     }
 
+    // MARK: - Tests, reviews and merge readiness
+
+    private func reportTestResult(
+        _ request: ControlRequest,
+        caller: SessionRecord
+    ) -> ControlEnvelope {
+        guard let project = taskProject(request, caller: caller) else {
+            return .failure(request, code: .permissionDenied, message: "project not accessible")
+        }
+        guard let taskID = request.args["task_id"]?.stringValue,
+              findTask(taskID, in: loadDocuments(project)) != nil else {
+            return .failure(request, code: .invalidArgument, message: "task not found")
+        }
+        guard let command = request.args["command"]?.stringValue, !command.isEmpty else {
+            return .failure(request, code: .invalidArgument, message: "'command' is required")
+        }
+        guard let passed = request.args["passed"]?.boolValue else {
+            return .failure(request, code: .invalidArgument, message: "'passed' (bool) is required")
+        }
+        let result = TaskTestResult(
+            taskID: taskID,
+            sessionID: caller.id,
+            command: command,
+            passed: passed,
+            summary: request.args["summary"]?.stringValue ?? (passed ? "geçti" : "başarısız"),
+            artifacts: request.args["artifacts"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        )
+        results(for: project).record(test: result)
+        // A failing run moves the task's own state, so the board and the
+        // Attention Center show it without waiting for the agent to say more.
+        if !passed {
+            metadata(for: project).setState(
+                .testsFailing, taskID: taskID, detail: result.summary
+            )
+        }
+        return .success(
+            request,
+            data: .object([
+                "task_id": .string(taskID),
+                "passed": .bool(passed),
+                "recorded_at": .string(ISO8601DateFormatter().string(from: result.finishedAt)),
+                "artifacts": .array(result.artifacts.map(JSONValue.string)),
+            ]),
+            project_id: project.id.uuidString
+        )
+    }
+
+    private func submitTaskReview(
+        _ request: ControlRequest,
+        caller: SessionRecord
+    ) -> ControlEnvelope {
+        guard let project = taskProject(request, caller: caller) else {
+            return .failure(request, code: .permissionDenied, message: "project not accessible")
+        }
+        guard let taskID = request.args["task_id"]?.stringValue,
+              let found = findTask(taskID, in: loadDocuments(project)) else {
+            return .failure(request, code: .invalidArgument, message: "task not found")
+        }
+        guard let raw = request.args["verdict"]?.stringValue,
+              let verdict = TaskReviewResult.Verdict(rawValue: raw) else {
+            return .failure(
+                request, code: .invalidArgument,
+                message: "'verdict' must be one of: "
+                    + TaskReviewResult.Verdict.allCases.map(\.rawValue).joined(separator: ", ")
+            )
+        }
+        let review = TaskReviewResult(
+            taskID: taskID,
+            reviewerSessionID: caller.id,
+            verdict: verdict,
+            findings: request.args["findings"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        )
+        results(for: project).record(review: review)
+        if verdict == .changesRequested {
+            metadata(for: project).setState(
+                .blocked, taskID: taskID, detail: "review değişiklik istedi"
+            )
+        }
+        // The findings are handed back as the prompt the implementer reads, so
+        // the review does not stay locked inside the reviewer's session.
+        return .success(
+            request,
+            data: .object([
+                "task_id": .string(taskID),
+                "verdict": .string(verdict.rawValue),
+                "findings": .array(review.findings.map(JSONValue.string)),
+                "feedback_prompt": .string(review.feedbackPrompt(taskText: found.task.text)),
+            ]),
+            project_id: project.id.uuidString
+        )
+    }
+
+    private func getTaskResults(
+        _ request: ControlRequest,
+        caller: SessionRecord
+    ) -> ControlEnvelope {
+        guard let project = taskProject(request, caller: caller) else {
+            return .failure(request, code: .permissionDenied, message: "project not accessible")
+        }
+        guard let taskID = request.args["task_id"]?.stringValue else {
+            return .failure(request, code: .invalidArgument, message: "'task_id' is required")
+        }
+        let store = results(for: project)
+        return .success(
+            request,
+            data: .object([
+                "task_id": .string(taskID),
+                "tests": .array(store.tests(for: taskID).map { test in
+                    .object([
+                        "command": .string(test.command),
+                        "passed": .bool(test.passed),
+                        "summary": .string(test.summary),
+                        "artifacts": .array(test.artifacts.map(JSONValue.string)),
+                        "finished_at": .string(ISO8601DateFormatter().string(from: test.finishedAt)),
+                    ])
+                }),
+                "reviews": .array(store.reviews(for: taskID).map { review in
+                    .object([
+                        "verdict": .string(review.verdict.rawValue),
+                        "findings": .array(review.findings.map(JSONValue.string)),
+                        "finished_at": .string(
+                            ISO8601DateFormatter().string(from: review.finishedAt)
+                        ),
+                    ])
+                }),
+                "merges": .array(store.merges(for: taskID).map { merge in
+                    .object([
+                        "outcome": .string(merge.outcome.label),
+                        "approved_by_user": .bool(merge.approvedByUser),
+                        "branch": .string(optional: merge.branch),
+                        "at": .string(ISO8601DateFormatter().string(from: merge.at)),
+                    ])
+                }),
+                "completion_blockers": .array(
+                    store.completionBlockers(
+                        taskID: taskID, settings: orchestratorSettings(for: project)
+                    ).map { .string($0.message) }
+                ),
+            ]),
+            project_id: project.id.uuidString
+        )
+    }
+
     private func submitForMerge(_ request: ControlRequest, caller: SessionRecord) -> ControlEnvelope {
         guard let project = taskProject(request, caller: caller) else {
             return .failure(request, code: .permissionDenied, message: "project not accessible")
@@ -998,6 +1178,29 @@ extension CapabilityRouter {
         // returned and the task is put up for review.
         let snapshot = GitService.snapshot(repoPath: worktree)
         store.setState(.reviewRequested, taskID: taskID, detail: "merge için gönderildi")
+        // `userApproved: false` on purpose: an agent asking is not the user
+        // approving, so `approvalRequired` always stands in this answer.
+        let preview = results(for: project).mergePreview(
+            taskID: taskID,
+            branch: snapshot.branch,
+            changedFiles: snapshot.changedFiles.map(\.path),
+            conflictedFiles: GitService.conflictedFiles(repoPath: worktree),
+            uncommittedChanges: snapshot.changedFiles.count,
+            userApproved: false,
+            settings: orchestratorSettings(for: project)
+        )
+        let record = TaskMergeRecord(
+            taskID: taskID,
+            branch: snapshot.branch,
+            worktreePath: worktree,
+            outcome: .refused(
+                reason: preview.hardBlockers.isEmpty
+                    ? "kullanıcı onayı bekleniyor"
+                    : preview.hardBlockers.map(\.message).joined(separator: " ")
+            ),
+            approvedByUser: false
+        )
+        results(for: project).record(merge: record)
         return .success(
             request,
             data: .object([
@@ -1006,6 +1209,9 @@ extension CapabilityRouter {
                 "branch": .string(optional: snapshot.branch),
                 "uncommitted_changes": .int(snapshot.changedFiles.count),
                 "merged": .bool(false),
+                "ready": .bool(preview.hardBlockers.isEmpty),
+                "blockers": .array(preview.blockers.map { .string($0.message) }),
+                "changed_files": .array(preview.changedFiles.map(JSONValue.string)),
             ]),
             project_id: project.id.uuidString,
             warnings: snapshot.changedFiles.isEmpty

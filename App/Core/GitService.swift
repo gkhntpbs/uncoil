@@ -240,6 +240,55 @@ enum GitService {
     }
 
     /// `trimming: false` keeps leading whitespace, which porcelain output needs.
+    /// Diff of a worktree against the branch it will merge into. Bounded, so a
+    /// huge change does not hand the UI a megabyte of text. Blocking.
+    static func diff(repoPath: String, against base: String = "HEAD", maxLines: Int = 400) -> String {
+        guard let output = run(
+            ["-C", repoPath, "diff", "--no-color", base], trimming: false
+        ) else { return "" }
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        guard lines.count > maxLines else { return output }
+        return lines.prefix(maxLines).joined(separator: "\n")
+            + "\n… \(lines.count - maxLines) satır daha (tamamı için editörde aç)"
+    }
+
+    /// Merges `branch` into the checkout at `repoPath`.
+    ///
+    /// Only ever called from the merge screen after the user approves: nothing in
+    /// Uncoil merges on an agent's word. `--no-ff` keeps the task's work visible
+    /// as its own commit, and a failed merge is aborted so the tree is left
+    /// exactly as it was.
+    static func merge(
+        repoPath: String,
+        branch: String,
+        message: String
+    ) -> Result<String?, GitFailure> {
+        guard isRepository(repoPath) else {
+            return .failure(GitFailure(message: "\(repoPath) bir git deposu değil."))
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", repoPath, "merge", "--no-ff", "-m", message, branch]
+        let errorPipe = Pipe()
+        process.standardOutput = Pipe()
+        process.standardError = errorPipe
+        guard (try? process.run()) != nil else {
+            return .failure(GitFailure(message: "git çalıştırılamadı."))
+        }
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            // Leave no half-merged tree behind.
+            _ = run(["-C", repoPath, "merge", "--abort"])
+            let detail = String(data: errorData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return .failure(GitFailure(
+                message: detail?.isEmpty == false ? detail! : "git merge başarısız."
+            ))
+        }
+        return .success(run(["-C", repoPath, "rev-parse", "--short", "HEAD"]))
+    }
+
     private static func run(_ arguments: [String], trimming: Bool = true) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")

@@ -459,6 +459,18 @@ final class OrchestratorStore: ObservableObject {
 
     func retries(for taskID: String) -> Int { document.retries[taskID] ?? 0 }
 
+    /// Stops the orchestrator: every dispatch that has not started is dropped,
+    /// so nothing new begins. Agents already running are left alone — ending
+    /// one mid-edit is the user's call, not a side effect of "stop".
+    @discardableResult
+    func stopDispatching() -> Int {
+        let dropped = pending.count
+        document.dispatches.removeAll { !$0.dispatched }
+        if document.dispatches.isEmpty { document.planCreatedAt = nil }
+        save()
+        return dropped
+    }
+
     func clearPlan() {
         document.dispatches = []
         document.planCreatedAt = nil

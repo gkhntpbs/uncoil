@@ -347,6 +347,115 @@ final class TasksHandlerTests: XCTestCase {
         XCTAssertFalse(envelope.next_actions.isEmpty)
     }
 
+    // MARK: - Tests, reviews, merge readiness
+
+    func testAFailingTestRunRefusesToTickTheCheckbox() async throws {
+        let id = try await taskID("ilk görev")
+        let reported = await call("report_test_result", [
+            "task_id": .string(id),
+            "command": .string("xcodebuild test"),
+            "passed": .bool(false),
+            "summary": .string("2 test başarısız"),
+            "artifacts": .array([.string("test-output.txt")]),
+        ])
+        XCTAssertTrue(reported.ok)
+
+        let refused = await call("complete_task", ["task_id": .string(id)])
+        XCTAssertFalse(refused.ok, "a failing test must not tick a checkbox")
+        XCTAssertTrue(refused.error?.message.contains("2 test başarısız") ?? false)
+        XCTAssertEqual(refused.error?.retryable, true)
+        XCTAssertTrue(try read().contains("- [ ] ilk görev"), "the file is untouched")
+
+        // A later passing run clears it.
+        _ = await call("report_test_result", [
+            "task_id": .string(id),
+            "command": .string("xcodebuild test"),
+            "passed": .bool(true),
+            "summary": .string("hepsi geçti"),
+        ])
+        let allowed = await call("complete_task", ["task_id": .string(id)])
+        XCTAssertTrue(allowed.ok)
+        XCTAssertTrue(try read().contains("- [x] ilk görev"))
+    }
+
+    func testATestReportNeedsACommandAndAVerdict() async throws {
+        let id = try await taskID("ilk görev")
+        let noCommand = await call("report_test_result", [
+            "task_id": .string(id), "passed": .bool(true),
+        ])
+        XCTAssertFalse(noCommand.ok)
+        let noVerdict = await call("report_test_result", [
+            "task_id": .string(id), "command": .string("x"),
+        ])
+        XCTAssertFalse(noVerdict.ok)
+    }
+
+    func testAReviewIsRecordedAndHandsItsFindingsBack() async throws {
+        let id = try await taskID("ilk görev")
+        let envelope = await call("submit_task_review", [
+            "task_id": .string(id),
+            "verdict": .string("changesRequested"),
+            "findings": .array([.string("hata yolu ele alınmamış")]),
+        ])
+        XCTAssertTrue(envelope.ok)
+        let prompt = try XCTUnwrap(envelope.data?.objectValue?["feedback_prompt"]?.stringValue)
+        XCTAssertTrue(prompt.contains("hata yolu ele alınmamış"))
+        XCTAssertTrue(
+            prompt.contains("Checkbox'ı şimdi işaretleme"),
+            "an implementer told to fix things must not tick the box"
+        )
+
+        let results = await call("get_task_results", ["task_id": .string(id)])
+        XCTAssertEqual(results.data?.objectValue?["reviews"]?.arrayValue?.count, 1)
+
+        let bogus = await call("submit_task_review", [
+            "task_id": .string(id), "verdict": .string("lgtm"),
+        ])
+        XCTAssertFalse(bogus.ok)
+        XCTAssertTrue(bogus.error?.message.contains("changesRequested") ?? false)
+    }
+
+    func testTaskResultsReportTestsReviewsAndBlockers() async throws {
+        let id = try await taskID("ilk görev")
+        _ = await call("report_test_result", [
+            "task_id": .string(id), "command": .string("swift test"),
+            "passed": .bool(false), "summary": .string("kırık"),
+        ])
+        let results = await call("get_task_results", ["task_id": .string(id)])
+        XCTAssertEqual(results.data?.objectValue?["tests"]?.arrayValue?.count, 1)
+        let blockers = try XCTUnwrap(
+            results.data?.objectValue?["completion_blockers"]?.arrayValue
+        )
+        XCTAssertTrue(blockers.contains { $0.stringValue?.contains("kırık") == true })
+    }
+
+    func testMergeSubmissionReportsBlockersAndIsAudited() async throws {
+        let id = try await taskID("ilk görev")
+        _ = await call("assign_session", [
+            "task_id": .string(id), "worktree_path": .string(projectRoot.path),
+        ])
+        let envelope = await call(
+            "submit_task_for_merge", ["task_id": .string(id)],
+            capabilities: Array(PolicyEngine.defaultGrants) + ["tasks.merge"]
+        )
+        XCTAssertTrue(envelope.ok)
+        XCTAssertEqual(envelope.data?.objectValue?["merged"]?.boolValue, false)
+        let blockers = try XCTUnwrap(envelope.data?.objectValue?["blockers"]?.arrayValue)
+        XCTAssertTrue(
+            blockers.contains { $0.stringValue?.contains("onay") == true },
+            "an agent asking is never the user approving: \(blockers)"
+        )
+
+        let audit = dataDir
+            .appendingPathComponent("projects", isDirectory: true)
+            .appendingPathComponent(store.projects[0].id.uuidString, isDirectory: true)
+            .appendingPathComponent("tasks", isDirectory: true)
+            .appendingPathComponent("task-merges.jsonl")
+        let contents = try String(contentsOf: audit, encoding: .utf8)
+        XCTAssertTrue(contents.contains("refused"), contents)
+        XCTAssertTrue(contents.contains("unapproved"), contents)
+    }
+
     // MARK: - Audit
 
     func testEveryPatchIsStoredWithItsDiff() async throws {

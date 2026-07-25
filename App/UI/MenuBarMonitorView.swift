@@ -45,8 +45,13 @@ struct MenuBarMonitorMenu: View {
 
     var body: some View {
         Text(summary.headline)
+        if let tasks = summary.taskHeadline {
+            Text(tasks)
+        }
 
         Divider()
+
+        taskSection
 
         if !attention.items.isEmpty {
             ForEach(attention.items.prefix(6)) { item in
@@ -95,6 +100,45 @@ struct MenuBarMonitorMenu: View {
             activateMainWindow()
         }
         .keyboardShortcut("o")
+    }
+
+    /// Task shortcuts: open a project's board, stop its orchestrator, and jump
+    /// straight to the session working a task.
+    @ViewBuilder
+    private var taskSection: some View {
+        let taskRows = attention.items.filter { $0.kind.isTaskRow && $0.sessionID != nil }
+        if !projectStore.projects.isEmpty {
+            Menu("Görev Board’u") {
+                ForEach(projectStore.projects) { project in
+                    Button(project.name) {
+                        MainRoute.shared.request(.project(project.id))
+                        activateMainWindow()
+                    }
+                }
+            }
+        }
+        if !taskRows.isEmpty {
+            Menu("Görev Oturumu") {
+                ForEach(taskRows.prefix(8)) { row in
+                    Button("\(row.kind.label): \(row.title)") { open(row) }
+                }
+            }
+        }
+        if !projectStore.projects.isEmpty {
+            Menu("Orchestrator’ı Durdur") {
+                ForEach(projectStore.projects) { project in
+                    Button(project.name) { stopOrchestrator(project) }
+                }
+            }
+        }
+        Divider()
+    }
+
+    /// Drops the pending plan. Running agents are left alone on purpose —
+    /// killing an agent mid-edit is the user's call, and "Kes" does that.
+    private func stopOrchestrator(_ project: Project) {
+        let store = OrchestratorStore(projectID: project.id)
+        store.stopDispatching()
     }
 
     private func label(for record: SessionRecord) -> String {

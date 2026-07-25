@@ -187,6 +187,7 @@ enum HelpRegistry {
             "claim_task", "release_task", "dispatch_task", "spawn_task_agent",
             "wait_for_task_agents", "summarize_task_results",
             "create_task_worktree", "submit_task_for_merge",
+            "report_test_result", "submit_task_review", "get_task_results",
         ]
         let overview = """
         Read and edit the project's own TODO.md tasks. The file stays the source of \
@@ -263,7 +264,13 @@ enum HelpRegistry {
                 ActionDoc(action: "create_task_worktree", summary: "Cut a worktree for a task.",
                     doc: "# create_task_worktree\nRequires the opt-in `tasks.worktree` grant. Args: `task_id`, `name` (optional)."),
                 ActionDoc(action: "submit_task_for_merge", summary: "Report a task ready to merge.",
-                    doc: "# submit_task_for_merge\nRequires the opt-in `tasks.merge` grant. Args: `task_id`. Uncoil does NOT merge or push: it reports the branch and whether the worktree is clean, and puts the task up for review — merging stays the user's decision."),
+                    doc: "# submit_task_for_merge\nRequires the opt-in `tasks.merge` grant. Args: `task_id`. Uncoil does NOT merge or push: it reports the branch, the changed files and every remaining blocker, records the attempt in the merge audit, and puts the task up for review — merging stays the user's decision."),
+                ActionDoc(action: "report_test_result", summary: "Record a test run for a task.",
+                    doc: "# report_test_result\nRequires `tasks.write`. Args: `task_id`, `command`, `passed` (bool), `summary`, `artifacts` (array of names). A failing run is remembered and blocks `complete_task` until a later run passes."),
+                ActionDoc(action: "submit_task_review", summary: "Record a review verdict.",
+                    doc: "# submit_task_review\nRequires `tasks.write`. Args: `task_id`, `verdict` (approved|changesRequested|commented), `findings` (array). Returns `feedback_prompt` — the message to hand back to the implementation session. `changesRequested` marks the task blocked."),
+                ActionDoc(action: "get_task_results", summary: "Tests, reviews and merge attempts.",
+                    doc: "# get_task_results\nRequires `tasks.read`. Args: `task_id`. Returns every recorded test run, review verdict and merge attempt, plus the blockers that stand between the task and a ticked checkbox."),
             ])
     }()
 

@@ -16,6 +16,7 @@ struct ProjectTasksView: View {
     @EnvironmentObject private var settings: SettingsStore
     @StateObject private var sources: TodoSourceStore
     @StateObject private var metadata: ProjectTaskMetadataStore
+    @StateObject private var results: TaskResultStore
     @State private var watcher: TodoSourceWatcher?
     @State private var message: String?
     @State private var conflictTaskIDs: Set<String> = []
@@ -29,6 +30,8 @@ struct ProjectTasksView: View {
     @State private var dispatchTarget: (task: ProjectTask, document: TaskDocument)?
     /// Plan the orchestrator proposes, shown before anything is dispatched.
     @State private var orchestratorPlan: OrchestratorPlan?
+    /// Task whose merge screen is open. Merging never happens without it.
+    @State private var mergeTarget: ProjectTask?
 
     init(project: Project, selection: Binding<MainSelection?>) {
         self.project = project
@@ -37,6 +40,7 @@ struct ProjectTasksView: View {
             projectID: project.id, projectRoot: project.rootPath
         ))
         _metadata = StateObject(wrappedValue: ProjectTaskMetadataStore(projectID: project.id))
+        _results = StateObject(wrappedValue: TaskResultStore(projectID: project.id))
     }
 
     private var preferences: ProjectTaskViewPreferences { metadata.preferences }
@@ -95,6 +99,28 @@ struct ProjectTasksView: View {
                     ? "Planlanacak açık görev yok."
                     : orchestratorPlan?.summary() ?? ""
             )
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { mergeTarget != nil },
+                set: { if !$0 { mergeTarget = nil } }
+            )
+        ) {
+            if let task = mergeTarget {
+                TaskMergeSheet(
+                    task: task,
+                    project: project,
+                    worktreePath: metadata.assignments(for: task.id)
+                        .compactMap(\.worktreePath).first,
+                    results: results,
+                    onFinished: { note in
+                        mergeTarget = nil
+                        message = note + completeAfterMerge(task)
+                        refresh()
+                    },
+                    onCancel: { mergeTarget = nil }
+                )
+            }
         }
         .sheet(
             isPresented: Binding(
@@ -732,6 +758,7 @@ struct ProjectTasksView: View {
                 if gitTouched(task) {
                     TablerIcon(name: "git-commit", size: 9, color: Theme.warn)
                 }
+                resultChips(task)
                 Spacer()
             }
         }
@@ -741,6 +768,31 @@ struct ProjectTasksView: View {
         .onDrag { NSItemProvider(object: task.id as NSString) }
         .contextMenu { cardActions(task, in: document) }
         .accessibilityIdentifier("tasks.card.\(task.id)")
+    }
+
+    /// Test verdict and review state for a task, as small chips.
+    @ViewBuilder
+    private func resultChips(_ task: ProjectTask) -> some View {
+        if let test = results.latestTest(for: task.id) {
+            HStack(spacing: 3) {
+                TablerIcon(
+                    name: test.passed ? "flask" : "flask-off",
+                    size: 9,
+                    color: test.passed ? Theme.ok : Theme.danger
+                )
+                Text(test.summary)
+                    .font(Theme.mono(9))
+                    .foregroundStyle(test.passed ? Theme.ok : Theme.danger)
+                    .lineLimit(1)
+            }
+            .accessibilityIdentifier("tasks.test.\(task.id)")
+        }
+        if let review = results.latestReview(for: task.id) {
+            Text(review.verdict.label)
+                .font(Theme.mono(9, .semibold))
+                .foregroundStyle(review.verdict == .changesRequested ? Theme.warn : Theme.codex)
+                .accessibilityIdentifier("tasks.review.\(task.id)")
+        }
     }
 
     /// Whether the task's source file has uncommitted changes — a cheap "this
@@ -888,10 +940,15 @@ struct ProjectTasksView: View {
                 toggle(task, in: document)
             }
         } else {
-            Button("Complete") {
-                metadata.setState(.completed, taskID: task.id)
-                toggle(task, in: document)
+            Button("Complete") { complete(task, in: document) }
+        }
+        if let review = results.latestReview(for: task.id), !review.findings.isEmpty {
+            Button("Review bulgularını session’a gönder") {
+                sendReviewFeedback(review, task: task)
             }
+        }
+        if assignments.contains(where: { $0.worktreePath != nil }) {
+            Button("Merge…") { mergeTarget = task }
         }
 
         Divider()
@@ -1253,6 +1310,65 @@ struct ProjectTasksView: View {
             message = error.localizedDescription
         }
         refresh()
+    }
+
+    /// After a successful merge the task is finished: its checkbox is ticked, or
+    /// it is moved to a Done column when the file has one. Returns what to add
+    /// to the message so the user is told which of the two happened.
+    private func completeAfterMerge(_ task: ProjectTask) -> String {
+        guard let document = sources.document(for: task.sourcePath),
+              let current = document.task(id: task.id) else {
+            return " — görev dosyada bulunamadı, checkbox elle işaretlenmeli."
+        }
+        let doneHeading = document.headings
+            .map(\.text)
+            .first { TaskBoardMapping.lane(for: $0) == .done }
+        if let doneHeading, current.headingPath.last != doneHeading {
+            do {
+                let patches = try TodoEditor.movePatches(
+                    task: current, to: [doneHeading], in: document
+                )
+                write(patches: patches, task: current, document: document, rebuild: { _ in [] })
+                metadata.setState(.completed, taskID: task.id)
+                return " — görev \(doneHeading) altına taşındı."
+            } catch {
+                return " — görev taşınamadı: \(error.localizedDescription)"
+            }
+        }
+        guard !current.isDone else { return "" }
+        metadata.setState(.completed, taskID: task.id)
+        toggle(current, in: document)
+        return " — görev tamamlandı olarak işaretlendi."
+    }
+
+    /// Ticking a checkbox from the UI honours the same gate the MCP path does:
+    /// a failing test run refuses the tick.
+    private func complete(_ task: ProjectTask, in document: TaskDocument) {
+        let blockers = results.failingTestBlockers(taskID: task.id)
+        guard blockers.isEmpty else {
+            message = "Görev tamamlanamaz — " + blockers.map(\.message).joined(separator: " ")
+            return
+        }
+        metadata.setState(.completed, taskID: task.id)
+        toggle(task, in: document)
+    }
+
+    /// Hands the review's findings back to the session that did the work, so a
+    /// verdict does not stay locked inside the reviewer's session.
+    private func sendReviewFeedback(_ review: TaskReviewResult, task: ProjectTask) {
+        let implementers = metadata.assignments(for: task.id)
+            .filter { $0.role == .implementer || $0.role == .owner }
+        guard let target = implementers.first
+            ?? metadata.assignments(for: task.id).first(where: {
+                $0.sessionID != review.reviewerSessionID
+            }),
+            let record = projectStore.sessions.first(where: { $0.id == target.sessionID })
+        else {
+            message = "Bulguları iletecek bir implementation oturumu yok."
+            return
+        }
+        deliver(prompt: review.feedbackPrompt(taskText: task.text), to: record)
+        message = "Review bulguları \(record.displayTitle) oturumuna gönderildi."
     }
 
     private func revealSource(_ task: ProjectTask) {

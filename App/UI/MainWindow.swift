@@ -103,6 +103,7 @@ struct MainWindow: View {
             // Merge conflicts and the runtime phase are not observable, so the
             // Attention Center re-derives them on a slow poll.
             while !Task.isCancelled {
+                await AttentionRefresher.shared.scanTasks(projectStore: projectStore)
                 await AttentionRefresher.shared.scanConflicts(
                     projectStore: projectStore,
                     sessionStore: sessionStore

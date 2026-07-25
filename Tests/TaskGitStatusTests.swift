@@ -469,3 +469,113 @@ final class TaskDiffAuditTests: XCTestCase {
         XCTAssertTrue(TaskDiffAudit.Expectation.delete.mayChangeLineCount)
     }
 }
+
+final class GitMergeTests: XCTestCase {
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("uncoil-merge-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try git(["init", "-q", "-b", "main"])
+        try write("satır bir\n", to: "file.txt")
+        try git(["add", "."])
+        try commit("ilk")
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: root)
+        try super.tearDownWithError()
+    }
+
+    private func git(_ arguments: [String], at path: String? = nil) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", path ?? root.path] + arguments
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+        try process.run()
+        process.waitUntilExit()
+    }
+
+    private func commit(_ message: String, at path: String? = nil) throws {
+        try git(["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", message], at: path)
+    }
+
+    private func write(_ contents: String, to name: String, at directory: URL? = nil) throws {
+        try contents.write(
+            to: (directory ?? root).appendingPathComponent(name),
+            atomically: true, encoding: .utf8
+        )
+    }
+
+    func testAnApprovedMergeBringsTheBranchIn() throws {
+        let worktree = root.appendingPathComponent(".uncoil-worktrees/task", isDirectory: true)
+        try git(["worktree", "add", "-q", "-b", "uncoil/task", worktree.path])
+        try write("satır iki\n", to: "file.txt", at: worktree)
+        try git(["add", "."], at: worktree.path)
+        try commit("görev işi", at: worktree.path)
+
+        let result = GitService.merge(
+            repoPath: root.path, branch: "uncoil/task", message: "Merge task: görev"
+        )
+        guard case .success(let commit) = result else {
+            return XCTFail("merge should succeed: \(result)")
+        }
+        XCTAssertNotNil(commit)
+        XCTAssertEqual(
+            try String(contentsOf: root.appendingPathComponent("file.txt"), encoding: .utf8),
+            "satır iki\n"
+        )
+    }
+
+    func testAConflictingMergeIsAbortedAndLeavesNoHalfMergedTree() throws {
+        let worktree = root.appendingPathComponent(".uncoil-worktrees/task", isDirectory: true)
+        try git(["worktree", "add", "-q", "-b", "uncoil/task", worktree.path])
+        try write("dal tarafı\n", to: "file.txt", at: worktree)
+        try git(["add", "."], at: worktree.path)
+        try commit("dal", at: worktree.path)
+
+        // The same line changed on main: the merge cannot succeed.
+        try write("ana taraf\n", to: "file.txt")
+        try git(["add", "."])
+        try commit("ana")
+
+        let result = GitService.merge(
+            repoPath: root.path, branch: "uncoil/task", message: "Merge task: görev"
+        )
+        guard case .failure(let error) = result else {
+            return XCTFail("a conflicting merge must fail: \(result)")
+        }
+        XCTAssertFalse(error.message.isEmpty)
+        XCTAssertEqual(
+            try String(contentsOf: root.appendingPathComponent("file.txt"), encoding: .utf8),
+            "ana taraf\n",
+            "the tree is left exactly as it was"
+        )
+        XCTAssertTrue(
+            GitService.conflictedFiles(repoPath: root.path).isEmpty,
+            "the failed merge was aborted, not left open"
+        )
+    }
+
+    func testMergingOutsideARepositoryIsRefused() {
+        let outside = FileManager.default.temporaryDirectory
+            .appendingPathComponent("uncoil-not-a-repo-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        guard case .failure = GitService.merge(
+            repoPath: outside.path, branch: "x", message: "m"
+        ) else {
+            return XCTFail("a non-repository must be refused")
+        }
+    }
+
+    func testTheDiffIsBoundedAndReportsWhatItDropped() throws {
+        try write((1...600).map { "satır \($0)" }.joined(separator: "\n"), to: "file.txt")
+        let diff = GitService.diff(repoPath: root.path, maxLines: 50)
+        XCTAssertTrue(diff.contains("satır daha"), "a cap is reported, never silent")
+        XCTAssertLessThan(diff.split(separator: "\n").count, 60)
+    }
+}

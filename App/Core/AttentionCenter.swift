@@ -9,6 +9,16 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     case authentication
     case runtime
     case completed
+    // MARK: Task rows
+    case taskAssigned
+    case reviewRequested
+    case changesRequested
+    case taskBlocked
+    case taskFailed
+    case taskCompleted
+    case mergeReady
+    /// A task's session lost its link to a task and the user has to say which.
+    case relinkNeeded
 
     var id: String { rawValue }
 
@@ -21,6 +31,14 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .authentication: "Giriş gerekli"
         case .runtime: "Runtime sorunu"
         case .completed: "Tamamlandı"
+        case .taskAssigned: "Göreve agent atandı"
+        case .reviewRequested: "Review istendi"
+        case .changesRequested: "Değişiklik istendi"
+        case .taskBlocked: "Görev bloklandı"
+        case .taskFailed: "Görev başarısız"
+        case .taskCompleted: "Görev tamamlandı"
+        case .mergeReady: "Merge hazır"
+        case .relinkNeeded: "Görev bağlantısı kayıp"
         }
     }
 
@@ -33,6 +51,14 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .authentication: "user-exclamation"
         case .runtime: "plug-off"
         case .completed: "circle-check"
+        case .taskAssigned: "user-check"
+        case .reviewRequested: "eye-search"
+        case .changesRequested: "message-report"
+        case .taskBlocked: "hand-stop"
+        case .taskFailed: "alert-triangle"
+        case .taskCompleted: "checkbox"
+        case .mergeReady: "git-pull-request"
+        case .relinkNeeded: "unlink"
         }
     }
 
@@ -41,10 +67,12 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .permission: Theme.claude
         case .input: Theme.warn
-        case .testFailure, .runtime: Theme.danger
+        case .testFailure, .runtime, .taskFailed: Theme.danger
         case .mergeConflict: Theme.warn
         case .authentication: Theme.warn
-        case .completed: Theme.codex
+        case .completed, .taskCompleted, .mergeReady: Theme.codex
+        case .taskAssigned: Theme.textDim
+        case .reviewRequested, .changesRequested, .taskBlocked, .relinkNeeded: Theme.warn
         }
     }
 
@@ -52,12 +80,39 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     var priority: Int {
         switch self {
         case .permission: 6
-        case .runtime: 5
+        case .runtime, .taskFailed: 5
         case .mergeConflict: 4
         case .testFailure: 4
         case .authentication: 3
         case .input: 3
-        case .completed: 1
+        case .taskBlocked, .changesRequested, .reviewRequested, .relinkNeeded: 3
+        case .mergeReady: 2
+        case .completed, .taskCompleted, .taskAssigned: 1
+        }
+    }
+
+    /// Whether this row is about a task rather than a session or the runtime.
+    var isTaskRow: Bool {
+        switch self {
+        case .taskAssigned, .reviewRequested, .changesRequested, .taskBlocked,
+             .taskFailed, .taskCompleted, .mergeReady, .relinkNeeded:
+            true
+        case .permission, .input, .testFailure, .mergeConflict, .authentication,
+             .runtime, .completed:
+            false
+        }
+    }
+
+    /// Whether this row is a problem rather than a normal wait — what the
+    /// menu-bar icon escalates on.
+    var isProblem: Bool {
+        switch self {
+        case .runtime, .testFailure, .mergeConflict, .authentication,
+             .taskFailed, .taskBlocked, .relinkNeeded:
+            true
+        case .permission, .input, .completed, .taskAssigned, .reviewRequested,
+             .changesRequested, .taskCompleted, .mergeReady:
+            false
         }
     }
 }
@@ -87,6 +142,8 @@ struct AttentionSnapshot {
     var runtimePhase: RuntimeClient.Phase = .idle
     /// projectID → unresolved conflict paths.
     var conflicts: [UUID: [String]] = [:]
+    /// Task-side rows, derived by `TaskAttentionEngine`.
+    var tasks = TaskAttentionSnapshot()
 }
 
 /// Derives attention rows from live app state. Pure and synchronous so the
@@ -176,6 +233,7 @@ enum AttentionEngine {
             break
         }
 
+        items.append(contentsOf: TaskAttentionEngine.items(snapshot.tasks, now: now))
         return items
     }
 
@@ -292,6 +350,8 @@ final class AttentionRefresher {
 
     private var conflicts: [UUID: [String]] = [:]
     private var scanning = false
+    private var scanningTasks = false
+    private var taskSnapshot = TaskAttentionSnapshot()
 
     func refresh(projectStore: ProjectStore, sessionStore: SessionStore) {
         AttentionStore.shared.refresh(
@@ -311,7 +371,104 @@ final class AttentionRefresher {
         )
         snapshot.runtimePhase = RuntimeClient.shared.phase
         snapshot.conflicts = conflicts
+        snapshot.tasks = taskSnapshot
+        snapshot.tasks.projectNames = snapshot.projectNames
         return snapshot
+    }
+
+    /// Rescans task state for every project: which tasks have agents on them,
+    /// what the reviews said, and which task sources are in conflict.
+    ///
+    /// Only tasks Uncoil actually tracks are read. A `TODO.md` with three hundred
+    /// ticked boxes must not produce three hundred "task completed" rows, so the
+    /// scan starts from the assignments and parses only the files they name.
+    func scanTasks(projectStore: ProjectStore) async {
+        guard !scanningTasks else { return }
+        scanningTasks = true
+        defer { scanningTasks = false }
+
+        var merged = TaskAttentionSnapshot()
+        for project in projectStore.projects {
+            let metadata = ProjectTaskMetadataStore(projectID: project.id)
+            let assignments = metadata.assignmentsByTask
+            let orchestrator = OrchestratorStore(projectID: project.id)
+            merged.queuedTaskCount += orchestrator.pending.count
+            guard !assignments.isEmpty else { continue }
+
+            let results = TaskResultStore(projectID: project.id)
+            let paths = Set(assignments.values.flatMap { $0.map(\.sourcePath) })
+            let documents = await Task.detached(priority: .utility) {
+                paths.compactMap { path -> TaskDocument? in
+                    guard let raw = try? String(contentsOfFile: path, encoding: .utf8) else {
+                        return nil
+                    }
+                    return TodoParser.parse(raw, path: path)
+                }
+            }.value
+
+            let statuses = await Task.detached(priority: .utility) { [paths] in
+                TaskGitStatusReader.statuses(
+                    repoRoot: project.rootPath,
+                    contentsByPath: Dictionary(
+                        uniqueKeysWithValues: paths.compactMap { path in
+                            (try? String(contentsOfFile: path, encoding: .utf8))
+                                .map { (path, $0) }
+                        }
+                    )
+                )
+            }.value
+            let conflicted = statuses.filter { !$0.value.isEditable }.keys.sorted()
+            if !conflicted.isEmpty {
+                merged.conflictedSources[project.id] = conflicted
+            }
+
+            for (taskID, taskAssignments) in assignments {
+                guard let document = documents.first(where: { $0.task(id: taskID) != nil }),
+                      let task = document.task(id: taskID) else {
+                    // The task is gone from the file; the relink row is what the
+                    // user needs, and that comes from the assignment itself.
+                    merged.tasks.append(TaskAttentionInput(
+                        taskID: taskID,
+                        taskText: taskAssignments.first?.fingerprint?.normalizedText ?? taskID,
+                        projectID: project.id, projectName: project.name,
+                        sourcePath: taskAssignments.first?.sourcePath ?? "",
+                        assignments: taskAssignments.map {
+                            var copy = $0
+                            copy.needsRelinking = true
+                            return copy
+                        },
+                        updatedAt: taskAssignments.map(\.updatedAt).max() ?? .distantPast
+                    ))
+                    continue
+                }
+                merged.tasks.append(TaskAttentionInput(
+                    taskID: taskID,
+                    taskText: task.text,
+                    projectID: project.id,
+                    projectName: project.name,
+                    sourcePath: task.sourcePath,
+                    assignments: taskAssignments,
+                    latestReview: results.latestReview(for: taskID)?.verdict,
+                    // Asked only for work that has a worktree: without one there
+                    // is nothing to merge, and reporting readiness would be noise.
+                    mergeBlockers: taskAssignments.compactMap(\.worktreePath).first.map { worktree in
+                        let snapshot = GitService.snapshot(repoPath: worktree)
+                        return results.mergePreview(
+                            taskID: taskID,
+                            branch: snapshot.branch,
+                            changedFiles: snapshot.changedFiles.map(\.path),
+                            conflictedFiles: GitService.conflictedFiles(repoPath: worktree),
+                            uncommittedChanges: snapshot.changedFiles.count,
+                            userApproved: false,
+                            settings: orchestrator.settings
+                        ).hardBlockers
+                    },
+                    isDone: task.isDone,
+                    updatedAt: taskAssignments.map(\.updatedAt).max() ?? .distantPast
+                ))
+            }
+        }
+        taskSnapshot = merged
     }
 
     /// Rescans every project (and its session worktrees) for unresolved

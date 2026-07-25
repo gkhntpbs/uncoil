@@ -36,6 +36,7 @@ final class CapabilityRouter {
     /// Per-project task metadata, cached so repeated task calls share one
     /// in-memory view of the assignments they mutate.
     var taskMetadataStores: [UUID: ProjectTaskMetadataStore] = [:]
+    var taskResultStores: [UUID: TaskResultStore] = [:]
 
     /// Launches a freshly-created child session's terminal (and delivers its
     /// initial prompt). Injected by the app; nil in tests, where the child
