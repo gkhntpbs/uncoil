@@ -633,12 +633,16 @@ private struct SessionRow: View {
                 .foregroundStyle(hovering ? Theme.textDim : Theme.textFaint)
                 .frame(width: 12, height: 22)
                 .contentShape(Rectangle())
-                .onDrag {
-                    let payload = dragIDs.map(\.uuidString).sorted().joined(separator: ",")
-                    return NSItemProvider(object: payload as NSString)
-                }
+                .overlay(
+                    // Dragging onto a group still works; dropping outside the
+                    // window opens the session in its own one.
+                    PopoutDragHandle(
+                        payload: dragIDs.map(\.uuidString).sorted().joined(separator: ","),
+                        onDropOutside: { openWindow(id: "session-window", value: record.id) }
+                    )
+                )
                 .accessibilityIdentifier("sidebar.drag.\(record.title)")
-                .help("Gruba sürükle")
+                .help("Gruba sürükle, pencere dışına bırakınca yeni pencerede açılır")
 
             Button(action: onSelect) {
                 HStack(spacing: 8) {
