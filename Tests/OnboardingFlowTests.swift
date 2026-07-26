@@ -49,6 +49,46 @@ final class OnboardingFlowTests: XCTestCase {
 }
 
 @MainActor
+final class OnboardingAdoptionTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_000)
+
+    private func package(_ id: String, source: ExtensionSource) -> ExtensionPackage {
+        ExtensionPackage(id: id, kind: .skill, name: id, source: source)
+    }
+
+    /// The list onboarding offers is exactly the external installs — what Uncoil
+    /// already owns is not something to "take over".
+    func testOnlyExternalInstallsAreOffered() {
+        let packages = [
+            package("mine", source: .detectedExternal(path: "/Users/x/.claude/skills/mine")),
+            package("ours", source: .local(path: "/store/ours")),
+            package("remote", source: .remoteMCP(url: "https://example.com/mcp", transport: .http)),
+        ]
+        let offered = OnboardingAdoption.adoptable(packages: packages, findings: [])
+        XCTAssertEqual(offered.map(\.id), ["mine"])
+    }
+
+    func testABlockedFindingTakesThePackageOutOfTheList() {
+        let packages = [package("risky", source: .detectedExternal(path: "/x/risky"))]
+        let blocked = SecurityFinding(
+            id: "f1", origin: .uncoil, severity: .blocked, rule: "r", message: "m",
+            extensionID: "risky", foundAt: now
+        )
+        XCTAssertTrue(OnboardingAdoption.adoptable(packages: packages, findings: [blocked]).isEmpty)
+
+        // A lesser finding is a warning, not a veto.
+        let high = SecurityFinding(
+            id: "f2", origin: .uncoil, severity: .high, rule: "r", message: "m",
+            extensionID: "risky", foundAt: now
+        )
+        XCTAssertEqual(
+            OnboardingAdoption.adoptable(packages: packages, findings: [high]).map(\.id),
+            ["risky"]
+        )
+    }
+}
+
+@MainActor
 final class OnboardingSettingsTests: XCTestCase {
     private func makeStore() throws -> SettingsStore {
         let directory = FileManager.default.temporaryDirectory

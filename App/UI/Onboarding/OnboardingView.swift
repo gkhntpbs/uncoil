@@ -10,7 +10,6 @@ import SwiftUI
 struct OnboardingView: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
-    @Environment(\.dismiss) private var dismiss
 
     @State private var step: OnboardingStep = .welcome
     /// Project added during this run, so the Tasks step has something to scan.
@@ -25,8 +24,10 @@ struct OnboardingView: View {
                 OnboardingCLIStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .accounts:
                 OnboardingAccountsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
-            case .liveStatus:
-                OnboardingLiveStatusStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
+            case .hooks:
+                OnboardingHooksStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
+            case .notifications:
+                OnboardingNotificationsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .capabilities:
                 OnboardingCapabilitiesStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .project:
@@ -41,11 +42,14 @@ struct OnboardingView: View {
                 )
             case .extensions:
                 OnboardingExtensionsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
+            case .palette:
+                OnboardingPaletteStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .finish:
                 OnboardingFinishStep(onFinish: skipAll, onBack: back, onSkipAll: skipAll)
             }
         }
-        .frame(minWidth: 780, minHeight: 620)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.bg)
         .animation(uncoilAnimation(.easeOut(duration: 0.16)), value: step)
         .onAppear {
             // Resuming lands on the first thing still undone; a first run has
@@ -85,7 +89,7 @@ struct OnboardingView: View {
 
     private func finish() {
         settings.finishOnboarding()
-        dismiss()
+        OnboardingPresenter.shared.dismiss()
     }
 }
 
@@ -95,14 +99,13 @@ struct OnboardingView: View {
 /// something actionable is still missing.
 struct OnboardingResumeRow: View {
     @EnvironmentObject private var settings: SettingsStore
-    @Environment(\.openWindow) private var openWindow
     @State private var hovering = false
 
     var body: some View {
         let remaining = settings.remainingOnboardingSteps
         if !remaining.isEmpty && !settings.shouldPresentOnboarding {
             Button {
-                openWindow(id: "onboarding")
+                OnboardingPresenter.shared.present()
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "sparkles")

@@ -471,6 +471,9 @@
         }
       }
     },
+    "%@ opens it: projects, sessions, tasks and settings from the keyboard." : {
+
+    },
     "%@ removed; installed extensions were left alone." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -822,6 +825,9 @@
         }
       }
     },
+    "%lld open" : {
+
+    },
     "%lld open / %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1020,6 +1026,9 @@
         }
       }
     },
+    "%lld task sources found" : {
+
+    },
     "%lld tasks" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1111,6 +1120,9 @@
     "+%@" : {
 
     },
+    "+%lld more" : {
+
+    },
     "+%lld permission" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1132,6 +1144,9 @@
           }
         }
       }
+    },
+    "> uncoil_tasks {\"action\":\"help\"}\n{ \"tool\": \"uncoil_tasks\",\n  \"actions\": [\"list\", \"get\", \"update\", \"dispatch\", …],\n  \"requires\": [\"tasks.read\", \"tasks.write\"] }" : {
+
     },
     "~/.claude.json is not valid JSON." : {
       "extractionState" : "manual",
@@ -1191,6 +1206,9 @@
         }
       }
     },
+    "A Blocked finding stops adoption outright; nothing about it can be clicked past here." : {
+
+    },
     "A clean result does not mean the extension is entirely safe." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1201,6 +1219,9 @@
           }
         }
       }
+    },
+    "A control centre for the coding agents you already run — across projects, worktrees and accounts." : {
+
     },
     "A port this configuration needs%@ is already taken. Stop the other process, or change the port in the command/env and update 'ports' in .uncoil/run.json." : {
       "extractionState" : "manual",
@@ -1466,6 +1487,9 @@
         }
       }
     },
+    "Add a profile" : {
+
+    },
     "Add a project" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1487,6 +1511,9 @@
           }
         }
       }
+    },
+    "Add a project and Uncoil scans it for task files. You can come back to this from the sidebar." : {
+
     },
     "Add a TODO.md to the root or a subfolder and it shows up here." : {
       "extractionState" : "manual",
@@ -1532,6 +1559,9 @@
         }
       }
     },
+    "Add one and every task in it shows up on the board: assign it to an agent, watch it work in its own worktree, and let it tick the box when it is done." : {
+
+    },
     "Add Preset" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1575,6 +1605,9 @@
           }
         }
       }
+    },
+    "Add your first project" : {
+
     },
     "added from a folder: %@" : {
       "extractionState" : "manual",
@@ -1686,6 +1719,9 @@
         }
       }
     },
+    "Adopted: %@" : {
+
+    },
     "adopted: %@, backup %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1696,6 +1732,9 @@
           }
         }
       }
+    },
+    "Adopting…" : {
+
     },
     "Advanced Permissions" : {
       "extractionState" : "manual",
@@ -1733,6 +1772,9 @@
         }
       }
     },
+    "Agent browser" : {
+
+    },
     "Agent Browser" : {
 
     },
@@ -1746,6 +1788,12 @@
           }
         }
       }
+    },
+    "Agent capabilities" : {
+
+    },
+    "Agent CLIs" : {
+
     },
     "Agent config" : {
 
@@ -1838,6 +1886,9 @@
         }
       }
     },
+    "Agents can talk back to Uncoil through its own MCP tools." : {
+
+    },
     "Agents keep running inside the runtime daemon even after Uncoil closes." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1892,6 +1943,9 @@
           }
         }
       }
+    },
+    "Allow notifications" : {
+
     },
     "Allow Once" : {
       "extractionState" : "manual",
@@ -1959,6 +2013,9 @@
         }
       }
     },
+    "An isolated config directory is created for this profile." : {
+
+    },
     "An unanswered request times out after this long." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1991,6 +2048,9 @@
           }
         }
       }
+    },
+    "Anything you skipped stays listed at the bottom of the sidebar under “Finish setup”." : {
+
     },
     "Appearance" : {
       "extractionState" : "manual",
@@ -2388,6 +2448,9 @@
         }
       }
     },
+    "Back" : {
+
+    },
     "Back to Default" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2648,6 +2711,9 @@
       }
     },
     "build %@" : {
+
+    },
+    "Build output and dependency folders are skipped." : {
 
     },
     "Built-in Themes" : {
@@ -2917,6 +2983,9 @@
         }
       }
     },
+    "Choose folder…" : {
+
+    },
     "Choose how long terminal output is kept on disk. Recording is off by default." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2961,6 +3030,9 @@
         }
       }
     },
+    "Choose your agent CLIs" : {
+
+    },
     "Claimed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2982,6 +3054,9 @@
           }
         }
       }
+    },
+    "Claude Code reports through hooks. Without them a session is just a terminal: no working / needs-input state, no notifications, no attention list." : {
+
     },
     "Claude Code's hooks are what make session states stream into Uncoil live." : {
       "extractionState" : "manual",
@@ -3535,6 +3610,9 @@
         }
       }
     },
+    "Continue" : {
+
+    },
     "Control plane not running" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3546,6 +3624,9 @@
         }
       }
     },
+    "Copied" : {
+
+    },
     "Copied: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3556,6 +3637,9 @@
           }
         }
       }
+    },
+    "Copy" : {
+
     },
     "Copy the code" : {
       "extractionState" : "manual",
@@ -3743,6 +3827,9 @@
           }
         }
       }
+    },
+    "Create a TODO.md" : {
+
     },
     "Create a worktree" : {
       "extractionState" : "manual",
@@ -4129,6 +4216,9 @@
         }
       }
     },
+    "Deleting and merging tasks" : {
+
+    },
     "deletion" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4206,6 +4296,9 @@
         }
       }
     },
+    "Destroying work and asking for a merge stay with you unless you grant them." : {
+
+    },
     "Detail" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4227,6 +4320,9 @@
           }
         }
       }
+    },
+    "Developed by Gökhan Topbaş" : {
+
     },
     "Dim text" : {
       "extractionState" : "manual",
@@ -4437,6 +4533,9 @@
         }
       }
     },
+    "Each profile gets its own config root, so a work login and a personal one never mix. Credentials stay with the provider's CLI — Uncoil never sees them." : {
+
+    },
     "Edit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4627,6 +4726,9 @@
         }
       }
     },
+    "Every package is read before it is installed or adopted: risky shell constructs, executables, its source and its licence. A clean scan is never called “safe” — Verified is reserved for what Uncoil itself ships." : {
+
+    },
     "Every running agent and terminal process is closed when you quit Uncoil." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4637,6 +4739,12 @@
           }
         }
       }
+    },
+    "Every session shows working, needs input or done. Anything waiting on you collects in the Attention Center and in the menu-bar monitor." : {
+
+    },
+    "Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Privacy and Permissions." : {
+
     },
     "Everything is in place; the merge is only waiting for your word." : {
       "extractionState" : "manual",
@@ -4851,6 +4959,9 @@
         }
       }
     },
+    "Finish setup" : {
+
+    },
     "Finished and clean" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4861,6 +4972,9 @@
           }
         }
       }
+    },
+    "First project" : {
+
     },
     "Fix it with Repair." : {
       "extractionState" : "manual",
@@ -4939,6 +5053,9 @@
         }
       }
     },
+    "Four things that make the difference on day one." : {
+
+    },
     "Frequency" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4960,6 +5077,9 @@
           }
         }
       }
+    },
+    "Get started" : {
+
     },
     "git checkout failed" : {
       "extractionState" : "manual",
@@ -4993,6 +5113,9 @@
           }
         }
       }
+    },
+    "Git repository" : {
+
     },
     "Git revision" : {
 
@@ -5108,6 +5231,9 @@
           }
         }
       }
+    },
+    "Hand out work straight from your project's TODO.md." : {
+
     },
     "Hand tasks to agents" : {
       "extractionState" : "manual",
@@ -5266,6 +5392,9 @@
         }
       }
     },
+    "Hover a project and pick an agent. Several agents can work the same repository at once, each in its own git worktree, without touching each other's files." : {
+
+    },
     "Hover a project, pick an agent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5277,6 +5406,12 @@
         }
       }
     },
+    "How a task becomes work" : {
+
+    },
+    "How does the agent find these?" : {
+
+    },
     "How many times it is repeated after the first notification." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5287,6 +5422,9 @@
           }
         }
       }
+    },
+    "How the scanner rates a package" : {
+
     },
     "Icon" : {
       "extractionState" : "manual",
@@ -5489,6 +5627,9 @@
         }
       }
     },
+    "Install hooks" : {
+
+    },
     "Installed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5554,6 +5695,9 @@
           }
         }
       }
+    },
+    "Installing the optional browser or Computer Use drivers, and running any remote install script, always asks you first." : {
+
     },
     "Instruction file" : {
       "extractionState" : "manual",
@@ -5665,6 +5809,9 @@
         }
       }
     },
+    "Keep your accounts apart" : {
+
+    },
     "Keeps watching the agents while Uncoil's window is closed." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5764,6 +5911,9 @@
         }
       }
     },
+    "Left alone: %@" : {
+
+    },
     "Let high-priority events through" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5774,6 +5924,15 @@
           }
         }
       }
+    },
+    "Let Uncoil manage these (%lld)" : {
+
+    },
+    "Let Uncoil see what your agents are doing" : {
+
+    },
+    "Lets an agent hand a task to another agent and cut a worktree for it." : {
+
     },
     "Line to write to the file" : {
       "extractionState" : "manual",
@@ -5829,6 +5988,9 @@
           }
         }
       }
+    },
+    "Live status" : {
+
     },
     "Loading" : {
       "extractionState" : "manual",
@@ -5961,6 +6123,9 @@
           }
         }
       }
+    },
+    "macOS only offers its prompt once. Uncoil notifies when an agent needs input, finishes, or asks for a permission." : {
+
     },
     "main copy" : {
       "extractionState" : "manual",
@@ -6301,6 +6466,9 @@
         }
       }
     },
+    "Missing: %@" : {
+
+    },
     "Mode and Keyboard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6557,6 +6725,9 @@
         }
       }
     },
+    "New profile" : {
+
+    },
     "New run configuration" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6743,6 +6914,9 @@
           }
         }
       }
+    },
+    "No binary on this Mac's PATH. Install it, then rescan." : {
+
     },
     "No changes" : {
       "extractionState" : "manual",
@@ -7063,6 +7237,9 @@
         }
       }
     },
+    "No project yet" : {
+
+    },
     "No projects yet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7272,6 +7449,9 @@
         }
       }
     },
+    "No TODO.md in this project" : {
+
+    },
     "No uncommitted changes." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7363,6 +7543,9 @@
         }
       }
     },
+    "Not a git repository" : {
+
+    },
     "Not asked yet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7429,6 +7612,9 @@
         }
       }
     },
+    "Not signed in" : {
+
+    },
     "not time for the daily baseline" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7461,6 +7647,9 @@
           }
         }
       }
+    },
+    "Nothing to adopt — no external skill or MCP server was found." : {
+
     },
     "Nothing to commit." : {
       "extractionState" : "manual",
@@ -7902,6 +8091,9 @@
         }
       }
     },
+    "Open the project's Tasks tab to see the board." : {
+
+    },
     "Open the Repo" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7978,6 +8170,12 @@
           }
         }
       }
+    },
+    "Opt-in" : {
+
+    },
+    "Or skip this for now." : {
+
     },
     "Orchestrator" : {
       "extractionState" : "manual",
@@ -8194,6 +8392,9 @@
         }
       }
     },
+    "Pick a task → Uncoil starts an agent with it, optionally in its own git worktree → the agent works, ticks the checkbox, and hands back a diff you review before anything merges." : {
+
+    },
     "Pick the open tasks, pick an agent, start them together" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8292,6 +8493,9 @@
           }
         }
       }
+    },
+    "Point Uncoil at a folder you work in. You can always add more later." : {
+
     },
     "Port %lld is already serving before start. Stop whatever owns it (`lsof -ti :%lld`), or change the configured port." : {
       "extractionState" : "manual",
@@ -8450,6 +8654,15 @@
         }
       }
     },
+    "Profile name" : {
+
+    },
+    "Profiles for this provider." : {
+
+    },
+    "Project → worktree → session" : {
+
+    },
     "project assignment" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8537,6 +8750,9 @@
           }
         }
       }
+    },
+    "Projects, worktrees and artifacts" : {
+
     },
     "Prompt preview" : {
       "extractionState" : "manual",
@@ -8804,6 +9020,9 @@
           }
         }
       }
+    },
+    "Reading and ticking tasks" : {
+
     },
     "Reading branches…" : {
       "extractionState" : "manual",
@@ -9303,6 +9522,9 @@
         }
       }
     },
+    "Rescan PATH" : {
+
+    },
     "Rescan sources" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9559,6 +9781,9 @@
         }
       }
     },
+    "Run again" : {
+
+    },
     "Run Bumblebee Scan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9602,6 +9827,9 @@
           }
         }
       }
+    },
+    "Run several agents side by side on the same project." : {
+
     },
     "Run Tests" : {
       "extractionState" : "manual",
@@ -9713,6 +9941,9 @@
         }
       }
     },
+    "Running the project" : {
+
+    },
     "Runs dynamic code through eval." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9723,6 +9954,9 @@
           }
         }
       }
+    },
+    "Runs the first-run flow again: CLIs, accounts, hooks, agent capabilities, tasks and extensions." : {
+
     },
     "Runtime daemon" : {
 
@@ -9825,6 +10059,9 @@
           }
         }
       }
+    },
+    "Scanning the project…" : {
+
     },
     "Scanning…" : {
       "extractionState" : "manual",
@@ -10023,6 +10260,9 @@
           }
         }
       }
+    },
+    "Send a test" : {
+
     },
     "Send a Test Notification" : {
       "extractionState" : "manual",
@@ -10244,6 +10484,12 @@
         }
       }
     },
+    "Sessions and child agents" : {
+
+    },
+    "Sessions keep running in the background and survive a restart." : {
+
+    },
     "Sessions needing attention" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10265,6 +10511,9 @@
           }
         }
       }
+    },
+    "Sessions work fine; worktrees and task branches need a git repository." : {
+
     },
     "Set Permissions" : {
       "extractionState" : "manual",
@@ -10331,6 +10580,9 @@
           }
         }
       }
+    },
+    "Setup guide" : {
+
     },
     "Several extensions from the same repo share a single bare mirror." : {
       "extractionState" : "manual",
@@ -10500,6 +10752,9 @@
         }
       }
     },
+    "Sign in" : {
+
+    },
     "Sign In" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10634,6 +10889,15 @@
           }
         }
       }
+    },
+    "Skills and MCP servers found in your agents' own directories. Adopting copies them into Uncoil's store after writing a backup; anything you leave here stays exactly where it is." : {
+
+    },
+    "Skills and MCP servers, with a safety net" : {
+
+    },
+    "Skip" : {
+
     },
     "Someone else's symlink" : {
       "extractionState" : "manual",
@@ -10822,6 +11086,9 @@
         }
       }
     },
+    "Start working" : {
+
+    },
     "starting" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10865,6 +11132,12 @@
           }
         }
       }
+    },
+    "Status and the attention list" : {
+
+    },
+    "Status hooks" : {
+
     },
     "Status Tracking" : {
       "extractionState" : "manual",
@@ -11048,6 +11321,9 @@
     "tag %@" : {
 
     },
+    "Take over what you already installed" : {
+
+    },
     "Target" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11147,6 +11423,9 @@
         }
       }
     },
+    "Task orchestration and worktrees" : {
+
+    },
     "Task results" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11201,6 +11480,12 @@
           }
         }
       }
+    },
+    "Tasks and the control plane" : {
+
+    },
+    "Tasks come from your TODO.md" : {
+
     },
     "Tells the agent to bypass policy." : {
       "extractionState" : "manual",
@@ -11504,6 +11789,9 @@
           }
         }
       }
+    },
+    "The command palette" : {
+
     },
     "The config changed on disk; the plan was recalculated." : {
       "extractionState" : "manual",
@@ -11978,6 +12266,9 @@
         }
       }
     },
+    "The Tasks tab hands work out from TODO.md, and your agents can reach back into Uncoil through its MCP tools. Both are tunable in Settings." : {
+
+    },
     "The Uncoil mark, coloured by state." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12109,6 +12400,9 @@
           }
         }
       }
+    },
+    "There is already a TODO.md here." : {
+
     },
     "There is no implementation session to hand the findings to." : {
       "extractionState" : "manual",
@@ -12350,6 +12644,9 @@
     "Uncoil" : {
 
     },
+    "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved." : {
+
+    },
     "Uncoil changes these files only through plan → apply." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12386,6 +12683,9 @@
     "Uncoil Extensions" : {
 
     },
+    "Uncoil hands every session an MCP server of its own, so the agent can talk back: eight tools, each one gated by a capability you control." : {
+
+    },
     "Uncoil in the foreground" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12396,6 +12696,9 @@
           }
         }
       }
+    },
+    "Uncoil keeps one store for the extensions your agents use, and scans everything before it goes in." : {
+
     },
     "Uncoil lock file" : {
       "extractionState" : "manual",
@@ -12419,6 +12722,12 @@
         }
       }
     },
+    "Uncoil reads the task files already in your project and turns them into a board you can hand out from. The file stays yours — only the line that changed is patched, never the whole file." : {
+
+    },
+    "Uncoil runs the CLIs already on your Mac. Nothing is installed for you." : {
+
+    },
     "Uncoil settings" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12441,6 +12750,9 @@
         }
       }
     },
+    "Uncoil shows the new language after a restart." : {
+
+    },
     "Uncoil version" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12451,6 +12763,24 @@
           }
         }
       }
+    },
+    "uncoil_browser — an isolated browser profile with no access to your own logins. Installing the driver always asks you first." : {
+
+    },
+    "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard. Off until you turn it on, and it needs its own driver." : {
+
+    },
+    "uncoil_projects · uncoil_artifacts — the agent reads your projects, cuts a worktree for itself, and leaves files behind that you can open." : {
+
+    },
+    "uncoil_run — detects how the project starts, edits that configuration and launches it, so the agent can verify its own change." : {
+
+    },
+    "uncoil_sessions — the agent sees the other sessions in its project and can start a child agent. No raw shell is ever accepted: children come from named presets only." : {
+
+    },
+    "uncoil_tasks — the agent reads your TODO.md and ticks off what it finished. The file stays yours: only the relevant line is patched." : {
+
     },
     "uncoil-runtimed is unreachable; sessions run on the in-app PTY." : {
       "extractionState" : "manual",
@@ -12870,6 +13200,9 @@
         }
       }
     },
+    "version unknown" : {
+
+    },
     "Waiting" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12980,6 +13313,12 @@
         }
       }
     },
+    "Welcome" : {
+
+    },
+    "Welcome to Uncoil" : {
+
+    },
     "went back to the previous revision" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13001,6 +13340,9 @@
           }
         }
       }
+    },
+    "What your agents may do" : {
+
     },
     "When busy" : {
       "extractionState" : "manual",
@@ -13134,6 +13476,9 @@
         }
       }
     },
+    "Worktrees, task branches and diffs are available for this project." : {
+
+    },
     "Write an example prompt…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13254,6 +13599,9 @@
           }
         }
       }
+    },
+    "You're set up" : {
+
     },
     "Your own file" : {
       "extractionState" : "manual",

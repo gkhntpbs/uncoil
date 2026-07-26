@@ -2,8 +2,9 @@ import SwiftUI
 
 // MARK: - Welcome
 
-/// What Uncoil is, in four lines, plus the one question that has to come first:
-/// which language the rest of the flow should be read in.
+/// What Uncoil is, in four lines, plus the two language questions that decide
+/// how everything after this page reads: the interface, and the language Uncoil
+/// writes its prompts to agents in.
 struct OnboardingWelcomeStep: View {
     @EnvironmentObject private var settings: SettingsStore
     let onContinue: () -> Void
@@ -14,14 +15,17 @@ struct OnboardingWelcomeStep: View {
             step: .welcome,
             primaryTitle: String(localized: "Get started"),
             primaryAction: onContinue,
-            onSkipAll: onSkipAll
+            onSkipAll: onSkipAll,
+            footnote: "Developed by Gökhan Topbaş"
         ) {
             VStack(spacing: 22) {
                 VStack(spacing: 10) {
-                    HStack(spacing: 12) {
-                        ProviderMark(provider: .claude, size: 22)
-                        ProviderMark(provider: .codex, size: 22)
-                    }
+                    Image("MenuBarIconColor")
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 54, height: 54)
+                        .accessibilityHidden(true)
                     Text("Welcome to Uncoil")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(Theme.text)
@@ -31,7 +35,7 @@ struct OnboardingWelcomeStep: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 520)
                 }
-                .padding(.top, 16)
+                .padding(.top, 8)
 
                 VStack(alignment: .leading, spacing: 14) {
                     OnboardingBullet(
@@ -53,7 +57,7 @@ struct OnboardingWelcomeStep: View {
                 }
                 .frame(maxWidth: 460)
 
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     Picker(selection: Binding(
                         get: { settings.language.interface },
                         set: { settings.language.interface = $0 }
@@ -67,18 +71,31 @@ struct OnboardingWelcomeStep: View {
                             .foregroundStyle(Theme.textDim)
                     }
                     .pickerStyle(.menu)
-                    .frame(maxWidth: 320)
-                    .accessibilityIdentifier("onboarding.language")
+                    .accessibilityIdentifier("onboarding.interfaceLanguage")
 
-                    Text("Uncoil shows the new language after a restart.")
+                    Picker(selection: Binding(
+                        get: { settings.language.agent },
+                        set: { settings.language.agent = $0 }
+                    )) {
+                        ForEach(AgentLanguage.allCases) { language in
+                            Text(language.displayName).tag(language)
+                        }
+                    } label: {
+                        Text("Agent language")
+                            .font(Theme.mono(.body))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("onboarding.agentLanguage")
+
+                    Text("The interface language applies after a restart. The agent language is the one Uncoil writes in when it hands a task to an agent.")
                         .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: 420)
                 .padding(.top, 4)
-
-                Text("Developed by Gökhan Topbaş")
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.textFaint)
             }
         }
     }
@@ -86,8 +103,9 @@ struct OnboardingWelcomeStep: View {
 
 // MARK: - Agent CLIs
 
-/// What is installed on this Mac, and what to type if something is missing.
-/// Uncoil never runs an installer itself — the command is offered to copy.
+/// What is installed on this Mac, and where to get what is missing. Uncoil never
+/// runs an installer itself: the command is offered to copy, and the vendor's
+/// own install page is one click away.
 struct OnboardingCLIStep: View {
     @EnvironmentObject private var settings: SettingsStore
     let onContinue: () -> Void
@@ -152,15 +170,32 @@ struct OnboardingCLIStep: View {
         let path = settings.binaryPath(for: provider)
         let version = settings.cliVersions[provider.rawValue]
         OnboardingCard(
+            leading: { ProviderMark(provider: provider, size: 20) },
             title: provider.displayName,
             badge: path == nil ? String(localized: "Not found") : String(localized: "Installed"),
             badgeTint: path == nil ? Theme.warn : Theme.ok,
             detail: path.map { installedDetail(path: $0, version: version, provider: provider) }
                 ?? String(localized: "No binary on this Mac's PATH. Install it, then rescan.")
         ) {
-            if path == nil, let command = installCommand(for: provider) {
-                OnboardingCommandRow(command: command)
-                    .padding(.top, 2)
+            if path == nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let command = installCommand(for: provider) {
+                        OnboardingCommandRow(command: command)
+                    }
+                    if let page = installPage(for: provider) {
+                        Link(destination: page) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.system(size: 10))
+                                Text("Open the install page")
+                            }
+                            .font(Theme.mono(.small, .semibold))
+                            .foregroundStyle(Theme.highlight)
+                        }
+                        .accessibilityIdentifier("onboarding.installPage.\(provider.rawValue)")
+                    }
+                }
+                .padding(.top, 2)
             }
         }
     }
@@ -176,6 +211,14 @@ struct OnboardingCLIStep: View {
         return package.isEmpty ? nil : "npm install -g \(package)"
     }
 
+    private func installPage(for provider: AgentProvider) -> URL? {
+        switch provider {
+        case .claude: URL(string: "https://docs.claude.com/en/docs/claude-code/setup")
+        case .codex: URL(string: "https://developers.openai.com/codex/cli/")
+        case .terminal: nil
+        }
+    }
+
     private func rescan() {
         guard !scanning else { return }
         scanning = true
@@ -189,8 +232,9 @@ struct OnboardingCLIStep: View {
 
 // MARK: - Accounts
 
-/// Why a profile is worth making, and the one action that finishes it: the
-/// provider's own login, run against that profile's isolated config root.
+/// Starts from what is already on the machine: the logins the provider CLIs
+/// carry are read out of their own config files and offered as-is. Making a
+/// second, isolated profile is a separate question, asked underneath.
 struct OnboardingAccountsStep: View {
     @EnvironmentObject private var settings: SettingsStore
     let onContinue: () -> Void
@@ -202,20 +246,64 @@ struct OnboardingAccountsStep: View {
     @State private var newAccountProvider: AgentProvider?
     @State private var newAccountName = ""
 
+    private struct Detected: Identifiable {
+        let profile: AccountProfile
+        let email: String?
+        var id: UUID { profile.id }
+    }
+
+    private var detected: [Detected] {
+        settings.accounts.map {
+            Detected(
+                profile: $0,
+                email: settings.loggedInEmail(for: $0, profilesRoot: settings.profilesRootURL)
+            )
+        }
+    }
+
+    private var signedIn: [Detected] { detected.filter { $0.email != nil } }
+    private var signedOut: [Detected] { detected.filter { $0.email == nil } }
+
     var body: some View {
         OnboardingScaffold(
             step: .accounts,
-            title: String(localized: "Keep your accounts apart"),
-            subtitle: String(localized: "Each profile gets its own config root, so a work login and a personal one never mix. Credentials stay with the provider's CLI — Uncoil never sees them."),
+            title: signedIn.isEmpty
+                ? String(localized: "Sign your agents in")
+                : String(localized: "We found these logins"),
+            subtitle: signedIn.isEmpty
+                ? String(localized: "Uncoil reads the login each CLI already carries. None are signed in yet — the provider's own flow opens in a small terminal, and the credentials stay with the CLI.")
+                : String(localized: "These come from the CLIs' own config files. Uncoil never sees the credentials themselves — use them as they are, or add an isolated profile below."),
             primaryTitle: String(localized: "Continue"),
             primaryAction: onContinue,
             onBack: onBack,
             onSkipAll: onSkipAll
         ) {
             VStack(spacing: 12) {
-                ForEach([AgentProvider.claude, .codex]) { provider in
-                    providerSection(provider)
+                ForEach(signedIn) { entry in
+                    accountCard(entry, isSignedIn: true)
                 }
+                ForEach(signedOut) { entry in
+                    accountCard(entry, isSignedIn: false)
+                }
+
+                OnboardingCard(
+                    symbol: "person.badge.plus",
+                    title: String(localized: "Want a second account?"),
+                    detail: String(localized: "A profile gets its own config root (CLAUDE_CONFIG_DIR / CODEX_HOME), so a work login and a personal one never mix — and each session picks the profile it runs under.")
+                ) {
+                    HStack(spacing: 10) {
+                        ForEach([AgentProvider.claude, .codex]) { provider in
+                            Button(String(localized: "Add a \(provider.displayName) profile")) {
+                                newAccountName = ""
+                                newAccountProvider = provider
+                            }
+                            .buttonStyle(GhostButtonStyle())
+                            .accessibilityIdentifier("onboarding.addAccount.\(provider.rawValue)")
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+
                 OnboardingSkipLink(action: onSkip)
             }
         }
@@ -236,40 +324,37 @@ struct OnboardingAccountsStep: View {
     }
 
     @ViewBuilder
-    private func providerSection(_ provider: AgentProvider) -> some View {
+    private func accountCard(_ entry: Detected, isSignedIn: Bool) -> some View {
         OnboardingCard(
-            title: provider.displayName,
-            detail: String(localized: "Profiles for this provider.")
+            leading: { ProviderMark(provider: entry.profile.provider, size: 18) },
+            title: "\(entry.profile.provider.displayName) · \(entry.profile.name)",
+            badge: entry.email ?? String(localized: "Not signed in"),
+            badgeTint: isSignedIn ? Theme.ok : Theme.warn,
+            detail: entry.profile.directoryName == nil
+                ? String(localized: "The provider's own config root — the login you already use in the terminal.")
+                : String(localized: "An isolated profile managed by Uncoil.")
         ) {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(settings.accounts(for: provider)) { profile in
-                    HStack(spacing: 8) {
-                        Text(profile.name)
-                            .font(Theme.mono(.body))
-                            .foregroundStyle(Theme.text)
-                        if let email = settings.loggedInEmail(
-                            for: profile, profilesRoot: settings.profilesRootURL
-                        ) {
-                            OnboardingBadge(text: email, tint: Theme.ok)
-                        } else {
-                            OnboardingBadge(text: String(localized: "Not signed in"), tint: Theme.warn)
-                        }
-                        Spacer(minLength: 0)
-                        Button(String(localized: "Sign in")) { loggingIn = profile }
-                            .buttonStyle(.plain)
-                            .font(Theme.mono(.small, .semibold))
-                            .foregroundStyle(Theme.highlight)
+            HStack(spacing: 12) {
+                Button(isSignedIn
+                       ? String(localized: "Sign in again")
+                       : String(localized: "Sign in")) {
+                    loggingIn = entry.profile
+                }
+                .buttonStyle(isSignedIn
+                             ? AnyButtonStyle(GhostButtonStyle())
+                             : AnyButtonStyle(AccentButtonStyle()))
+                .accessibilityIdentifier("onboarding.signIn.\(entry.profile.provider.rawValue)")
+
+                if settings.accounts(for: entry.profile.provider).count > 1 {
+                    Button(String(localized: "Make default")) {
+                        settings.setDefaultAccount(entry.profile)
                     }
+                    .buttonStyle(.plain)
+                    .font(Theme.mono(.small, .semibold))
+                    .foregroundStyle(Theme.highlight)
                 }
-                Button(String(localized: "Add a profile")) {
-                    newAccountName = ""
-                    newAccountProvider = provider
-                }
-                .buttonStyle(.plain)
-                .font(Theme.mono(.small))
-                .foregroundStyle(Theme.textDim)
-                .padding(.top, 2)
             }
+            .padding(.top, 2)
         }
     }
 
@@ -277,7 +362,8 @@ struct OnboardingAccountsStep: View {
         guard let provider = newAccountProvider else { return }
         let name = newAccountName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return newAccountProvider = nil }
-        settings.addAccount(provider: provider, name: name)
+        let profile = settings.addAccount(provider: provider, name: name)
         newAccountProvider = nil
+        loggingIn = profile
     }
 }

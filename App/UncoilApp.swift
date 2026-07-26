@@ -118,19 +118,6 @@ struct UncoilApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
 
-        // First run. Its own window rather than a sheet: it is the same shape as
-        // the main window, and closing it must not close anything else.
-        Window("Welcome to Uncoil", id: "onboarding") {
-            ThemedWindow {
-                OnboardingView()
-                    .environmentObject(projectStore)
-                    .environmentObject(sessionStore)
-                    .environmentObject(settings)
-            }
-        }
-        .defaultSize(width: 900, height: 660)
-        .windowStyle(.hiddenTitleBar)
-
         Window("Uncoil Extensions", id: "extensions") {
             ThemedWindow {
                 ExtensionsView()

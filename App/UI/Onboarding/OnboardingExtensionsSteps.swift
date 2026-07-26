@@ -22,16 +22,10 @@ struct OnboardingExtensionsStep: View {
     /// External installs Uncoil could take over: found on disk, not blocked by a
     /// security finding.
     private var adoptable: [ExtensionPackage] {
-        registry.unmanagedPackages.filter { package in
-            if case .detectedExternal = package.source { return blockers(for: package).isEmpty }
-            return false
-        }
-    }
-
-    private func blockers(for package: ExtensionPackage) -> [SecurityFinding] {
-        registry.findings.filter {
-            $0.extensionID == package.id && $0.severity == .blocked && !$0.isAccepted
-        }
+        OnboardingAdoption.adoptable(
+            packages: registry.unmanagedPackages,
+            findings: registry.findings
+        )
     }
 
     var body: some View {
@@ -105,6 +99,23 @@ struct OnboardingExtensionsStep: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                }
+
+                OnboardingCard(
+                    symbol: "arrow.trianglehead.branch",
+                    title: String(localized: "Install a skill from a git repository"),
+                    detail: String(localized: "Point Uncoil at a GitHub repository — a whole repo or a subfolder — pinned to a tag or tracking a branch. The commit it came from is recorded, and one copy in the store is shared by every agent through symlinks, so a skill is never duplicated per agent.")
+                ) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Updates are staged, never applied blind: a new revision is fetched into a copy, scanned, structure-checked and smoke-tested first, and the active revision only switches once all of that passes. A failed update changes nothing.")
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.textFaint)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Extensions window · “Connect to a GitHub Source…”")
+                            .font(Theme.mono(.small, .semibold))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    .padding(.top, 2)
                 }
 
                 Text("Installing the optional browser or Computer Use drivers, and running any remote install script, always asks you first.")
@@ -182,6 +193,61 @@ struct OnboardingExtensionsStep: View {
     }
 }
 
+// MARK: - Command palette
+
+/// The one shortcut worth learning on day one, and the chance to put it
+/// somewhere the user's other tools have not already claimed.
+struct OnboardingPaletteStep: View {
+    @EnvironmentObject private var settings: SettingsStore
+    let onContinue: () -> Void
+    let onSkip: () -> Void
+    let onBack: () -> Void
+    let onSkipAll: () -> Void
+
+    var body: some View {
+        OnboardingScaffold(
+            step: .palette,
+            title: String(localized: "One shortcut for everything"),
+            subtitle: String(localized: "The command palette is the fastest way through Uncoil: type a few letters and jump straight to what you meant."),
+            primaryTitle: String(localized: "Continue"),
+            primaryAction: onContinue,
+            onBack: onBack,
+            onSkipAll: onSkipAll
+        ) {
+            VStack(spacing: 12) {
+                OnboardingCard(
+                    symbol: "command",
+                    title: String(localized: "Your shortcut"),
+                    badge: settings.commandPaletteHotkey.displayString,
+                    badgeTint: Theme.highlight,
+                    detail: String(localized: "At least one modifier (⌘⌥⌃⇧) is required. It applies immediately — no restart, and you can change it later in Settings › General.")
+                ) {
+                    HStack(spacing: 10) {
+                        HotkeyRecorder(
+                            binding: settings.commandPaletteHotkey,
+                            onCapture: { settings.setCommandPaletteHotkey($0) }
+                        )
+                        .accessibilityIdentifier("onboarding.paletteHotkey")
+                        Button(String(localized: "Reset")) { settings.resetCommandPaletteHotkey() }
+                            .buttonStyle(.plain)
+                            .font(Theme.mono(.small, .semibold))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    .padding(.top, 2)
+                }
+
+                OnboardingCard(
+                    symbol: "magnifyingglass",
+                    title: String(localized: "What it can reach"),
+                    detail: String(localized: "Projects and sessions by fuzzy name · start an agent on a project · tasks from your TODO.md · every settings page · the Extensions window. Arrow keys move, Return opens, Escape closes.")
+                )
+
+                OnboardingSkipLink(action: onSkip)
+            }
+        }
+    }
+}
+
 // MARK: - Finish
 
 /// The last page: the four things worth knowing on day one, and a way in.
@@ -211,11 +277,6 @@ struct OnboardingFinishStep: View {
                     symbol: "circle.dotted",
                     title: String(localized: "Status and the attention list"),
                     detail: String(localized: "Every session shows working, needs input or done. Anything waiting on you collects in the Attention Center and in the menu-bar monitor.")
-                )
-                OnboardingCard(
-                    symbol: "command",
-                    title: String(localized: "The command palette"),
-                    detail: String(localized: "\(settings.commandPaletteHotkey.displayString) opens it: projects, sessions, tasks and settings from the keyboard.")
                 )
                 OnboardingCard(
                     symbol: "checklist",

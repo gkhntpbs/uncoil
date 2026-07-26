@@ -12,6 +12,7 @@ struct MainWindow: View {
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.openWindow) private var openWindow
     @StateObject private var palette = PaletteModel()
+    @ObservedObject private var onboarding = OnboardingPresenter.shared
     @State private var selection: MainSelection?
     @State private var selectedSessionIDs: Set<UUID> = []
     /// Secondary session shown side-by-side (drop a session onto the view).
@@ -36,7 +37,14 @@ struct MainWindow: View {
             if palette.isOpen {
                 CommandPaletteOverlay(model: palette)
             }
+            // Setup covers the app rather than sitting beside it: a half-set-up
+            // window behind the flow is the state the flow exists to end.
+            if onboarding.isPresenting {
+                OnboardingView()
+                    .transition(.opacity)
+            }
         }
+        .animation(uncoilAnimation(.easeOut(duration: 0.2)), value: onboarding.isPresenting)
         .onChange(of: selection) { _, _ in
             syncPaletteSelection()
             persistSelection()
@@ -484,11 +492,11 @@ struct MainWindow: View {
     private func presentOnboardingIfNeeded() {
         let config = LaunchConfig.shared
         if config.isUITesting {
-            if config.route == "onboarding" { openWindow(id: "onboarding") }
+            if config.route == "onboarding" { OnboardingPresenter.shared.present() }
             return
         }
         if settings.shouldPresentOnboarding {
-            openWindow(id: "onboarding")
+            OnboardingPresenter.shared.present()
         }
     }
 

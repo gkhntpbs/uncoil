@@ -1,11 +1,14 @@
 import SwiftUI
 
-// MARK: - Live status
+// MARK: - Status hooks
 
-/// The hook install and the notification permission — the two pieces of plumbing
-/// without which Uncoil cannot tell the user anything is happening.
-struct OnboardingLiveStatusStep: View {
-    @ObservedObject private var authorization = NotificationAuthorization.shared
+/// The hook install, which is Claude Code's mechanism and nobody else's.
+///
+/// On a Mac without Claude Code the page says so and offers nothing to install:
+/// asking someone to write into `~/.claude/settings.json` for a CLI they do not
+/// have is how a setup screen loses its credibility.
+struct OnboardingHooksStep: View {
+    @EnvironmentObject private var settings: SettingsStore
     let onContinue: () -> Void
     let onSkip: () -> Void
     let onBack: () -> Void
@@ -16,80 +19,76 @@ struct OnboardingLiveStatusStep: View {
     @State private var working = false
 
     private var installed: Bool { hookStatus == .installed }
+    private var hasClaude: Bool { settings.binaryPath(for: .claude) != nil }
+    private var hasCodex: Bool { settings.binaryPath(for: .codex) != nil }
 
     var body: some View {
         OnboardingScaffold(
-            step: .liveStatus,
+            step: .hooks,
             title: String(localized: "Let Uncoil see what your agents are doing"),
-            subtitle: String(localized: "Claude Code reports through hooks. Without them a session is just a terminal: no working / needs-input state, no notifications, no attention list."),
+            subtitle: String(localized: "Claude Code reports its state through hooks. Without them a Claude session is just a terminal: no working / needs-input state, no notifications, no attention list."),
             primaryTitle: String(localized: "Continue"),
             primaryAction: onContinue,
             onBack: onBack,
             onSkipAll: onSkipAll
         ) {
             VStack(spacing: 12) {
-                OnboardingCard(
-                    symbol: "point.3.connected.trianglepath.dotted",
-                    title: String(localized: "Status hooks"),
-                    badge: installed
-                        ? String(localized: "Installed")
-                        : String(localized: "Not installed"),
-                    badgeTint: installed ? Theme.ok : Theme.warn,
-                    detail: String(localized: "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved.")
-                ) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(HookInstaller.managedEvents.joined(separator: " · "))
-                            .font(Theme.mono(.small))
-                            .foregroundStyle(Theme.textFaint)
-
-                        if case .partiallyInstalled(let missing) = hookStatus {
-                            Text("Missing: \(missing.joined(separator: ", "))")
+                if hasClaude {
+                    OnboardingCard(
+                        leading: { ProviderMark(provider: .claude, size: 18) },
+                        title: String(localized: "Claude Code status hooks"),
+                        badge: installed
+                            ? String(localized: "Installed")
+                            : String(localized: "Not installed"),
+                        badgeTint: installed ? Theme.ok : Theme.warn,
+                        detail: String(localized: "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved.")
+                    ) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(HookInstaller.managedEvents.joined(separator: " · "))
                                 .font(Theme.mono(.small))
-                                .foregroundStyle(Theme.warn)
-                        }
-                        if let hookError {
-                            Text(hookError)
-                                .font(Theme.mono(.small))
-                                .foregroundStyle(Theme.danger)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                                .foregroundStyle(Theme.textFaint)
 
-                        if !installed {
-                            Button(String(localized: "Install hooks")) { installHooks() }
-                                .buttonStyle(AccentButtonStyle())
-                                .disabled(working)
-                                .accessibilityIdentifier("onboarding.installHooks")
+                            if case .partiallyInstalled(let missing) = hookStatus {
+                                Text("Missing: \(missing.joined(separator: ", "))")
+                                    .font(Theme.mono(.small))
+                                    .foregroundStyle(Theme.warn)
+                            }
+                            if let hookError {
+                                Text(hookError)
+                                    .font(Theme.mono(.small))
+                                    .foregroundStyle(Theme.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            if !installed {
+                                Button(String(localized: "Install hooks")) { installHooks() }
+                                    .buttonStyle(AccentButtonStyle())
+                                    .disabled(working)
+                                    .accessibilityIdentifier("onboarding.installHooks")
+                            }
                         }
                     }
+                } else {
+                    OnboardingCard(
+                        symbol: "questionmark.folder",
+                        title: String(localized: "Claude Code is not installed"),
+                        detail: String(localized: "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Privacy and Permissions › Status Tracking.")
+                    )
                 }
 
-                OnboardingCard(
-                    symbol: "bell.badge",
-                    title: String(localized: "Notifications"),
-                    badge: authorization.status.label,
-                    badgeTint: authorization.status == .granted ? Theme.ok : Theme.warn,
-                    detail: String(localized: "macOS only offers its prompt once. Uncoil notifies when an agent needs input, finishes, or asks for a permission.")
-                ) {
-                    HStack(spacing: 10) {
-                        Button(String(localized: "Allow notifications")) {
-                            Task { _ = await authorization.request() }
-                        }
-                        .buttonStyle(GhostButtonStyle())
-                        .accessibilityIdentifier("onboarding.requestNotifications")
-
-                        Button(String(localized: "Send a test")) {
-                            Task { await authorization.sendTestNotification() }
-                        }
-                        .buttonStyle(.plain)
-                        .font(Theme.mono(.small, .semibold))
-                        .foregroundStyle(Theme.highlight)
-                    }
+                if hasCodex {
+                    OnboardingCard(
+                        leading: { ProviderMark(provider: .codex, size: 18) },
+                        title: String(localized: "Codex needs nothing installed"),
+                        badge: String(localized: "No setup"),
+                        badgeTint: Theme.ok,
+                        detail: String(localized: "Codex has no hook system. Uncoil follows its sessions through the CLI itself — its own output and the rollout files it writes — so its global config is left alone.")
+                    )
                 }
 
                 OnboardingSkipLink(action: onSkip)
             }
         }
-        .task { await authorization.refresh() }
     }
 
     private func installHooks() {
@@ -102,6 +101,106 @@ struct OnboardingLiveStatusStep: View {
         }
         hookStatus = HookInstaller.status()
         working = false
+    }
+}
+
+// MARK: - Notifications
+
+/// The system permission — which macOS only ever offers once — and the events
+/// worth being interrupted for.
+struct OnboardingNotificationsStep: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @ObservedObject private var authorization = NotificationAuthorization.shared
+    let onContinue: () -> Void
+    let onSkip: () -> Void
+    let onBack: () -> Void
+    let onSkipAll: () -> Void
+
+    private var granted: Bool { authorization.status == .granted }
+
+    var body: some View {
+        OnboardingScaffold(
+            step: .notifications,
+            title: String(localized: "Be told when an agent needs you"),
+            subtitle: String(localized: "An agent that finished, or that is stuck waiting for an answer, is worth knowing about without watching the window."),
+            primaryTitle: String(localized: "Continue"),
+            primaryAction: onContinue,
+            onBack: onBack,
+            onSkipAll: onSkipAll
+        ) {
+            VStack(spacing: 12) {
+                OnboardingCard(
+                    symbol: "bell.badge",
+                    title: String(localized: "macOS permission"),
+                    badge: authorization.status.label,
+                    badgeTint: granted ? Theme.ok : Theme.warn,
+                    detail: String(localized: "macOS only offers its prompt once. If it was already denied, the button opens System Settings instead.")
+                ) {
+                    HStack(spacing: 12) {
+                        Button(authorization.status == .denied
+                               ? String(localized: "Open System Settings")
+                               : String(localized: "Allow notifications")) {
+                            if authorization.status == .denied {
+                                authorization.openSystemSettings()
+                            } else {
+                                Task { _ = await authorization.request() }
+                            }
+                        }
+                        .buttonStyle(granted
+                                     ? AnyButtonStyle(GhostButtonStyle())
+                                     : AnyButtonStyle(AccentButtonStyle()))
+                        .accessibilityIdentifier("onboarding.requestNotifications")
+
+                        Button(String(localized: "Send a test")) {
+                            Task { await authorization.sendTestNotification() }
+                        }
+                        .buttonStyle(.plain)
+                        .font(Theme.mono(.small, .semibold))
+                        .foregroundStyle(Theme.highlight)
+                        .accessibilityIdentifier("onboarding.testNotification")
+                    }
+                    .padding(.top, 2)
+                }
+
+                OnboardingCard(
+                    symbol: "list.bullet.rectangle",
+                    title: String(localized: "What gets announced"),
+                    detail: String(localized: "Needs input · permission request · turn finished · error · task done · merge ready · login needed. Each carries its own switch, priority and sound in Settings › Notifications.")
+                ) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(isOn: Binding(
+                            get: { settings.notifications.onlyWhenBackgrounded },
+                            set: { settings.notifications.onlyWhenBackgrounded = $0; settings.save() }
+                        )) {
+                            Text("Only while Uncoil is in the background")
+                                .font(Theme.mono(.body))
+                                .foregroundStyle(Theme.textDim)
+                        }
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("onboarding.notifyBackgroundOnly")
+
+                        Toggle(isOn: Binding(
+                            get: { settings.notifications.suppressForVisibleSession },
+                            set: { settings.notifications.suppressForVisibleSession = $0; settings.save() }
+                        )) {
+                            Text("Stay quiet about the session already on screen")
+                                .font(Theme.mono(.body))
+                                .foregroundStyle(Theme.textDim)
+                        }
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("onboarding.notifySuppressVisible")
+                    }
+                    .padding(.top, 2)
+                }
+
+                Text("Reminders, quiet hours and per-project rules live in Settings › Notifications.")
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textFaint)
+
+                OnboardingSkipLink(action: onSkip)
+            }
+        }
+        .task { await authorization.refresh() }
     }
 }
 
@@ -173,7 +272,7 @@ struct OnboardingCapabilitiesStep: View {
                 id: "browser",
                 symbol: "globe",
                 title: String(localized: "Agent browser"),
-                detail: String(localized: "uncoil_browser — an isolated browser profile with no access to your own logins. Installing the driver always asks you first."),
+                detail: String(localized: "uncoil_browser — driven by the optional agent-browser driver over a Playwright-managed Chromium, in a blank profile with no access to your own logins. Installing that driver always asks you first."),
                 keys: ["browser.use", "browser.persistent_state"],
                 isOptional: false
             ),
@@ -181,7 +280,7 @@ struct OnboardingCapabilitiesStep: View {
                 id: "computer",
                 symbol: "display",
                 title: String(localized: "Computer Use"),
-                detail: String(localized: "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard. Off until you turn it on, and it needs its own driver."),
+                detail: String(localized: "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard through the optional cua-driver, which also needs macOS's Screen Recording and Accessibility permissions. Off until you turn it on."),
                 keys: ["computer.inspect", "computer.background_control",
                        "computer.foreground_control"],
                 isOptional: true

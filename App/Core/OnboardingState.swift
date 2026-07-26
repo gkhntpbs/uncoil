@@ -10,11 +10,13 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
     case welcome
     case clis
     case accounts
-    case liveStatus
+    case hooks
+    case notifications
     case capabilities
     case project
     case tasks
     case extensions
+    case palette
     case finish
 
     var id: String { rawValue }
@@ -24,11 +26,13 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
         case .welcome: String(localized: "Welcome")
         case .clis: String(localized: "Agent CLIs")
         case .accounts: String(localized: "Accounts")
-        case .liveStatus: String(localized: "Live status")
+        case .hooks: String(localized: "Status tracking")
+        case .notifications: String(localized: "Notifications")
         case .capabilities: String(localized: "Agent capabilities")
         case .project: String(localized: "First project")
         case .tasks: String(localized: "Tasks")
         case .extensions: String(localized: "Extensions")
+        case .palette: String(localized: "Command palette")
         case .finish: String(localized: "Ready")
         }
     }
@@ -48,7 +52,7 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
 enum OnboardingFlow {
     /// Bumped when a step is added that an existing user should still see.
     /// A stamped version lower than this reopens the flow at the new steps only.
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     static var all: [OnboardingStep] { OnboardingStep.allCases }
 
@@ -82,5 +86,26 @@ enum OnboardingFlow {
     /// Where to resume: the first unfinished actionable step, else the welcome.
     static func resumeStep(completed: Set<String>) -> OnboardingStep {
         remaining(completed: completed).first ?? .welcome
+    }
+}
+
+/// Which of the extensions found on this machine onboarding may offer to take
+/// over. Pure, so "does detection actually work" is a test rather than a demo:
+/// an install Uncoil already owns is not offered, and a blocked finding takes a
+/// package out of the list entirely.
+enum OnboardingAdoption {
+    static func adoptable(
+        packages: [ExtensionPackage],
+        findings: [SecurityFinding]
+    ) -> [ExtensionPackage] {
+        let blocked = Set(
+            findings
+                .filter { $0.severity == .blocked && !$0.isAccepted }
+                .map(\.extensionID)
+        )
+        return packages.filter { package in
+            guard case .detectedExternal = package.source else { return false }
+            return !blocked.contains(package.id)
+        }
     }
 }

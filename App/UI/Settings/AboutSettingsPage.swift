@@ -33,7 +33,10 @@ struct AboutSettingsPage: View {
                 } control: {
                     Button("Run again") {
                         settings.resetOnboarding()
-                        openWindow(id: "onboarding")
+                        OnboardingPresenter.shared.present()
+                        // The flow lives in the main window; Settings is its
+                        // own, so bring that one forward with it.
+                        openWindow(id: "main")
                     }
                     .settingsID("about.rerunOnboarding")
                 }

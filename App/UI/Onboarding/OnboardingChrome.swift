@@ -15,6 +15,8 @@ struct OnboardingScaffold<Content: View>: View {
     var primaryAction: (() -> Void)?
     var onBack: (() -> Void)?
     var onSkipAll: () -> Void
+    /// Pinned to the very bottom of the page, under the content.
+    var footnote: String?
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -48,6 +50,13 @@ struct OnboardingScaffold<Content: View>: View {
                 .uncoilScrollers()
             }
 
+            if let footnote {
+                Text(footnote)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textFaint)
+                    .padding(.bottom, 10)
+            }
+
             OnboardingBottomBar(
                 primaryTitle: primaryTitle,
                 primaryAction: primaryAction,
@@ -63,26 +72,30 @@ private struct OnboardingTopBar: View {
     let onSkipAll: () -> Void
 
     var body: some View {
+        // The dots are centred on the window, not on what is left of it after
+        // the traffic lights: an indicator that drifts with the chrome reads as
+        // misaligned. Skip sits in the corner, out of the way of the content.
         HStack(spacing: 6) {
-            // Clearance for the traffic lights: the window is title-bar-less.
-            Spacer().frame(width: 78)
             ForEach(OnboardingFlow.all) { candidate in
                 Capsule()
                     .fill(candidate == step ? Theme.text : Theme.textFaint.opacity(0.5))
                     .frame(width: candidate == step ? 16 : 5, height: 5)
                     .animation(uncoilAnimation(.easeOut(duration: 0.18)), value: step)
             }
-            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 36)
+        .overlay(alignment: .topTrailing) {
             Button(action: onSkipAll) {
                 Text("Skip")
                     .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
             }
             .buttonStyle(.plain)
+            .padding(.top, 8)
+            .padding(.trailing, 14)
             .accessibilityIdentifier("onboarding.skipAll")
         }
-        .padding(.horizontal, 16)
-        .frame(height: 38)
     }
 }
 
@@ -115,9 +128,6 @@ private struct OnboardingBottomBar: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.border).frame(height: 1)
-        }
     }
 }
 
@@ -125,7 +135,9 @@ private struct OnboardingBottomBar: View {
 
 /// A titled card — the shape every explanatory block on these pages takes.
 struct OnboardingCard<Content: View>: View {
-    var symbol: String?
+    /// Either an SF Symbol or a caller-supplied mark (a provider logo), type
+    /// erased so both spellings share one card.
+    private let leading: AnyView?
     let title: String
     var badge: String?
     var badgeTint: Color?
@@ -142,7 +154,31 @@ struct OnboardingCard<Content: View>: View {
         toggle: Binding<Bool>? = nil,
         @ViewBuilder content: () -> Content = { EmptyView() }
     ) {
-        self.symbol = symbol
+        self.leading = symbol.map { name in
+            AnyView(
+                Image(systemName: name)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.textDim)
+            )
+        }
+        self.title = title
+        self.badge = badge
+        self.badgeTint = badgeTint
+        self.detail = detail
+        self.toggle = toggle
+        self.content = content()
+    }
+
+    init<Leading: View>(
+        @ViewBuilder leading: () -> Leading,
+        title: String,
+        badge: String? = nil,
+        badgeTint: Color? = nil,
+        detail: String? = nil,
+        toggle: Binding<Bool>? = nil,
+        @ViewBuilder content: () -> Content = { EmptyView() }
+    ) {
+        self.leading = AnyView(leading())
         self.title = title
         self.badge = badge
         self.badgeTint = badgeTint
@@ -153,10 +189,8 @@ struct OnboardingCard<Content: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.textDim)
+            if let leading {
+                leading
                     .frame(width: 20)
                     .padding(.top, 1)
             }
