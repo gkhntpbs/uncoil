@@ -1,29 +1,38 @@
-# Uncoil MCP Kabul Testi
+# Uncoil MCP Acceptance Test
 
-Bu akış, Uncoil içinden başlatılan bir Claude oturumunun altı MCP aracını gerçek kontrol düzlemi üzerinden sınamasını sağlar. Test, mevcut proje verilerini silmez, yeni worktree oluşturmaz, mesaj göndermez ve kalıcı tarayıcı profili kullanmaz.
+This flow has a Claude session started from inside Uncoil exercise the six MCP
+tools over the real control plane. The test deletes no existing project data,
+creates no worktree, sends no message and uses no persistent browser profile.
 
-## Son doğrulama
+## Last verification
 
-24 Temmuz 2026 tarihinde Debug uygulaması `-ui-testing -control-plane -reset-state -fixture demo` argümanlarıyla çalıştırıldı. Uygulamayla paketlenen `uncoil-mcp`, demo Claude oturumunun kimliği ve izole `control.sock` üzerinden doğrudan sınandı. Claude süreci başlatılmadı.
+On 24 July 2026 the Debug app was run with
+`-ui-testing -control-plane -reset-state -fixture demo`. The `uncoil-mcp`
+shipped with the app was exercised directly, through the demo Claude session's
+id and an isolated `control.sock`. No Claude process was started.
 
-| Alan | Sonuç | Kanıt |
+| Area | Result | Evidence |
 |---|---|---|
-| MCP protokolü | PASS | `initialize` protokol `2025-06-18`, `tools/list` altı aracı döndürdü. |
-| `uncoil_system` | PASS | `help`, `status`, `version`, `capabilities`, `doctor`, `dependencies` başarılı. Kontrol ve hook soketleri hazır; kullanılmayan runtime daemon kapalı. |
-| `uncoil_projects` | PASS | Demo proje, boş worktree listesi ve `claude-worker` preset’i okundu. |
-| `uncoil_sessions` | PASS | Mevcut demo oturumu, oturum listesi, çocuk listesi ve boş rapor kutusu okundu. |
-| `uncoil_artifacts` | PASS | Boş liste döndü; bulunmayan artifact `INVALID_PATH` ile güvenli biçimde reddedildi. |
-| `uncoil_browser` | PASS | Ephemeral oturumda `example.com` açıldı; snapshot, başlık, screenshot ve sekme listesi doğrulanıp oturum kapatıldı. |
-| `uncoil_computer` | PASS | Oturuma özel Computer Use izni sonrası izinler, uygulamalar, Uncoil penceresi, AX snapshot ve pencere screenshot’ı doğrulandı. |
+| MCP protocol | PASS | `initialize` protocol `2025-06-18`; `tools/list` returned all six tools. |
+| `uncoil_system` | PASS | `help`, `status`, `version`, `capabilities`, `doctor`, `dependencies` all succeeded. The control and hook sockets were ready; the unused runtime daemon was off. |
+| `uncoil_projects` | PASS | The demo project, an empty worktree list and the `claude-worker` preset were read. |
+| `uncoil_sessions` | PASS | The current demo session, the session list, the child list and an empty report inbox were read. |
+| `uncoil_artifacts` | PASS | An empty list came back; a missing artifact was safely refused with `INVALID_PATH`. |
+| `uncoil_browser` | PASS | `example.com` was opened in an ephemeral session; snapshot, title, screenshot and the tab list were verified, then the session was closed. |
+| `uncoil_computer` | PASS | After per-session Computer Use permission, the permissions, the app list, the Uncoil window, an AX snapshot and a window screenshot were verified. |
 
-Toplam 40 araç eylemi PASS verdi. İlk Computer Use denemesinde beklenen `CAPABILITY_DISABLED` görüldü; izin yalnızca demo Claude oturumuna verildikten sonra aynı salt-okunur akış geçti. Yeni worktree veya çocuk oturum oluşturulmadı, mesaj gönderilmedi, kalıcı tarayıcı profili kullanılmadı ve sürücü kurulumu yapılmadı.
+40 tool actions returned PASS in total. The first Computer Use attempt produced
+the expected `CAPABILITY_DISABLED`; the same read-only flow passed only after
+permission was granted to the demo Claude session. No worktree or child session
+was created, no message was sent, no persistent browser profile was used and no
+driver was installed.
 
-## Ön koşullar
+## Preconditions
 
-- Uncoil güncel Debug derlemesiyle çalışıyor.
-- Aynı bundle kimliğine sahip ikinci bir Uncoil süreci çalışmıyor.
-- Test oturumu Sonnet 5 kullanıyor.
-- Oturumda gerekli olduğunda şu yetkiler veriliyor:
+- Uncoil is running from a current Debug build.
+- No second Uncoil process with the same bundle id is running.
+- The test session uses Sonnet 5.
+- The session is granted these capabilities as they become necessary:
   - `projects.read`
   - `worktrees.read`
   - `sessions.read`
@@ -33,72 +42,91 @@ Toplam 40 araç eylemi PASS verdi. İlk Computer Use denemesinde beklenen `CAPAB
   - `artifacts.write`
   - `browser.use`
   - `computer.inspect`
-- Cua Driver kurulu ve macOS Accessibility ile Screen Recording izinleri açık.
-- `agent-browser` veya kullandığı Playwright tarayıcı binary’si kurulu değilse tarayıcı testi `BROWSER_UNAVAILABLE` sonucunu beklenen durum olarak kaydeder; otomatik kurulum yapılmaz.
+- The Cua Driver is installed, with macOS Accessibility and Screen Recording
+  permissions granted.
+- If `agent-browser` or the Playwright browser binary it uses is not installed,
+  the browser stage records `BROWSER_UNAVAILABLE` as the expected outcome;
+  nothing is installed automatically.
 
-## Çalıştırma hazırlığı
+## Preparing a run
 
-1. XcodeBuildMCP oturum varsayılanlarında proje, `Uncoil` scheme’i, Debug, arm64 ve `.build-cache/DerivedData` yolunu doğrula.
-2. Çalışan tüm eski Uncoil örneklerini XcodeBuildMCP ile durdur.
-3. Test edilmiş uygulamayı XcodeBuildMCP ile şu tam yoldan başlat:
+1. In XcodeBuildMCP's session defaults, confirm the project, the `Uncoil`
+   scheme, Debug, arm64 and the `.build-cache/DerivedData` path.
+2. Stop every older running Uncoil instance through XcodeBuildMCP.
+3. Launch the app under test through XcodeBuildMCP from this full path:
    `.build-cache/DerivedData/Build/Products/Debug/Uncoil.app`
-4. Computer Use çağrılarında uygulama adı yerine aynı tam uygulama yolunu hedefle. Böylece macOS iç diskteki eski DerivedData kopyasını açamaz.
-5. Uncoil içinde yeni Claude oturumu aç ve Sonnet 5 seçimini doğrula.
-6. Gerekli oturum yetkilerini Ayarlar → İzinler’den bu yeni oturuma ver.
-7. Aşağıdaki Claude istemini terminal alanına girip fiziksel Return ile gönder.
+4. In Computer Use calls, target that same full path rather than the app's
+   name, so macOS cannot open an older DerivedData copy from the internal disk.
+5. Open a new Claude session in Uncoil and confirm the Sonnet 5 selection.
+6. Grant the necessary session capabilities to that new session from
+   Settings → Permissions.
+7. Type the Claude prompt below into the terminal area and send it with a
+   physical Return.
 
-## Aşamalar
+## Stages
 
 1. `uncoil_system`
    - `help`, `status`, `version`, `capabilities`, `doctor`, `dependencies`
-   - Kontrol soketi, runtime daemon, git, veri dizini ve bağımlılık sonuçlarını kaydet.
+   - Record the control socket, runtime daemon, git, data directory and
+     dependency results.
 2. `uncoil_projects`
    - `help`, `current`, `list`, `inspect`, `list_worktrees`, `list_presets`
-   - İlk preset için `inspect_preset`.
-   - `create_worktree` çağırma.
+   - `inspect_preset` for the first preset.
+   - Do not call `create_worktree`.
 3. `uncoil_sessions`
    - `help`, `current`, `list`, `inspect`, `list_children`, `read_reports`
-   - Yetki varsa `claude-worker` preset’iyle tek çocuk oluştur.
-   - Çocuğa yalnızca `uncoil_system status` çağırıp `report_to_parent` ile sonucu bildirmesini söyle.
-   - `inspect_child`, `wait_for_children`, `summarize_children`, `read_reports` çağrılarını doğrula.
-   - Çocuk hâlâ çalışıyorsa `stop` ile kapat.
+   - With the capability, create a single child from the `claude-worker` preset.
+   - Tell the child only to call `uncoil_system status` and report the result
+     with `report_to_parent`.
+   - Verify `inspect_child`, `wait_for_children`, `summarize_children` and
+     `read_reports`.
+   - If the child is still running, close it with `stop`.
 4. `uncoil_artifacts`
    - `help`, `list`
-   - Listede bir dosya varsa `inspect`, `resolve_path` ve metinse `read_text`.
-   - Var olmayan bir adla `inspect` çağırıp güvenli hata sözleşmesini doğrula.
+   - If the list holds a file: `inspect`, `resolve_path`, and `read_text` if it
+     is text.
+   - Call `inspect` with a name that does not exist, to verify the safe error
+     contract.
 5. `uncoil_browser`
    - `help`, `status`
-   - Motor kuruluysa yalnızca ephemeral oturum başlat; `https://example.com` aç, `snapshot`, `get title`, `screenshot`, `list_tabs`, ardından `stop`.
-   - CLI veya Playwright tarayıcı binary’si kurulu değilse `BROWSER_UNAVAILABLE` durumunu beklenen sonuç olarak kaydet ve kurulum yapma.
+   - If the engine is installed, start an ephemeral session only; open
+     `https://example.com`, then `snapshot`, `get title`, `screenshot`,
+     `list_tabs`, then `stop`.
+   - If the CLI or the Playwright browser binary is not installed, record
+     `BROWSER_UNAVAILABLE` as the expected outcome and install nothing.
 6. `uncoil_computer`
-   - Daha önce doğrulanmış kontrol eylemlerini tekrarlamadan `help`, `status`, `permissions`, `list_apps`.
-   - Uncoil penceresini `inspect_window` ile bağla, `snapshot` ve `screenshot` al.
-   - Bu kabul testinde tıklama, yazma ve `bring_to_front` çağırma.
+   - Without repeating already-verified control actions: `help`, `status`,
+     `permissions`, `list_apps`.
+   - Bind the Uncoil window with `inspect_window`, then take a `snapshot` and a
+     `screenshot`.
+   - Do not click, type or call `bring_to_front` in this acceptance test.
 
-## Sonuç formatı
+## Result format
 
-Claude tek bir tablo üretir:
+Claude produces a single table:
 
-| Araç | Eylem | Sonuç | Kanıt |
+| Tool | Action | Result | Evidence |
 |---|---|---|---|
-| `uncoil_system` | `status` | PASS/FAIL/BLOCKED | Dönen temel alanlar veya hata kodu |
+| `uncoil_system` | `status` | PASS/FAIL/BLOCKED | The key fields returned, or the error code |
 
-Sonunda toplam PASS, FAIL, BLOCKED sayılarını; beklenen bağımlılık eksiklerini; verilen izinleri; oluşturulan çocuk oturum kimliğini ve üretilen artifact yollarını listeler. Hata alan bir aşama diğer aşamaları durdurmaz.
+At the end it lists the PASS, FAIL and BLOCKED totals; the expected missing
+dependencies; the permissions granted; the child session id created; and the
+artifact paths produced. A failing stage does not stop the others.
 
-## Claude istemi
+## Claude prompt
 
 ```text
-Uncoil MCP kabul testini çalıştır. Yalnızca Uncoil tarafından sağlanan uncoil_system, uncoil_projects, uncoil_sessions, uncoil_artifacts, uncoil_browser ve uncoil_computer araçlarını kullan. Her araçta önce help çağır ve dönen güncel sözleşmeye uy.
+Run the Uncoil MCP acceptance test. Use only the uncoil_system, uncoil_projects, uncoil_sessions, uncoil_artifacts, uncoil_browser and uncoil_computer tools Uncoil provides. Call help on each tool first and follow the current contract it returns.
 
-Sırasıyla:
+In order:
 1) uncoil_system: status, version, capabilities, doctor, dependencies.
-2) uncoil_projects: current, list, inspect, list_worktrees, list_presets ve ilk preset için inspect_preset. create_worktree çağırma.
-3) uncoil_sessions: current, list, inspect, list_children, read_reports. sessions.create_children ve sessions.control_children yetkileri varsa claude-worker ile yalnızca uncoil_system status çağırıp report_to_parent yapan tek çocuk oluştur; inspect_child, wait_for_children, summarize_children ve read_reports ile doğrula; çocuk çalışıyorsa stop ile kapat.
-4) uncoil_artifacts: list; dosya varsa inspect, resolve_path ve metinse read_text; ayrıca var olmayan bir adı inspect ederek güvenli hata kodunu doğrula.
-5) uncoil_browser: status. CLI ve Playwright tarayıcı binary’si hazırsa ephemeral_session başlat, yalnızca https://example.com aç, snapshot, get title, screenshot, list_tabs ve stop çağır. Bunlardan biri kurulu değilse BROWSER_UNAVAILABLE sonucunu beklenen BLOCKED olarak kaydet; kurulum yapma.
-6) uncoil_computer: status, permissions, list_apps; com.gkhntpbs.uncoil penceresini inspect_window ile bağla, snapshot ve screenshot al. Tıklama, yazma veya bring_to_front çağırma.
+2) uncoil_projects: current, list, inspect, list_worktrees, list_presets, and inspect_preset for the first preset. Do not call create_worktree.
+3) uncoil_sessions: current, list, inspect, list_children, read_reports. If the sessions.create_children and sessions.control_children capabilities are present, create a single child from claude-worker that only calls uncoil_system status and then report_to_parent; verify it with inspect_child, wait_for_children, summarize_children and read_reports; if the child is still running, close it with stop.
+4) uncoil_artifacts: list; if a file is there, inspect, resolve_path and read_text if it is text; also inspect a name that does not exist, to verify the safe error code.
+5) uncoil_browser: status. If the CLI and the Playwright browser binary are ready, start an ephemeral_session, open only https://example.com, then call snapshot, get title, screenshot, list_tabs and stop. If either is not installed, record BROWSER_UNAVAILABLE as an expected BLOCKED; install nothing.
+6) uncoil_computer: status, permissions, list_apps; bind the com.gkhntpbs.uncoil window with inspect_window, then take a snapshot and a screenshot. Do not click, type or call bring_to_front.
 
-İzin eksikse hangi grant_key gerektiğini açıkça yaz ve bekle. İzin verildiğinde kaldığın aşamadan devam et. Bir hata diğer aşamaları durdurmasın. Yeni worktree oluşturma, mevcut dosyaları değiştirme veya silme, mesaj gönderme, kalıcı tarayıcı profili kullanma, uzaktan kurulum çalıştırma.
+If a permission is missing, write plainly which grant_key is needed and wait. When it is granted, continue from where you stopped. One failure must not stop the other stages. Do not create a worktree, do not change or delete existing files, do not send messages, do not use a persistent browser profile, and do not run a remote install.
 
-Sonuçta Araç | Eylem | Sonuç | Kanıt sütunlarıyla tek tablo ve PASS/FAIL/BLOCKED toplamlarını ver. Hata kodlarını aynen koru; çocuk oturum kimliğini ve artifact yollarını listele.
+Finish with a single table with the columns Tool | Action | Result | Evidence, plus the PASS/FAIL/BLOCKED totals. Keep the error codes verbatim; list the child session id and the artifact paths.
 ```

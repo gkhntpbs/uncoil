@@ -46,7 +46,7 @@ Computer Use and `bring_to_front` — the handler returns
 
 - The agent calls `uncoil_system request_permission {grant_key, target_session_id?}`.
   This creates a **pending**, **directional** record `(from=caller, to=target, key)`.
-- The user approves/denies/revokes in **Uncoil → Ayarlar → İzinler**.
+- The user approves/denies/revokes in **Uncoil → Settings → Permissions**.
 - On each subsequent call, `PolicyEngine`/handlers consult `PermissionService.isGranted`
   — no caching. A grant applies only to the exact `(from, to, key)` triple: A→B granted
   never authorizes C→B, nor a different key.

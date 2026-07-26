@@ -6,28 +6,19 @@ All notable changes to Uncoil are recorded here.
 
 ### Added
 
-- Rebuilt Settings on macOS's own furniture and split ten flat panes into a category tree: a source list with Genel / Agentlar / Bildirimler / Menü Çubuğu / Görünüm / Gizlilik ve İzinler / Entegrasyonlar / Hakkında, `Form(.grouped)` detail pages with system controls and system type, a resizable window (it was pinned at 660×620), rows that stack their control under the label when the window gets narrow, and a search box that matches the *settings inside* a page rather than page titles — "hatırlatma", "ikon" and "sessiz" all find something now. Existing deep links (`defaults`, `transcripts`, …) still resolve.
-- Made notifications answerable per event instead of three global switches: izin, girdi, tur tamamlandı, hata, görev tamamlandı, merge hazır and giriş gerekiyor each carry their own on/off, priority and sound, resolved event → project → global. Delivery filters were added alongside — notify only while Uncoil is in the background, stay quiet about the session already on screen, and group a project's banners into one Notification Center stack.
+- Rebuilt Settings on macOS's own furniture and split ten flat panes into a category tree: a source list with General / Agents / Notifications / Menu Bar / Appearance / Privacy and Permissions / Integrations / About, `Form(.grouped)` detail pages with system controls and system type, a resizable window (it was pinned at 660×620), rows that stack their control under the label when the window gets narrow, and a search box that matches the *settings inside* a page rather than page titles — "reminder", "icon" and "silent" all find something now. Existing deep links (`defaults`, `transcripts`, …) still resolve.
+- Made notifications answerable per event instead of three global switches: permission, input, turn done, error, task done, merge ready and login needed each carry their own on/off, priority and sound, resolved event → project → global. Delivery filters were added alongside — notify only while Uncoil is in the background, stay quiet about the session already on screen, and group a project's banners into one Notification Center stack.
 - Added repeat reminders: a state nobody has answered — an agent waiting for input, a permission request, a lost login — re-announces itself on a configurable interval, up to a configurable count. A sweep re-checks the session's *current* status before each repeat, so a reminder for something the user already handled is dropped rather than fired. Momentary events (a finished turn) are excluded: there is no condition left to remind about.
 - Added quiet hours, including windows that wrap past midnight, with an option to let high-priority events (an agent that cannot proceed) through anyway.
 - Gave the menu-bar monitor its own settings page: icon style (Uncoil mark, SF Symbol, or counters alone), a single-colour option, which counters ride next to it (running / waiting / problems / tasks), hiding the item entirely while idle, which sections the drop-down carries, and a live preview showing both the current state and a busy one.
 - Notifications now also come from the Attention Center, so failing tests, merge conflicts, runtime trouble, lost logins, finished tasks and merge-ready branches can notify — each governed by its own event setting. Permission and input stay with the hook reducer, so nothing is announced twice.
-
 - Gave settings text inputs the ordinary form shape — label above, full-width field below — instead of the platform's label-on-the-left row, and gave the well an edge that can actually be seen. The palette's `bg`, `panel` and `border` sit within 5–16/255 of each other in the dark theme, so a field drawn from them was a rectangle nobody could find; the border now comes from `textFaint`, and `SettingsFieldRenderTests` renders a field offscreen and asserts on measured contrast, so "the field is invisible" is a failing test rather than a bug report.
-
-### Changed
-
-- Settings no longer uses the app's bespoke mono type and hand-drawn panels. It is the one surface where matching macOS beats matching Uncoil, because that is where a user arrives with expectations from every other app they own.
-- The menu-bar monitor's on/off switch moved out of `UserDefaults` and into settings.json alongside the rest of its options; a deliberate "off" from an older build is carried over on upgrade.
-
-### Added
-
 - Added Project Run / Dev Preview: a Run tab on the project dashboard that starts the project's development environment — dev servers, Xcode builds, compose stacks, multi-process chains with dependencies — from configurations living in the repo-owned `.uncoil/run.json`. Uncoil detects likely configurations from package scripts, Xcode containers, compose files, Makefiles, Procfiles, pyproject and static sites (root plus one directory level); detection only ever suggests and never overwrites what a user or agent wrote. Each run shows live status, a log tail, a preview-URL link, and — on failure — a machine-readable diagnosis (port in use, command not found, missing dependencies, invalid scheme, docker down…) with a hint. The same feature is exposed to agents as the `uncoil_run` MCP tool (list/detect/status/logs/start/stop/restart/update/remove), so "fix the project run configuration" is a workable instruction: the agent reads the failure, repairs the file, and retries. See `docs/current/RUN_PREVIEW.md`.
-- Added a default run configuration per project: star one in the Run tab (or set `"default": true` in `.uncoil/run.json`, or call `uncoil_run set_default`) and every session header gains a play/stop button for it in the top-right control cluster — the project can be started and stopped without leaving the agent conversation. Id-less `uncoil_run` calls (`{"action":"start"}` and friends) resolve to the same default, so an agent told "projeyi çalıştır" doesn't need to discover configuration ids first; a project with a single configuration needs no flag at all.
-- Made runs observable and steerable while they live: each row shows a live three-line output pulse and a spinner while starting, the full log view gains an stdin field (Flutter's `r`, REPL commands) mirrored by the MCP `send_input` action, every run writes its own timestamped log with the last ten per configuration browsable from a history popover (and the `history` action), run buttons are coloured (green start, red stop) in the Run tab and the session header, and a failed run's banner offers "Agent'la düzelt" — one click hands the diagnosis, log tail and repair instructions to the project's most recent agent session.
+- Added a default run configuration per project: star one in the Run tab (or set `"default": true` in `.uncoil/run.json`, or call `uncoil_run set_default`) and every session header gains a play/stop button for it in the top-right control cluster — the project can be started and stopped without leaving the agent conversation. Id-less `uncoil_run` calls (`{"action":"start"}` and friends) resolve to the same default, so an agent told "run the project" doesn't need to discover configuration ids first; a project with a single configuration needs no flag at all.
+- Made runs observable and steerable while they live: each row shows a live three-line output pulse and a spinner while starting, the full log view gains an stdin field (Flutter's `r`, REPL commands) mirrored by the MCP `send_input` action, every run writes its own timestamped log with the last ten per configuration browsable from a history popover (and the `history` action), run buttons are coloured (green start, red stop) in the Run tab and the session header, and a failed run's banner offers "Fix with agent" — one click hands the diagnosis, log tail and repair instructions to the project's most recent agent session.
 - Fixed `uncoil_tasks` missing from the MCP helper's tool catalogue: the capability was routed and documented in-app but invisible to agents' `tools/list`, so no agent could actually call it.
 - Rebuilt the sidebar tree on AppKit's outline view while keeping every row's design: dragging now shows an insertion line between the exact two rows a session or project will land between, a session can be dropped straight into a group (a collapsed one included) and reordered inside it, ⌘- and ⇧-click select several sessions without first turning on the selection mode, and the arrow keys walk the tree. Rows are recycled, so a status tick redraws one row instead of the whole list. Dragging still works from anywhere on a row — the grip is the hint, not the only handle — and dropping a session outside the window still opens it in its own.
-- Added a real hierarchy to the sidebar: a project's groups and sessions now indent under it with a hairline tying them to it, a session inside a group indents once more, and a collapsed project says how many sessions it is hiding. Projects order and pin among themselves; sessions order and pin among their own siblings, with "Yukarı/Aşağı Taşı" beside the drag for when a steady hand is not wanted. A project's context menu can create an empty group to drag sessions into, and a grouped session can be taken back out from its own menu.
+- Added a real hierarchy to the sidebar: a project's groups and sessions now indent under it with a hairline tying them to it, a session inside a group indents once more, and a collapsed project says how many sessions it is hiding. Projects order and pin among themselves; sessions order and pin among their own siblings, with "Move Up/Move Down" beside the drag for when a steady hand is not wanted. A project's context menu can create an empty group to drag sessions into, and a grouped session can be taken back out from its own menu.
 - Added a new palette: a violet highlight in four states with its own muted surface, border and text-on-highlight, a brand colour that stays the same in both themes, and per-theme success/warning/danger/info — the green that reads on black is unreadable on white, so they can no longer be one fixed value. Every pair the app puts on screen is checked by `ThemeContrastTests`; the pressed highlight is held to the secondary bar rather than the text bar, because the shipped dark pair measures 4.34:1 there and the state lasts as long as a mouse button is down.
 - Added a theme sampler that renders both palettes to PNG offscreen (`TEST_RUNNER_UNCOIL_THEME_SAMPLE_DIR=… xcodebuild test -only-testing:UncoilTests/ThemeSamplerRenderTests`), so a palette change can be looked at rather than only asserted about.
 - Added macOS notifications that actually arrive, and a place to see why they do not: Settings → Bildirimler now shows whether macOS has authorised Uncoil, asks for permission when that is still possible, opens System Settings when it is not (macOS never asks twice), and sends a test notification on demand. Permission is requested once at launch instead of from inside whichever notification happened to be first — which is how a refusal, or a prompt nobody saw, turned into every later notification vanishing in silence.
@@ -41,26 +32,25 @@ All notable changes to Uncoil are recorded here.
 - Fixed the sidebar's project rows growing when the agent launcher faded in on hover, which shifted every row below and broke the alignment: the launcher now floats over the row instead of being laid out inside it, so hovering changes nothing but opacity.
 - Added reordering and pinning to the sidebar's projects: drag a project row from anywhere to move it (no handle — unlike a session, a project has nowhere else a drag could take it), pin one to hold it at the top, or nudge it up and down from the context menu. The order persists.
 - Added the Uncoil logo as the menu-bar icon, replacing the symbol-and-counter cluster: plain (theme-adaptive) when idle, the color logo while agents are working, and a yellow version whenever anything waits on the user — input, permission, or a problem. Waiting always outranks working.
-- Added creating a task from the Tasks screen: "Yeni görev" opens a sheet with the file, the heading to file it under, and a live preview of the exact line — written through the same byte-range patch path as every other edit, matching the siblings' indent and list marker (an ordered `3.` is followed by `4.`), so the file's structure is never disturbed.
+- Added creating a task from the Tasks screen: "New task" opens a sheet with the file, the heading to file it under, and a live preview of the exact line — written through the same byte-range patch path as every other edit, matching the siblings' indent and list marker (an ordered `3.` is followed by `4.`), so the file's structure is never disturbed.
 - Added model, effort and working-mode selection to task dispatch — in both the dispatch sheet and the bulk-start sheet — with the options detected from each installed CLI: Claude's model/effort lists come from its own `--help`, Codex's default model from `~/.codex/config.toml`, and effort lands as `--effort` for Claude and `model_reasoning_effort` config for Codex (applied to the app-server path too).
-- Added an "Otomatik başlat" toggle to dispatching: when off, the session opens with the chosen model/effort/mode and the prompt is typed into it — Codex's structured composer included — but nothing runs until the user presses Enter.
+- Added a "Start automatically" toggle to dispatching: when off, the session opens with the chosen model/effort/mode and the prompt is typed into it — Codex's structured composer included — but nothing runs until the user presses Enter.
 - Added a redesigned project header with the Genel/Tasks switch inside it, an open-task badge, and no Tasks tab at all when the project has no task file.
-- Added a proper "Görevleri başlat…" sheet in place of the orchestrator plan alert: searchable task list, multi-select seeded from the plan, skipped-task reasons inline, and a Claude/Codex picker that dispatches the selection in one click.
-- Added per-row "Başlat" menus that name the agent before it is called, and a sent-task message that says which agent and session took the work.
-- Added quick git actions per task: a commit sheet listing the changed files (only ticked files are staged), an editable task-derived message, and one-click "Commit + PR aç" via gh.
+- Added a proper "Start tasks…" sheet in place of the orchestrator plan alert: searchable task list, multi-select seeded from the plan, skipped-task reasons inline, and a Claude/Codex picker that dispatches the selection in one click.
+- Added per-row "Start" menus that name the agent before it is called, and a sent-task message that says which agent and session took the work.
+- Added quick git actions per task: a commit sheet listing the changed files (only ticked files are staged), an editable task-derived message, and one-click "Commit + open PR" via gh.
 - Added `-project-area tasks` and a TODO.md file to the demo fixture for deterministic Tasks-screen runs.
 - Added an Extensions menu to the menu bar: opening any Extensions screen directly, plus rediscovery, health check and a Bumblebee scan without going through the command palette.
 - Added creating a skill inside Uncoil (name, description, body, and the installed agents to link it to) and taking one in from a folder, both landing in the store as immutable revisions.
 - Added "adopt everything" on the Skills and MCP Servers screens, behind a confirmation that says what is copied, what is backed up and what is skipped.
-- Added a window-wide notice stack to Extensions: messages stack instead of replacing each other, what went well fades on its own, and a warning or failure stays with its full output behind an "Ayrıntı" toggle.
+- Added a window-wide notice stack to Extensions: messages stack instead of replacing each other, what went well fades on its own, and a warning or failure stays with its full output behind a "Detail" toggle.
 - Added real feedback to Run Health Check: it shows it is running, opens the Overview, and reports how many checks passed, warned or failed, with every line available in the notice's detail.
 - Added download progress to the Bumblebee install: the release step, the downloaded megabytes, verification, unpacking and installation are each named as they happen.
-- Added "Sürümü doğrula" on the Security screen, which asks the installed binary for its version and runs its self-test without scanning anything.
+- Added "Verify the version" on the Security screen, which asks the installed binary for its version and runs its self-test without scanning anything.
 - Added MCP servers to "adopt everything": a server's definition is taken over into the store the way a skill's files are, with the same plan, backup and confirmation.
 - Added one-click Bumblebee installation from the project's own GitHub releases: the archive is verified against the `checksums.txt` published with it, unpacked with its rule files into Uncoil's tools directory, and refused outright on a mismatch. No install script is ever fetched or run.
 - Added a window-wide search to Extensions: it filters the sidebar and lists matching extensions, agents, sources, findings, updates and activity entries, each row opening the screen that owns it.
 - Added a search field to the Assignments screen and `-route extensions`, `-extensions-section <name>`, `-extensions-query <text>` for opening a given Extensions screen deterministically.
-
 - Added the Project Tasks system end to end: lossless `TODO.md` discovery and parsing, byte-range patching, document, list, Kanban and session views, task↔session metadata with fingerprint relinking, claims, orchestration, worktree/review/test/merge flows, the `uncoil_tasks` MCP surface, and per-file git state with conflict-aware read-only editing.
 - Added task test runs, review verdicts and merge attempts as persisted results, with completion refused on a failing test or a review that asked for changes, and a merge screen that shows the diff, runs, verdict and every remaining blocker before the user approves.
 - Added task events to the Attention Center and menu bar, with shortcuts to a project's board, its task sessions and stopping its orchestrator.
@@ -72,10 +62,25 @@ All notable changes to Uncoil are recorded here.
 - Added backup and restore with schema validation, opt-in transcripts, secrets never exported, missing-extension reporting from exact commits, and an all-or-nothing restore.
 - Added a release pipeline script with hardened runtime, signature verification and optional notarization/stapling, plus an uninstall plan that removes what Uncoil created and keeps what the user wrote.
 - Added a schema registry so every persisted shape declares its version, with older bare-array documents still read and documents from a newer version refused rather than half-read.
+- Added a one-click acceptance workspace with Swift and JavaScript samples, deterministic process fixtures, and permission-classified fake MCP tools.
+- Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
+- Added command-palette Debug Bundle export with scoped app/runtime logs, agent versions, sanitized configs, MCP diagnostics, permission decisions, crash reports, acceptance results, and system information.
+- Added runtime protocol negotiation, heartbeat, crash recovery, sleep/wake reconnect, graceful upgrade drain, bounded replay storage, log rotation, process limits, and real daemon integration tests.
+- Added persisted quit behavior with “Keep sessions running” and “Terminate all agents on quit” choices.
+- Added explicit main-window recreation, frame autosave, and project/group/session selection restoration.
+- Added closed-session history with persisted exit/restart metadata and safe versioned metadata migration.
+- Added deterministic Claude and Codex session resume, including Codex rollout metadata discovery.
+- Added a session preset editor for provider, arguments, prompt template, permission mode, and capability boundaries.
+- Added opt-in transcript retention with 7-day, 30-day, and unlimited policies plus confirmed sensitive transcript cleanup.
 
 ### Changed
 
+- Settings no longer uses the app's bespoke mono type and hand-drawn panels. It is the one surface where matching macOS beats matching Uncoil, because that is where a user arrives with expectations from every other app they own.
+- The menu-bar monitor's on/off switch moved out of `UserDefaults` and into settings.json alongside the rest of its options; a deliberate "off" from an older build is carried over on upgrade.
 - Codex sessions run the Codex CLI again, the way Claude sessions run theirs. The app-server protocol speaks JSON rather than running a TUI, which left Uncoil owning the prompt, the history and the editing — and a new session opened onto a bare cursor with none of it. The protocol client stays behind `-codex-app-server` rather than being deleted: structured approvals and turn state are built on it, and its tests still run.
+- Reorganized active product, MCP, and historical reference documentation.
+- Made background GitHub Keychain reads non-interactive so development builds no longer repeatedly request the login password.
+- Moved transcript writes off the UI thread and shell-quoted preset arguments before launching child sessions.
 
 ### Fixed
 
@@ -89,7 +94,7 @@ All notable changes to Uncoil are recorded here.
 - Fixed the pinned marker showing as a yellow dot instead of a pin. The icon was asked for by a name the bundled font does not have — it is the outline set, with no filled variants — and an unknown name falls back to a dot, silently. Pinned is now the same pin as the button that sets it, filled, in the same colour.
 - Fixed the project file tree reading directories it had no reason to read: folders were listed again on every redraw of their parent, whether or not they were open, and the listing was capped at 120 entries to keep that affordable. A folder is now read when it is opened, once, and shows everything in it.
 - Fixed the Tasks tab stalling the app: discovery and parsing ran synchronously on the main thread and the watcher re-parsed everything every five seconds; scanning now runs off-main with per-file change stamps, debounced events, and a poll that only fires when a file actually changed.
-- Fixed the false "TODO.md bulunamadı" flash before the first scan finished; the empty state now appears only after a scan really came back empty.
+- Fixed the false "No TODO.md found" flash before the first scan finished; the empty state now appears only after a scan really came back empty.
 - Fixed the click-freeze when dispatching a task with a worktree: `git worktree add` ran on the main thread.
 - Fixed the parser silently dropping numbered checkboxes (`1. [ ]`), `[-]`/`[~]`/`[/]` marks, blockquote tasks and setext-heading grouping — this repo's own TODO.md had 45 tasks that never appeared.
 - Fixed the Tasks default view: List is the landing view; Document is an option, not the default.
@@ -110,28 +115,6 @@ All notable changes to Uncoil are recorded here.
 - Fixed the backup secret heuristic matching any field whose name contained "key", which silently dropped the permission decisions.
 - Fixed the extension registry file being collected three times in a backup because three contents name it.
 - Fixed stale Claude Code hook entries pointing at a deleted DerivedData bundle by repairing Uncoil's own entries at launch.
-
-### Added
-
-- Added a one-click acceptance workspace with Swift and JavaScript samples, deterministic process fixtures, and permission-classified fake MCP tools.
-- Completed the guided acceptance flow for Claude and Codex sessions, grouping, bulk actions, reconnect and replay, worktrees, Browser, Computer Use permission decisions, process recovery, and session artifact reporting.
-- Added command-palette Debug Bundle export with scoped app/runtime logs, agent versions, sanitized configs, MCP diagnostics, permission decisions, crash reports, acceptance results, and system information.
-- Added runtime protocol negotiation, heartbeat, crash recovery, sleep/wake reconnect, graceful upgrade drain, bounded replay storage, log rotation, process limits, and real daemon integration tests.
-- Added persisted quit behavior with “Keep sessions running” and “Terminate all agents on quit” choices.
-- Added explicit main-window recreation, frame autosave, and project/group/session selection restoration.
-- Added closed-session history with persisted exit/restart metadata and safe versioned metadata migration.
-- Added deterministic Claude and Codex session resume, including Codex rollout metadata discovery.
-- Added a session preset editor for provider, arguments, prompt template, permission mode, and capability boundaries.
-- Added opt-in transcript retention with 7-day, 30-day, and unlimited policies plus confirmed sensitive transcript cleanup.
-
-### Changed
-
-- Reorganized active product, MCP, and historical reference documentation.
-- Made background GitHub Keychain reads non-interactive so development builds no longer repeatedly request the login password.
-- Moved transcript writes off the UI thread and shell-quoted preset arguments before launching child sessions.
-
-### Fixed
-
 - Injected the bundled Uncoil MCP server and session-scoped control-plane environment into Codex launches without modifying the user's global Codex configuration.
 - Redacted secrets, prompt/history fields, home/temp/project/external-volume paths, and token-bearing CLI arguments from diagnostic exports.
 - Moved the foundation plan to `docs/roadmap/FOUNDATION_PLAN.md`.

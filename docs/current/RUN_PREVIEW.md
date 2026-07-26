@@ -67,7 +67,7 @@ Each run writes its own timestamped log under
 history popover and over MCP (`history`). While a process runs, the row shows a
 live 3-line output pulse, the full log view has an input field that writes to
 the process's stdin (`send_input` over MCP — e.g. Flutter's `r` hot reload),
-and a failure banner offers "Agent'la düzelt", which submits a ready-made
+and a failure banner offers "Fix with agent", which submits a ready-made
 repair prompt to the project's most recent agent session (clipboard fallback
 when none is live).
 
@@ -86,7 +86,7 @@ Agents drive the same feature through the `uncoil_run` MCP tool
    preview_url; failure returns `details.issue` + `log_tail` to iterate on.
 
 Id-less calls (`{"action":"start"}`, `status`, `stop`, `restart`, `logs`)
-resolve to the default configuration, so "projeyi çalıştır" needs no id
+resolve to the default configuration, so "run the project" needs no id
 discovery; `{"action":"set_default","id":"..."}` moves the flag.
 
 To verify a fresh change builds and launches:

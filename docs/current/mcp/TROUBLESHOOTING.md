@@ -38,7 +38,7 @@ intersection). See PERMISSIONS.md.
 **`PERMISSION_REQUIRED`.**
 A human must approve. Call `uncoil_system request_permission {grant_key,
 target_session_id}` (the denial's `details` carry both), then have the user approve in
-**Ayarlar → İzinler**. Retry after approval.
+**Settings → Permissions**. Retry after approval.
 
 **`create_child` → `INVALID_ARGUMENT: unknown preset_id`.**
 List valid presets with `uncoil_projects {"action":"list_presets"}`. Built-ins are
@@ -59,7 +59,7 @@ child never started (daemon unreachable), the prompt is dropped; check `doctor`.
 ## Where to look
 
 - Decisions: `<AppSupport>/Uncoil/audit/<yyyy-mm-dd>.jsonl` (arg keys, not values).
-- Pending/granted permissions: `<AppSupport>/Uncoil/permissions.json` and the İzinler
+- Pending/granted permissions: `<AppSupport>/Uncoil/permissions.json` and the Permissions
   pane.
 - Per-session artifacts and report inbox: `projects/<pid>/sessions/<sid>/artifacts/`.
 

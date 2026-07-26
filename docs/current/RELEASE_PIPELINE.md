@@ -42,125 +42,128 @@ The files under `docs/history/` describe a historical third-party release system
 
 ---
 
-Bu belge Uncoil'in dağıtım kararlarını ve nedenlerini kaydeder. Kararların
-gerekçesi burada duruyor ki altı ay sonra "neden böyle?" sorusu cevapsız kalmasın.
+This document records Uncoil's distribution decisions and the reasons behind
+them. The reasoning is kept here so that "why is it like this?" still has an
+answer six months from now.
 
 ## Pipeline
 
 `scripts/release.sh`:
 
-1. `xcodegen generate` — proje dosyası üretilir.
-2. Debug testleri — yeşil olmadan devam etmez.
-3. `MARKETING_VERSION` okunur ve `CHANGELOG.md` içinde o sürüm için bir bölüm
-   aranır. Release notes olmadan release yapılmaz.
-4. Release archive (hardened runtime **açık**; Debug'da kapalı, çünkü yerel
-   derlemede debugger ve yardımcı süreçler entitlement turu istemesin).
-5. Developer ID export, ardından imza doğrulaması. İmzada `runtime` flag'i
-   yoksa script durur: notarization o build'i reddeder.
-6. Yardımcı binary'ler (`uncoil-mcp`, `uncoil-hook`, `uncoil-extension`,
-   `uncoil-runtimed`) tek tek doğrulanır.
-7. `ditto` ile zip + SHA-256.
-8. `--notarize` verildiğinde `notarytool submit --wait` ve `stapler staple`.
+1. `xcodegen generate` — the project file is produced.
+2. Debug tests — nothing continues until they are green.
+3. `MARKETING_VERSION` is read and `CHANGELOG.md` is searched for a section
+   covering that version. There is no release without release notes.
+4. Release archive (hardened runtime **on**; off in Debug, so that a local
+   build does not send the debugger and the helper processes through an
+   entitlement round-trip).
+5. Developer ID export, then signature verification. If the signature carries
+   no `runtime` flag the script stops: notarization would reject that build.
+6. The helper binaries (`uncoil-mcp`, `uncoil-hook`, `uncoil-extension`,
+   `uncoil-runtimed`) are each verified.
+7. zip via `ditto`, plus a SHA-256.
+8. With `--notarize`, `notarytool submit --wait` and `stapler staple`.
 
-Notarization kimlik bilgisi gerektirir (`xcrun notarytool store-credentials`,
-sonra `NOTARY_PROFILE`). Script kimlik bilgisi yoksa tahmin etmez, durur.
+Notarization needs credentials (`xcrun notarytool store-credentials`, then
+`NOTARY_PROFILE`). Without them the script does not guess; it stops.
 
 Signing team: `K3TKWWVEB9` (Apple Development: Alparslan Topbas), bundle id
 `com.gkhntpbs.uncoil`.
 
-## Güncelleme mekanizması kararı
+## The update-mechanism decision
 
-**Karar: Sparkle yok; GitHub Releases + elle indirme.**
+**Decision: no Sparkle; GitHub Releases and a manual download.**
 
-Neden:
+Why:
 
-- Uncoil'in bağımlılık politikası "sıfır yeni bağımlılık" (`CLAUDE.md`).
-  Sparkle MIT olsa da imzalı appcast, EdDSA anahtar yönetimi ve kendi
-  güncelleyici sürecini beraberinde getirir.
-- Uncoil zaten agent CLI'larını ve extension'ları güncelliyor. Uygulamanın
-  kendisini de sessizce güncelleyen bir mekanizma, "hiçbir şey benim
-  onayım olmadan olmaz" kuralıyla çelişir.
-- Sürüm kontrolü ucuz: `uncoil_system` zaten sürüm bildiriyor; yeni sürüm
-  duyurusu GitHub Releases üzerinden okunabilir ve indirme kullanıcının
-  tıklamasıyla olur.
+- Uncoil's dependency policy is "zero new dependencies" (`CLAUDE.md`). Sparkle
+  may be MIT, but it brings a signed appcast, EdDSA key management and an
+  updater process of its own along with it.
+- Uncoil already updates the agent CLIs and the extensions. A mechanism that
+  also updated the app itself, quietly, would contradict the rule that nothing
+  happens without the user's approval.
+- Checking the version is cheap: `uncoil_system` already reports it, a new
+  release can be read from GitHub Releases, and the download happens when the
+  user clicks.
 
-Bu karar bir kapı kapatmıyor: ihtiyaç netleşirse imzalı appcast eklenebilir.
+The decision closes no door: if the need becomes clear, a signed appcast can be
+added.
 
-## App update rollback politikası
+## App update rollback policy
 
-Uncoil kendini downgrade etmez. Politika:
+Uncoil does not downgrade itself. The policy:
 
-- Her release zip'i ve SHA-256'sı GitHub Releases'te durur; geri dönüş
-  "önceki zip'i indir ve `/Applications` içindekiyle değiştir" adımıdır.
-- Uygulama verisi şema sürümlüdür (`UncoilSchema`). Yeni sürüm okuyabildiği
-  eski şemayı ileriye taşır; **eski sürüm yeni şemayı reddeder**, yarım
-  okumaz. Bu yüzden downgrade sonrası veri kaybı değil, açık bir
-  "bu dosya bu sürümden yeni" mesajı görülür.
-- Downgrade planlıyorsan önce `BackupService` ile yedek al: geri yükleme
-  şemayı doğrular ve hangi extension'ın hangi commit'ten yeniden
-  kurulabileceğini söyler.
+- Every release zip and its SHA-256 stays on GitHub Releases; going back means
+  "download the previous zip and replace the one in `/Applications`".
+- The app's data is schema-versioned (`UncoilSchema`). A new version carries an
+  old schema it can read forward; **an old version refuses a new schema** rather
+  than half-reading it. So a downgrade produces a plain "this file is newer than
+  this build" message, not data loss.
+- If you are planning a downgrade, take a backup with `BackupService` first:
+  restoring validates the schema and tells you which extension can be
+  reinstalled from which commit.
 
-## Runtime daemon güncellemesi
+## Updating the runtime daemon
 
-`uncoil-runtimed` uygulama paketinin içinde gelir, ayrı kurulmaz.
+`uncoil-runtimed` ships inside the app bundle; it is not installed separately.
 
-- Protokol sürümü uygulama ile daemon arasında el sıkışmada karşılaştırılır
-  (`RuntimeProtocol.version` / `minor`). Uyumsuzsa uygulama oturumları kendi
-  içindeki PTY ile sürdürür ve Attention Center'da uyumsuzluğu bildirir.
-- Uygulama güncellendiğinde eski daemon çalışmaya devam edebilir: yeni
-  uygulama uyumsuzluğu görür, kullanıcıya daemon'ı yeniden başlatmasını
-  söyler. Daemon çalışan agent'ları taşıdığı için **kendiliğinden
-  öldürülmez**; bu kullanıcının kararı.
-- Daemon tek örnek `flock` ile garanti edilir; iki sürümün aynı socket'i
-  paylaşması mümkün değil.
+- The protocol version is compared between the app and the daemon during the
+  handshake (`RuntimeProtocol.version` / `minor`). On a mismatch the app keeps
+  its sessions on its own in-process PTY and reports the mismatch in the
+  Attention Center.
+- When the app is updated the old daemon may keep running: the new app sees the
+  mismatch and tells the user to restart the daemon. Because the daemon carries
+  running agents it is **never killed automatically**; that is the user's call.
+- The daemon stays single-instance through `flock`; two versions cannot share
+  one socket.
 
-## SMAppService kararı
+## The SMAppService decision
 
-**Karar: gerekmiyor.**
+**Decision: not needed.**
 
-- Daemon uygulama tarafından ihtiyaç anında başlatılır ve uygulama kapandıktan
-  sonra da yaşar; agent'ların uygulama kapalıyken çalışması bunu gerektiriyor.
-- `SMAppService` (login item) daemon'ı kullanıcı oturum açtığında başlatırdı.
-  Uncoil'in ihtiyacı bu değil: agent yoksa çalışan bir daemon da gereksizdir.
-- Login item eklemek ayrıca kullanıcıdan ayrı bir onay ve bir sistem ayarı
-  penceresi ister — çalıştırılacak bir iş yokken bunu istemek yanlış olur.
+- The daemon is started by the app when it is needed and lives on after the app
+  closes; agents running while the app is closed is what requires that.
+- `SMAppService` (a login item) would start the daemon when the user logs in.
+  That is not Uncoil's need: with no agent, a running daemon is pointless too.
+- Adding a login item also asks the user for a separate approval and a system
+  settings window — wrong to ask for when there is no work to run.
 
-Bu karar da geri alınabilir: zamanlanmış Bumblebee taramaları uygulama kapalıyken
-çalışacaksa `SMAppService` yeniden değerlendirilir.
+This decision is reversible too: if scheduled Bumblebee scans are to run while
+the app is closed, `SMAppService` gets reconsidered.
 
-## Kaldırma (uninstall)
+## Uninstall
 
-`UninstallService` ne silineceğini önce **listeler**. Kural: Uncoil'in
-oluşturduğu silinir, kullanıcının kendi dosyası kalır.
+`UninstallService` **lists** what will be deleted first. The rule: what Uncoil
+created is deleted, what the user wrote stays.
 
-Silinenler:
+Deleted:
 
-- `~/Library/Application Support/Uncoil` içindeki Uncoil verisi
-  (projeler, oturumlar, ayarlar, preset'ler, permission kararları, audit log,
-  transcript'ler, TODO yedekleri).
-- Extension store'un mirror, revision, lock ve scan dizinleri.
-- Agent skill dizinlerinde **Uncoil'in kurduğu** symlink'ler.
-- `~/.agents/.skill-lock.json` (Uncoil'in ürettiği dosya).
+- Uncoil's data in `~/Library/Application Support/Uncoil` (projects, sessions,
+  settings, presets, permission decisions, the audit log, transcripts, TODO
+  backups).
+- The extension store's mirror, revision, lock and scan directories.
+- The symlinks **Uncoil installed** in the agents' skill directories.
+- `~/.agents/.skill-lock.json` (a file Uncoil produced).
 
-Silinmeyenler:
+Not deleted:
 
-- Kullanıcının elle yazdığı skill klasörleri ve başkasının symlink'leri.
-- Agent config dosyaları (`~/.claude.json`, `~/.codex/config.toml`,
+- Skill folders the user wrote by hand, and anyone else's symlinks.
+- Agent config files (`~/.claude.json`, `~/.codex/config.toml`,
   `~/.gemini/settings.json`, `~/.cursor/mcp.json`,
-  `~/.config/amp/settings.json`). Uncoil'in eklediği MCP kayıtları
-  kaldırılmak isteniyorsa Extensions ekranından, plan gösterilerek yapılır.
-- Keychain'deki secret'lar: kullanıcının kendi verisi.
+  `~/.config/amp/settings.json`). If the MCP entries Uncoil added are to be
+  removed, that happens from the Extensions screen, with the plan shown first.
+- Secrets in the Keychain: the user's own data.
 
-## Gizlilik ve telemetri
+## Privacy and telemetry
 
-**Uncoil hiçbir telemetri veya çökme raporunu ağ üzerinden göndermez.**
+**Uncoil sends no telemetry and no crash report over the network.**
 
-- Analitik, kullanım sayacı, "crash ping" yok.
-- Ağa çıkan tek şeyler kullanıcının kendi istediği işlerdir: agent CLI'larının
-  kendi bağlantıları, `git fetch`, ve kullanıcının eklediği remote MCP
-  sunucularına yapılan sağlık kontrolü.
-- Çökme raporlama (`CrashReportingPolicy`) **varsayılan kapalı** ve açıldığında
-  bile yalnızca yereldeki çökme günlüklerini Uncoil'in debug paketine
-  toplar. Paketi paylaşmak kullanıcının kararı.
-- Secret değerleri config, diff, log, export ve yedeklerde görünmez; yalnızca
-  anahtar **adları** taşınır (`ExtensionsAcceptanceTests` bunu doğruluyor).
+- No analytics, no usage counter, no "crash ping".
+- The only things that reach the network are jobs the user asked for: the agent
+  CLIs' own connections, `git fetch`, and the health check against remote MCP
+  servers the user added.
+- Crash reporting (`CrashReportingPolicy`) is **off by default**, and even when
+  it is on it only collects local crash logs into Uncoil's debug bundle. Sharing
+  that bundle is the user's decision.
+- Secret values never appear in configs, diffs, logs, exports or backups; only
+  the key **names** travel (`ExtensionsAcceptanceTests` verifies this).
