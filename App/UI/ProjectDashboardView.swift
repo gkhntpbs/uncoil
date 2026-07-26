@@ -331,7 +331,16 @@ struct ProjectDashboardView: View {
             areaTabs
 
             if let branch = git.branch, headerWidth >= 460 {
-                BranchBadge(branch: branch)
+                BranchBadge(
+                    branch: branch,
+                    repoPath: project.rootPath,
+                    // A switch rewrites the whole working tree, so the page's
+                    // git snapshot, worktrees and file list are all stale.
+                    onSwitched: {
+                        pages.invalidate(project.id)
+                        Task { await pages.refresh(project: project) }
+                    }
+                )
             }
 
             // The project's own root, in the same control the session header

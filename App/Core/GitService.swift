@@ -179,6 +179,83 @@ enum GitService {
         var errorDescription: String? { message }
     }
 
+    // MARK: - Branches
+
+    /// A local branch, and whether this checkout can move onto it.
+    ///
+    /// Git allows a branch in only one worktree at a time, so a project with a
+    /// task worktree open has branches it cannot check out. Reporting that up
+    /// front is better than letting the switch fail with git's own wording.
+    struct Branch: Identifiable, Equatable {
+        let name: String
+        let isCurrent: Bool
+        /// The other worktree holding it, when one does.
+        let heldBy: String?
+        var id: String { name }
+        var isSwitchable: Bool { !isCurrent && heldBy == nil }
+    }
+
+    /// Local branches, current first, then alphabetically. Blocking; call from a
+    /// background task.
+    static func branches(repoPath: String) -> [Branch] {
+        guard let output = run([
+            "-C", repoPath, "for-each-ref", "--format=%(refname:short)%09%(HEAD)",
+            "refs/heads",
+        ]) else { return [] }
+
+        // Which branch each worktree holds, so the ones git would refuse are
+        // marked rather than offered.
+        var holders: [String: String] = [:]
+        let here = URL(fileURLWithPath: repoPath).standardizedFileURL.path
+        for worktree in worktrees(repoPath: repoPath) {
+            let path = URL(fileURLWithPath: worktree.path).standardizedFileURL.path
+            guard path != here, let branch = worktree.branch else { continue }
+            holders[branch] = worktree.path
+        }
+
+        let parsed: [Branch] = output.split(separator: "\n").compactMap { line in
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard let name = parts.first.map(String.init), !name.isEmpty else { return nil }
+            let isCurrent = parts.count > 1 && parts[1] == "*"
+            return Branch(
+                name: name, isCurrent: isCurrent,
+                heldBy: isCurrent ? nil : holders[name])
+        }
+        return parsed.sorted {
+            if $0.isCurrent != $1.isCurrent { return $0.isCurrent }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+    }
+
+    /// Checks a branch out in this working tree.
+    ///
+    /// Nothing is stashed, forced or auto-committed: git refuses when the switch
+    /// would lose work, and that refusal is the honest answer to show. Blocking;
+    /// call from a background task.
+    static func checkout(repoPath: String, branch: String) -> Result<Void, GitFailure> {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", repoPath, "checkout", branch]
+        let errPipe = Pipe()
+        process.standardOutput = Pipe()
+        process.standardError = errPipe
+        do {
+            try process.run()
+        } catch {
+            return .failure(GitFailure(message: error.localizedDescription))
+        }
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let message = String(data: errData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return .failure(GitFailure(
+                message: message?.isEmpty == false
+                    ? message! : String(localized: "git checkout failed")))
+        }
+        return .success(())
+    }
+
     /// Creates `<repo>/.uncoil-worktrees/<slug>` on a fresh `uncoil/<slug>` branch.
     /// Blocking; call from a background task.
     static func createWorktree(repoPath: String, name: String) -> Result<Worktree, GitFailure> {

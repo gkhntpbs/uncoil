@@ -74,16 +74,32 @@ struct SessionHeaderBar<Trailing: View>: View {
                     if let branch {
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
-                        HStack(spacing: 3) {
-                            TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
-                            Text(branch)
-                                .font(Theme.mono(.body, .medium))
-                                .foregroundStyle(Theme.textDim)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
+                        // Switchable, like the project header's chip: the tree
+                        // the session is in is the one that moves, which for a
+                        // task session is its worktree and not the project.
+                        Menu {
+                            BranchSwitchMenu(
+                                repoPath: workingDirectory,
+                                current: branch,
+                                // Re-read at once rather than waiting out the
+                                // 15s poll; blanking the chip would make it
+                                // disappear for the whole gap.
+                                onSwitched: { refreshBranch() }
+                            )
+                        } label: {
+                            HStack(spacing: 3) {
+                                TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
+                                Text(branch)
+                                    .font(Theme.mono(.body, .medium))
+                                    .foregroundStyle(Theme.textDim)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
                         }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
                         .fixedSize()
-                        .help("Active branch: \(branch)")
+                        .help("Active branch: \(branch) — click to switch")
                     }
                 }
             }
@@ -142,6 +158,16 @@ struct SessionHeaderBar<Trailing: View>: View {
                 if branch != resolved { branch = resolved }
                 try? await Task.sleep(nanoseconds: 15 * NSEC_PER_SEC)
             }
+        }
+    }
+
+    private func refreshBranch() {
+        let directory = workingDirectory
+        Task {
+            let resolved = await Task.detached(priority: .utility) {
+                GitService.currentBranch(repoPath: directory)
+            }.value
+            await MainActor.run { branch = resolved }
         }
     }
 
