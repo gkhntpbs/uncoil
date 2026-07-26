@@ -70,6 +70,8 @@ struct SidebarView: View {
                 batchActions
             }
 
+            OnboardingResumeRow()
+
             HStack(spacing: 2) {
                 RailButton(iconName: "settings", help: String(localized: "Settings")) {
                     openWindow(id: "settings")

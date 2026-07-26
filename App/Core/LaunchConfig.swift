@@ -7,7 +7,8 @@ import SwiftUI
 ///   -ui-testing            isolate all state under a temp directory
 ///   -reset-state           wipe that directory before start
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
-///   -route <route>         "project" (default) | "session" | "extensions"
+///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
+///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
 ///   -extensions-query <text>    prefills the Extensions search bar
 ///   -extensions-expand <id>     expands that package's detail panel
@@ -31,6 +32,8 @@ struct LaunchConfig {
     let extensionsAction: String?
     /// Project dashboard area to open ("tasks"), for deterministic UI runs.
     let projectArea: String?
+    /// Onboarding step the first-run window opens on, by step id.
+    let onboardingStep: String?
     let windowWidth: Double?
     let windowHeight: Double?
     let disableAnimations: Bool
@@ -74,6 +77,7 @@ struct LaunchConfig {
         extensionsExpand = Self.value(after: "-extensions-expand", in: arguments)
         extensionsAction = Self.value(after: "-extensions-action", in: arguments)
         projectArea = Self.value(after: "-project-area", in: arguments)
+        onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
     }

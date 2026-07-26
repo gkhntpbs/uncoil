@@ -14,6 +14,14 @@ final class ProjectStore: ObservableObject {
     @Published private(set) var sessions: [SessionRecord] = []
     @Published private(set) var sessionGroups: [SessionGroup] = []
 
+    /// Capabilities stamped onto newly created sessions; nil = the control
+    /// plane's own default grant set.
+    ///
+    /// Mirrored here by `SettingsStore` rather than read from it: session
+    /// creation happens in a dozen places that have no business knowing about
+    /// settings, and the value is a single user preference either way.
+    static var defaultSessionCapabilities: [String]?
+
     private let projectsURL: URL
     private let sessionsURL: URL
     private let sessionGroupsURL: URL
@@ -347,6 +355,7 @@ final class ProjectStore: ObservableObject {
         )
         // nil when default: an empty selection must not read as "configured".
         record.launchSelection = launchSelection?.isDefault == false ? launchSelection : nil
+        record.capabilities = Self.defaultSessionCapabilities
         sessions.append(record)
         save()
         return record

@@ -52,6 +52,13 @@ final class SettingsStore: ObservableObject {
         var menuBar: MenuBarPrefs? = nil
         /// Interface and agent-prompt language; nil ⇒ follow the system.
         var language: LanguagePrefs? = nil
+        /// Onboarding version the user last went through; nil ⇒ never seen it.
+        var onboardingVersion: Int? = nil
+        /// Onboarding steps actually completed (skipped ones stay out).
+        var onboardingCompletedSteps: [String]? = nil
+        /// Capabilities stamped onto newly created sessions; nil ⇒ the control
+        /// plane's own default grant set.
+        var sessionCapabilityDefaults: [String]? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -82,6 +89,13 @@ final class SettingsStore: ObservableObject {
             save()
         }
     }
+    /// Onboarding version the user last went through; nil = never seen it.
+    @Published private(set) var onboardingVersion: Int?
+    /// Onboarding steps the user actually completed.
+    @Published private(set) var onboardingCompletedSteps: Set<String> = []
+    /// Extra capabilities the user opted into during onboarding, stamped onto
+    /// new sessions. nil = the control plane's own default grant set.
+    @Published private(set) var sessionCapabilityDefaults: [String]?
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -447,6 +461,56 @@ final class SettingsStore: ObservableObject {
         return path?.isEmpty == false ? path : nil
     }
 
+    // MARK: - Onboarding
+
+    /// Whether the first-run flow should open on launch.
+    var shouldPresentOnboarding: Bool {
+        OnboardingFlow.shouldPresent(stampedVersion: onboardingVersion)
+    }
+
+    /// Actionable steps still undone — what the sidebar's resume row counts.
+    var remainingOnboardingSteps: [OnboardingStep] {
+        OnboardingFlow.remaining(completed: onboardingCompletedSteps)
+    }
+
+    func markOnboardingStepCompleted(_ step: OnboardingStep) {
+        guard step.isActionable, !onboardingCompletedSteps.contains(step.rawValue) else { return }
+        onboardingCompletedSteps.insert(step.rawValue)
+        save()
+    }
+
+    /// Stamps the flow as seen. Called both when the user reaches the end and
+    /// when they skip out of it: either way it must not reopen by itself.
+    func finishOnboarding() {
+        onboardingVersion = OnboardingFlow.currentVersion
+        save()
+    }
+
+    /// Starts the whole flow over — Settings → About.
+    func resetOnboarding() {
+        onboardingVersion = nil
+        onboardingCompletedSteps = []
+        save()
+    }
+
+    /// Capabilities stamped onto new sessions. Passing the control plane's own
+    /// default set back in is stored as "no override" so a later change to the
+    /// defaults still reaches sessions created today.
+    func setSessionCapabilityDefaults(_ capabilities: Set<String>?) {
+        if let capabilities, capabilities != PolicyEngine.defaultGrants {
+            sessionCapabilityDefaults = capabilities.sorted()
+        } else {
+            sessionCapabilityDefaults = nil
+        }
+        ProjectStore.defaultSessionCapabilities = sessionCapabilityDefaults
+        save()
+    }
+
+    /// The effective capability set for a new session.
+    var effectiveSessionCapabilities: Set<String> {
+        sessionCapabilityDefaults.map(Set.init) ?? PolicyEngine.defaultGrants
+    }
+
     // MARK: - Persistence
 
     private func ensureDefaultAccounts() {
@@ -484,6 +548,10 @@ final class SettingsStore: ObservableObject {
         }
         menuBar = restoredMenuBar
         language = decoded.language ?? LanguagePrefs()
+        onboardingVersion = decoded.onboardingVersion
+        onboardingCompletedSteps = Set(decoded.onboardingCompletedSteps ?? [])
+        sessionCapabilityDefaults = decoded.sessionCapabilityDefaults
+        ProjectStore.defaultSessionCapabilities = sessionCapabilityDefaults
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
 
@@ -521,7 +589,11 @@ final class SettingsStore: ObservableObject {
             permissionTimeoutMinutes: permissionTimeoutMinutes == 10
                 ? nil : permissionTimeoutMinutes,
             menuBar: menuBar == MenuBarPrefs() ? nil : menuBar,
-            language: language == LanguagePrefs() ? nil : language
+            language: language == LanguagePrefs() ? nil : language,
+            onboardingVersion: onboardingVersion,
+            onboardingCompletedSteps: onboardingCompletedSteps.isEmpty
+                ? nil : onboardingCompletedSteps.sorted(),
+            sessionCapabilityDefaults: sessionCapabilityDefaults
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

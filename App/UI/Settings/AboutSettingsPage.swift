@@ -4,6 +4,8 @@ import SwiftUI
 /// Settings → Hakkında: version, where the data lives, and the two escape
 /// hatches (a debug bundle to send, a clean uninstall).
 struct AboutSettingsPage: View {
+    @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.openWindow) private var openWindow
     @State private var debugBundleURL: URL?
     @State private var debugBundleError: String?
 
@@ -23,6 +25,19 @@ struct AboutSettingsPage: View {
             }
 
             Section {
+                AdaptiveRow {
+                    SettingsLabel(
+                        title: String(localized: "Setup guide"),
+                        detail: String(localized: "Runs the first-run flow again: CLIs, accounts, hooks, agent capabilities, tasks and extensions.")
+                    )
+                } control: {
+                    Button("Run again") {
+                        settings.resetOnboarding()
+                        openWindow(id: "onboarding")
+                    }
+                    .settingsID("about.rerunOnboarding")
+                }
+
                 AdaptiveRow {
                     SettingsLabel(
                         title: String(localized: "Debug bundle"),

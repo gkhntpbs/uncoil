@@ -219,6 +219,7 @@ struct MainWindow: View {
                 startServices()
                 applyLaunchRoute()
                 setupPalette()
+                presentOnboardingIfNeeded()
             }
         }
     }
@@ -475,6 +476,19 @@ struct MainWindow: View {
             }
             await TerminalRegistry.shared.submitText(
                 prompt, for: record.id, provider: record.provider)
+        }
+    }
+
+    /// Opens the first-run window on a machine that has never seen it — and on
+    /// an upgrade that added steps. A UI-testing run only gets it when it asks.
+    private func presentOnboardingIfNeeded() {
+        let config = LaunchConfig.shared
+        if config.isUITesting {
+            if config.route == "onboarding" { openWindow(id: "onboarding") }
+            return
+        }
+        if settings.shouldPresentOnboarding {
+            openWindow(id: "onboarding")
         }
     }
 
