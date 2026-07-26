@@ -11276,6 +11276,17 @@
         }
       }
     },
+    "%@ is working in this tree": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bu ağaçta çalışıyor"
+          }
+        }
+      }
+    },
     "%@ — needs approval": {
       "extractionState": "manual",
       "localizations": {
@@ -12475,6 +12486,17 @@
         }
       }
     },
+    "Switch anyway": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yine de değiştir"
+          }
+        }
+      }
+    },
     "Task metadata": {
       "extractionState": "manual",
       "localizations": {
@@ -12585,6 +12607,17 @@
         }
       }
     },
+    "The files change under the agent while it is working.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent çalışırken dosyalar altından değişir."
+          }
+        }
+      }
+    },
     "The interface language changes when Uncoil starts again.": {
       "extractionState": "manual",
       "localizations": {
@@ -12625,6 +12658,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Süreç ayakta ama ne ready_pattern eşleşti ne de bildirdiği portu açtı. Sunucu aslında sorunsuzsa .uncoil/run.json içindeki 'ready_pattern'/'ports' alanlarını düzelt."
+          }
+        }
+      }
+    },
+    "The working tree moved to branch %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma ağacı %@ dalına geçti."
           }
         }
       }

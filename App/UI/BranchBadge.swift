@@ -26,17 +26,39 @@ enum WorktreeNaming {
 struct BranchMenuButton<Label: View>: View {
     let repoPath: String
     let current: String
-    var onSwitched: (() -> Void)?
+    /// Given the branch that was checked out, so the caller can tell whoever is
+    /// working in this tree that the ground moved.
+    var onSwitched: ((String) -> Void)?
+    /// Set when something is working in this tree right now. A checkout rewrites
+    /// files under a running agent, which is worth one question first.
+    var busyWarning: String?
     @ViewBuilder var label: Label
 
     @State private var branches: [GitService.Branch] = []
     @State private var failure: String?
     @State private var anchor: NSView?
+    @State private var pending: String?
 
     var body: some View {
         Button(action: present) { label }
             .buttonStyle(.plain)
             .background(AnchorView(view: $anchor))
+            .confirmationDialog(
+                busyWarning ?? "",
+                isPresented: Binding(
+                    get: { pending != nil },
+                    set: { if !$0 { pending = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Switch anyway"), role: .destructive) {
+                    if let pending { perform(pending) }
+                    pending = nil
+                }
+                Button(String(localized: "Cancel"), role: .cancel) { pending = nil }
+            } message: {
+                Text("The files change under the agent while it is working.")
+            }
             // Branches appear under the app's hands — an agent creating one, a
             // worktree being cut — so the list is already current when the menu
             // opens rather than being read at click time.
@@ -105,6 +127,16 @@ struct BranchMenuButton<Label: View>: View {
     }
 
     private func switchTo(_ name: String) {
+        // Ask first when an agent is mid-turn in this tree: it is reasoning
+        // about files that are about to be replaced.
+        if busyWarning != nil {
+            pending = name
+            return
+        }
+        perform(name)
+    }
+
+    private func perform(_ name: String) {
         failure = nil
         let path = repoPath
         Task { @MainActor in
@@ -115,7 +147,7 @@ struct BranchMenuButton<Label: View>: View {
             case .success:
                 // git refuses a switch that would lose work, so reaching here
                 // means the tree really moved.
-                onSwitched?()
+                onSwitched?(name)
                 await load()
             case .failure(let error):
                 failure = error.message
@@ -187,7 +219,8 @@ struct BranchBadge: View {
         Group {
             if let repoPath {
                 BranchMenuButton(
-                    repoPath: repoPath, current: branch, onSwitched: onSwitched
+                    repoPath: repoPath, current: branch,
+                    onSwitched: { _ in onSwitched?() }
                 ) {
                     chip
                 }

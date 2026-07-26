@@ -83,7 +83,8 @@ struct SessionHeaderBar<Trailing: View>: View {
                             // Re-read at once rather than waiting out the 15s
                             // poll; blanking the chip would make it disappear
                             // for the whole gap.
-                            onSwitched: { refreshBranch() }
+                            onSwitched: { announceSwitch(to: $0) },
+                            busyWarning: busyWarning
                         ) {
                             HStack(spacing: 3) {
                                 TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
@@ -162,6 +163,31 @@ struct SessionHeaderBar<Trailing: View>: View {
                 if branch != resolved { branch = resolved }
                 try? await Task.sleep(nanoseconds: 15 * NSEC_PER_SEC)
             }
+        }
+    }
+
+    /// Set while the agent is mid-turn, so a checkout asks before rewriting the
+    /// files it is reasoning about.
+    private var busyWarning: String? {
+        switch status {
+        case .thinking, .running, .waitingForPermission, .waitingForInput:
+            return String(localized: "\(record.displayTitle) is working in this tree")
+        case .idle, .completed, .terminated:
+            return nil
+        }
+    }
+
+    /// A checkout changes the files under the agent, and nothing else would tell
+    /// it: its own view of the repository is whatever it read before. The note
+    /// is typed into the session rather than sent as a turn, so it lands in the
+    /// conversation without starting one.
+    private func announceSwitch(to branch: String) {
+        refreshBranch()
+        guard status != .terminated else { return }
+        let note = String(localized: "The working tree moved to branch \(branch).")
+        Task {
+            await TerminalRegistry.shared.submitText(
+                note, for: record.id, provider: record.provider)
         }
     }
 
