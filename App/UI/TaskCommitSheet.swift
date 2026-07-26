@@ -24,7 +24,7 @@ struct TaskCommitSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Commit — \(task.text)")
+                Text("Commit — \(task.displayText)")
                     .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)

@@ -113,8 +113,14 @@ struct ProjectTask: Identifiable, Equatable, Codable {
     let id: String
     var sourcePath: String
     var checkbox: ProjectTaskCheckboxState
-    /// The task's own text, without the marker or checkbox.
+    /// The task's own text, without the marker or checkbox. Markdown verbatim,
+    /// because this is what the file says and what an agent is given.
     var text: String
+
+    /// ``text`` with Markdown's inline marks removed, for drawing in a row.
+    /// The file keeps its `**`, backticks and links; only the interface drops
+    /// them.
+    var displayText: String { MarkdownInline.plain(text) }
     /// Every line of the task: its own line plus indented continuation,
     /// including fenced code that belongs to it.
     var blockRange: TaskSourceRange

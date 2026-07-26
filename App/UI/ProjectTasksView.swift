@@ -558,7 +558,7 @@ struct ProjectTasksView: View {
                         .foregroundStyle(Theme.text)
                         .accessibilityIdentifier("tasks.rename.\(task.id)")
                 } else {
-                    Text(task.text)
+                    Text(task.displayText)
                         .font(Theme.mono(.body))
                         .foregroundStyle(task.isDone ? Theme.textDim : Theme.text)
                         .strikethrough(task.isDone, color: Theme.textFaint)
@@ -696,7 +696,7 @@ struct ProjectTasksView: View {
                 .foregroundStyle(task.isDone ? Theme.ok : Theme.textFaint)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
-                Text(task.text)
+                Text(task.displayText)
                     .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
@@ -868,7 +868,7 @@ struct ProjectTasksView: View {
                 Image(systemName: task.isDone ? "checkmark.square.fill" : "square")
                     .font(.system(size: 10))
                     .foregroundStyle(task.isDone ? Theme.ok : Theme.textFaint)
-                Text(task.text)
+                Text(task.displayText)
                     .font(Theme.mono(.small))
                     .foregroundStyle(Theme.text)
                     .lineLimit(3)
@@ -879,7 +879,7 @@ struct ProjectTasksView: View {
                         Image(systemName: child.isDone ? "checkmark" : "circle")
                             .font(.system(size: 7))
                             .foregroundStyle(child.isDone ? Theme.ok : Theme.textFaint)
-                        Text(child.text)
+                        Text(child.displayText)
                             .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textDim)
                             .lineLimit(1)
@@ -1171,7 +1171,7 @@ struct ProjectTasksView: View {
                 projectID: project.id,
                 provider: request.provider,
                 accountID: request.accountID,
-                title: String(localized: "\(request.provider.rawValue): \(task.text)"),
+                title: String(localized: "\(request.provider.rawValue): \(task.displayText)"),
                 worktreePath: worktreePath,
                 launchSelection: AgentLaunchSelection(
                     model: request.model,
@@ -1195,7 +1195,7 @@ struct ProjectTasksView: View {
         // behalf, and the Attention Center is where that belongs.
         AttentionStore.shared.report(
             kind: .input,
-            title: String(localized: "\(project.name) › \(task.text)"),
+            title: String(localized: "\(project.name) › \(task.displayText)"),
             detail: String(localized: "Assigned to the \(record.displayTitle) session as \(request.role.label)"),
             projectID: project.id,
             sessionID: record.id,
@@ -1266,7 +1266,7 @@ struct ProjectTasksView: View {
             projectID: project.id,
             provider: provider,
             accountID: settings.defaultAccount(for: provider)?.id,
-            title: String(localized: "\(provider.rawValue): \(task.text)"),
+            title: String(localized: "\(provider.rawValue): \(task.displayText)"),
             launchSelection: launch
         )
         metadata.assign(
@@ -1281,7 +1281,7 @@ struct ProjectTasksView: View {
         // Which agent took the task is the first thing the user asks; say it
         // instead of leaving a silent screen switch.
         let launchNote = launch.summary.map { " · \($0)" } ?? ""
-        message = String(localized: "\(task.text.prefix(60)) → \(provider.displayName) (\(record.displayTitle))\(launchNote)")
+        message = String(localized: "\(task.displayText.prefix(60)) → \(provider.displayName) (\(record.displayTitle))\(launchNote)")
         deliver(prompt: prompt(for: task, role: role), to: record, autoStart: autoStart)
     }
 

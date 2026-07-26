@@ -104,7 +104,7 @@ struct TaskDispatchSheet: View {
             Text("Send to agent")
                 .font(Theme.mono(.large, .bold))
                 .foregroundStyle(Theme.text)
-            Text(task.text)
+            Text(task.displayText)
                 .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
                 .lineLimit(2)

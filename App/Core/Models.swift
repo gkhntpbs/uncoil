@@ -423,16 +423,18 @@ struct SessionRecord: Identifiable, Codable, Equatable {
             .appendingPathComponent("artifacts", isDirectory: true)
     }
 
-    /// Sidebar/dashboard title: the provider prefix ("claude: ") is
-    /// redundant next to the provider mark, so it is stripped for display.
+    /// Sidebar/dashboard title: the provider prefix ("claude: ") is redundant
+    /// next to the provider mark, so it is stripped for display — and so are
+    /// Markdown's inline marks, because a title taken from the first prompt
+    /// arrives with whatever the user wrote, `**` included.
     var displayTitle: String {
         for provider in AgentProvider.allCases {
             let prefix = "\(provider.rawValue): "
             if title.hasPrefix(prefix) {
-                return String(title.dropFirst(prefix.count))
+                return MarkdownInline.plain(String(title.dropFirst(prefix.count)))
             }
         }
-        return title
+        return MarkdownInline.plain(title)
     }
 
     /// Default titles get replaced by the first real prompt.

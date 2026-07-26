@@ -137,7 +137,7 @@ struct TaskOrchestratorSheet: View {
                     .foregroundStyle(isOn ? Theme.highlight : Theme.textFaint)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(task.text)
+                    Text(task.displayText)
                         .font(Theme.mono(.body))
                         .foregroundStyle(Theme.text)
                         .lineLimit(2)
