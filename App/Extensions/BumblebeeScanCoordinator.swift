@@ -64,7 +64,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
     var isInstalled: Bool { locator.resolve() != nil }
 
     /// Asks the binary what it is and makes it prove it works, recording both so
-    /// the Security screen can show a version instead of "bilinmiyor". Runs no
+    /// the Security screen can show a version instead of "unknown". Runs no
     /// scan: this is the check the user makes right after installing.
     func verifyBinary(now: Date = .now) async -> String {
         guard let binary = locator.resolve() else {

@@ -107,11 +107,11 @@ enum RunStatus: Equatable {
 
     var label: String {
         switch self {
-        case .idle: "idle"
-        case .starting: "starting"
-        case .running: "running"
-        case .exited: "exited"
-        case .failed: "failed"
+        case .idle: String(localized: "idle")
+        case .starting: String(localized: "starting")
+        case .running: String(localized: "running")
+        case .exited: String(localized: "exited")
+        case .failed: String(localized: "failed")
         }
     }
 }

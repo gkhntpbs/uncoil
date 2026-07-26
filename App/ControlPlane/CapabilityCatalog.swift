@@ -13,9 +13,9 @@ enum CapabilityCatalog {
 
         var title: String {
             switch self {
-            case .projects: "Projeler"
+            case .projects: "Projects"
             case .worktrees: "Worktree"
-            case .sessions: "Oturumlar"
+            case .sessions: "Sessions"
             case .tasks: "Tasks"
             case .runs: "Run"
             case .browser: "Browser"

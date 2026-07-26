@@ -14,8 +14,8 @@ struct AccountsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Hesaplar",
-            subtitle: "Each account uses its own config folder, so work and personal sessions on the same provider stay apart."
+            title: String(localized: "Accounts"),
+            subtitle: String(localized: "Each account uses its own config folder, so work and personal sessions on the same provider stay apart.")
         ) {
             ForEach(providers) { provider in
                 Section {
@@ -25,8 +25,8 @@ struct AccountsSettingsPage: View {
 
                     if addingFor == provider {
                         SettingsTextField(
-                            title: "New account",
-                            detail: "A separate profile is created, with its own config folder.",
+                            title: String(localized: "New account"),
+                            detail: String(localized: "A separate profile is created, with its own config folder."),
                             prompt: "e.g. Work, Personal",
                             text: $newAccountName,
                             onSubmit: { commit(provider) }
@@ -139,8 +139,8 @@ struct CLIToolsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "CLI Tools",
-            subtitle: "Check the installed versions and update with one click."
+            title: String(localized: "CLI Tools"),
+            subtitle: String(localized: "Check the installed versions and update with one click.")
         ) {
             Section {
                 ForEach(providers) { provider in
@@ -257,8 +257,8 @@ struct LaunchArgumentsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Run Parameters",
-            subtitle: "Appended to the launch command; applies from the next session on."
+            title: String(localized: "Run Parameters"),
+            subtitle: String(localized: "Appended to the launch command; applies from the next session on.")
         ) {
             Section {
                 ForEach(providers) { provider in
@@ -288,7 +288,7 @@ struct AgentBehaviorSettingsPage: View {
     private let providers: [AgentProvider] = [.claude, .codex]
 
     var body: some View {
-        SettingsPage(title: "Mode and Keyboard") {
+        SettingsPage(title: String(localized: "Mode and Keyboard")) {
             Section {
                 ForEach(providers) { provider in
                     Picker(selection: Binding(
@@ -309,7 +309,7 @@ struct AgentBehaviorSettingsPage: View {
             } header: {
                 Text("Default agent mode")
             } footer: {
-                SettingsNote("New sessions start in the selected mode; open sessions are unaffected.")
+                SettingsNote(String(localized: "New sessions start in the selected mode; open sessions are unaffected."))
             }
 
             Section {
@@ -320,7 +320,7 @@ struct AgentBehaviorSettingsPage: View {
                     )) {
                         SettingsLabel(
                             title: provider.displayName,
-                            detail: "Shift+Enter for a newline"
+                            detail: String(localized: "Shift+Enter for a newline")
                         )
                     }
                     .settingsID("agentBehavior.shiftEnter.\(provider.rawValue)")
@@ -329,7 +329,7 @@ struct AgentBehaviorSettingsPage: View {
                 Text("Keyboard behaviour")
             } footer: {
                 SettingsNote(
-                    "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent "
+                    String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent ")
                     + "sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately."
                 )
             }
@@ -352,15 +352,15 @@ struct SessionPresetsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Session Presetleri",
-            subtitle: "Set the provider, opening prompt and permission bounds for child agents."
+            title: String(localized: "Session Presets"),
+            subtitle: String(localized: "Set the provider, opening prompt and permission bounds for child agents.")
         ) {
             Section {
                 ForEach(settings.presets) { preset in
                     AdaptiveRow {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(preset.name)
-                            Text("\(preset.id) · \(preset.provider.displayName) · \(preset.grantedCapabilities.count) yetki")
+                            Text("\(preset.id) · \(preset.provider.displayName) · \(preset.grantedCapabilities.count) grants")
                                 .font(.caption)
                                 .foregroundStyle(Theme.textDim)
                         }
@@ -444,8 +444,8 @@ private struct SessionPresetEditorSheet: View {
             Form {
                 Section {
                     SettingsTextField(
-                        title: "Kimlik",
-                        detail: "Cannot be changed; child agents ask for the preset by this name.",
+                        title: String(localized: "Identity"),
+                        detail: String(localized: "Cannot be changed; child agents ask for the preset by this name."),
                         prompt: "e.g. reviewer",
                         text: $id,
                         monospaced: true
@@ -453,7 +453,7 @@ private struct SessionPresetEditorSheet: View {
                     .disabled(preset != nil)
                     .settingsID("presets.editor.id")
 
-                    SettingsTextField(title: "Name", prompt: "e.g. Code Reviewer", text: $name)
+                    SettingsTextField(title: String(localized: "Name"), prompt: "e.g. Code Reviewer", text: $name)
                         .settingsID("presets.editor.name")
 
                     Picker("Provider", selection: $provider) {
@@ -463,7 +463,7 @@ private struct SessionPresetEditorSheet: View {
                     }
 
                     SettingsTextField(
-                        title: "Permission modu",
+                        title: String(localized: "Permission mode"),
                         prompt: "standard",
                         text: $permissionMode,
                         monospaced: true
@@ -472,8 +472,8 @@ private struct SessionPresetEditorSheet: View {
 
                 Section("Startup") {
                     SettingsTextField(
-                        title: "CLI arguments",
-                        detail: "One argument per line.",
+                        title: String(localized: "CLI arguments"),
+                        detail: String(localized: "One argument per line."),
                         prompt: "--model opus",
                         text: $argumentsText,
                         monospaced: true,
@@ -481,8 +481,8 @@ private struct SessionPresetEditorSheet: View {
                     )
 
                     SettingsTextField(
-                        title: "Opening prompt",
-                        detail: "Sent to the agent the moment the session opens.",
+                        title: String(localized: "Opening prompt"),
+                        detail: String(localized: "Sent to the agent the moment the session opens."),
                         text: $prompt,
                         lineLimit: 3...6
                     )

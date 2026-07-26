@@ -20,25 +20,25 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .permission: "Waiting for permission"
-        case .input: "Girdi bekliyor"
-        case .turnCompleted: "Turn done"
-        case .problem: "Errors and problems"
-        case .taskCompleted: "Task done"
-        case .mergeReady: "Ready to merge"
-        case .loginRequired: "Login needed"
+        case .permission: String(localized: "Waiting for permission")
+        case .input: String(localized: "Waiting for input")
+        case .turnCompleted: String(localized: "Turn done")
+        case .problem: String(localized: "Errors and problems")
+        case .taskCompleted: String(localized: "Task done")
+        case .mergeReady: String(localized: "Ready to merge")
+        case .loginRequired: String(localized: "Login needed")
         }
     }
 
     var detail: String {
         switch self {
-        case .permission: "The agent is asking to use a tool."
-        case .input: "The agent asked a question and is waiting for your answer."
-        case .turnCompleted: "The agent finished its turn; over to you."
-        case .problem: "A runtime error, a failing test or a dropped connection."
-        case .taskCompleted: "A task finished."
-        case .mergeReady: "A task branch is ready to merge."
-        case .loginRequired: "The provider session dropped; you need to sign in again."
+        case .permission: String(localized: "The agent is asking to use a tool.")
+        case .input: String(localized: "The agent asked a question and is waiting for your answer.")
+        case .turnCompleted: String(localized: "The agent finished its turn; over to you.")
+        case .problem: String(localized: "A runtime error, a failing test or a dropped connection.")
+        case .taskCompleted: String(localized: "A task finished.")
+        case .mergeReady: String(localized: "A task branch is ready to merge.")
+        case .loginRequired: String(localized: "The provider session dropped; you need to sign in again.")
         }
     }
 
@@ -128,17 +128,17 @@ struct NotificationPrefs: Codable, Equatable, Sendable {
 
         var label: String {
             switch self {
-            case .low: "Low"
-            case .normal: "Normal"
-            case .high: "High"
+            case .low: String(localized: "Low")
+            case .normal: String(localized: "Normal")
+            case .high: String(localized: "High")
             }
         }
 
         var detail: String {
             switch self {
-            case .low: "Lands silently in Notification Center."
-            case .normal: "Appears as an ordinary banner."
-            case .high: "Breaks through Focus, shown as time-sensitive."
+            case .low: String(localized: "Lands silently in Notification Center.")
+            case .normal: String(localized: "Appears as an ordinary banner.")
+            case .high: String(localized: "Breaks through Focus, shown as time-sensitive.")
             }
         }
 

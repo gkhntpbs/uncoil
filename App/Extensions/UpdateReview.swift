@@ -36,9 +36,9 @@ struct UpdateReview: Equatable {
 
         var label: String {
             switch self {
-            case .unlikely: "Low"
-            case .possible: "Olabilir"
-            case .likely: "High"
+            case .unlikely: String(localized: "Low")
+            case .possible: String(localized: "Possible")
+            case .likely: String(localized: "High")
             }
         }
     }
@@ -52,14 +52,14 @@ struct UpdateReview: Equatable {
 
     var summary: String {
         var parts: [String] = []
-        if commitCount > 0 { parts.append("\(commitCount) commit") }
-        if !changedFiles.isEmpty { parts.append("\(changedFiles.count) files") }
+        if commitCount > 0 { parts.append(String(localized: "\(commitCount) commit")) }
+        if !changedFiles.isEmpty { parts.append(String(localized: "\(changedFiles.count) files")) }
         if !addedPermissions.isEmpty {
-            parts.append("+\(addedPermissions.count) permission")
+            parts.append(String(localized: "+\(addedPermissions.count) permission"))
         }
-        if !removedTools.isEmpty { parts.append("-\(removedTools.count) tool") }
-        if !securityDiff.isEmpty { parts.append("\(securityDiff.count) security findings") }
-        return parts.isEmpty ? "No changes" : parts.joined(separator: " · ")
+        if !removedTools.isEmpty { parts.append(String(localized: "-\(removedTools.count) tool")) }
+        if !securityDiff.isEmpty { parts.append(String(localized: "\(securityDiff.count) security findings")) }
+        return parts.isEmpty ? String(localized: "No changes") : parts.joined(separator: String(localized: " · "))
     }
 
     /// Builds the review from the two revisions on disk plus what the update

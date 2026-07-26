@@ -6,7 +6,7 @@ struct AppearanceSettingsPage: View {
     @EnvironmentObject private var theme: ThemeStore
 
     var body: some View {
-        SettingsPage(title: "Theme and Colours") {
+        SettingsPage(title: String(localized: "Theme and Colours")) {
             Section("Built-in themes") {
                 Picker(selection: Binding(
                     get: { theme.palette.isLight },
@@ -15,7 +15,7 @@ struct AppearanceSettingsPage: View {
                     Text("Dark").tag(false)
                     Text("On").tag(true)
                 } label: {
-                    SettingsLabel(title: "Appearance")
+                    SettingsLabel(title: String(localized: "Appearance"))
                 }
                 .pickerStyle(.segmented)
                 .settingsID("theme.preset")
@@ -40,7 +40,7 @@ struct AppearanceSettingsPage: View {
             } header: {
                 Text("Terminal")
             } footer: {
-                SettingsNote("Terminal colours apply to newly opened sessions.")
+                SettingsNote(String(localized: "Terminal colours apply to newly opened sessions."))
             }
         }
     }

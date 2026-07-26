@@ -22,7 +22,7 @@ struct NotificationPermissionRow: View {
     var body: some View {
         AdaptiveRow {
             SettingsLabel(
-                title: "macOS notification permission",
+                title: String(localized: "macOS notification permission"),
                 detail: explanation,
                 symbol: "bell.badge"
             )

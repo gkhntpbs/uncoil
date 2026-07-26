@@ -12,9 +12,9 @@ struct TaskMergeRecord: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .merged: "Merge edildi"
-            case .refused: "Reddedildi"
-            case .failed: "Failed"
+            case .merged: String(localized: "Merged")
+            case .refused: String(localized: "Denied")
+            case .failed: String(localized: "Failed")
             }
         }
 

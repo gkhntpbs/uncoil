@@ -15,7 +15,7 @@ struct AgentLaunchSelection: Equatable, Codable {
     /// One line for messages: "opus · high · Plan", or nil when default.
     var summary: String? {
         let parts = [model, effort, workingMode.map(\.rawValue)].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: String(localized: " · "))
     }
 }
 

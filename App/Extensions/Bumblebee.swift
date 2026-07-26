@@ -14,9 +14,9 @@ enum BumblebeeBinarySource: String, Equatable, Codable, CaseIterable {
 
     var label: String {
         switch self {
-        case .pinned: "Shipped with Uncoil"
-        case .managed: "Installed by Uncoil"
-        case .path: "Found on PATH"
+        case .pinned: String(localized: "Shipped with Uncoil")
+        case .managed: String(localized: "Installed by Uncoil")
+        case .path: String(localized: "Found on PATH")
         }
     }
 
@@ -39,9 +39,9 @@ struct BumblebeeVersion: Equatable, Codable {
     var catalogVersion: String?
 
     var label: String {
-        [version, buildRevision.map { "build \($0)" }]
+        [version, buildRevision.map { String(localized: "build \($0)") }]
             .compactMap { $0 }
-            .joined(separator: " · ")
+            .joined(separator: String(localized: " · "))
     }
 
     /// Reads either the JSON form or the one-line text form.
@@ -131,14 +131,14 @@ enum BumblebeeScanKind: String, Equatable, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .beforeInstall: "Before install"
-        case .beforeUpdate: "Before update"
-        case .afterUpdate: "After update"
-        case .launchIfStale: "At launch (previous scan)"
-        case .dailyBaseline: "Daily baseline"
-        case .manual: "Manuel"
-        case .project: "Project scan"
-        case .deep: "Deep scan"
+        case .beforeInstall: String(localized: "Before install")
+        case .beforeUpdate: String(localized: "Before update")
+        case .afterUpdate: String(localized: "After update")
+        case .launchIfStale: String(localized: "At launch (previous scan)")
+        case .dailyBaseline: String(localized: "Daily baseline")
+        case .manual: String(localized: "Manual")
+        case .project: String(localized: "Project scan")
+        case .deep: String(localized: "Deep scan")
         }
     }
 
@@ -459,14 +459,14 @@ enum BumblebeeFindingKind: String, Equatable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .knownPackageExposure: "Known package exposure"
-        case .knownMaliciousVersion: "Known malicious version"
-        case .suspiciousEditorExtension: "Suspicious editor extension"
-        case .mcpInventory: "MCP envanteri"
-        case .agentSkillInventory: "Agent skill envanteri"
-        case .parserDiagnostic: "Parser warning"
-        case .unsupportedConfiguration: "Unsupported configuration"
-        case .other: "Unclassified finding"
+        case .knownPackageExposure: String(localized: "Known package exposure")
+        case .knownMaliciousVersion: String(localized: "Known malicious version")
+        case .suspiciousEditorExtension: String(localized: "Suspicious editor extension")
+        case .mcpInventory: String(localized: "MCP inventory")
+        case .agentSkillInventory: String(localized: "Agent skill inventory")
+        case .parserDiagnostic: String(localized: "Parser warning")
+        case .unsupportedConfiguration: String(localized: "Unsupported configuration")
+        case .other: String(localized: "Unclassified finding")
         }
     }
 

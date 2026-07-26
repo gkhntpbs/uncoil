@@ -157,18 +157,18 @@ enum ProjectTaskExecutionState: String, Equatable, Codable, CaseIterable {
 
     var label: String {
         switch self {
-        case .unassigned: "Not assigned"
-        case .queued: "Kuyrukta"
-        case .assigned: "Assigned"
-        case .agentStarting: "Agent starting"
-        case .running: "Running"
-        case .waitingForPermission: "Waiting for permission"
-        case .waitingForUser: "Waiting for you"
-        case .testsFailing: "Tests failing"
-        case .reviewRequested: "Review istendi"
-        case .blocked: "Blocked"
-        case .failed: "Failed"
-        case .completed: "Done"
+        case .unassigned: String(localized: "Not assigned")
+        case .queued: String(localized: "Queued")
+        case .assigned: String(localized: "Assigned")
+        case .agentStarting: String(localized: "Agent starting")
+        case .running: String(localized: "Running")
+        case .waitingForPermission: String(localized: "Waiting for permission")
+        case .waitingForUser: String(localized: "Waiting for you")
+        case .testsFailing: String(localized: "Tests failing")
+        case .reviewRequested: String(localized: "Review requested")
+        case .blocked: String(localized: "Blocked")
+        case .failed: String(localized: "Failed")
+        case .completed: String(localized: "Done")
         }
     }
 
@@ -211,12 +211,12 @@ enum TaskAgentRole: String, Equatable, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .owner: "Sahip"
-        case .implementer: "Uygulayan"
-        case .reviewer: "Review"
-        case .tester: "Test"
-        case .observer: "Observer"
-        case .orchestrator: "Orchestrator"
+        case .owner: String(localized: "Owner")
+        case .implementer: String(localized: "Implementer")
+        case .reviewer: String(localized: "Review")
+        case .tester: String(localized: "Test")
+        case .observer: String(localized: "Observer")
+        case .orchestrator: String(localized: "Orchestrator")
         }
     }
 

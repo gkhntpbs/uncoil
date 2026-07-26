@@ -13,12 +13,12 @@ enum TaskFileGitStatus: Equatable {
 
     var label: String {
         switch self {
-        case .clean: "Clean"
-        case .modified: "Modified"
-        case .untracked: "Untracked"
-        case .conflict: "Conflict"
-        case .ignored: "Ignored"
-        case .notTracked: "Not a git repo"
+        case .clean: String(localized: "Clean")
+        case .modified: String(localized: "Modified")
+        case .untracked: String(localized: "Untracked")
+        case .conflict: String(localized: "Conflict")
+        case .ignored: String(localized: "Ignored")
+        case .notTracked: String(localized: "Not a git repo")
         }
     }
 
@@ -228,11 +228,11 @@ enum TaskDiffAudit {
 
         var label: String {
             switch self {
-            case .checkbox: "checkbox"
-            case .title: "heading"
-            case .description: "description"
-            case .move: "move"
-            case .delete: "silme"
+            case .checkbox: String(localized: "checkbox")
+            case .title: String(localized: "heading")
+            case .description: String(localized: "description")
+            case .move: String(localized: "move")
+            case .delete: String(localized: "deletion")
             }
         }
     }

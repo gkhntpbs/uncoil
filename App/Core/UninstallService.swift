@@ -29,7 +29,7 @@ struct UninstallPlan: Equatable {
     var kept: [Item] { items.filter { !$0.disposition.isRemoved } }
 
     var summary: String {
-        "\(removals.count) items will be deleted, \(kept.count) kept"
+        String(localized: "\(removals.count) items will be deleted, \(kept.count) kept")
     }
 }
 
@@ -155,8 +155,8 @@ struct CrashReportingPolicy: Equatable, Codable {
 
     var summary: String {
         isEnabled
-            ? "On — crash details are written only to the local debug bundle."
-            : "Off — no crash information is collected."
+            ? String(localized: "On — crash details are written only to the local debug bundle.")
+            : String(localized: "Off — no crash information is collected.")
     }
 
     /// The one thing Uncoil promises about data leaving the machine.

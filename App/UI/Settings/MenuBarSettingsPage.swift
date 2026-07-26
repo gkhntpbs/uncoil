@@ -32,12 +32,12 @@ struct MenuBarSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "Menu Bar") {
+        SettingsPage(title: String(localized: "Menu Bar")) {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Menu-bar monitor",
-                        detail: "Keeps watching the agents while Uncoil's window is closed."
+                        title: String(localized: "Menu-bar monitor"),
+                        detail: String(localized: "Keeps watching the agents while Uncoil's window is closed.")
                     )
                 }
                 .settingsID("menuBar.enabled")
@@ -64,7 +64,7 @@ struct MenuBarSettingsPage: View {
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Icon style",
+                        title: String(localized: "Icon style"),
                         detail: prefs.iconStyle.detail
                     )
                 }
@@ -73,8 +73,8 @@ struct MenuBarSettingsPage: View {
                 if prefs.iconStyle == .logo {
                     Toggle(isOn: bind(\.monochrome)) {
                         SettingsLabel(
-                            title: "Single colour",
-                            detail: "Turns off the status colour; the icon takes the menu bar's own."
+                            title: String(localized: "Single colour"),
+                            detail: String(localized: "Turns off the status colour; the icon takes the menu bar's own.")
                         )
                     }
                     .settingsID("menuBar.monochrome")
@@ -82,8 +82,8 @@ struct MenuBarSettingsPage: View {
 
                 Toggle(isOn: bind(\.hideWhenIdle)) {
                     SettingsLabel(
-                        title: "Hide while idle",
-                        detail: "The icon leaves the menu bar when nothing is running or waiting."
+                        title: String(localized: "Hide while idle"),
+                        detail: String(localized: "The icon leaves the menu bar when nothing is running or waiting.")
                     )
                 }
                 .settingsID("menuBar.hideWhenIdle")
@@ -121,13 +121,13 @@ struct MenuBarSettingsPage: View {
 
             Section("Menu contents") {
                 Toggle(isOn: bind(\.showTasksSection)) {
-                    SettingsLabel(title: "Task shortcuts", detail: "Board, task session, orchestrator.")
+                    SettingsLabel(title: String(localized: "Task shortcuts"), detail: String(localized: "Board, task session, orchestrator."))
                 }
                 Toggle(isOn: bind(\.showSessionsSection)) {
-                    SettingsLabel(title: "Dikkat isteyen oturumlar")
+                    SettingsLabel(title: String(localized: "Sessions needing attention"))
                 }
                 Toggle(isOn: bind(\.showQuickLaunch)) {
-                    SettingsLabel(title: "New-session menu")
+                    SettingsLabel(title: String(localized: "New-session menu"))
                 }
             }
             .disabled(!prefs.enabled)

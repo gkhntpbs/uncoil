@@ -18,12 +18,12 @@ enum ExtensionSecurityScanner {
 
         var label: String {
             switch self {
-            case .shell: "Shell script"
-            case .python: "Python script"
-            case .node: "Node script"
-            case .markdown: "Instruction file"
-            case .binary: "Binary"
-            case .other: "Other"
+            case .shell: String(localized: "Shell script")
+            case .python: String(localized: "Python script")
+            case .node: String(localized: "Node script")
+            case .markdown: String(localized: "Instruction file")
+            case .binary: String(localized: "Binary")
+            case .other: String(localized: "Other")
             }
         }
     }
@@ -77,12 +77,12 @@ enum ExtensionSecurityScanner {
 
         var label: String {
             switch self {
-            case .verified: "Verified"
-            case .lowRisk: "Low Risk"
-            case .needsReview: "Needs Review"
-            case .highRisk: "High Risk"
-            case .blocked: "Blocked"
-            case .modifiedLocally: "Modified Locally"
+            case .verified: String(localized: "Verified")
+            case .lowRisk: String(localized: "Low Risk")
+            case .needsReview: String(localized: "Needs Review")
+            case .highRisk: String(localized: "High Risk")
+            case .blocked: String(localized: "Blocked")
+            case .modifiedLocally: String(localized: "Modified Locally")
             }
         }
 

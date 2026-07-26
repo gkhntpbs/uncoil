@@ -38,10 +38,10 @@ enum SkillTriggerTester {
 
         var label: String {
             switch self {
-            case .noMatch: "No match"
-            case .single: "One match"
-            case .conflict(let count): "\(count) skills clash"
-            case .tooBroad(let count): "\(count) skills matched"
+            case .noMatch: String(localized: "No match")
+            case .single: String(localized: "One match")
+            case .conflict(let count): String(localized: "\(count) skills clash")
+            case .tooBroad(let count): String(localized: "\(count) skills matched")
             }
         }
 

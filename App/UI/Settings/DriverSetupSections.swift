@@ -31,8 +31,8 @@ struct AgentBrowserSetupSection: View {
             }
         } label: {
             SettingsLabel(
-                title: "Browser",
-                detail: "Only Chromium-based browsers installed on this Mac are listed.",
+                title: String(localized: "Browser"),
+                detail: String(localized: "Only Chromium-based browsers installed on this Mac are listed."),
                 symbol: "globe"
             )
         }

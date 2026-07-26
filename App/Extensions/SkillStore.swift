@@ -102,11 +102,11 @@ enum SkillLinkStatus: Equatable {
 
     var label: String {
         switch self {
-        case .linked: "Connected"
-        case .missing: "No connection"
-        case .broken: "Broken link"
-        case .wrongTarget: "Linked to the wrong target"
-        case .foreign: "Your own skill"
+        case .linked: String(localized: "Connected")
+        case .missing: String(localized: "No connection")
+        case .broken: String(localized: "Broken link")
+        case .wrongTarget: String(localized: "Linked to the wrong target")
+        case .foreign: String(localized: "Your own skill")
         }
     }
 }

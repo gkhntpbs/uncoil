@@ -17,11 +17,11 @@ struct MCPProcessHealth: Identifiable, Equatable {
 
         var label: String {
             switch self {
-            case .running: "Running"
-            case .stopped: "Durdu"
-            case .crashed: "Crashed"
-            case .crashLoop: "Crashing repeatedly"
-            case .neverStarted: "Never started"
+            case .running: String(localized: "Running")
+            case .stopped: String(localized: "Stopped")
+            case .crashed: String(localized: "Crashed")
+            case .crashLoop: String(localized: "Crashing repeatedly")
+            case .neverStarted: String(localized: "Never started")
             }
         }
     }

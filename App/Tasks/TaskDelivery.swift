@@ -22,9 +22,9 @@ struct TaskWorktreePolicy: Equatable, Codable {
 
         var label: String {
             switch self {
-            case .manual: "Elle"
-            case .afterCompletedAndClean: "Finished and clean"
-            case .anyClean: "Temiz olan hepsi"
+            case .manual: String(localized: "By hand")
+            case .afterCompletedAndClean: String(localized: "Finished and clean")
+            case .anyClean: String(localized: "All clean")
             }
         }
     }
@@ -110,9 +110,9 @@ struct TaskReviewResult: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .approved: "Approved"
-            case .changesRequested: "Changes requested"
-            case .commented: "Comment left"
+            case .approved: String(localized: "Approved")
+            case .changesRequested: String(localized: "Changes requested")
+            case .commented: String(localized: "Comment left")
             }
         }
     }

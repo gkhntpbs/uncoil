@@ -122,11 +122,11 @@ enum TaskRelinker {
 
         var label: String {
             switch self {
-            case .exact: "Same task"
-            case .positional: "Matched by position"
-            case .similar(_, let score): "Matched by similarity (\(Int(score * 100))%)"
-            case .ambiguous(let candidates): "Belirsiz: \(candidates.count) aday"
-            case .missing: "Not found"
+            case .exact: String(localized: "Same task")
+            case .positional: String(localized: "Matched by position")
+            case .similar(_, let score): String(localized: "Matched by similarity (\(Int(score * 100))%)")
+            case .ambiguous(let candidates): String(localized: "Ambiguous: \(candidates.count) candidates")
+            case .missing: String(localized: "Not found")
             }
         }
     }

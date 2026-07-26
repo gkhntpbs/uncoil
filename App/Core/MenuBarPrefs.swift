@@ -16,17 +16,17 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .logo: "Uncoil logosu"
-            case .symbol: "System symbol"
-            case .countOnly: "Counters only"
+            case .logo: String(localized: "Uncoil mark")
+            case .symbol: String(localized: "System symbol")
+            case .countOnly: String(localized: "Counters only")
             }
         }
 
         var detail: String {
             switch self {
-            case .logo: "The Uncoil mark, coloured by state."
-            case .symbol: "A single-colour SF Symbol, which sits better in the menu bar."
-            case .countOnly: "No icon; only the counters you picked are shown."
+            case .logo: String(localized: "The Uncoil mark, coloured by state.")
+            case .symbol: String(localized: "A single-colour SF Symbol, which sits better in the menu bar.")
+            case .countOnly: String(localized: "No icon; only the counters you picked are shown.")
             }
         }
     }
@@ -40,8 +40,8 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .openMenu: "Open the menu"
-            case .openMainWindow: "Open the Uncoil window"
+            case .openMenu: String(localized: "Open the menu")
+            case .openMainWindow: String(localized: "Open the Uncoil window")
             }
         }
     }
@@ -57,10 +57,10 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .running: "Running sessions"
-            case .waiting: "Bekleyenler"
-            case .problems: "Sorunlar"
-            case .tasks: "Active tasks"
+            case .running: String(localized: "Running sessions")
+            case .waiting: String(localized: "Pending")
+            case .problems: String(localized: "Problems")
+            case .tasks: String(localized: "Active tasks")
             }
         }
 

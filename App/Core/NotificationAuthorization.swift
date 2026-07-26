@@ -26,11 +26,11 @@ final class NotificationAuthorization: ObservableObject {
 
         var label: String {
             switch self {
-            case .unknown: "Bilinmiyor"
-            case .notRequested: "Not asked yet"
-            case .granted: "Allowed"
-            case .provisional: "Sessiz teslim"
-            case .denied: "Reddedildi"
+            case .unknown: String(localized: "Unknown")
+            case .notRequested: String(localized: "Not asked yet")
+            case .granted: String(localized: "Allowed")
+            case .provisional: String(localized: "Silent delivery")
+            case .denied: String(localized: "Denied")
             }
         }
 

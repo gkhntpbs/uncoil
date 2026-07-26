@@ -24,21 +24,21 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .permission: "Waiting for permission"
-        case .input: "Waiting for a reply"
-        case .testFailure: "Test failed"
-        case .mergeConflict: "Merge conflict"
-        case .authentication: "Login required"
-        case .runtime: "Runtime sorunu"
-        case .completed: "Done"
-        case .taskAssigned: "An agent was assigned to the task"
-        case .reviewRequested: "Review istendi"
-        case .changesRequested: "Changes requested"
-        case .taskBlocked: "Task blocked"
-        case .taskFailed: "Task failed"
-        case .taskCompleted: "Task done"
-        case .mergeReady: "Ready to merge"
-        case .relinkNeeded: "Task link lost"
+        case .permission: String(localized: "Waiting for permission")
+        case .input: String(localized: "Waiting for a reply")
+        case .testFailure: String(localized: "Test failed")
+        case .mergeConflict: String(localized: "Merge conflict")
+        case .authentication: String(localized: "Login required")
+        case .runtime: String(localized: "Runtime problem")
+        case .completed: String(localized: "Done")
+        case .taskAssigned: String(localized: "An agent was assigned to the task")
+        case .reviewRequested: String(localized: "Review requested")
+        case .changesRequested: String(localized: "Changes requested")
+        case .taskBlocked: String(localized: "Task blocked")
+        case .taskFailed: String(localized: "Task failed")
+        case .taskCompleted: String(localized: "Task done")
+        case .mergeReady: String(localized: "Ready to merge")
+        case .relinkNeeded: String(localized: "Task link lost")
         }
     }
 

@@ -26,16 +26,16 @@ enum NotificationSuppression: String, Equatable, Sendable {
 
     var label: String {
         switch self {
-        case .masterOff: "Notifications off"
-        case .eventOff: "Notifications off for this event"
-        case .projectOff: "Notifications off for the project"
-        case .quietHours: "Sessiz saatler"
-        case .appActive: "Uncoil in the foreground"
-        case .visibleSession: "The session is already on screen"
-        case .alreadySent: "Already announced for this state"
-        case .reminderOff: "Reminders off"
-        case .reminderNotDue: "Not time to remind yet"
-        case .reminderLimit: "Reminder limit reached"
+        case .masterOff: String(localized: "Notifications off")
+        case .eventOff: String(localized: "Notifications off for this event")
+        case .projectOff: String(localized: "Notifications off for the project")
+        case .quietHours: String(localized: "Quiet hours")
+        case .appActive: String(localized: "Uncoil in the foreground")
+        case .visibleSession: String(localized: "The session is already on screen")
+        case .alreadySent: String(localized: "Already announced for this state")
+        case .reminderOff: String(localized: "Reminders off")
+        case .reminderNotDue: String(localized: "Not time to remind yet")
+        case .reminderLimit: String(localized: "Reminder limit reached")
         }
     }
 }

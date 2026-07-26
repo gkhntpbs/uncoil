@@ -20,17 +20,17 @@ enum BackupContent: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .settings: "Uncoil settings"
-        case .projects: "Project list"
-        case .sessions: "Session metadata"
-        case .sessionGroups: "Session groups"
-        case .presets: "Preset'ler"
-        case .agentAssignments: "Agent assignments"
-        case .extensionRegistry: "Extension registry"
-        case .extensionSources: "Skill/MCP source records"
-        case .permissionDecisions: "Permission decisions"
-        case .extensionLocks: "Extension lock files"
-        case .transcripts: "Transcript'ler"
+        case .settings: String(localized: "Uncoil settings")
+        case .projects: String(localized: "Project list")
+        case .sessions: String(localized: "Session metadata")
+        case .sessionGroups: String(localized: "Session groups")
+        case .presets: String(localized: "Presets")
+        case .agentAssignments: String(localized: "Agent assignments")
+        case .extensionRegistry: String(localized: "Extension registry")
+        case .extensionSources: String(localized: "Skill/MCP source records")
+        case .permissionDecisions: String(localized: "Permission decisions")
+        case .extensionLocks: String(localized: "Extension lock files")
+        case .transcripts: String(localized: "Transcripts")
         }
     }
 

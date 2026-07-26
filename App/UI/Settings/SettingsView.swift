@@ -97,15 +97,15 @@ struct SettingsView: View {
         var title: String {
             switch self {
             case .general: "General"
-            case .accounts: "Hesaplar"
+            case .accounts: "Accounts"
             case .cliTools: "CLI Tools"
             case .launchArgs: "Run Parameters"
             case .agentBehavior: "Mode and Keyboard"
-            case .presets: "Session Presetleri"
+            case .presets: "Session Presets"
             case .notifications: "General"
-            case .notificationEvents: "Olaylar"
+            case .notificationEvents: "Events"
             case .reminders: "Reminders"
-            case .quietHours: "Sessiz Saatler"
+            case .quietHours: "Quiet Hours"
             case .projectNotifications: "Per Project"
             case .menuBar: "Menu Bar"
             case .theme: "Theme and Colours"
@@ -292,8 +292,8 @@ struct SettingsView: View {
             } else {
                 SettingsUnavailablePage(
                     symbol: "lock.slash",
-                    title: "Control plane not running",
-                    detail: "No permission request arrives while the MCP control plane is off."
+                    title: String(localized: "Control plane not running"),
+                    detail: String(localized: "No permission request arrives while the MCP control plane is off.")
                 )
             }
         case .privacyData: PrivacyDataSettingsPage()

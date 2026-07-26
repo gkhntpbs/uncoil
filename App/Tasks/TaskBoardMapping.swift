@@ -22,13 +22,13 @@ enum TaskBoardMapping {
 
         var title: String {
             switch self {
-            case .backlog: "Backlog"
-            case .todo: "To do"
-            case .inProgress: "In Progress"
-            case .blocked: "Blocked"
-            case .review: "Review"
-            case .done: "Done"
-            case .custom: "Other"
+            case .backlog: String(localized: "Backlog")
+            case .todo: String(localized: "To do")
+            case .inProgress: String(localized: "In Progress")
+            case .blocked: String(localized: "Blocked")
+            case .review: String(localized: "Review")
+            case .done: String(localized: "Done")
+            case .custom: String(localized: "Other")
             }
         }
 
@@ -216,10 +216,10 @@ struct ProjectTaskViewPreferences: Equatable, Codable {
 
         var title: String {
             switch self {
-            case .document: "Document"
-            case .list: "List"
-            case .kanban: "Kanban"
-            case .sessions: "Sessions"
+            case .document: String(localized: "Document")
+            case .list: String(localized: "List")
+            case .kanban: String(localized: "Kanban")
+            case .sessions: String(localized: "Sessions")
             }
         }
 
@@ -265,14 +265,14 @@ struct TaskFilter: Equatable, Codable {
 
         var title: String {
             switch self {
-            case .all: "All"
-            case .open: "On"
-            case .done: "Completed"
-            case .assigned: "Assigned"
-            case .unassigned: "Unassigned"
-            case .running: "Agent running"
-            case .awaitingReview: "Review bekliyor"
-            case .blocked: "Blocked"
+            case .all: String(localized: "All")
+            case .open: String(localized: "On")
+            case .done: String(localized: "Completed")
+            case .assigned: String(localized: "Assigned")
+            case .unassigned: String(localized: "Unassigned")
+            case .running: String(localized: "Agent running")
+            case .awaitingReview: String(localized: "Awaiting review")
+            case .blocked: String(localized: "Blocked")
             }
         }
     }

@@ -7,7 +7,7 @@ struct GeneralSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        SettingsPage(title: "General") {
+        SettingsPage(title: String(localized: "General")) {
             Section("Defaults") {
                 Picker(selection: Binding(
                     get: { settings.defaultProvider },
@@ -18,8 +18,8 @@ struct GeneralSettingsPage: View {
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Default agent",
-                        detail: "New sessions open with this provider."
+                        title: String(localized: "Default agent"),
+                        detail: String(localized: "New sessions open with this provider.")
                     )
                 }
                 .settingsID("general.defaultProvider")
@@ -36,8 +36,8 @@ struct GeneralSettingsPage: View {
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Editor",
-                        detail: "“Open in editor” launches this app."
+                        title: String(localized: "Editor"),
+                        detail: String(localized: "“Open in editor” launches this app.")
                     )
                 }
                 .settingsID("general.editor")
@@ -97,7 +97,7 @@ struct GeneralSettingsPage: View {
                         Text(behavior.title).tag(behavior)
                     }
                 } label: {
-                    SettingsLabel(title: "Sessions on quit")
+                    SettingsLabel(title: String(localized: "Sessions on quit"))
                 }
                 .pickerStyle(.inline)
                 .settingsID("agentBehavior.quit")
@@ -108,8 +108,8 @@ struct GeneralSettingsPage: View {
             Section("Command palette") {
                 AdaptiveRow {
                     SettingsLabel(
-                        title: "Shortcut",
-                        detail: "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately.",
+                        title: String(localized: "Shortcut"),
+                        detail: String(localized: "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately."),
                         symbol: "command"
                     )
                 } control: {

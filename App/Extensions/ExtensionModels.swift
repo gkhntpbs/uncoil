@@ -143,9 +143,9 @@ enum ExtensionSource: Equatable, Codable {
 
         var label: String {
             switch self {
-            case .pinnedCommit(let sha): "commit \(String(sha.prefix(7)))"
-            case .tag(let tag): "tag \(tag)"
-            case .branch(let branch): "branch \(branch)"
+            case .pinnedCommit(let sha): String(localized: "commit \(String(sha.prefix(7)))")
+            case .tag(let tag): String(localized: "tag \(tag)")
+            case .branch(let branch): String(localized: "branch \(branch)")
             }
         }
     }
@@ -170,17 +170,17 @@ enum ExtensionSource: Equatable, Codable {
     var label: String {
         switch self {
         case .managedGitHub(let repository, _, let tracking):
-            "\(repository) · \(tracking.label)"
+            String(localized: "\(repository) · \(tracking.label)")
         case .bundled:
-            "Shipped with Uncoil"
+            String(localized: "Shipped with Uncoil")
         case .local:
-            "Unmanaged (yerel)"
+            String(localized: "Unmanaged (local)")
         case .adopted:
-            "Sahiplenildi · Uncoil deposunda"
+            String(localized: "Adopted · in Uncoil's store")
         case .detectedExternal:
-            "Unmanaged (installed outside)"
+            String(localized: "Unmanaged (installed outside)")
         case .remoteMCP(let url, _):
-            "Remote MCP · \(url)"
+            String(localized: "Remote MCP · \(url)")
         }
     }
 }
@@ -191,8 +191,8 @@ enum MCPTransport: String, Codable, Equatable, CaseIterable {
 
     var label: String {
         switch self {
-        case .stdio: "STDIO"
-        case .http: "HTTP"
+        case .stdio: String(localized: "STDIO")
+        case .http: String(localized: "HTTP")
         }
     }
 }
@@ -205,8 +205,8 @@ enum ExtensionKind: String, Codable, Equatable, CaseIterable {
 
     var label: String {
         switch self {
-        case .skill: "Skill"
-        case .mcpServer: "MCP Server"
+        case .skill: String(localized: "Skill")
+        case .mcpServer: String(localized: "MCP Server")
         }
     }
 }
@@ -219,10 +219,10 @@ enum ExtensionState: String, Codable, Equatable {
 
     var label: String {
         switch self {
-        case .active: "Etkin"
-        case .disabled: "Off"
-        case .quarantined: "Karantinada"
-        case .broken: "Bozuk"
+        case .active: String(localized: "Active")
+        case .disabled: String(localized: "Off")
+        case .quarantined: String(localized: "Quarantined")
+        case .broken: String(localized: "Broken")
         }
     }
 }
@@ -466,10 +466,10 @@ struct HealthCheckResult: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .ok: "Healthy"
-            case .warning: "Warning"
-            case .failure: "Failed"
-            case .notApplicable: "Out of reach"
+            case .ok: String(localized: "Healthy")
+            case .warning: String(localized: "Warning")
+            case .failure: String(localized: "Failed")
+            case .notApplicable: String(localized: "Out of reach")
             }
         }
     }
@@ -494,11 +494,11 @@ struct SecurityFinding: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .info: "Information"
-            case .low: "Low Risk"
-            case .needsReview: "Needs Review"
-            case .high: "High Risk"
-            case .blocked: "Blocked"
+            case .info: String(localized: "Information")
+            case .low: String(localized: "Low Risk")
+            case .needsReview: String(localized: "Needs Review")
+            case .high: String(localized: "High Risk")
+            case .blocked: String(localized: "Blocked")
             }
         }
 
@@ -576,11 +576,11 @@ struct ConfigurationTransaction: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .planned: "Planned"
-            case .applied: "Applied"
-            case .rolledBack: "Undone"
-            case .staleConfig: "Config changed"
-            case .failed: "Failed"
+            case .planned: String(localized: "Planned")
+            case .applied: String(localized: "Applied")
+            case .rolledBack: String(localized: "Undone")
+            case .staleConfig: String(localized: "Config changed")
+            case .failed: String(localized: "Failed")
             }
         }
     }
@@ -650,18 +650,18 @@ struct AuditEvent: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .skillInstalled: "Skill kuruldu"
-            case .skillRemoved: "Skill removed"
-            case .mcpEnabled: "MCP enabled"
-            case .mcpDisabled: "MCP disabled"
-            case .assignmentChanged: "Assignment changed"
-            case .configChanged: "Config changed"
-            case .updateApplied: "Updated"
-            case .rolledBack: "Rolled back"
-            case .findingAccepted: "Security finding kabul edildi"
-            case .scanCompleted: "Scan ran"
-            case .quarantined: "Quarantined"
-            case .restored: "Restored"
+            case .skillInstalled: String(localized: "Skill installed")
+            case .skillRemoved: String(localized: "Skill removed")
+            case .mcpEnabled: String(localized: "MCP enabled")
+            case .mcpDisabled: String(localized: "MCP disabled")
+            case .assignmentChanged: String(localized: "Assignment changed")
+            case .configChanged: String(localized: "Config changed")
+            case .updateApplied: String(localized: "Updated")
+            case .rolledBack: String(localized: "Rolled back")
+            case .findingAccepted: String(localized: "Security finding accepted")
+            case .scanCompleted: String(localized: "Scan ran")
+            case .quarantined: String(localized: "Quarantined")
+            case .restored: String(localized: "Restored")
             }
         }
     }

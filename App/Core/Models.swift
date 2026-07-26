@@ -279,13 +279,13 @@ enum AgentSessionStatus: String, Codable {
 
     var label: String {
         switch self {
-        case .idle: "Ready"
-        case .thinking: "Thinking"
-        case .running: "Running"
-        case .waitingForPermission: "Waiting for permission"
-        case .waitingForInput: "Waiting for a reply"
-        case .completed: "Done"
-        case .terminated: "Closed"
+        case .idle: String(localized: "Ready")
+        case .thinking: String(localized: "Thinking")
+        case .running: String(localized: "Running")
+        case .waitingForPermission: String(localized: "Waiting for permission")
+        case .waitingForInput: String(localized: "Waiting for a reply")
+        case .completed: String(localized: "Done")
+        case .terminated: String(localized: "Closed")
         }
     }
 
@@ -463,7 +463,7 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
         case .zed: "Zed"
         case .cursor: "Cursor"
         case .sublime: "Sublime Text"
-        case .textedit: "TextEdit"
+        case .textedit: String(localized: "TextEdit")
         case .xcode: "Xcode"
         }
     }

@@ -59,7 +59,7 @@ struct NotificationGeneralPage: View {
     private var prefs: NotificationPrefs { settings.notifications }
 
     var body: some View {
-        SettingsPage(title: "Notifications") {
+        SettingsPage(title: String(localized: "Notifications")) {
             Section {
                 NotificationPermissionRow()
             }
@@ -67,8 +67,8 @@ struct NotificationGeneralPage: View {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Notifications",
-                        detail: "While it is off, Uncoil sends no banner at all."
+                        title: String(localized: "Notifications"),
+                        detail: String(localized: "While it is off, Uncoil sends no banner at all.")
                     )
                 }
                 .settingsID("notifications.enabled")
@@ -76,7 +76,7 @@ struct NotificationGeneralPage: View {
 
             Section("Defaults") {
                 NotificationPriorityPicker(
-                    title: "Priority",
+                    title: String(localized: "Priority"),
                     value: Binding(
                         get: { Optional(prefs.priority) },
                         set: { newValue in
@@ -88,7 +88,7 @@ struct NotificationGeneralPage: View {
                 .settingsID("notifications.priority")
 
                 NotificationSoundPicker(
-                    title: "Ses",
+                    title: String(localized: "Sound"),
                     value: Binding(
                         get: { Optional(prefs.sound) },
                         set: { newValue in
@@ -106,20 +106,20 @@ struct NotificationGeneralPage: View {
             Section("Delivery") {
                 Toggle(isOn: bind(\.onlyWhenBackgrounded)) {
                     SettingsLabel(
-                        title: "Notify only while in the background",
-                        detail: "No banner is sent while Uncoil is in the foreground; the rows are still marked."
+                        title: String(localized: "Notify only while in the background"),
+                        detail: String(localized: "No banner is sent while Uncoil is in the foreground; the rows are still marked.")
                     )
                 }
                 Toggle(isOn: bind(\.suppressForVisibleSession)) {
                     SettingsLabel(
-                        title: "Stay quiet about the session on screen",
-                        detail: "No banner is sent about the session already on screen."
+                        title: String(localized: "Stay quiet about the session on screen"),
+                        detail: String(localized: "No banner is sent about the session already on screen.")
                     )
                 }
                 Toggle(isOn: bind(\.groupByProject)) {
                     SettingsLabel(
-                        title: "Group by project",
-                        detail: "A project's notifications stack into one group in Notification Center."
+                        title: String(localized: "Group by project"),
+                        detail: String(localized: "A project's notifications stack into one group in Notification Center.")
                     )
                 }
             }
@@ -131,7 +131,7 @@ struct NotificationGeneralPage: View {
                 }
                 .settingsID("notifications.selfTest")
             } footer: {
-                SettingsNote("Only one notification is sent per state change; repeats are handled by the Reminders page.")
+                SettingsNote(String(localized: "Only one notification is sent per state change; repeats are handled by the Reminders page."))
             }
         }
     }
@@ -160,8 +160,8 @@ struct NotificationEventsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Olaylar",
-            subtitle: "Every event carries its own setting. While “Default” is selected, the value on the General page applies."
+            title: String(localized: "Events"),
+            subtitle: String(localized: "Every event carries its own setting. While “Default” is selected, the value on the General page applies.")
         ) {
             ForEach(NotificationEvent.allCases) { event in
                 Section {
@@ -182,7 +182,7 @@ struct NotificationEventsPage: View {
 
                     if prefs.isEnabled(event) {
                         NotificationPriorityPicker(
-                            title: "Priority",
+                            title: String(localized: "Priority"),
                             value: Binding(
                                 get: { prefs.prefs(for: event).priority },
                                 set: { newValue in
@@ -195,7 +195,7 @@ struct NotificationEventsPage: View {
                         .settingsID("notifications.event.priority.\(event.rawValue)")
 
                         NotificationSoundPicker(
-                            title: "Ses",
+                            title: String(localized: "Sound"),
                             value: Binding(
                                 get: { prefs.prefs(for: event).sound },
                                 set: { newValue in
@@ -215,7 +215,7 @@ struct NotificationEventsPage: View {
                                 }
                             )) {
                                 SettingsLabel(
-                                    title: "Remind",
+                                    title: String(localized: "Remind"),
                                     detail: prefs.reminders.enabled
                                         ? "Repeated every \(prefs.reminders.intervalMinutes) minutes."
                                         : "Inactive until it is turned on from the Reminders page."
@@ -248,14 +248,14 @@ struct NotificationRemindersPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Reminders",
-            subtitle: "As long as an agent keeps waiting for an answer, Uncoil can repeat the notification. Miss the first banner and you hear about it a second and a third time."
+            title: String(localized: "Reminders"),
+            subtitle: String(localized: "As long as an agent keeps waiting for an answer, Uncoil can repeat the notification. Miss the first banner and you hear about it a second and a third time.")
         ) {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Reminders on",
-                        detail: "Only states that last until you act on them are repeated."
+                        title: String(localized: "Reminders on"),
+                        detail: String(localized: "Only states that last until you act on them are repeated.")
                     )
                 }
                 .settingsID("notifications.reminders.enabled")
@@ -267,7 +267,7 @@ struct NotificationRemindersPage: View {
                         Text(minutes < 60 ? "Every \(minutes) minutes" : "Hourly").tag(minutes)
                     }
                 } label: {
-                    SettingsLabel(title: "Repeat interval")
+                    SettingsLabel(title: String(localized: "Repeat interval"))
                 }
                 .settingsID("notifications.reminders.interval")
 
@@ -278,8 +278,8 @@ struct NotificationRemindersPage: View {
                     }
                 } label: {
                     SettingsLabel(
-                        title: "En fazla",
-                        detail: "How many times it is repeated after the first notification."
+                        title: String(localized: "At most"),
+                        detail: String(localized: "How many times it is repeated after the first notification.")
                     )
                 }
                 .settingsID("notifications.reminders.maxCount")
@@ -311,7 +311,7 @@ struct NotificationRemindersPage: View {
                 Text("Which events")
             } footer: {
                 SettingsNote(
-                    "Momentary events such as a finished turn are not on the list: there is no state "
+                    String(localized: "Momentary events such as a finished turn are not on the list: there is no state ")
                     + "behind. A session that stops waiting drops its reminder too."
                 )
             }
@@ -352,12 +352,12 @@ struct NotificationQuietHoursPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Sessiz Saatler",
-            subtitle: "Notifications are silenced during the window you set. An agent working through the night will not wake you."
+            title: String(localized: "Quiet Hours"),
+            subtitle: String(localized: "Notifications are silenced during the window you set. An agent working through the night will not wake you.")
         ) {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
-                    SettingsLabel(title: "Quiet hours on")
+                    SettingsLabel(title: String(localized: "Quiet hours on"))
                 }
                 .settingsID("notifications.quietHours.enabled")
             }
@@ -371,8 +371,8 @@ struct NotificationQuietHoursPage: View {
 
                 Toggle(isOn: bind(\.allowHighPriority)) {
                     SettingsLabel(
-                        title: "Let high-priority events through",
-                        detail: "Events that stop the work, such as permission and login, are announced during quiet hours too."
+                        title: String(localized: "Let high-priority events through"),
+                        detail: String(localized: "Events that stop the work, such as permission and login, are announced during quiet hours too.")
                     )
                 }
             } footer: {
@@ -424,8 +424,8 @@ struct ProjectNotificationsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Per Project",
-            subtitle: "You can silence a project completely, or change only its priority and sound."
+            title: String(localized: "Per Project"),
+            subtitle: String(localized: "You can silence a project completely, or change only its priority and sound.")
         ) {
             if projectStore.projects.isEmpty {
                 Section {
@@ -457,12 +457,12 @@ private struct ProjectNotificationRows: View {
             get: { override.enabled ?? true },
             set: { newValue in mutate { $0.enabled = newValue } }
         )) {
-            SettingsLabel(title: "Notifications on")
+            SettingsLabel(title: String(localized: "Notifications on"))
         }
         .settingsID("notifications.project.\(project.id.uuidString)")
 
         NotificationPriorityPicker(
-            title: "Priority",
+            title: String(localized: "Priority"),
             value: Binding(
                 get: { override.priority },
                 set: { newValue in mutate { $0.priority = newValue } }
@@ -471,7 +471,7 @@ private struct ProjectNotificationRows: View {
         )
 
         NotificationSoundPicker(
-            title: "Ses",
+            title: String(localized: "Sound"),
             value: Binding(
                 get: { override.sound },
                 set: { newValue in mutate { $0.sound = newValue } }

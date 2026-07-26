@@ -17,10 +17,10 @@ struct RemoteMCPStatus: Equatable {
 
         var label: String {
             switch self {
-            case .reachable: "Reachable"
-            case .authenticationRequired: "Authentication required"
-            case .unreachable: "Unreachable"
-            case .localProcess: "Local process"
+            case .reachable: String(localized: "Reachable")
+            case .authenticationRequired: String(localized: "Authentication required")
+            case .unreachable: String(localized: "Unreachable")
+            case .localProcess: String(localized: "Local process")
             }
         }
 
@@ -55,11 +55,11 @@ struct RemoteMCPCapabilityDiff: Equatable {
     var isEmpty: Bool { added.isEmpty && removed.isEmpty }
 
     var summary: String {
-        if isEmpty { return "No changes" }
+        if isEmpty { return String(localized: "No changes") }
         var parts: [String] = []
-        if !added.isEmpty { parts.append("+\(added.joined(separator: ", "))") }
-        if !removed.isEmpty { parts.append("-\(removed.joined(separator: ", "))") }
-        return parts.joined(separator: " · ")
+        if !added.isEmpty { parts.append(String(localized: "+\(added.joined(separator: ", "))")) }
+        if !removed.isEmpty { parts.append(String(localized: "-\(removed.joined(separator: ", "))")) }
+        return parts.joined(separator: String(localized: " · "))
     }
 
     static func between(known: [String], reported: [String]) -> RemoteMCPCapabilityDiff {

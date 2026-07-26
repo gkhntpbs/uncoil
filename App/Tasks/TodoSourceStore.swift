@@ -37,8 +37,8 @@ enum TodoSourceStatus: Equatable {
 
     var label: String {
         switch self {
-        case .present: "Mevcut"
-        case .missing: "Source missing"
+        case .present: String(localized: "Current")
+        case .missing: String(localized: "Source missing")
         }
     }
 }

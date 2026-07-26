@@ -26,13 +26,13 @@ enum ExtensionDiscoverySource: Equatable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .localFolder(let path): "Local folder · \(path)"
+        case .localFolder(let path): String(localized: "Local folder · \(path)")
         case .gitHubRepository(let repository, _, let reference):
-            "GitHub · \(repository)\(reference.map { " @\($0)" } ?? "")"
-        case .gitHubRelease(let repository, let tag, _): "GitHub release · \(repository) \(tag)"
-        case .curatedRegistry(let name, _): "Registry · \(name)"
-        case .agentSkillsDirectory(let agent, _): "\(agent.displayName) skill dizini"
-        case .bundled: "Shipped with Uncoil"
+            String(localized: "GitHub · \(repository)\(reference.map { " @\($0)" } ?? "")")
+        case .gitHubRelease(let repository, let tag, _): String(localized: "GitHub release · \(repository) \(tag)")
+        case .curatedRegistry(let name, _): String(localized: "Registry · \(name)")
+        case .agentSkillsDirectory(let agent, _): String(localized: "\(agent.displayName) skill directory")
+        case .bundled: String(localized: "Shipped with Uncoil")
         }
     }
 

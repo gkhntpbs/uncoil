@@ -358,7 +358,7 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 PanelHeading(
-                    title: "Oturumlar",
+                    title: "Sessions",
                     count: projectStore.activeSessions(for: project.id).count
                 )
                 Spacer()
@@ -506,7 +506,7 @@ struct ProjectDashboardView: View {
 
     private var filesPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Dosyalar", count: nil)
+            PanelHeading(title: "Files", count: nil)
             FileTreeView(rootURL: project.rootURL)
                 .padding(6)
         }

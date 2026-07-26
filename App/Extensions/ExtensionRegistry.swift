@@ -293,15 +293,15 @@ final class ExtensionRegistry: ObservableObject {
         var filesKept: Bool
 
         var summary: String {
-            var parts: [String] = ["quarantined"]
+            var parts: [String] = [String(localized: "quarantined")]
             if !disabledAgents.isEmpty {
                 parts.append(
-                    "closed: " + disabledAgents.map(\.displayName).joined(separator: ", ")
+                    String(localized: "closed: ") + disabledAgents.map(\.displayName).joined(separator: String(localized: ", "))
                 )
             }
-            if unlinked { parts.append("links removed") }
-            parts.append("dosyalar korundu")
-            return parts.joined(separator: " · ")
+            if unlinked { parts.append(String(localized: "links removed")) }
+            parts.append(String(localized: "files kept"))
+            return parts.joined(separator: String(localized: " · "))
         }
     }
 

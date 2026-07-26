@@ -36,13 +36,13 @@ enum PaletteGroupKind: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .ask: "Quick Question"
-        case .command: "Komutlar"
-        case .project: "Projeler"
-        case .session: "Oturumlar"
-        case .file: "Dosyalar"
-        case .artifact: "Artefaktlar"
-        case .settings: "Settings"
+        case .ask: String(localized: "Quick Question")
+        case .command: String(localized: "Commands")
+        case .project: String(localized: "Projects")
+        case .session: String(localized: "Sessions")
+        case .file: String(localized: "Files")
+        case .artifact: String(localized: "Artifacts")
+        case .settings: String(localized: "Settings")
         }
     }
 }

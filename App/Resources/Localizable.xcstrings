@@ -1,6 +1,2690 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hesapları"
+          }
+        }
+      }
+    },
+    "%@ is unmanaged for now. Link it to a repo and it becomes updatable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ şu an unmanaged. Bir depoya bağlanınca güncellenebilir olur."
+          }
+        }
+      }
+    },
+    "%@ skill directory": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ skill dizini"
+          }
+        }
+      }
+    },
+    "%@ starting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ başlıyor…"
+          }
+        }
+      }
+    },
+    "%@ · %@ · %lld grants": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ · %lld yetki"
+          }
+        }
+      }
+    },
+    "%@ — %lld extensions will be affected.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — %lld extension etkilenecek."
+          }
+        }
+      }
+    },
+    "%@: off": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: kapalı"
+          }
+        }
+      }
+    },
+    "%@: on": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: açık"
+          }
+        }
+      }
+    },
+    "%lld changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld değişen"
+          }
+        }
+      }
+    },
+    "%lld characters": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld karakter"
+          }
+        }
+      }
+    },
+    "%lld files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dosya"
+          }
+        }
+      }
+    },
+    "%lld grants": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld yetki"
+          }
+        }
+      }
+    },
+    "%lld items will be deleted, %lld kept": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld öğe silinecek, %lld öğe korunacak"
+          }
+        }
+      }
+    },
+    "%lld min": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dk"
+          }
+        }
+      }
+    },
+    "%lld missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kaybolan"
+          }
+        }
+      }
+    },
+    "%lld new": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld yeni"
+          }
+        }
+      }
+    },
+    "%lld open / %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld açık / %lld"
+          }
+        }
+      }
+    },
+    "%lld pending notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld bekleyen bildirim"
+          }
+        }
+      }
+    },
+    "%lld records": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kayıt"
+          }
+        }
+      }
+    },
+    "%lld reviewed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld incelendi"
+          }
+        }
+      }
+    },
+    "%lld rules changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kural değişti"
+          }
+        }
+      }
+    },
+    "%lld security findings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld güvenlik bulgusu"
+          }
+        }
+      }
+    },
+    "%lld selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seçili"
+          }
+        }
+      }
+    },
+    "%lld sessions will move into this group.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld oturum bu gruba taşınacak."
+          }
+        }
+      }
+    },
+    "%lld sessions · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld oturum · %@"
+          }
+        }
+      }
+    },
+    "%lld skill descriptions loaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld skill açıklaması yüklendi"
+          }
+        }
+      }
+    },
+    "%lld skills clash": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld skill çakışıyor"
+          }
+        }
+      }
+    },
+    "%lld skills matched": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld skill eşleşti"
+          }
+        }
+      }
+    },
+    "%lld tasks": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld görev"
+          }
+        }
+      }
+    },
+    "%lld tasks selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld görev seçili"
+          }
+        }
+      }
+    },
+    "%lld tasks selected · the prompt is typed in, you press Enter": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld görev seçili · prompt yazılır, Enter'a sen basarsın"
+          }
+        }
+      }
+    },
+    "%lld times": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kez"
+          }
+        }
+      }
+    },
+    "%lld/%lld files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld dosya"
+          }
+        }
+      }
+    },
+    "+ %lld more files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ %lld dosya daha"
+          }
+        }
+      }
+    },
+    "+%lld rules": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld kural"
+          }
+        }
+      }
+    },
+    "-%lld rules": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "-%lld kural"
+          }
+        }
+      }
+    },
+    "30 days": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 gün"
+          }
+        }
+      }
+    },
+    "7 days": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 gün"
+          }
+        }
+      }
+    },
+    "A backup is taken before it is applied; one click takes you back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulanmadan önce yedek alınır; tek tıkla geri dönebilirsin."
+          }
+        }
+      }
+    },
+    "A blocked finding prevents adoption.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blocked bulgu devralmayı engelliyor."
+          }
+        }
+      }
+    },
+    "A project's notifications stack into one group in Notification Center.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı projenin bildirimleri bildirim merkezinde tek yığın olur."
+          }
+        }
+      }
+    },
+    "A runtime error, a failing test or a dropped connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma hatası, başarısız test veya kopan bağlantı."
+          }
+        }
+      }
+    },
+    "A separate profile is created, with its own config folder.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kendi config klasörüyle ayrı bir profil oluşturulur."
+          }
+        }
+      }
+    },
+    "A session is opened for every task you pick, and the task is sent as its prompt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçtiğin her görev için bir oturum açılır ve görev prompt olarak gönderilir."
+          }
+        }
+      }
+    },
+    "A single-colour SF Symbol, which sits better in the menu bar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü çubuğuna daha iyi uyan tek renkli SF Symbol."
+          }
+        }
+      }
+    },
+    "A task branch is ready to merge.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir görev dalı merge edilmeye hazır."
+          }
+        }
+      }
+    },
+    "A task finished.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir görev tamamlandı."
+          }
+        }
+      }
+    },
+    "About": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hakkında"
+          }
+        }
+      }
+    },
+    "Accept": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kabul et"
+          }
+        }
+      }
+    },
+    "Accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesaplar"
+          }
+        }
+      }
+    },
+    "Actions apply to every session in the group.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşlemler gruptaki tüm oturumlara uygulanır."
+          }
+        }
+      }
+    },
+    "Actions apply to the %lld selected sessions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşlemler seçili %lld oturuma uygulanır."
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etkin"
+          }
+        }
+      }
+    },
+    "Active branch: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktif dal: %@"
+          }
+        }
+      }
+    },
+    "Active tasks": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktif görevler"
+          }
+        }
+      }
+    },
+    "Add": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekle"
+          }
+        }
+      }
+    },
+    "Add Preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset Ekle"
+          }
+        }
+      }
+    },
+    "Add Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje Ekle"
+          }
+        }
+      }
+    },
+    "Add This Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Klasörü Ekle"
+          }
+        }
+      }
+    },
+    "Add a TODO.md to the root or a subfolder and it shows up here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kök veya alt klasörlere TODO.md ekleyince burada görünür."
+          }
+        }
+      }
+    },
+    "Add a new task line to the TODO file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TODO dosyasına yeni bir görev satırı ekle"
+          }
+        }
+      }
+    },
+    "Add a project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje ekle"
+          }
+        }
+      }
+    },
+    "Add an account": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap ekle"
+          }
+        }
+      }
+    },
+    "Add from folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasörden ekle…"
+          }
+        }
+      }
+    },
+    "Added to the file as a single line, under the heading you pick.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyaya, seçtiğin başlığın altına tek satır olarak eklenir."
+          }
+        }
+      }
+    },
+    "Adopt": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devral"
+          }
+        }
+      }
+    },
+    "Adopt all": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hepsini sahiplen"
+          }
+        }
+      }
+    },
+    "Adopt all (%lld)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü adopt et (%lld)"
+          }
+        }
+      }
+    },
+    "Adopt into Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil'e devral"
+          }
+        }
+      }
+    },
+    "Adopted · in Uncoil's store": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sahiplenildi · Uncoil deposunda"
+          }
+        }
+      }
+    },
+    "Advanced Permissions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelişmiş İzinler"
+          }
+        }
+      }
+    },
+    "After update": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update sonrası"
+          }
+        }
+      }
+    },
+    "Agent assignments": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent atamaları"
+          }
+        }
+      }
+    },
+    "Agent folders to move to the shared copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ortak kopyaya alınacak agent klasörleri"
+          }
+        }
+      }
+    },
+    "Agent running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent çalışıyor"
+          }
+        }
+      }
+    },
+    "Agent skill inventory": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent skill envanteri"
+          }
+        }
+      }
+    },
+    "Agent starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent başlıyor"
+          }
+        }
+      }
+    },
+    "Agents keep running inside the runtime daemon even after Uncoil closes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil kapansa da agent’lar runtime daemon içinde çalışmaya devam eder."
+          }
+        }
+      }
+    },
+    "All": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümü"
+          }
+        }
+      }
+    },
+    "All clean": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temiz olan hepsi"
+          }
+        }
+      }
+    },
+    "All sources (aggregate)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm kaynaklar (aggregate)"
+          }
+        }
+      }
+    },
+    "Allow Once": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir Kez İzin Ver"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin verildi"
+          }
+        }
+      }
+    },
+    "Already announced for this state": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu durum için zaten bildirildi"
+          }
+        }
+      }
+    },
+    "Ambiguous: %lld candidates": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belirsiz: %lld aday"
+          }
+        }
+      }
+    },
+    "An agent was assigned to the task": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Göreve agent atandı"
+          }
+        }
+      }
+    },
+    "An empty group is created; drag sessions into it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boş bir grup oluşturulur; oturumları içine sürükleyebilirsin."
+          }
+        }
+      }
+    },
+    "An unanswered request times out after this long.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevaplanmayan istek bu süre sonunda zaman aşımına düşer."
+          }
+        }
+      }
+    },
+    "Appearance": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görünüm"
+          }
+        }
+      }
+    },
+    "Appears as an ordinary banner.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal banner olarak görünür."
+          }
+        }
+      }
+    },
+    "Appended to the launch command; applies from the next session on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent başlatılırken komuta eklenir; bir sonraki oturumdan itibaren geçerli."
+          }
+        }
+      }
+    },
+    "Applied": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulandı"
+          }
+        }
+      }
+    },
+    "Apply": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygula"
+          }
+        }
+      }
+    },
+    "Approve and merge": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onayla ve merge et"
+          }
+        }
+      }
+    },
+    "Approved": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onaylandı"
+          }
+        }
+      }
+    },
+    "Artifacts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artefaktlar"
+          }
+        }
+      }
+    },
+    "As long as an agent keeps waiting for an answer, Uncoil can repeat the notification. Miss the first banner and you hear about it a second and a third time.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir agent yanıt beklemeye devam ettiği sürece Uncoil bildirimi tekrarlayabilir. İlk banner’ı kaçırdığında ikinci, üçüncü kez haber alırsın."
+          }
+        }
+      }
+    },
+    "Assign all to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü %@'a ata"
+          }
+        }
+      }
+    },
+    "Assigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atanmış"
+          }
+        }
+      }
+    },
+    "Assignment changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Assignment değişti"
+          }
+        }
+      }
+    },
+    "At launch (previous scan)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açılışta (eski tarama)"
+          }
+        }
+      }
+    },
+    "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En az bir değiştirici tuş (⌘⌥⌃⇧) gerekir. Anında uygulanır."
+          }
+        }
+      }
+    },
+    "At most": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En fazla"
+          }
+        }
+      }
+    },
+    "Attention Center": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikkat Merkezi"
+          }
+        }
+      }
+    },
+    "Attention center": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikkat merkezi"
+          }
+        }
+      }
+    },
+    "Authentication required": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kimlik doğrulaması gerekli"
+          }
+        }
+      }
+    },
+    "Available": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alınabilir"
+          }
+        }
+      }
+    },
+    "Awaiting Approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay Bekleyenler"
+          }
+        }
+      }
+    },
+    "Awaiting review": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review bekliyor"
+          }
+        }
+      }
+    },
+    "BULK MANAGEMENT": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TOPLU YÖNETİM"
+          }
+        }
+      }
+    },
+    "Back to Default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılana Dön"
+          }
+        }
+      }
+    },
+    "Back to Defaults": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılanlara Dön"
+          }
+        }
+      }
+    },
+    "Back to the previous config": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki config'e dön"
+          }
+        }
+      }
+    },
+    "Backup: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yedek: %@"
+          }
+        }
+      }
+    },
+    "Before install": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulum öncesi"
+          }
+        }
+      }
+    },
+    "Before update": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update öncesi"
+          }
+        }
+      }
+    },
+    "Blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloklandı"
+          }
+        }
+      }
+    },
+    "Blockers": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engeller"
+          }
+        }
+      }
+    },
+    "Board, task session, orchestrator.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Board, görev oturumu, orchestrator."
+          }
+        }
+      }
+    },
+    "Breaks through Focus, shown as time-sensitive.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odak modunu deler, zaman duyarlı gösterilir."
+          }
+        }
+      }
+    },
+    "Bring %lld %@ into Uncoil?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %@ Uncoil'e alınsın mı?"
+          }
+        }
+      }
+    },
+    "Broken": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bozuk"
+          }
+        }
+      }
+    },
+    "Broken link": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kırık bağlantı"
+          }
+        }
+      }
+    },
+    "Browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcı"
+          }
+        }
+      }
+    },
+    "Built-in themes": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazır temalar"
+          }
+        }
+      }
+    },
+    "Bumblebee install": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee kurulumu"
+          }
+        }
+      }
+    },
+    "By hand": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle"
+          }
+        }
+      }
+    },
+    "CHANGES": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEĞİŞİKLİKLER"
+          }
+        }
+      }
+    },
+    "CLI Tools": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CLI Araçları"
+          }
+        }
+      }
+    },
+    "CLI arguments": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CLI argümanları"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İptal"
+          }
+        }
+      }
+    },
+    "Cannot be changed; child agents ask for the preset by this name.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değiştirilemez; alt agent’lar preseti bu adla ister."
+          }
+        }
+      }
+    },
+    "Change": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklik"
+          }
+        }
+      }
+    },
+    "Changes requested": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklik istendi"
+          }
+        }
+      }
+    },
+    "Check for Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeleri Kontrol Et"
+          }
+        }
+      }
+    },
+    "Check the installed versions and update with one click.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu sürümleri kontrol et ve tek tıkla güncelle."
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrol ediliyor…"
+          }
+        }
+      }
+    },
+    "Choose how long terminal output is kept on disk. Recording is off by default.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal çıktılarının diskte ne kadar süre saklanacağını seç. Varsayılan olarak kayıt kapalıdır."
+          }
+        }
+      }
+    },
+    "Choose the binary…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Binary'yi seç…"
+          }
+        }
+      }
+    },
+    "Claimed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alındı"
+          }
+        }
+      }
+    },
+    "Claude Code's hooks are what make session states stream into Uncoil live.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code’un hook’ları, oturum durumlarının Uncoil’e canlı akmasını sağlar."
+          }
+        }
+      }
+    },
+    "Clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temizle"
+          }
+        }
+      }
+    },
+    "Clear Selection": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçimi Temizle"
+          }
+        }
+      }
+    },
+    "Clear history": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçmişi sil"
+          }
+        }
+      }
+    },
+    "Clear the selection": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçimi temizle"
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
+          }
+        }
+      }
+    },
+    "Closed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapandı"
+          }
+        }
+      }
+    },
+    "Collects the logs and the configuration into one file; sensitive content is stripped.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logları ve yapılandırmayı tek dosyada toplar; hassas içerik ayıklanır."
+          }
+        }
+      }
+    },
+    "Command palette": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut paleti"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komutlar"
+          }
+        }
+      }
+    },
+    "Comment left": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum bırakıldı"
+          }
+        }
+      }
+    },
+    "Commit + open PR": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit + PR aç"
+          }
+        }
+      }
+    },
+    "Commit message": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit mesajı"
+          }
+        }
+      }
+    },
+    "Compare": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşılaştır"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamamlanmış"
+          }
+        }
+      }
+    },
+    "Config change plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config değişiklik planı"
+          }
+        }
+      }
+    },
+    "Config changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config değişti"
+          }
+        }
+      }
+    },
+    "Connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağla"
+          }
+        }
+      }
+    },
+    "Connect to a GitHub source": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub kaynağına bağla"
+          }
+        }
+      }
+    },
+    "Connect to a GitHub source…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub kaynağına bağla…"
+          }
+        }
+      }
+    },
+    "Connect with your GitHub account": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub hesabınla bağlan"
+          }
+        }
+      }
+    },
+    "Connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı"
+          }
+        }
+      }
+    },
+    "Control plane not running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontrol düzlemi çalışmıyor"
+          }
+        }
+      }
+    },
+    "Copy the code": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodu kopyala"
+          }
+        }
+      }
+    },
+    "Copy the link": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linki kopyala"
+          }
+        }
+      }
+    },
+    "Copying into place…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerine kopyalanıyor…"
+          }
+        }
+      }
+    },
+    "Counters": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sayaçlar"
+          }
+        }
+      }
+    },
+    "Counters only": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca sayılar"
+          }
+        }
+      }
+    },
+    "Crashed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöktü"
+          }
+        }
+      }
+    },
+    "Crashing repeatedly": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürekli çöküyor"
+          }
+        }
+      }
+    },
+    "Create": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oluştur"
+          }
+        }
+      }
+    },
+    "Created in Uncoil's own store; attached to the agents you pick.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil'in deposunda oluşturulur; seçtiğin agent'lara bağlanır."
+          }
+        }
+      }
+    },
+    "Creating…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oluşturuluyor…"
+          }
+        }
+      }
+    },
+    "Current": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut"
+          }
+        }
+      }
+    },
+    "Customised for this session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturum için özelleştirildi"
+          }
+        }
+      }
+    },
+    "Daily baseline": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Günlük baseline"
+          }
+        }
+      }
+    },
+    "Dark": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koyu"
+          }
+        }
+      }
+    },
+    "Data and Transcripts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veri ve Transcript"
+          }
+        }
+      }
+    },
+    "Data location": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veri konumu"
+          }
+        }
+      }
+    },
+    "Debug bundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Debug paketi"
+          }
+        }
+      }
+    },
+    "Default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan"
+          }
+        }
+      }
+    },
+    "Default (%@)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan (%@)"
+          }
+        }
+      }
+    },
+    "Default agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan agent"
+          }
+        }
+      }
+    },
+    "Default agent mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan agent modu"
+          }
+        }
+      }
+    },
+    "Defaults": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılanlar"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sil"
+          }
+        }
+      }
+    },
+    "Delete %lld sessions?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld oturum silinsin mi?"
+          }
+        }
+      }
+    },
+    "Delete All Transcripts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm Transcriptleri Sil"
+          }
+        }
+      }
+    },
+    "Delete Group": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grubu Sil"
+          }
+        }
+      }
+    },
+    "Delete Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumları Sil"
+          }
+        }
+      }
+    },
+    "Delete Transcripts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcriptleri Sil"
+          }
+        }
+      }
+    },
+    "Delete every session transcript?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm session transcriptleri silinsin mi?"
+          }
+        }
+      }
+    },
+    "Delete the \"%@\" session?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" oturumu silinsin mi?"
+          }
+        }
+      }
+    },
+    "Delete the '%@' configuration?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' yapılandırması silinsin mi?"
+          }
+        }
+      }
+    },
+    "Delete the selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilenleri sil"
+          }
+        }
+      }
+    },
+    "Delivery": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teslimat"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reddedildi"
+          }
+        }
+      }
+    },
+    "Deny": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reddet"
+          }
+        }
+      }
+    },
+    "Detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayrıntı"
+          }
+        }
+      }
+    },
+    "Detect": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tespit et"
+          }
+        }
+      }
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamamlandı"
+          }
+        }
+      }
+    },
+    "Download again": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden indir"
+          }
+        }
+      }
+    },
+    "Download and install": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndir ve kur"
+          }
+        }
+      }
+    },
+    "Downloading…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndiriliyor…"
+          }
+        }
+      }
+    },
+    "Downloading… %@ / %@ MB": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndiriliyor… %@ / %@ MB"
+          }
+        }
+      }
+    },
+    "Downloading… %@ MB": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndiriliyor… %@ MB"
+          }
+        }
+      }
+    },
+    "Drag onto a group to move it; drop outside the window to open it in a new one": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürükleyip gruba taşı, pencere dışına bırakınca yeni pencerede açılır"
+          }
+        }
+      }
+    },
+    "Drivers": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürücüler"
+          }
+        }
+      }
+    },
+    "Duration": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süre"
+          }
+        }
+      }
+    },
+    "Each account uses its own config folder, so work and personal sessions on the same provider stay apart.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her hesap kendi config klasörünü kullanır; aynı sağlayıcıda iş ve kişisel oturumları ayrı tutabilirsin."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenle"
+          }
+        }
+      }
+    },
+    "Edit Preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset Düzenle"
+          }
+        }
+      }
+    },
+    "Edit the configuration": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yapılandırmayı düzenle"
+          }
+        }
+      }
+    },
+    "Editor": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editör"
+          }
+        }
+      }
+    },
+    "Effort: default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort: varsayılan"
+          }
+        }
+      }
+    },
+    "End of file (no heading)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya sonu (başlıksız)"
+          }
+        }
+      }
+    },
+    "Errors and problems": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hata ve sorunlar"
+          }
+        }
+      }
+    },
+    "Events": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olaylar"
+          }
+        }
+      }
+    },
+    "Events that stop the work, such as permission and login, are announced during quiet hours too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin ve giriş gibi işi durduran olaylar sessiz saatlerde de bildirilir."
+          }
+        }
+      }
+    },
+    "Every %lld minutes": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dakikada bir"
+          }
+        }
+      }
+    },
+    "Every agent opens side by side on the same project.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her agent aynı projeye yan yana açılır."
+          }
+        }
+      }
+    },
+    "Every event carries its own setting. While “Default” is selected, the value on the General page applies.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her olay kendi ayarını taşır. “Varsayılan” seçili olduğu sürece Genel sayfasındaki değer geçerlidir."
+          }
+        }
+      }
+    },
+    "Every folder is backed up first, then symlinked to a single copy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her klasör önce yedeklenir, sonra tek kopyaya symlink olur."
+          }
+        }
+      }
+    },
+    "Every running agent and terminal process is closed when you quit Uncoil.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil’den çıkarken çalışan tüm agent ve terminal süreçleri kapatılır."
+          }
+        }
+      }
+    },
+    "Everything is in place; the merge is only waiting for your word.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her şey yerinde; merge yalnızca onayını bekliyor."
+          }
+        }
+      }
+    },
+    "Expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süresi doldu"
+          }
+        }
+      }
+    },
+    "Extension lock files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extension lock dosyaları"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başarısız"
+          }
+        }
+      }
+    },
+    "Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyalar"
+          }
+        }
+      }
+    },
+    "Finished and clean": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamamlanan ve temiz olanlar"
+          }
+        }
+      }
+    },
+    "Fix with agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'la düzelt"
+          }
+        }
+      }
+    },
+    "Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasör"
+          }
+        }
+      }
+    },
+    "Folder name: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasör adı: %@"
+          }
+        }
+      }
+    },
+    "For the Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum Boyunca"
+          }
+        }
+      }
+    },
+    "Found on PATH": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PATH üzerinde bulunan"
+          }
+        }
+      }
+    },
+    "Frequency": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıklık"
+          }
+        }
+      }
+    },
+    "General": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel"
+          }
+        }
+      }
+    },
+    "Grants": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yetkiler"
+          }
+        }
+      }
+    },
+    "Group by project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeye göre grupla"
+          }
+        }
+      }
+    },
+    "Group name": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grup adı"
+          }
+        }
+      }
+    },
+    "Group the selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilenleri grupla"
+          }
+        }
+      }
+    },
+    "Hand tasks to agents": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevleri agent'lara ver"
+          }
+        }
+      }
+    },
+    "Healthy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlıklı"
+          }
+        }
+      }
+    },
+    "Hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizle"
+          }
+        }
+      }
+    },
     "Hide Sidebar": {
       "extractionState": "manual",
       "localizations": {
@@ -12,6 +2696,3196 @@
         }
       }
     },
+    "Hide all sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm oturumları gizle"
+          }
+        }
+      }
+    },
+    "Hide while idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boştayken gizle"
+          }
+        }
+      }
+    },
+    "High": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüksek"
+          }
+        }
+      }
+    },
+    "Hourly": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saatte bir"
+          }
+        }
+      }
+    },
+    "Hover a project, pick an agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir projenin üzerine gel, agent seç"
+          }
+        }
+      }
+    },
+    "How many times it is repeated after the first notification.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlk bildirimden sonra kaç kez hatırlatılacağı."
+          }
+        }
+      }
+    },
+    "Icon": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simge"
+          }
+        }
+      }
+    },
+    "Icon style": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simge biçimi"
+          }
+        }
+      }
+    },
+    "Identity": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kimlik"
+          }
+        }
+      }
+    },
+    "Implementer": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulayan"
+          }
+        }
+      }
+    },
+    "Indefinitely": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süresiz"
+          }
+        }
+      }
+    },
+    "Information": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilgi"
+          }
+        }
+      }
+    },
+    "Install": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kur"
+          }
+        }
+      }
+    },
+    "Install Chromium": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chromium'u Kur"
+          }
+        }
+      }
+    },
+    "Installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu"
+          }
+        }
+      }
+    },
+    "Installed by Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil tarafından kurulan"
+          }
+        }
+      }
+    },
+    "Installed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuruldu: %@"
+          }
+        }
+      }
+    },
+    "Instruction file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Talimat dosyası"
+          }
+        }
+      }
+    },
+    "Interface": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arayüz"
+          }
+        }
+      }
+    },
+    "Interrupt": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kes"
+          }
+        }
+      }
+    },
+    "Interrupt All": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü Kes"
+          }
+        }
+      }
+    },
+    "Kanban works on a single source; pick a TODO.md above.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kanban tek bir kaynak üzerinde çalışır; yukarıdan bir TODO.md seç."
+          }
+        }
+      }
+    },
+    "Keep test history": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test geçmişini sakla"
+          }
+        }
+      }
+    },
+    "Keeps watching the agents while Uncoil's window is closed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil’in penceresi kapalıyken agent’ları izlemeyi sürdürür."
+          }
+        }
+      }
+    },
+    "Keyboard behaviour": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klavye davranışı"
+          }
+        }
+      }
+    },
+    "Known malicious version": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinen zararlı sürüm"
+          }
+        }
+      }
+    },
+    "Known package exposure": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinen paket açığı"
+          }
+        }
+      }
+    },
+    "Lands silently in Notification Center.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessizce bildirim merkezine düşer."
+          }
+        }
+      }
+    },
+    "Last scan %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son tarama %@"
+          }
+        }
+      }
+    },
+    "Let high-priority events through": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüksek öncelikliler geçsin"
+          }
+        }
+      }
+    },
+    "Line to write to the file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyaya yazılacak satır"
+          }
+        }
+      }
+    },
+    "Linked to the wrong target": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanlış hedefe bağlı"
+          }
+        }
+      }
+    },
+    "Loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleniyor"
+          }
+        }
+      }
+    },
+    "Local folder · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel klasör · %@"
+          }
+        }
+      }
+    },
+    "Local process": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel süreç"
+          }
+        }
+      }
+    },
+    "Login needed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş gerekiyor"
+          }
+        }
+      }
+    },
+    "Login required": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş gerekli"
+          }
+        }
+      }
+    },
+    "Looked in: the app bundle, %@, PATH": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aranan yerler: uygulama paketi, %@, PATH"
+          }
+        }
+      }
+    },
+    "Low": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düşük"
+          }
+        }
+      }
+    },
+    "MCP disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP kapatıldı"
+          }
+        }
+      }
+    },
+    "MCP enabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP etkinleştirildi"
+          }
+        }
+      }
+    },
+    "MCP inventory": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP envanteri"
+          }
+        }
+      }
+    },
+    "Make default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan yap"
+          }
+        }
+      }
+    },
+    "Manages projects, worktrees and artifacts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeleri, worktree'leri ve artifact'ları yönetir."
+          }
+        }
+      }
+    },
+    "Manual": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuel"
+          }
+        }
+      }
+    },
+    "Manual scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuel scan"
+          }
+        }
+      }
+    },
+    "Map this heading to a board state": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu başlığı bir board durumuna eşle"
+          }
+        }
+      }
+    },
+    "Mark as resolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çözüldü olarak işaretle"
+          }
+        }
+      }
+    },
+    "Matched by position": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konumdan eşleşti"
+          }
+        }
+      }
+    },
+    "Menu Bar": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü Çubuğu"
+          }
+        }
+      }
+    },
+    "Menu contents": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü içeriği"
+          }
+        }
+      }
+    },
+    "Menu-bar monitor": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü çubuğu monitörü"
+          }
+        }
+      }
+    },
+    "Merged": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge edildi"
+          }
+        }
+      }
+    },
+    "Merging…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge ediliyor…"
+          }
+        }
+      }
+    },
+    "Mode and Keyboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mod ve Klavye"
+          }
+        }
+      }
+    },
+    "Mode: default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mod: varsayılan"
+          }
+        }
+      }
+    },
+    "Model: default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model: varsayılan"
+          }
+        }
+      }
+    },
+    "Momentary events such as a finished turn are not on the list: there is no state ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur tamamlandı gibi anlık olaylar listede yok: tekrarlanacak bir durum "
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ad"
+          }
+        }
+      }
+    },
+    "Never started": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiç başlamadı"
+          }
+        }
+      }
+    },
+    "New": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni"
+          }
+        }
+      }
+    },
+    "New Group": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Grup"
+          }
+        }
+      }
+    },
+    "New Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Oturum"
+          }
+        }
+      }
+    },
+    "New Uncoil Window": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Uncoil Penceresi"
+          }
+        }
+      }
+    },
+    "New account": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni hesap"
+          }
+        }
+      }
+    },
+    "New run configuration": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni run yapılandırması"
+          }
+        }
+      }
+    },
+    "New session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturum"
+          }
+        }
+      }
+    },
+    "New sessions open with this provider.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturumlar bu sağlayıcıyla açılır."
+          }
+        }
+      }
+    },
+    "New sessions start in the selected mode; open sessions are unaffected.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturumlar seçilen modda başlar; açık oturumlar etkilenmez."
+          }
+        }
+      }
+    },
+    "New skill": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni skill"
+          }
+        }
+      }
+    },
+    "New skill…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni skill…"
+          }
+        }
+      }
+    },
+    "New task": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni görev"
+          }
+        }
+      }
+    },
+    "New worktree name (isolated task branch)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni worktree adı (izole görev dalı)"
+          }
+        }
+      }
+    },
+    "New-session menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturum menüsü"
+          }
+        }
+      }
+    },
+    "No TODO.md found in this project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu projede TODO.md bulunamadı"
+          }
+        }
+      }
+    },
+    "No banner is sent about the session already on screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranda duran oturum hakkında banner gönderilmez."
+          }
+        }
+      }
+    },
+    "No banner is sent while Uncoil is in the foreground; the rows are still marked.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil ön plandayken banner gönderilmez; satırlar yine işaretlenir."
+          }
+        }
+      }
+    },
+    "No changes": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklik yok"
+          }
+        }
+      }
+    },
+    "No connection": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı yok"
+          }
+        }
+      }
+    },
+    "No diff.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff yok."
+          }
+        }
+      }
+    },
+    "No extension has been installed from this repo yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu repodan henüz extension kurulmadı."
+          }
+        }
+      }
+    },
+    "No file difference": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya farkı yok"
+          }
+        }
+      }
+    },
+    "No file difference; adoption only transfers management.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya farkı yok; devralma yalnızca yönetimi devreder."
+          }
+        }
+      }
+    },
+    "No icon; only the counters you picked are shown.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simge yok; yalnızca seçtiğin sayaçlar görünür."
+          }
+        }
+      }
+    },
+    "No installed agent found; the skill is created but attached to nobody.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu agent bulunamadı; skill oluşturulur ama kimseye bağlanmaz."
+          }
+        }
+      }
+    },
+    "No match": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşme yok"
+          }
+        }
+      }
+    },
+    "No matching setting": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşen ayar yok"
+          }
+        }
+      }
+    },
+    "No open task to start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlatılacak açık görev yok."
+          }
+        }
+      }
+    },
+    "No permission request arrives while the MCP control plane is off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP kontrol düzlemi kapalıyken izin isteği gelmez."
+          }
+        }
+      }
+    },
+    "No preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset yok"
+          }
+        }
+      }
+    },
+    "No projects yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz proje yok"
+          }
+        }
+      }
+    },
+    "No projects yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz proje yok."
+          }
+        }
+      }
+    },
+    "No recorded test run.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıtlı test çalıştırması yok."
+          }
+        }
+      }
+    },
+    "No records yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz kayıt yok."
+          }
+        }
+      }
+    },
+    "No result": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonuç yok"
+          }
+        }
+      }
+    },
+    "No review.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review yok."
+          }
+        }
+      }
+    },
+    "No rule change": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kural değişikliği yok"
+          }
+        }
+      }
+    },
+    "No run configuration yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz run yapılandırması yok."
+          }
+        }
+      }
+    },
+    "No session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum yok"
+          }
+        }
+      }
+    },
+    "No session has been assigned to a task yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz bir göreve session atanmadı."
+          }
+        }
+      }
+    },
+    "No sessions in this group. Drag sessions here from the sidebar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu grupta oturum yok. Kenar çubuğundan oturumları buraya sürükleyebilirsin."
+          }
+        }
+      }
+    },
+    "No sessions yet — start an agent from the top right.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz oturum yok — sağ üstten bir agent başlat."
+          }
+        }
+      }
+    },
+    "No subfolders": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt klasör yok"
+          }
+        }
+      }
+    },
+    "No task matches the filter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtreye uyan görev yok."
+          }
+        }
+      }
+    },
+    "No tasks.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev yok."
+          }
+        }
+      }
+    },
+    "No uncommitted changes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit edilmemiş değişiklik yok."
+          }
+        }
+      }
+    },
+    "No version information": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüm bilgisi yok"
+          }
+        }
+      }
+    },
+    "Nobody answered in time; the agent has to ask again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kimse zamanında cevaplamadı; agent yeniden istemek zorunda."
+          }
+        }
+      }
+    },
+    "Not a git repo": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git dışı"
+          }
+        }
+      }
+    },
+    "Not asked yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz sorulmadı"
+          }
+        }
+      }
+    },
+    "Not assigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atanmadı"
+          }
+        }
+      }
+    },
+    "Not found": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bulunamadı"
+          }
+        }
+      }
+    },
+    "Not installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu değil"
+          }
+        }
+      }
+    },
+    "Not time to remind yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatma zamanı gelmedi"
+          }
+        }
+      }
+    },
+    "Nothing to commit.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit edilecek değişiklik yok."
+          }
+        }
+      }
+    },
+    "Nothing waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekleyen bir şey yok"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler"
+          }
+        }
+      }
+    },
+    "Notifications are silenced during the window you set. An agent working through the night will not wake you.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belirlediğin aralıkta bildirimler susturulur. Gece boyunca çalışan bir agent seni uyandırmaz."
+          }
+        }
+      }
+    },
+    "Notifications off": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler kapalı"
+          }
+        }
+      }
+    },
+    "Notifications off for the project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje için bildirim kapalı"
+          }
+        }
+      }
+    },
+    "Notifications off for this event": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu olay için bildirim kapalı"
+          }
+        }
+      }
+    },
+    "Notifications on": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler açık"
+          }
+        }
+      }
+    },
+    "Notify only while in the background": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca arka plandayken bildir"
+          }
+        }
+      }
+    },
+    "Now": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şu an"
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamam"
+          }
+        }
+      }
+    },
+    "Observer": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzleyen"
+          }
+        }
+      }
+    },
+    "Off": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapalı"
+          }
+        }
+      }
+    },
+    "Off — no crash information is collected.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapalı — çökme bilgisi toplanmaz."
+          }
+        }
+      }
+    },
+    "On": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık"
+          }
+        }
+      }
+    },
+    "On — crash details are written only to the local debug bundle.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık — çökme bilgisi yalnızca yerel debug paketine yazılır."
+          }
+        }
+      }
+    },
+    "Once": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir kez"
+          }
+        }
+      }
+    },
+    "One argument per line.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satır başına bir argüman."
+          }
+        }
+      }
+    },
+    "One match": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tek eşleşme"
+          }
+        }
+      }
+    },
+    "Only Chromium-based browsers installed on this Mac are listed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca bu Mac'te kurulu Chromium tabanlı tarayıcılar gösterilir."
+          }
+        }
+      }
+    },
+    "Only one notification is sent per state change; repeats are handled by the Reminders page.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her durum değişimi için yalnızca bir bildirim gönderilir; tekrarını Hatırlatmalar sayfası yönetir."
+          }
+        }
+      }
+    },
+    "Only states that last until you act on them are repeated.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca kullanıcı işlem yapana kadar süren durumlar tekrarlanır."
+          }
+        }
+      }
+    },
+    "Open": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aç"
+          }
+        }
+      }
+    },
+    "Open Extensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extensions'ı Aç"
+          }
+        }
+      }
+    },
+    "Open System Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem Ayarları’nı Aç"
+          }
+        }
+      }
+    },
+    "Open Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil’i Aç"
+          }
+        }
+      }
+    },
+    "Open in Finder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder'da Aç"
+          }
+        }
+      }
+    },
+    "Open in editor": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editörde aç"
+          }
+        }
+      }
+    },
+    "Open in the Default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılanda Aç"
+          }
+        }
+      }
+    },
+    "Open source line: %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynak satırı aç: %lld"
+          }
+        }
+      }
+    },
+    "Open the Setup Guide": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulum Rehberini Aç"
+          }
+        }
+      }
+    },
+    "Open the Uncoil window": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil penceresini aç"
+          }
+        }
+      }
+    },
+    "Open the folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasörü aç"
+          }
+        }
+      }
+    },
+    "Open the log file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log dosyasını aç"
+          }
+        }
+      }
+    },
+    "Open the menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menüyü aç"
+          }
+        }
+      }
+    },
+    "Open the project directory in %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje dizinini %@ ile aç"
+          }
+        }
+      }
+    },
+    "Open the repo": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depoyu aç"
+          }
+        }
+      }
+    },
+    "Open with %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile aç"
+          }
+        }
+      }
+    },
+    "Opening prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlangıç promptu"
+          }
+        }
+      }
+    },
+    "Orchestrator": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orkestratör"
+          }
+        }
+      }
+    },
+    "Orchestrator plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orchestrator planı"
+          }
+        }
+      }
+    },
+    "Organise Automatically": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik Düzenle"
+          }
+        }
+      }
+    },
+    "Other": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diğer"
+          }
+        }
+      }
+    },
+    "Out of reach": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapsam dışı"
+          }
+        }
+      }
+    },
+    "Owner": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sahip"
+          }
+        }
+      }
+    },
+    "Parser warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parser uyarısı"
+          }
+        }
+      }
+    },
+    "Paths found": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bulunan yollar"
+          }
+        }
+      }
+    },
+    "Pending": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekleyenler"
+          }
+        }
+      }
+    },
+    "Per Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje Bazında"
+          }
+        }
+      }
+    },
+    "Permanent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalıcı"
+          }
+        }
+      }
+    },
+    "Permission Timeout": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin Zaman Aşımı"
+          }
+        }
+      }
+    },
+    "Permission decisions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission kararları"
+          }
+        }
+      }
+    },
+    "Permission mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission modu"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzinler"
+          }
+        }
+      }
+    },
+    "Pick the open tasks, pick an agent, start them together": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık görevleri seç, agent'ını seç ve topluca başlat"
+          }
+        }
+      }
+    },
+    "Pin": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sabitle"
+          }
+        }
+      }
+    },
+    "Pinned": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sabitlenmiş"
+          }
+        }
+      }
+    },
+    "Planned": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planlandı"
+          }
+        }
+      }
+    },
+    "Possible": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Olabilir"
+          }
+        }
+      }
+    },
+    "Presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preset'ler"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önizleme"
+          }
+        }
+      }
+    },
+    "Previous runs": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki çalıştırmalar"
+          }
+        }
+      }
+    },
+    "Priority": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öncelik"
+          }
+        }
+      }
+    },
+    "Problems": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorunlar"
+          }
+        }
+      }
+    },
+    "Project list": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje listesi"
+          }
+        }
+      }
+    },
+    "Project name": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje adı"
+          }
+        }
+      }
+    },
+    "Project scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje taraması"
+          }
+        }
+      }
+    },
+    "Project, session, artifact and Agent Browser are on by default in new sessions. Computer Use stays off for every session until you turn it on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje, oturum, artifact ve Agent Browser yeni oturumlarda otomatik açıktır. Computer Use her oturum için sen açana kadar kapalı kalır."
+          }
+        }
+      }
+    },
+    "Projects": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeler"
+          }
+        }
+      }
+    },
+    "Projects and Files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Projeler ve Dosyalar"
+          }
+        }
+      }
+    },
+    "Prompt preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt önizlemesi"
+          }
+        }
+      }
+    },
+    "Provider": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlayıcı"
+          }
+        }
+      }
+    },
+    "Providers": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlayıcılar"
+          }
+        }
+      }
+    },
+    "Quarantined": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karantinada"
+          }
+        }
+      }
+    },
+    "Queued": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuyrukta"
+          }
+        }
+      }
+    },
+    "Quick Question": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hızlı Soru"
+          }
+        }
+      }
+    },
+    "Quiet Hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz Saatler"
+          }
+        }
+      }
+    },
+    "Quiet hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz saatler"
+          }
+        }
+      }
+    },
+    "Quiet hours on": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz saatler açık"
+          }
+        }
+      }
+    },
+    "Quitting the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulama kapanışı"
+          }
+        }
+      }
+    },
+    "Re-audit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden denetle"
+          }
+        }
+      }
+    },
+    "Reachable": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erişilebilir"
+          }
+        }
+      }
+    },
+    "Read": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okundu"
+          }
+        }
+      }
+    },
+    "Reading changes…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler okunuyor…"
+          }
+        }
+      }
+    },
+    "Reading the version…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüm bilgisi alınıyor…"
+          }
+        }
+      }
+    },
+    "Reading the worktree…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma ağacı okunuyor…"
+          }
+        }
+      }
+    },
+    "Ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazır"
+          }
+        }
+      }
+    },
+    "Ready to merge": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge hazır"
+          }
+        }
+      }
+    },
+    "Reattach to this task": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu göreve yeniden bağla"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yenile"
+          }
+        }
+      }
+    },
+    "Refresh Status": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durumu Yenile"
+          }
+        }
+      }
+    },
+    "Release from Quarantine": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karantinadan Çıkar"
+          }
+        }
+      }
+    },
+    "Released": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bırakıldı"
+          }
+        }
+      }
+    },
+    "Reload": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden yükle"
+          }
+        }
+      }
+    },
+    "Remind": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlat"
+          }
+        }
+      }
+    },
+    "Reminder limit reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatma sınırına ulaşıldı"
+          }
+        }
+      }
+    },
+    "Reminders": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatmalar"
+          }
+        }
+      }
+    },
+    "Reminders off": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatma kapalı"
+          }
+        }
+      }
+    },
+    "Reminders on": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatmalar açık"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Remove from group": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruptan çıkar"
+          }
+        }
+      }
+    },
+    "Removed from .uncoil/run.json; run history and logs stop.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".uncoil/run.json'dan kaldırılır; koşu geçmişi ve loglar durur."
+          }
+        }
+      }
+    },
+    "Rename Group": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grubu Yeniden Adlandır"
+          }
+        }
+      }
+    },
+    "Repeat interval": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar aralığı"
+          }
+        }
+      }
+    },
+    "Request Permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin İste"
+          }
+        }
+      }
+    },
+    "Requesting a code from GitHub…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub'dan kod isteniyor…"
+          }
+        }
+      }
+    },
+    "Rescan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden Tara"
+          }
+        }
+      }
+    },
+    "Rescan sources": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynakları yeniden tara"
+          }
+        }
+      }
+    },
+    "Reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırla"
+          }
+        }
+      }
+    },
+    "Restart": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden Başlat"
+          }
+        }
+      }
+    },
+    "Restored": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri yüklendi"
+          }
+        }
+      }
+    },
+    "Results": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonuçlar"
+          }
+        }
+      }
+    },
+    "Retention": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saklama"
+          }
+        }
+      }
+    },
+    "Review": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnceleme"
+          }
+        }
+      }
+    },
+    "Review requested": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review istendi"
+          }
+        }
+      }
+    },
+    "Reviewed ✓": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İncelendi ✓"
+          }
+        }
+      }
+    },
+    "Role and worktree": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rol ve worktree"
+          }
+        }
+      }
+    },
+    "Rollback history": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollback geçmişi"
+          }
+        }
+      }
+    },
+    "Rolled back": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollback yapıldı"
+          }
+        }
+      }
+    },
+    "Run Bumblebee Scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee Taraması Çalıştır"
+          }
+        }
+      }
+    },
+    "Run Health Check": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health Check Çalıştır"
+          }
+        }
+      }
+    },
+    "Run Parameters": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıştırma Parametreleri"
+          }
+        }
+      }
+    },
+    "Run configurations": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run yapılandırmaları"
+          }
+        }
+      }
+    },
+    "Running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışıyor"
+          }
+        }
+      }
+    },
+    "Running processes are closed and the recordings cannot be recovered.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan süreçler kapatılır ve kayıtlar geri alınamaz."
+          }
+        }
+      }
+    },
+    "Running processes are closed; the recordings cannot be recovered.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan süreçler kapatılır; kayıtlar geri alınamaz."
+          }
+        }
+      }
+    },
+    "Running sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan oturumlar"
+          }
+        }
+      }
+    },
+    "Runtime Mismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runtime Uyumsuzluğu"
+          }
+        }
+      }
+    },
+    "Runtime problem": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runtime sorunu"
+          }
+        }
+      }
+    },
+    "Runtime protocol": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runtime protokolü"
+          }
+        }
+      }
+    },
+    "SESSIONS": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OTURUMLAR"
+          }
+        }
+      }
+    },
+    "Safe automation ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli otomasyon hazır"
+          }
+        }
+      }
+    },
+    "Same task": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı görev"
+          }
+        }
+      }
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
+          }
+        }
+      }
+    },
+    "Scan ran": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan çalıştı"
+          }
+        }
+      }
+    },
+    "Scanning…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taranıyor…"
+          }
+        }
+      }
+    },
+    "Search commands, find files, jump to a project…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut ara, dosya bul, projeye git…"
+          }
+        }
+      }
+    },
+    "Search everywhere": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her yerde ara"
+          }
+        }
+      }
+    },
+    "Search icons (tabler icons — %lld icons)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İkon ara (tabler icons — %lld ikon)"
+          }
+        }
+      }
+    },
+    "Search settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlarda ara"
+          }
+        }
+      }
+    },
+    "Search tasks…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev ara…"
+          }
+        }
+      }
+    },
+    "Search this page…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sayfada ara…"
+          }
+        }
+      }
+    },
+    "Security finding": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik bulgusu"
+          }
+        }
+      }
+    },
+    "Security finding accepted": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security finding kabul edildi"
+          }
+        }
+      }
+    },
+    "Sees the Mac's screen, controls the mouse and keyboard.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac ekranını görür, fare ve klavyeyi kontrol eder."
+          }
+        }
+      }
+    },
+    "Sees, edits and groups sessions, and starts child agents.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumları görür, düzenler, gruplar ve alt agent başlatır."
+          }
+        }
+      }
+    },
+    "Select All": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü Seç"
+          }
+        }
+      }
+    },
+    "Select all": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü seç"
+          }
+        }
+      }
+    },
+    "Select none": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiçbirini seçme"
+          }
+        }
+      }
+    },
+    "Send": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönder"
+          }
+        }
+      }
+    },
+    "Send (hold)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönder (bekle)"
+          }
+        }
+      }
+    },
+    "Send and start": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönder ve başlat"
+          }
+        }
+      }
+    },
+    "Send input to the process (r for Flutter, for example)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürece girdi gönder (ör. flutter için r)"
+          }
+        }
+      }
+    },
+    "Send the review findings to the session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review bulgularını session’a gönder"
+          }
+        }
+      }
+    },
+    "Send to All": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümüne Gönder"
+          }
+        }
+      }
+    },
+    "Send to agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'a gönder"
+          }
+        }
+      }
+    },
+    "Send with details…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayrıntılı gönder…"
+          }
+        }
+      }
+    },
+    "Sent to the agent the moment the session opens.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum açılır açılmaz agent’a gönderilir."
+          }
+        }
+      }
+    },
+    "Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum"
+          }
+        }
+      }
+    },
+    "Session Access": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum Erişimi"
+          }
+        }
+      }
+    },
+    "Session Management": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum Yönetimi"
+          }
+        }
+      }
+    },
+    "Session Presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session Presetleri"
+          }
+        }
+      }
+    },
+    "Session groups": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session grupları"
+          }
+        }
+      }
+    },
+    "Session not found": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum bulunamadı"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumlar"
+          }
+        }
+      }
+    },
+    "Sessions needing attention": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikkat isteyen oturumlar"
+          }
+        }
+      }
+    },
+    "Sessions on quit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkarken oturumlar"
+          }
+        }
+      }
+    },
+    "Set Permissions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzinleri Ayarla"
+          }
+        }
+      }
+    },
+    "Set the provider, opening prompt and permission bounds for child agents.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt agent’ların sağlayıcı, başlangıç promptu ve yetki sınırlarını düzenle."
+          }
+        }
+      }
+    },
+    "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Browser ve Computer Use bağlantılarını kur ve doğrula. Kurulum her zaman senin onayınla başlar."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar"
+          }
+        }
+      }
+    },
+    "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shift+Enter (ve Option+Enter) prompt içinde satır atlar; agent'a gönderim "
+          }
+        }
+      }
+    },
+    "Shift+Enter for a newline": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shift+Enter yeni satır"
+          }
+        }
+      }
+    },
+    "Shipped with Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil ile gelen"
+          }
+        }
+      }
+    },
+    "Shortcut": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kısayol"
+          }
+        }
+      }
+    },
+    "Show Config": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config'i Göster"
+          }
+        }
+      }
+    },
     "Show Sidebar": {
       "extractionState": "manual",
       "localizations": {
@@ -19,6 +5893,2349 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kenar Çubuğunu Göster"
+          }
+        }
+      }
+    },
+    "Show all sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm oturumları göster"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder’da Göster"
+          }
+        }
+      }
+    },
+    "Sign In": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş Yap"
+          }
+        }
+      }
+    },
+    "Sign In with a Browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcıdan Giriş Yap"
+          }
+        }
+      }
+    },
+    "Sign Out": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkış Yap"
+          }
+        }
+      }
+    },
+    "Sign in with a browser; the token is stored only in the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcıdan giriş yap; token yalnızca Keychain'de saklanır."
+          }
+        }
+      }
+    },
+    "Silent": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz"
+          }
+        }
+      }
+    },
+    "Silent delivery": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz teslim"
+          }
+        }
+      }
+    },
+    "Single colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tek renk"
+          }
+        }
+      }
+    },
+    "Skill installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill kuruldu"
+          }
+        }
+      }
+    },
+    "Skill removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill kaldırıldı"
+          }
+        }
+      }
+    },
+    "Skill/MCP source records": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill/MCP kaynak kayıtları"
+          }
+        }
+      }
+    },
+    "Sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses"
+          }
+        }
+      }
+    },
+    "Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlat"
+          }
+        }
+      }
+    },
+    "Start %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ başlat"
+          }
+        }
+      }
+    },
+    "Start and Verify": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlat ve Doğrula"
+          }
+        }
+      }
+    },
+    "Start automatically": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik başlat"
+          }
+        }
+      }
+    },
+    "Start in a new session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturumda başlat"
+          }
+        }
+      }
+    },
+    "Start tasks…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevleri başlat…"
+          }
+        }
+      }
+    },
+    "Start with %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile başlat"
+          }
+        }
+      }
+    },
+    "Start with %@ (%lld)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile başlat (%lld)"
+          }
+        }
+      }
+    },
+    "Start with %@ (quick)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile başlat (hızlı)"
+          }
+        }
+      }
+    },
+    "Startup": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlatma"
+          }
+        }
+      }
+    },
+    "Status Tracking": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durum Takibi"
+          }
+        }
+      }
+    },
+    "Stay quiet about the session on screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık oturum için bildirme"
+          }
+        }
+      }
+    },
+    "Stop the Orchestrator": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orchestrator’ı Durdur"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durdu"
+          }
+        }
+      }
+    },
+    "Support": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destek"
+          }
+        }
+      }
+    },
+    "Suspicious editor extension": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şüpheli editör eklentisi"
+          }
+        }
+      }
+    },
+    "Switch branch/tag…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Branch/tag değiştir…"
+          }
+        }
+      }
+    },
+    "System sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem sesi"
+          }
+        }
+      }
+    },
+    "System symbol": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem sembolü"
+          }
+        }
+      }
+    },
+    "Target": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hedef"
+          }
+        }
+      }
+    },
+    "Task Board": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev Board’u"
+          }
+        }
+      }
+    },
+    "Task Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev Oturumu"
+          }
+        }
+      }
+    },
+    "Task blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev bloklandı"
+          }
+        }
+      }
+    },
+    "Task done": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev tamamlandı"
+          }
+        }
+      }
+    },
+    "Task failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev başarısız"
+          }
+        }
+      }
+    },
+    "Task link lost": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev bağlantısı kayıp"
+          }
+        }
+      }
+    },
+    "Task results": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Task sonuçları"
+          }
+        }
+      }
+    },
+    "Task shortcuts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev kısayolları"
+          }
+        }
+      }
+    },
+    "Terminal colours apply to newly opened sessions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal renkleri yeni açılan oturumlarda geçerli olur."
+          }
+        }
+      }
+    },
+    "Test Workspace Could Not Be Created": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test Workspace Oluşturulamadı"
+          }
+        }
+      }
+    },
+    "Test failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test başarısız"
+          }
+        }
+      }
+    },
+    "Test it": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test et"
+          }
+        }
+      }
+    },
+    "Tests failing": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testler başarısız"
+          }
+        }
+      }
+    },
+    "The Uncoil mark, coloured by state.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duruma göre renk değiştiren Uncoil işareti."
+          }
+        }
+      }
+    },
+    "The agent asked a question and is waiting for your answer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent sorusunu sordu ve yanıtını bekliyor."
+          }
+        }
+      }
+    },
+    "The agent finished its turn; over to you.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent turu bitirdi, söz sende."
+          }
+        }
+      }
+    },
+    "The agent is asking to use a tool.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent bir aracı kullanmak için onay istiyor."
+          }
+        }
+      }
+    },
+    "The code is on your clipboard — pick a browser below and paste it into the page; approving connects it automatically.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod panoya kopyalandı — aşağıdan bir tarayıcı seçip sayfaya yapıştır; onaylayınca otomatik bağlanır."
+          }
+        }
+      }
+    },
+    "The edit could not be applied": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenleme uygulanamadı"
+          }
+        }
+      }
+    },
+    "The file changed inside this task's block. It is your call what happens next.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya bu görevin bloğunda değişti. Ne yapılacağına sen karar ver."
+          }
+        }
+      }
+    },
+    "The flow opens your browser; close this window when it is done.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akış tarayıcıyı açar; bitince bu pencereyi kapat."
+          }
+        }
+      }
+    },
+    "The icon leaves the menu bar when nothing is running or waiting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan ya da bekleyen bir şey yokken simge menü çubuğundan çıkar."
+          }
+        }
+      }
+    },
+    "The prompt is typed in; you press Enter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt yazılır, Enter'a sen basarsın."
+          }
+        }
+      }
+    },
+    "The provider session dropped; you need to sign in again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlayıcı oturumu düştü, yeniden giriş gerekiyor."
+          }
+        }
+      }
+    },
+    "The running process is closed; the recording cannot be recovered.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışan süreç kapatılır; kayıt geri alınamaz."
+          }
+        }
+      }
+    },
+    "The session is already on screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum zaten ekranda"
+          }
+        }
+      }
+    },
+    "Theme and Colours": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tema ve Renkler"
+          }
+        }
+      }
+    },
+    "There is no session to grant anything to yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin verilecek bir oturum henüz yok."
+          }
+        }
+      }
+    },
+    "Thinking": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düşünüyor"
+          }
+        }
+      }
+    },
+    "This cannot be undone, and it removes every stored piece of sensitive terminal output.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu işlem geri alınamaz ve saklanan hassas terminal çıktılarının tamamını kaldırır."
+          }
+        }
+      }
+    },
+    "This folder is not a git repository.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu klasör bir git deposu değil."
+          }
+        }
+      }
+    },
+    "Timed Out": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaman Aşımına Düşenler"
+          }
+        }
+      }
+    },
+    "To do": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yapılacak"
+          }
+        }
+      }
+    },
+    "Transcripts": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcript'ler"
+          }
+        }
+      }
+    },
+    "Turn done": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur tamamlandı"
+          }
+        }
+      }
+    },
+    "Turns off the status colour; the icon takes the menu bar's own.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durum rengini kapatır; simge menü çubuğunun kendi rengini alır."
+          }
+        }
+      }
+    },
+    "Unassigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atanmamış"
+          }
+        }
+      }
+    },
+    "Unclassified finding": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sınıflandırılmamış bulgu"
+          }
+        }
+      }
+    },
+    "Uncoil Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil Ayarları"
+          }
+        }
+      }
+    },
+    "Uncoil in the foreground": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil ön planda"
+          }
+        }
+      }
+    },
+    "Uncoil mark": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil logosu"
+          }
+        }
+      }
+    },
+    "Uncoil settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil ayarları"
+          }
+        }
+      }
+    },
+    "Uncoil version": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil sürümü"
+          }
+        }
+      }
+    },
+    "Undone": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri alındı"
+          }
+        }
+      }
+    },
+    "Unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmiyor"
+          }
+        }
+      }
+    },
+    "Unlimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sınırsız"
+          }
+        }
+      }
+    },
+    "Unmanaged (installed outside)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmanaged (dışarıda kurulmuş)"
+          }
+        }
+      }
+    },
+    "Unmanaged (local)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmanaged (yerel)"
+          }
+        }
+      }
+    },
+    "Unpacking the archive…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arşiv açılıyor…"
+          }
+        }
+      }
+    },
+    "Unpin": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sabitlemeyi kaldır"
+          }
+        }
+      }
+    },
+    "Unreachable": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erişilemiyor"
+          }
+        }
+      }
+    },
+    "Unsupported configuration": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desteklenmeyen yapılandırma"
+          }
+        }
+      }
+    },
+    "Update": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleme"
+          }
+        }
+      }
+    },
+    "Updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yapıldı"
+          }
+        }
+      }
+    },
+    "Uses the managed Chromium browser and its persistent state.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilen Chromium tarayıcısını ve kalıcı durumunu kullanır."
+          }
+        }
+      }
+    },
+    "Using the default profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan profil kullanılıyor"
+          }
+        }
+      }
+    },
+    "Verified": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doğrulandı"
+          }
+        }
+      }
+    },
+    "Verify the version": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürümü doğrula"
+          }
+        }
+      }
+    },
+    "Verifying the checksum…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlama toplamı doğrulanıyor…"
+          }
+        }
+      }
+    },
+    "Verifying…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doğrulanıyor…"
+          }
+        }
+      }
+    },
+    "Version reported by the server": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunucunun bildirdiği sürüm"
+          }
+        }
+      }
+    },
+    "Waiting for a reply": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıt bekliyor"
+          }
+        }
+      }
+    },
+    "Waiting for input": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girdi bekliyor"
+          }
+        }
+      }
+    },
+    "Waiting for permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin bekliyor"
+          }
+        }
+      }
+    },
+    "Waiting for you": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı bekliyor"
+          }
+        }
+      }
+    },
+    "Warning": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uyarı"
+          }
+        }
+      }
+    },
+    "What should happen?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne yapılacak?"
+          }
+        }
+      }
+    },
+    "When busy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yoğunken"
+          }
+        }
+      }
+    },
+    "When should the agent use this?": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent bunu ne zaman kullanmalı?"
+          }
+        }
+      }
+    },
+    "Which events": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hangi olaylar"
+          }
+        }
+      }
+    },
+    "While it is off, Uncoil sends no banner at all.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapalıyken Uncoil hiçbir banner göndermez."
+          }
+        }
+      }
+    },
+    "Worktree clean": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma ağacı temiz"
+          }
+        }
+      }
+    },
+    "Write an example prompt…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Örnek prompt yaz…"
+          }
+        }
+      }
+    },
+    "You can silence a project completely, or change only its priority and sound.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir projeyi tamamen susturabilir ya da yalnızca onun için öncelik ve ses değiştirebilirsin."
+          }
+        }
+      }
+    },
+    "You need to sign in to your Codex account. You can run `codex login` through the terminal fallback.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex hesabında oturum açılması gerekiyor. Terminal fallback üzerinden `codex login` çalıştırabilirsin."
+          }
+        }
+      }
+    },
+    "Your own skill": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcının kendi skill'i"
+          }
+        }
+      }
+    },
+    "accepted": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kabul edildi"
+          }
+        }
+      }
+    },
+    "built-in updater": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yerleşik güncelleyici"
+          }
+        }
+      }
+    },
+    "changed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "değişiklik %@"
+          }
+        }
+      }
+    },
+    "closed: ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kapatıldı: "
+          }
+        }
+      }
+    },
+    "conflict — the file is read-only": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "conflict — dosya salt okunur"
+          }
+        }
+      }
+    },
+    "default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "varsayılan"
+          }
+        }
+      }
+    },
+    "deletion": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "silme"
+          }
+        }
+      }
+    },
+    "description": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "açıklama"
+          }
+        }
+      }
+    },
+    "draft": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "taslak"
+          }
+        }
+      }
+    },
+    "e.g. release-checklist": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "örn. release-checklist"
+          }
+        }
+      }
+    },
+    "empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "boş"
+          }
+        }
+      }
+    },
+    "failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başarısız"
+          }
+        }
+      }
+    },
+    "files kept": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dosyalar korundu"
+          }
+        }
+      }
+    },
+    "heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başlık"
+          }
+        }
+      }
+    },
+    "in progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sürüyor"
+          }
+        }
+      }
+    },
+    "links removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bağlantılar kaldırıldı"
+          }
+        }
+      }
+    },
+    "macOS notification permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS bildirim izni"
+          }
+        }
+      }
+    },
+    "move": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "taşıma"
+          }
+        }
+      }
+    },
+    "new: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yeni: %@"
+          }
+        }
+      }
+    },
+    "preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "önizleme"
+          }
+        }
+      }
+    },
+    "quarantined": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "karantinaya alındı"
+          }
+        }
+      }
+    },
+    "reference": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "referans"
+          }
+        }
+      }
+    },
+    "running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "çalışıyor"
+          }
+        }
+      }
+    },
+    "session default": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oturum varsayılanı"
+          }
+        }
+      }
+    },
+    "stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "durduruldu"
+          }
+        }
+      }
+    },
+    "unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bilinmiyor"
+          }
+        }
+      }
+    },
+    "update": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "güncelleme"
+          }
+        }
+      }
+    },
+    "updating…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "güncelleniyor…"
+          }
+        }
+      }
+    },
+    "“%@” matched no extension, agent, source, finding or record.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" hiçbir extension, agent, kaynak, bulgu veya kayıtla eşleşmedi."
+          }
+        }
+      }
+    },
+    "“Detect” derives suggestions from the project's files; or write %@ by hand (or have an agent write it).": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“Tespit et” proje dosyalarından öneri çıkarır; ya da %@ dosyasını elle (veya bir agent'a) yazdır."
+          }
+        }
+      }
+    },
+    "“Open in editor” launches this app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“Editörde aç” bu uygulamayı çalıştırır."
+          }
+        }
+      }
+    },
+    "%lld session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld oturum"
+          }
+        }
+      }
+    },
+    "+%lld permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld izin"
+          }
+        }
+      }
+    },
+    "Adopt into Uncoil…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil'e devral…"
+          }
+        }
+      }
+    },
+    "Agent language": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent dili"
+          }
+        }
+      }
+    },
+    "Applies after Uncoil restarts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil yeniden başlayınca geçerli olur."
+          }
+        }
+      }
+    },
+    "Assign Existing Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut Oturumu Ata"
+          }
+        }
+      }
+    },
+    "Audit log": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denetim kaydı"
+          }
+        }
+      }
+    },
+    "Bundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paket"
+          }
+        }
+      }
+    },
+    "Clean": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temiz"
+          }
+        }
+      }
+    },
+    "Complete": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamamla"
+          }
+        }
+      }
+    },
+    "Debug Bundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Debug Paketi"
+          }
+        }
+      }
+    },
+    "Deep scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derin tarama"
+          }
+        }
+      }
+    },
+    "Document": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belge"
+          }
+        }
+      }
+    },
+    "EXTENSIONS": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTENSION'LAR"
+          }
+        }
+      }
+    },
+    "Export setup": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulumu dışa aktar"
+          }
+        }
+      }
+    },
+    "Fetch now": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şimdi çek"
+          }
+        }
+      }
+    },
+    "GitHub release · %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub sürümü · %@ %@"
+          }
+        }
+      }
+    },
+    "High Risk": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüksek Risk"
+          }
+        }
+      }
+    },
+    "Ignored": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yok sayıldı"
+          }
+        }
+      }
+    },
+    "Import setup": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulumu içe aktar"
+          }
+        }
+      }
+    },
+    "In Progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam Eden"
+          }
+        }
+      }
+    },
+    "Inspect files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyaları incele"
+          }
+        }
+      }
+    },
+    "Interface language": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arayüz dili"
+          }
+        }
+      }
+    },
+    "Keep sessions running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumlar çalışmaya devam etsin"
+          }
+        }
+      }
+    },
+    "Language": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dil"
+          }
+        }
+      }
+    },
+    "Last fetch: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son çekme: %@"
+          }
+        }
+      }
+    },
+    "List": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste"
+          }
+        }
+      }
+    },
+    "Logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loglar"
+          }
+        }
+      }
+    },
+    "Low Risk": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düşük Risk"
+          }
+        }
+      }
+    },
+    "Mark Blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloklandı İşaretle"
+          }
+        }
+      }
+    },
+    "Match interface language": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arayüz dilini izle"
+          }
+        }
+      }
+    },
+    "Match system": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistemi izle"
+          }
+        }
+      }
+    },
+    "Matched by similarity (%lld%%)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benzerlikten eşleşti (%%%lld)"
+          }
+        }
+      }
+    },
+    "Modified": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişmiş"
+          }
+        }
+      }
+    },
+    "Modified Locally": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerelde Değişmiş"
+          }
+        }
+      }
+    },
+    "Needs Review": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnceleme Gerekiyor"
+          }
+        }
+      }
+    },
+    "Needs relinking": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden bağlanmalı"
+          }
+        }
+      }
+    },
+    "Node script": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Node script'i"
+          }
+        }
+      }
+    },
+    "Open Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu Aç"
+          }
+        }
+      }
+    },
+    "Pin commit…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit sabitle…"
+          }
+        }
+      }
+    },
+    "Python script": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Python script'i"
+          }
+        }
+      }
+    },
+    "Quarantine": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karantina"
+          }
+        }
+      }
+    },
+    "Remote MCP · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak MCP · %@"
+          }
+        }
+      }
+    },
+    "Remove source": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynağı kaldır"
+          }
+        }
+      }
+    },
+    "Reopen": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden aç"
+          }
+        }
+      }
+    },
+    "Repair": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onar"
+          }
+        }
+      }
+    },
+    "Request Review": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnceleme İste"
+          }
+        }
+      }
+    },
+    "Restart Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil'i Yeniden Başlat"
+          }
+        }
+      }
+    },
+    "Restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri yükle"
+          }
+        }
+      }
+    },
+    "Run Tests": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testleri Çalıştır"
+          }
+        }
+      }
+    },
+    "Run with Orchestrator": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orchestrator ile Çalıştır"
+          }
+        }
+      }
+    },
+    "Send a Test Notification": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test Bildirimi Gönder"
+          }
+        }
+      }
+    },
+    "Send to Agent…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'a Gönder…"
+          }
+        }
+      }
+    },
+    "Session metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum meta verisi"
+          }
+        }
+      }
+    },
+    "Shell script": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shell script'i"
+          }
+        }
+      }
+    },
+    "Show Diff": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff'i Göster"
+          }
+        }
+      }
+    },
+    "Show Source": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynağı Göster"
+          }
+        }
+      }
+    },
+    "Source missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynak eksik"
+          }
+        }
+      }
+    },
+    "Task metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev meta verisi"
+          }
+        }
+      }
+    },
+    "Terminate all agents on quit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkarken tüm agent'ları kapat"
+          }
+        }
+      }
+    },
+    "The interface language changes when Uncoil starts again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arayüz dili, Uncoil yeniden başladığında değişir."
+          }
+        }
+      }
+    },
+    "The language Uncoil writes in when it hands a task, a repair or a grouping job to an agent. Takes effect on the next prompt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil bir görevi, onarımı ya da gruplama işini agent'a verirken hangi dilde yazsın. Bir sonraki prompt'tan itibaren geçerli."
+          }
+        }
+      }
+    },
+    "This session belongs to %@ but the task comes from %@. The agent's working directory will not match the task's file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturum %@ projesine ait, görev ise %@ projesinden. Agent'ın çalışma dizini görevin dosyasıyla eşleşmeyecek."
+          }
+        }
+      }
+    },
+    "Undo": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri al"
+          }
+        }
+      }
+    },
+    "Uninstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Untracked": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takip edilmiyor"
+          }
+        }
+      }
+    },
+    "Update all reviewed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İncelenenlerin hepsini güncelle"
+          }
+        }
+      }
+    },
+    "Update selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilenleri güncelle"
+          }
+        }
+      }
+    },
+    "Validate": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doğrula"
+          }
+        }
+      }
+    },
+    "branch %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dal %@"
+          }
+        }
+      }
+    },
+    "exited": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "çıktı"
+          }
+        }
+      }
+    },
+    "idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "boşta"
+          }
+        }
+      }
+    },
+    "starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başlıyor"
           }
         }
       }

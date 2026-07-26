@@ -756,7 +756,7 @@ private struct AgentsScreen: View {
                     KeyValueRow(
                         key: "Login durumu",
                         value: installation.isAuthenticated
-                            .map { $0 ? "Signed in" : "Login required" } ?? "bilinmiyor",
+                            .map { $0 ? "Signed in" : "Login required" } ?? "unknown",
                         tint: installation.isAuthenticated == false ? Theme.warn : nil
                     )
                     Divider().overlay(Theme.border)
@@ -883,7 +883,7 @@ private struct AgentsScreen: View {
                                 "Last changed "
                                     + (candidate.appliedAt.map {
                                         RelativeClock.short(since: $0)
-                                    } ?? "bilinmiyor")
+                                    } ?? "unknown")
                             )
                             .font(Theme.mono(10))
                             .foregroundStyle(Theme.textDim)
@@ -1638,7 +1638,7 @@ private struct PackageCard: View {
             if package.kind == .skill {
                 Divider().overlay(Theme.border)
                 KeyValueRow(
-                    key: "Dosyalar",
+                    key: "Files",
                     value: files.isEmpty ? "—" : files.joined(separator: ", ")
                 )
                 Divider().overlay(Theme.border)
@@ -1661,7 +1661,7 @@ private struct PackageCard: View {
     }
 
     private var processStateLabel: String {
-        registry.processHealth[package.id]?.state.label ?? "bilinmiyor"
+        registry.processHealth[package.id]?.state.label ?? "unknown"
     }
 
     /// Prompts and resources the server reports having. Absent when nothing has
@@ -2541,7 +2541,7 @@ private struct SecurityScreen: View {
                 Divider().overlay(Theme.border)
                 KeyValueRow(
                     key: "Binary",
-                    value: registry.bumblebeeVersion?.label ?? "bilinmiyor"
+                    value: registry.bumblebeeVersion?.label ?? "unknown"
                 )
                 Divider().overlay(Theme.border)
                 KeyValueRow(

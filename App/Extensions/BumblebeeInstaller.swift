@@ -85,15 +85,15 @@ struct BumblebeeInstaller {
 
         var label: String {
             switch self {
-            case .askingGitHub: "Reading the version…"
+            case .askingGitHub: String(localized: "Reading the version…")
             case .downloading(let received, let total):
                 total.map {
-                    "Downloading… \(Self.megabytes(received)) / \(Self.megabytes($0)) MB"
-                } ?? "Downloading… \(Self.megabytes(received)) MB"
-            case .verifying: "Verifying the checksum…"
-            case .unpacking: "Unpacking the archive…"
-            case .installing: "Copying into place…"
-            case .done(let version): "Kuruldu: \(version)"
+                    String(localized: "Downloading… \(Self.megabytes(received)) / \(Self.megabytes($0)) MB")
+                } ?? String(localized: "Downloading… \(Self.megabytes(received)) MB")
+            case .verifying: String(localized: "Verifying the checksum…")
+            case .unpacking: String(localized: "Unpacking the archive…")
+            case .installing: String(localized: "Copying into place…")
+            case .done(let version): String(localized: "Installed: \(version)")
             }
         }
 

@@ -8,17 +8,17 @@ enum SessionQuitBehavior: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .keepSessionsRunning: "Keep sessions running"
-        case .terminateAllAgents: "Terminate all agents on quit"
+        case .keepSessionsRunning: String(localized: "Keep sessions running")
+        case .terminateAllAgents: String(localized: "Terminate all agents on quit")
         }
     }
 
     var detail: String {
         switch self {
         case .keepSessionsRunning:
-            "Agents keep running inside the runtime daemon even after Uncoil closes."
+            String(localized: "Agents keep running inside the runtime daemon even after Uncoil closes.")
         case .terminateAllAgents:
-            "Every running agent and terminal process is closed when you quit Uncoil."
+            String(localized: "Every running agent and terminal process is closed when you quit Uncoil.")
         }
     }
 }

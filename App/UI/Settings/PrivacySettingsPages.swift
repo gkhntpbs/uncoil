@@ -27,8 +27,8 @@ struct PermissionsSettingsPage: View {
         [
             AccessGroup(
                 id: "projects",
-                title: "Projects and Files",
-                detail: "Manages projects, worktrees and artifacts.",
+                title: String(localized: "Projects and Files"),
+                detail: String(localized: "Manages projects, worktrees and artifacts."),
                 symbol: "folder",
                 keys: [
                     "projects.read", "worktrees.read", "worktrees.create",
@@ -38,8 +38,8 @@ struct PermissionsSettingsPage: View {
             ),
             AccessGroup(
                 id: "sessions",
-                title: "Session Management",
-                detail: "Sees, edits and groups sessions, and starts child agents.",
+                title: String(localized: "Session Management"),
+                detail: String(localized: "Sees, edits and groups sessions, and starts child agents."),
                 symbol: "bubble.left.and.bubble.right",
                 keys: [
                     "sessions.read", "sessions.read_all", "sessions.control_children",
@@ -50,16 +50,16 @@ struct PermissionsSettingsPage: View {
             ),
             AccessGroup(
                 id: "browser",
-                title: "Agent Browser",
-                detail: "Uses the managed Chromium browser and its persistent state.",
+                title: String(localized: "Agent Browser"),
+                detail: String(localized: "Uses the managed Chromium browser and its persistent state."),
                 symbol: "globe",
                 keys: ["browser.use", "browser.persistent_state"],
                 requiresApproval: false
             ),
             AccessGroup(
                 id: "computer",
-                title: "Computer Use",
-                detail: "Sees the Mac's screen, controls the mouse and keyboard.",
+                title: String(localized: "Computer Use"),
+                detail: String(localized: "Sees the Mac's screen, controls the mouse and keyboard."),
                 symbol: "display",
                 keys: [
                     "computer.inspect", "computer.background_control",
@@ -75,7 +75,7 @@ struct PermissionsSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "Permissions") {
+        SettingsPage(title: String(localized: "Permissions")) {
             Section {
                 Label {
                     VStack(alignment: .leading, spacing: 4) {
@@ -118,7 +118,7 @@ struct PermissionsSettingsPage: View {
                 } header: {
                     Text("Timed Out")
                 } footer: {
-                    SettingsNote("Nobody answered in time; the agent has to ask again.")
+                    SettingsNote(String(localized: "Nobody answered in time; the agent has to ask again."))
                 }
                 .settingsID("permissions.expired")
             }
@@ -135,8 +135,8 @@ struct PermissionsSettingsPage: View {
                     ForEach([1, 5, 10, 30], id: \.self) { Text("\($0) min").tag($0) }
                 } label: {
                     SettingsLabel(
-                        title: "Duration",
-                        detail: "An unanswered request times out after this long."
+                        title: String(localized: "Duration"),
+                        detail: String(localized: "An unanswered request times out after this long.")
                     )
                 }
                 .settingsID("permissions.timeout")
@@ -152,7 +152,7 @@ struct PermissionsSettingsPage: View {
                             Text(sessionLabel(session)).tag(UUID?.some(session.id))
                         }
                     } label: {
-                        SettingsLabel(title: "Session")
+                        SettingsLabel(title: String(localized: "Session"))
                     }
                     .settingsID("permissions.sessionPicker")
 
@@ -204,7 +204,7 @@ struct PermissionsSettingsPage: View {
                                 set: { set([entry.key], enabled: $0, sessionID: record.id) }
                             )) {
                                 SettingsLabel(
-                                    title: "\(group.domain.title) · \(entry.label)",
+                                    title: String(localized: "\(group.domain.title) · \(entry.label)"),
                                     detail: entry.detail
                                 )
                             }
@@ -285,8 +285,8 @@ struct PrivacyDataSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Data and Transcripts",
-            subtitle: "Choose how long terminal output is kept on disk. Recording is off by default."
+            title: String(localized: "Data and Transcripts"),
+            subtitle: String(localized: "Choose how long terminal output is kept on disk. Recording is off by default.")
         ) {
             Section {
                 Picker(selection: Binding(
@@ -297,7 +297,7 @@ struct PrivacyDataSettingsPage: View {
                         Text(policy.title).tag(policy)
                     }
                 } label: {
-                    SettingsLabel(title: "Retention", symbol: "doc.text")
+                    SettingsLabel(title: String(localized: "Retention"), symbol: "doc.text")
                 }
                 .settingsID("transcripts.retention")
             } footer: {
@@ -343,8 +343,8 @@ struct HooksSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Status Tracking",
-            subtitle: "Claude Code's hooks are what make session states stream into Uncoil live."
+            title: String(localized: "Status Tracking"),
+            subtitle: String(localized: "Claude Code's hooks are what make session states stream into Uncoil live.")
         ) {
             Section {
                 AdaptiveRow {

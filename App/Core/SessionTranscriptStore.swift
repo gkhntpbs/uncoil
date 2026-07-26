@@ -10,10 +10,10 @@ enum TranscriptRetentionPolicy: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .disabled: "Saklama"
-        case .sevenDays: "7 days"
-        case .thirtyDays: "30 days"
-        case .forever: "Indefinitely"
+        case .disabled: String(localized: "Retention")
+        case .sevenDays: String(localized: "7 days")
+        case .thirtyDays: String(localized: "30 days")
+        case .forever: String(localized: "Indefinitely")
         }
     }
 

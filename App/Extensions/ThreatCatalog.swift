@@ -28,7 +28,7 @@ struct ThreatCatalog: Equatable, Codable {
     var label: String {
         [catalogVersion, repositoryCommit.map { String($0.prefix(12)) }]
             .compactMap { $0 }
-            .joined(separator: " · ")
+            .joined(separator: String(localized: " · "))
     }
 }
 
@@ -218,11 +218,11 @@ struct ThreatCatalogUpdate: Equatable {
     var shouldRescan: Bool { !isEmpty }
 
     var summary: String {
-        guard !isEmpty else { return "No rule change" }
+        guard !isEmpty else { return String(localized: "No rule change") }
         var parts: [String] = []
-        if !addedRules.isEmpty { parts.append("+\(addedRules.count) rules") }
-        if !removedRules.isEmpty { parts.append("-\(removedRules.count) rules") }
-        if !changedRules.isEmpty { parts.append("\(changedRules.count) rules changed") }
-        return parts.joined(separator: " · ")
+        if !addedRules.isEmpty { parts.append(String(localized: "+\(addedRules.count) rules")) }
+        if !removedRules.isEmpty { parts.append(String(localized: "-\(removedRules.count) rules")) }
+        if !changedRules.isEmpty { parts.append(String(localized: "\(changedRules.count) rules changed")) }
+        return parts.joined(separator: String(localized: " · "))
     }
 }

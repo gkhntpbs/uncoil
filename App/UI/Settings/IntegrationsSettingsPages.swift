@@ -9,7 +9,7 @@ struct GitHubSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: "GitHub",
-            subtitle: "Sign in with a browser; the token is stored only in the Keychain."
+            subtitle: String(localized: "Sign in with a browser; the token is stored only in the Keychain.")
         ) {
             Section {
                 GitHubLoginView(loggedIn: $loggedIn)
@@ -76,7 +76,7 @@ struct GitHubLoginView: View {
 
     private var startRow: some View {
         AdaptiveRow {
-            SettingsLabel(title: "Connect with your GitHub account")
+            SettingsLabel(title: String(localized: "Connect with your GitHub account"))
         } control: {
             Button("Sign In with a Browser") { startLogin() }
                 .buttonStyle(.borderedProminent)
@@ -177,8 +177,8 @@ struct GitHubLoginView: View {
 struct DriversSettingsPage: View {
     var body: some View {
         SettingsPage(
-            title: "Drivers",
-            subtitle: "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval."
+            title: String(localized: "Drivers"),
+            subtitle: String(localized: "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval.")
         ) {
             Section("Agent Browser") {
                 AgentBrowserSetupSection()

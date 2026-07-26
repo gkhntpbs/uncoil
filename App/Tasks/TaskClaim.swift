@@ -17,13 +17,13 @@ enum TaskClaimState: String, Equatable, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .available: "Available"
-        case .claimed: "Claimed"
-        case .running: "Running"
-        case .released: "Released"
-        case .expired: "Expired"
-        case .blocked: "Blocked"
-        case .completed: "Done"
+        case .available: String(localized: "Available")
+        case .claimed: String(localized: "Claimed")
+        case .running: String(localized: "Running")
+        case .released: String(localized: "Released")
+        case .expired: String(localized: "Expired")
+        case .blocked: String(localized: "Blocked")
+        case .completed: String(localized: "Done")
         }
     }
 

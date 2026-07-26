@@ -58,18 +58,18 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .projects: "Project list"
-        case .sessions: "Session metadata"
-        case .sessionGroups: "Session groups"
-        case .presets: "Preset'ler"
-        case .permissionPolicy: "Permission decisions"
-        case .extensionRegistry: "Extension registry"
-        case .auditLog: "Audit log"
-        case .securityFinding: "Security finding"
-        case .runtimeProtocol: "Runtime protocol"
-        case .taskMetadata: "Task metadata"
-        case .taskResults: "Task results"
-        case .orchestrator: "Orchestrator plan"
+        case .projects: String(localized: "Project list")
+        case .sessions: String(localized: "Session metadata")
+        case .sessionGroups: String(localized: "Session groups")
+        case .presets: String(localized: "Presets")
+        case .permissionPolicy: String(localized: "Permission decisions")
+        case .extensionRegistry: String(localized: "Extension registry")
+        case .auditLog: String(localized: "Audit log")
+        case .securityFinding: String(localized: "Security finding")
+        case .runtimeProtocol: String(localized: "Runtime protocol")
+        case .taskMetadata: String(localized: "Task metadata")
+        case .taskResults: String(localized: "Task results")
+        case .orchestrator: String(localized: "Orchestrator plan")
         }
     }
 

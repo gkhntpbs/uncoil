@@ -14,7 +14,7 @@ struct AboutSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "About") {
+        SettingsPage(title: String(localized: "About")) {
             Section {
                 LabeledContent("Uncoil", value: version)
                 LabeledContent("Bundle", value: Bundle.main.bundleIdentifier ?? "—")
@@ -23,8 +23,8 @@ struct AboutSettingsPage: View {
             Section {
                 AdaptiveRow {
                     SettingsLabel(
-                        title: "Debug paketi",
-                        detail: "Collects the logs and the configuration into one file; sensitive content is stripped."
+                        title: String(localized: "Debug bundle"),
+                        detail: String(localized: "Collects the logs and the configuration into one file; sensitive content is stripped.")
                     )
                 } control: {
                     Button("Create") { createDebugBundle() }

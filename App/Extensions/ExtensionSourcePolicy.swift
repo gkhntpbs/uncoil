@@ -17,10 +17,10 @@ struct ExtensionSourceCapabilities: Equatable {
 
         var label: String {
             switch self {
-            case .git: "Git revision"
-            case .appBundle: "Uncoil version"
-            case .server: "Version reported by the server"
-            case .none: "No version information"
+            case .git: String(localized: "Git revision")
+            case .appBundle: String(localized: "Uncoil version")
+            case .server: String(localized: "Version reported by the server")
+            case .none: String(localized: "No version information")
             }
         }
     }

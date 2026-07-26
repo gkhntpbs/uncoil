@@ -62,10 +62,10 @@ struct ExtensionAdoptionService {
             let counts = Dictionary(grouping: changedFiles, by: \.kind)
                 .mapValues(\.count)
             var parts: [String] = []
-            if let added = counts[.added] { parts.append("\(added) new") }
-            if let modified = counts[.modified] { parts.append("\(modified) changed") }
-            if let removed = counts[.removed] { parts.append("\(removed) kaybolan") }
-            return parts.isEmpty ? "No file difference" : parts.joined(separator: ", ")
+            if let added = counts[.added] { parts.append(String(localized: "\(added) new")) }
+            if let modified = counts[.modified] { parts.append(String(localized: "\(modified) changed")) }
+            if let removed = counts[.removed] { parts.append(String(localized: "\(removed) missing")) }
+            return parts.isEmpty ? String(localized: "No file difference") : parts.joined(separator: String(localized: ", "))
         }
     }
 
@@ -259,11 +259,11 @@ struct ExtensionAdoptionService {
             name: plan.name,
             summary: {
                 if let definition = plan.definition {
-                    return "Sahiplenildi · \(definition.transport.label) · \(definition.displayTarget)"
+                    return "Adopted · \(definition.transport.label) · \(definition.displayTarget)"
                 }
                 return collected.isEmpty
                     ? "Adopted while installed outside Uncoil"
-                    : "Sahiplenildi; \(collected.map { $0.agent.displayName }.joined(separator: ", "))"
+                    : "Adopted; \(collected.map { $0.agent.displayName }.joined(separator: ", "))"
                         + " now reads the shared copy"
             }(),
             // Adopting does not invent a repository: the files are Uncoil's copy
