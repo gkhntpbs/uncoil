@@ -117,6 +117,27 @@ struct ProjectDashboardView: View {
                                 size: 12,
                                 color: isOn ? Theme.text : Theme.textFaint
                             )
+                            // The open-task count rides the icon rather than
+                            // sitting beside the label as a pill of its own: a
+                            // second number in the row read as another control,
+                            // and the tab bar already says what a mark next to
+                            // an icon means.
+                            .overlay(alignment: .topTrailing) {
+                                if candidate == .tasks, openTaskCount > 0 {
+                                    Text(openTaskCount > 99 ? "99+" : "\(openTaskCount)")
+                                        .font(Theme.mono(.micro, .semibold))
+                                        .foregroundStyle(Theme.textOnHighlight)
+                                        .fixedSize()
+                                        .padding(.horizontal, 3)
+                                        .frame(minWidth: 11, minHeight: 11)
+                                        .background(Theme.highlight, in: Capsule())
+                                        // Kept inside the row's own padding: the
+                                        // icon is 12pt with 6pt to the label, so
+                                        // the badge overlaps the icon's corner
+                                        // rather than the word beside it.
+                                        .offset(x: 4, y: -5)
+                                }
+                            }
                             if !tabsAreIconOnly {
                                 Text(candidate.title)
                                     .font(Theme.mono(.body, isOn ? .semibold : .regular))
@@ -128,17 +149,6 @@ struct ProjectDashboardView: View {
                                 Circle()
                                     .fill(Theme.ok)
                                     .frame(width: 6, height: 6)
-                            }
-                            if candidate == .tasks, openTaskCount > 0 {
-                                Text("\(openTaskCount)")
-                                    .font(Theme.mono(.micro, .semibold))
-                                    .foregroundStyle(isOn ? Theme.bg : Theme.textFaint)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(
-                                        isOn ? Theme.highlight : Theme.panel,
-                                        in: Capsule()
-                                    )
                             }
                         }
                         .padding(.horizontal, tabsAreIconOnly ? 8 : 12)
