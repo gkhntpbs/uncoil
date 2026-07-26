@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// What to call a working tree in the interface.
@@ -15,74 +16,100 @@ enum WorktreeNaming {
     }
 }
 
-/// The list of branches a working tree can move to, as menu content.
+/// Opens the branch list as a real `NSMenu`, anchored under a custom label.
 ///
-/// Split out from the chip so the project header and a session header offer the
-/// same switch from two very different-looking controls. `repoPath` is whichever
-/// tree the surrounding view is looking at: for a task session that is its
-/// worktree, and switching there must not move the project's checkout.
-struct BranchSwitchMenu: View {
+/// SwiftUI's `Menu` renders its own control around the label, and with a
+/// borderless style on macOS it kept the icon while dropping the branch name
+/// beside it — the one thing the chip exists to show. Popping an `NSMenu` from
+/// a plain `Button` leaves the label entirely ours, and gives the menu AppKit's
+/// own keyboard handling for free.
+struct BranchMenuButton<Label: View>: View {
     let repoPath: String
     let current: String
-    /// Called after a successful switch, so the caller can re-read its state.
     var onSwitched: (() -> Void)?
+    @ViewBuilder var label: Label
 
     @State private var branches: [GitService.Branch] = []
-    @State private var isLoading = false
     @State private var failure: String?
+    @State private var anchor: NSView?
 
     var body: some View {
-        Group {
-            if branches.isEmpty {
-                Text(isLoading ? "Reading branches…" : "No other branch")
-            } else {
-                ForEach(branches) { candidate in
-                    Button { switchTo(candidate) } label: {
-                        // The current branch keeps a tick; a branch another
-                        // worktree holds says so rather than failing when it is
-                        // picked, because git allows a branch in one tree only.
-                        if candidate.isCurrent {
-                            Label(candidate.name, systemImage: "checkmark")
-                        } else if let holder = candidate.heldBy {
-                            Text("\(candidate.name) — open in \(shortPath(holder))")
-                        } else {
-                            Text(candidate.name)
-                        }
-                    }
-                    .disabled(!candidate.isSwitchable)
+        Button(action: present) { label }
+            .buttonStyle(.plain)
+            .background(AnchorView(view: $anchor))
+            // Branches appear under the app's hands — an agent creating one, a
+            // worktree being cut — so the list is already current when the menu
+            // opens rather than being read at click time.
+            .task(id: repoPath) {
+                while !Task.isCancelled {
+                    await load()
+                    try? await Task.sleep(nanoseconds: 3 * NSEC_PER_SEC)
                 }
             }
-            if let failure {
-                Divider()
-                Text(failure)
-            }
-        }
-        // Branches appear and disappear under the app's hands — an agent
-        // creating one, a worktree being cut — so the list keeps itself current
-        // instead of asking to be refreshed by hand. The menu is built before it
-        // is shown, so a poll is what makes it right at the moment it opens.
-        .task(id: repoPath) {
-            while !Task.isCancelled {
-                await load()
-                try? await Task.sleep(nanoseconds: 5 * NSEC_PER_SEC)
-            }
-        }
     }
 
     private func load() async {
         let path = repoPath
         let found = await Task.detached { GitService.branches(repoPath: path) }.value
         if branches != found { branches = found }
-        isLoading = false
     }
 
-    private func switchTo(_ candidate: GitService.Branch) {
-        guard candidate.isSwitchable else { return }
+    private func present() {
+        guard let anchor else { return }
+        let menu = NSMenu()
+
+        if branches.isEmpty {
+            let item = NSMenuItem(
+                title: String(localized: "Reading branches…"), action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+        for candidate in branches {
+            // A branch another worktree holds names that tree instead of failing
+            // once it is picked: git allows a branch in one tree at a time.
+            let title = candidate.heldBy.map {
+                String(localized: "\(candidate.name) — open in \(shortPath($0))")
+            } ?? candidate.name
+            let item = NSMenuItem(
+                title: title, action: #selector(MenuTarget.pick(_:)), keyEquivalent: "")
+            item.state = candidate.isCurrent ? .on : .off
+            item.isEnabled = candidate.isSwitchable
+            item.target = MenuTarget.shared
+            item.representedObject = MenuTarget.Pick(branch: candidate.name) { name in
+                switchTo(name)
+            }
+            menu.addItem(item)
+        }
+
+        if let failure {
+            menu.addItem(.separator())
+            let item = NSMenuItem(title: failure, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
+        let refresh = NSMenuItem(
+            title: String(localized: "Refresh"),
+            action: #selector(MenuTarget.pick(_:)), keyEquivalent: "r")
+        refresh.target = MenuTarget.shared
+        refresh.representedObject = MenuTarget.Pick(branch: "") { _ in
+            Task { await load() }
+        }
+        menu.addItem(refresh)
+
+        menu.popUp(
+            positioning: nil,
+            at: NSPoint(x: 0, y: anchor.bounds.height + 4),
+            in: anchor)
+    }
+
+    private func switchTo(_ name: String) {
         failure = nil
         let path = repoPath
         Task { @MainActor in
             let result = await Task.detached {
-                GitService.checkout(repoPath: path, branch: candidate.name)
+                GitService.checkout(repoPath: path, branch: name)
             }.value
             switch result {
             case .success:
@@ -101,6 +128,39 @@ struct BranchSwitchMenu: View {
     }
 }
 
+/// `NSMenuItem` needs an ObjC target; this is the one the app keeps.
+@MainActor
+private final class MenuTarget: NSObject {
+    static let shared = MenuTarget()
+
+    final class Pick: NSObject {
+        let branch: String
+        let run: (String) -> Void
+        init(branch: String, run: @escaping (String) -> Void) {
+            self.branch = branch
+            self.run = run
+        }
+    }
+
+    @objc func pick(_ sender: NSMenuItem) {
+        guard let pick = sender.representedObject as? Pick else { return }
+        pick.run(pick.branch)
+    }
+}
+
+/// Hands back the `NSView` a menu can be anchored to.
+private struct AnchorView: NSViewRepresentable {
+    @Binding var view: NSView?
+
+    func makeNSView(context: Context) -> NSView {
+        let probe = NSView()
+        DispatchQueue.main.async { view = probe.superview ?? probe }
+        return probe
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
 /// "This is the branch the work lands on" — and the way to change it.
 ///
 /// Sized like the control blocks it sits between: 22pt of content inside a 3pt
@@ -116,7 +176,7 @@ struct BranchBadge: View {
     ///
     /// A branch alone does not say *where* it is checked out, and with task
     /// worktrees open that is the difference between the project and a copy of
-    /// it. The project's own root passes nil: naming it would be noise.
+    /// it.
     var worktreeName: String?
     var onSwitched: (() -> Void)?
     /// Longest name shown before it is cut; a chip is not the place to read a
@@ -126,20 +186,16 @@ struct BranchBadge: View {
     var body: some View {
         Group {
             if let repoPath {
-                Menu {
-                    BranchSwitchMenu(
-                        repoPath: repoPath, current: branch, onSwitched: onSwitched)
-                } label: {
+                BranchMenuButton(
+                    repoPath: repoPath, current: branch, onSwitched: onSwitched
+                ) {
                     chip
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help(helpText)
             } else {
-                chip.help(helpText)
+                chip
             }
         }
+        .help(helpText)
         .accessibilityIdentifier("branch.badge")
     }
 

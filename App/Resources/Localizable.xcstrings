@@ -12046,17 +12046,6 @@
         }
       }
     },
-    "No other branch": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Başka dal yok"
-          }
-        }
-      }
-    },
     "No project": {
       "extractionState": "manual",
       "localizations": {

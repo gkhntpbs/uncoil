@@ -77,16 +77,14 @@ struct SessionHeaderBar<Trailing: View>: View {
                         // Switchable, like the project header's chip: the tree
                         // the session is in is the one that moves, which for a
                         // task session is its worktree and not the project.
-                        Menu {
-                            BranchSwitchMenu(
-                                repoPath: workingDirectory,
-                                current: branch,
-                                // Re-read at once rather than waiting out the
-                                // 15s poll; blanking the chip would make it
-                                // disappear for the whole gap.
-                                onSwitched: { refreshBranch() }
-                            )
-                        } label: {
+                        BranchMenuButton(
+                            repoPath: workingDirectory,
+                            current: branch,
+                            // Re-read at once rather than waiting out the 15s
+                            // poll; blanking the chip would make it disappear
+                            // for the whole gap.
+                            onSwitched: { refreshBranch() }
+                        ) {
                             HStack(spacing: 3) {
                                 TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
                                 Text(branch)
@@ -104,8 +102,6 @@ struct SessionHeaderBar<Trailing: View>: View {
                                     .truncationMode(.middle)
                             }
                         }
-                        .menuStyle(.borderlessButton)
-                        .menuIndicator(.hidden)
                         .fixedSize()
                         .help("\(branch) in \(treeName) — click to switch")
                     }
