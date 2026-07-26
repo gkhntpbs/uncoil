@@ -211,7 +211,7 @@ struct ExtensionsView: View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer().frame(height: 42)
             Text("EXTENSIONS")
-                .font(Theme.mono(10, .semibold))
+                .font(Theme.mono(.small, .semibold))
                 .foregroundStyle(Theme.textFaint)
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
@@ -220,7 +220,7 @@ struct ExtensionsView: View {
                 TablerIcon(name: "search", size: 11, color: Theme.textFaint)
                 TextField("Search everywhere", text: $query)
                     .textFieldStyle(.plain)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .accessibilityIdentifier("extensions.search")
                 if !query.isEmpty {
@@ -256,12 +256,12 @@ struct ExtensionsView: View {
                             color: selection == section ? Theme.text : Theme.textDim
                         )
                         Text(section.title)
-                            .font(Theme.mono(11.5, selection == section ? .semibold : .regular))
+                            .font(Theme.mono(.body, selection == section ? .semibold : .regular))
                             .foregroundStyle(selection == section ? Theme.text : Theme.textDim)
                         Spacer()
                         if let badge = badge(for: section) {
                             Text("\(badge.count)")
-                                .font(Theme.mono(9.5, .semibold))
+                                .font(Theme.mono(.micro, .semibold))
                                 .foregroundStyle(Theme.bg)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
@@ -291,7 +291,7 @@ struct ExtensionsView: View {
                         TablerIcon(name: "stethoscope", size: 12, color: Theme.text)
                     }
                     Text(isCheckingHealth ? "Checking…" : "Run Health Check")
-                        .font(Theme.mono(11, .medium))
+                        .font(Theme.mono(.body, .medium))
                         .foregroundStyle(Theme.text)
                 }
                 .frame(maxWidth: .infinity)
@@ -343,20 +343,20 @@ struct ExtensionsView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(isSearching ? "Arama" : selection.title)
-                        .font(Theme.mono(18, .bold))
+                        .font(Theme.mono(.title, .bold))
                         .foregroundStyle(Theme.text)
                     Text(
                         isSearching
                             ? "Results across every section for “\(trimmedQuery)”"
                             : selection.description
                     )
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                 }
                 Spacer()
                 if let lastDiscoveryAt = registry.lastDiscoveryAt {
                     Text("Last scan \(RelativeClock.short(since: lastDiscoveryAt))")
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
             }
@@ -449,17 +449,17 @@ private struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(Theme.mono(20, .bold))
+                .font(Theme.mono(.display, .bold))
                 .foregroundStyle(tint ?? Theme.text)
                 .lineLimit(1)
             Text(label)
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
                 .lineLimit(1)
             // Reserved even when empty: the label of a tile without a detail
             // still has to sit where the others' labels do.
             Text(detail ?? " ")
-                .font(Theme.mono(9.5))
+                .font(Theme.mono(.micro))
                 .foregroundStyle(Theme.textFaint)
                 .lineLimit(2)
                 .truncationMode(.tail)
@@ -480,11 +480,11 @@ private struct SectionCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(Theme.mono(12, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             if let detail {
                 Text(detail)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             VStack(alignment: .leading, spacing: 0) {
@@ -504,11 +504,11 @@ private struct KeyValueRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text(key)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
                 .frame(width: 150, alignment: .leading)
             Text(value)
-                .font(isMonospacedValue ? Theme.mono(11) : Theme.mono(11, .medium))
+                .font(isMonospacedValue ? Theme.mono(.body) : Theme.mono(.body, .medium))
                 .foregroundStyle(tint ?? Theme.text)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -535,20 +535,20 @@ private struct HealthRow: View {
             Circle().fill(color).frame(width: 6, height: 6).padding(.top, 5)
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.name)
-                    .font(Theme.mono(11.5, .medium))
+                    .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                 Text(result.detail)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                 if let remedy = result.remedy {
                     Text(remedy)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
             }
             Spacer()
             Text(result.outcome.label)
-                .font(Theme.mono(10, .semibold))
+                .font(Theme.mono(.small, .semibold))
                 .foregroundStyle(color)
         }
         .padding(.horizontal, 12)
@@ -562,7 +562,7 @@ private struct EmptyRow: View {
 
     var body: some View {
         Text(text)
-            .font(Theme.mono(11))
+            .font(Theme.mono(.body))
             .foregroundStyle(Theme.textFaint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 12)
@@ -592,7 +592,7 @@ private struct SourceBadge: View {
 
     var body: some View {
         Text(label)
-            .font(Theme.mono(9, .semibold))
+            .font(Theme.mono(.micro, .semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
@@ -684,11 +684,11 @@ private struct OverviewScreen: View {
                             .padding(.top, 2)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(issue.message)
-                                    .font(Theme.mono(11))
+                                    .font(Theme.mono(.body))
                                     .foregroundStyle(Theme.text)
                                 if let remedy = issue.remedy {
                                     Text(remedy)
-                                        .font(Theme.mono(10))
+                                        .font(Theme.mono(.small))
                                         .foregroundStyle(Theme.textFaint)
                                 }
                             }
@@ -806,12 +806,12 @@ private struct AgentsScreen: View {
                         .buttonStyle(GhostButtonStyle())
                         .accessibilityIdentifier("extensions.agent.repair.\(installation.agent.rawValue)")
 
-                        Button("Export setup") {
+                        Button("Export Setup") {
                             message = exportSetup(installation)
                         }
                         .buttonStyle(GhostButtonStyle())
 
-                        Button("Import setup") {
+                        Button("Import Setup") {
                             importSetup(installation)
                         }
                         .buttonStyle(GhostButtonStyle())
@@ -838,10 +838,10 @@ private struct AgentsScreen: View {
                                     color: server.isEnabled ? Theme.highlight : Theme.textFaint
                                 )
                                 Text(server.name)
-                                    .font(Theme.mono(10.5))
+                                    .font(Theme.mono(.small))
                                     .foregroundStyle(Theme.text)
                                 Text(server.transport.rawValue)
-                                    .font(Theme.mono(9))
+                                    .font(Theme.mono(.micro))
                                     .foregroundStyle(Theme.textFaint)
                                 Spacer()
                                 Button(server.isEnabled ? "Close" : "Open") {
@@ -856,7 +856,7 @@ private struct AgentsScreen: View {
                                     )
                                 }
                                 .buttonStyle(GhostButtonStyle())
-                                .font(Theme.mono(9.5))
+                                .font(Theme.mono(.micro))
                                 .accessibilityIdentifier(
                                     "extensions.mcp.toggle.\(installation.agent.rawValue).\(server.name)"
                                 )
@@ -868,7 +868,7 @@ private struct AgentsScreen: View {
                                     )
                                 }
                                 .buttonStyle(GhostButtonStyle())
-                                .font(Theme.mono(9.5))
+                                .font(Theme.mono(.micro))
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
@@ -885,14 +885,14 @@ private struct AgentsScreen: View {
                                         RelativeClock.short(since: $0)
                                     } ?? "unknown")
                             )
-                            .font(Theme.mono(10))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textDim)
                             Spacer()
-                            Button("Back to the previous config") {
+                            Button("Back to the Previous Config") {
                                 message = rollback(candidate, installation: installation)
                             }
                             .buttonStyle(GhostButtonStyle())
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .accessibilityIdentifier(
                                 "extensions.config.rollback.\(installation.agent.rawValue)"
                             )
@@ -1251,7 +1251,7 @@ private struct PackagesScreen: View {
             isPresented: $confirmsAdoptAll,
             titleVisibility: .visible
         ) {
-            Button("Adopt all", role: .destructive) { adoptAll() }
+            Button("Adopt All", role: .destructive) { adoptAll() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
@@ -1265,23 +1265,23 @@ private struct PackagesScreen: View {
     private var toolbar: some View {
         HStack(spacing: 9) {
             if kind == .skill {
-                Button("New skill…") { isCreatingSkill = true }
+                Button("New Skill…") { isCreatingSkill = true }
                     .buttonStyle(AccentButtonStyle())
                     .accessibilityIdentifier("extensions.skills.create")
 
-                Button("Add from folder…") { importFolder() }
+                Button("Add from Folder…") { importFolder() }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("extensions.skills.import")
             }
 
-            Button("Adopt all (\(adoptable.count))") { confirmsAdoptAll = true }
+            Button("Adopt All (\(adoptable.count))") { confirmsAdoptAll = true }
                 .buttonStyle(kind == .skill ? AnyButtonStyle(GhostButtonStyle()) : AnyButtonStyle(AccentButtonStyle()))
                 .disabled(adoptable.isEmpty)
                 .accessibilityIdentifier("extensions.\(kind.rawValue).adoptAll")
 
             Spacer()
             Text("\(packages.count) records")
-                .font(Theme.mono(10))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
         }
     }
@@ -1535,7 +1535,7 @@ private struct PackageCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 7) {
                         Text(package.name)
-                            .font(Theme.mono(12.5, .semibold))
+                            .font(Theme.mono(.large, .semibold))
                             .foregroundStyle(Theme.text)
                         SourceBadge(source: package.source)
                         if package.state != .active {
@@ -1552,19 +1552,19 @@ private struct PackageCard: View {
                         }
                     }
                     Text(package.summary ?? package.source.label)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
                 }
                 Spacer()
                 if candidate != nil {
                     Text("update")
-                        .font(Theme.mono(9, .semibold))
+                        .font(Theme.mono(.micro, .semibold))
                         .foregroundStyle(Theme.highlight)
                 }
                 if let highest = findings.filter({ !$0.isAccepted }).map(\.severity).max() {
                     Text(highest.label)
-                        .font(Theme.mono(9, .semibold))
+                        .font(Theme.mono(.micro, .semibold))
                         .foregroundStyle(highest >= .high ? Theme.danger : Theme.warn)
                 }
                 Image(systemName: "chevron.down")
@@ -1805,7 +1805,7 @@ private struct PackageCard: View {
             }
 
             if package.source.capabilities.canLinkToRepository {
-                Button("Connect to a GitHub source…") { linkingRepository = "" }
+                Button("Connect to a GitHub Source…") { linkingRepository = "" }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("extensions.package.link.\(package.id)")
             }
@@ -1831,7 +1831,7 @@ private struct PackageCard: View {
             }
 
             if let path = package.activeRevision?.path {
-                Button("Inspect files") {
+                Button("Inspect Files") {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
                 }
                 .buttonStyle(GhostButtonStyle())
@@ -1899,11 +1899,11 @@ private struct TriggerTesterCard: View {
             HStack(spacing: 9) {
                 TextField("Write an example prompt…", text: $prompt)
                     .textFieldStyle(.plain)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .onSubmit(run)
                     .accessibilityIdentifier("extensions.trigger.prompt")
-                Button("Test it", action: run)
+                Button("Test It", action: run)
                     .buttonStyle(AccentButtonStyle())
                     .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty)
                     .accessibilityIdentifier("extensions.trigger.run")
@@ -1915,15 +1915,15 @@ private struct TriggerTesterCard: View {
             HStack(spacing: 9) {
                 Toggle("Keep test history", isOn: $history.isEnabled)
                     .toggleStyle(.checkbox)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                     .accessibilityIdentifier("extensions.trigger.keepHistory")
                 Spacer()
                 if !history.entries.isEmpty {
                     Text("\(history.entries.count) records")
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
-                    Button("Clear history") { history.clear() }
+                    Button("Clear History") { history.clear() }
                         .buttonStyle(GhostButtonStyle())
                 }
             }
@@ -1933,7 +1933,7 @@ private struct TriggerTesterCard: View {
             if !results.isEmpty {
                 Divider().overlay(Theme.border)
                 Text("\(candidateCount) skill descriptions loaded")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
@@ -1942,18 +1942,18 @@ private struct TriggerTesterCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 7) {
                             Text(result.agent.displayName)
-                                .font(Theme.mono(11, .semibold))
+                                .font(Theme.mono(.body, .semibold))
                                 .foregroundStyle(Theme.text)
                             Text(result.verdict.label)
-                                .font(Theme.mono(10, .semibold))
+                                .font(Theme.mono(.small, .semibold))
                                 .foregroundStyle(verdictColor(result.verdict))
                         }
                         Text(result.verdict.advice)
-                            .font(Theme.mono(10.5))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textDim)
                         ForEach(result.matches) { match in
                             Text("· \(match.candidate.name) — \(Int(match.score * 100))% · \(match.matchedTerms.prefix(4).joined(separator: ", "))")
-                                .font(Theme.mono(10))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textFaint)
                         }
                     }
@@ -2065,12 +2065,12 @@ private struct AssignmentsScreen: View {
                     Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                         GridRow {
                             Text("Extension")
-                                .font(Theme.mono(10, .semibold))
+                                .font(Theme.mono(.small, .semibold))
                                 .foregroundStyle(Theme.textFaint)
                                 .gridColumnAlignment(.leading)
                             ForEach(agents) { agent in
                                 Text(agent.displayName)
-                                    .font(Theme.mono(10, .semibold))
+                                    .font(Theme.mono(.small, .semibold))
                                     .foregroundStyle(Theme.textFaint)
                                     .lineLimit(1)
                                     .frame(width: 110, alignment: .leading)
@@ -2081,7 +2081,7 @@ private struct AssignmentsScreen: View {
                         ForEach(packages) { package in
                             GridRow {
                                 Text(package.name)
-                                    .font(Theme.mono(11))
+                                    .font(Theme.mono(.body))
                                     .foregroundStyle(Theme.text)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
@@ -2115,7 +2115,7 @@ private struct AssignmentsScreen: View {
                     // are installed.
                     FlowRow(spacing: 9) {
                         ForEach(agents) { agent in
-                            Button("Assign all to \(agent.displayName)") {
+                            Button("Assign All to \(agent.displayName)") {
                                 for package in packages {
                                     registry.setAgentBinding(
                                         true, packageID: package.id, agent: agent
@@ -2142,7 +2142,7 @@ private struct AssignmentsScreen: View {
                     ForEach(packages) { package in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(package.name)
-                                .font(Theme.mono(11))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(Theme.text)
                                 .lineLimit(1)
                             FlowRow(spacing: 6) {
@@ -2158,7 +2158,7 @@ private struct AssignmentsScreen: View {
                                         ))
                                     } label: {
                                         Text(project.name)
-                                            .font(Theme.mono(10))
+                                            .font(Theme.mono(.small))
                                             .foregroundStyle(
                                                 binding == nil
                                                     ? Theme.textFaint
@@ -2193,7 +2193,7 @@ private struct AssignmentsScreen: View {
             TablerIcon(name: "search", size: 12, color: Theme.textFaint)
             TextField("Search this page…", text: $query)
                 .textFieldStyle(.plain)
-                .font(Theme.mono(11.5))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
                 .accessibilityIdentifier("extensions.assignments.search")
             if !query.isEmpty {
@@ -2207,7 +2207,7 @@ private struct AssignmentsScreen: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("extensions.assignments.search.clear")
                 Text("\(packages.count)/\(registry.packages.count)")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
             }
         }
@@ -2300,7 +2300,7 @@ private struct SourcesScreen: View {
                 HStack(spacing: 9) {
                     TextField("owner/repo", text: $newSource)
                         .textFieldStyle(.plain)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.text)
                         .onSubmit(add)
                     Button("Add", action: add)
@@ -2380,14 +2380,14 @@ private struct SourceRow: View {
             HStack(spacing: 8) {
                 TablerIcon(name: "brand-github", size: 13, color: Theme.textDim)
                 Text(repository)
-                    .font(Theme.mono(11.5, .medium))
+                    .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                 Text(trackingSummary)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
                 Text(trustSummary)
-                    .font(Theme.mono(9, .semibold))
+                    .font(Theme.mono(.micro, .semibold))
                     .foregroundStyle(packages.isEmpty ? Theme.textFaint : Theme.ok)
             }
             Text(
@@ -2395,25 +2395,25 @@ private struct SourceRow: View {
                     ? "No extension has been installed from this repo yet."
                     : "Extension: \(packages.map(\.name).joined(separator: ", "))"
             )
-            .font(Theme.mono(10.5))
+            .font(Theme.mono(.small))
             .foregroundStyle(Theme.textDim)
             Text("Last fetch: \(lastFetchSummary)")
-                .font(Theme.mono(9.5))
+                .font(Theme.mono(.micro))
                 .foregroundStyle(Theme.textFaint)
             HStack(spacing: 9) {
-                Button("Fetch now") {
+                Button("Fetch Now") {
                     message = fetch()
                 }
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.sources.fetch.\(repository)")
                 if !packages.isEmpty {
-                    Button("Pin commit…") { retracking = .commit }
+                    Button("Pin Commit…") { retracking = .commit }
                         .buttonStyle(GhostButtonStyle())
                         .accessibilityIdentifier("extensions.sources.pin.\(repository)")
-                    Button("Switch branch/tag…") { retracking = .branch }
+                    Button("Switch Branch/Tag…") { retracking = .branch }
                         .buttonStyle(GhostButtonStyle())
                 }
-                Button("Remove source") {
+                Button("Remove Source") {
                     registry.removeSource(repository)
                     message = "\(repository) removed; installed extensions were left alone."
                 }
@@ -2426,13 +2426,13 @@ private struct SourceRow: View {
         .sheet(item: $retracking) { kind in
             VStack(alignment: .leading, spacing: 12) {
                 Text(kind.title)
-                    .font(Theme.mono(13, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(repository) — \(packages.count) extensions will be affected.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                 TextField(kind.placeholder, text: $reference)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("extensions.sources.reference")
                 HStack(spacing: 9) {
@@ -2560,14 +2560,14 @@ private struct SecurityScreen: View {
                     .disabled(scans.isScanning)
                     .accessibilityIdentifier("extensions.security.manualScan")
 
-                    Button("Project scan") {
+                    Button("Project Scan") {
                         let roots = projectStore.projects.map(\.rootPath)
                         Task { message = await scans.scanProjects(roots: roots).message }
                     }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(scans.isScanning)
 
-                    Button("Deep scan") {
+                    Button("Deep Scan") {
                         Task { message = await scans.deepScan().message }
                     }
                     .buttonStyle(GhostButtonStyle())
@@ -2628,7 +2628,7 @@ private struct SecurityScreen: View {
                         Text(summary.caption(
                             scanned: registry.packages.count
                         ))
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(summary.hasParserDiagnostics ? Theme.warn : Theme.textFaint)
                         .padding(.horizontal, 12)
                         .padding(.top, 4)
@@ -2640,7 +2640,7 @@ private struct SecurityScreen: View {
                                     level: kind.isActionable ? .warning : .neutral
                                 )
                                 Text(kind.remedy)
-                                    .font(Theme.mono(9.5))
+                                    .font(Theme.mono(.micro))
                                     .foregroundStyle(Theme.textFaint)
                                     .lineLimit(2)
                                 Spacer()
@@ -2671,7 +2671,7 @@ private struct SecurityScreen: View {
                     ForEach(quarantined) { package in
                         HStack {
                             Text(package.name)
-                                .font(Theme.mono(11.5))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(Theme.text)
                             Spacer()
                             Button("Restore") {
@@ -2707,23 +2707,23 @@ private struct FindingRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 7) {
                     Text(finding.severity.label)
-                        .font(Theme.mono(9.5, .semibold))
+                        .font(Theme.mono(.micro, .semibold))
                         .foregroundStyle(color)
                     Text(finding.rule)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                     if finding.isAccepted {
                         Text("accepted")
-                            .font(Theme.mono(9))
+                            .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
                     }
                 }
                 Text(finding.message)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                 if let path = finding.path {
                     Text(path)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
             }
@@ -2841,7 +2841,7 @@ private struct UpdatesScreen: View {
                         .buttonStyle(GhostButtonStyle())
                         .accessibilityIdentifier("extensions.update.review.\(candidate.extensionID)")
 
-                        Button("Update selected") {
+                        Button("Update Selected") {
                             message = apply(candidate, package: package)
                         }
                         .buttonStyle(AccentButtonStyle())
@@ -2854,7 +2854,7 @@ private struct UpdatesScreen: View {
                         .buttonStyle(GhostButtonStyle())
                         .disabled(package?.previousRevision == nil)
 
-                        Button("Rollback history") {
+                        Button("Rollback History") {
                             message = rollbackHistory(package)
                         }
                         .buttonStyle(GhostButtonStyle())
@@ -2866,12 +2866,12 @@ private struct UpdatesScreen: View {
 
             if !registry.updateCandidates.isEmpty {
                 HStack(spacing: 9) {
-                    Button("Update all reviewed") { updateAllReviewed() }
+                    Button("Update All Reviewed") { updateAllReviewed() }
                         .buttonStyle(AccentButtonStyle())
                         .disabled(reviewed.isEmpty)
                         .accessibilityIdentifier("extensions.update.applyReviewed")
                     Text("\(reviewed.count) reviewed")
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                     Spacer()
                 }
@@ -3018,33 +3018,33 @@ private struct ActivityScreen: View {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 7) {
                                 Text(event.kind.label)
-                                    .font(Theme.mono(11, .semibold))
+                                    .font(Theme.mono(.body, .semibold))
                                     .foregroundStyle(Theme.text)
                                 if let extensionID = event.extensionID {
                                     Text(extensionID)
-                                        .font(Theme.mono(10))
+                                        .font(Theme.mono(.small))
                                         .foregroundStyle(Theme.textFaint)
                                 }
                                 if let agent = event.agent {
                                     Text(agent.displayName)
-                                        .font(Theme.mono(10))
+                                        .font(Theme.mono(.small))
                                         .foregroundStyle(Theme.textFaint)
                                 }
                             }
                             Text(event.detail)
-                                .font(Theme.mono(10.5))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textDim)
                         }
                         Spacer()
                         Text(RelativeClock.short(since: event.at))
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
                         if ExtensionRegistry.isUndoable(event) {
                             Button("Undo") {
                                 message = registry.undo(event) ?? "This cannot be undone."
                             }
                             .buttonStyle(GhostButtonStyle())
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .accessibilityIdentifier("extensions.activity.undo.\(event.id.uuidString)")
                         }
                     }

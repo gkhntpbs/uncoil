@@ -78,7 +78,7 @@ struct GitHubLoginView: View {
         AdaptiveRow {
             SettingsLabel(title: String(localized: "Connect with your GitHub account"))
         } control: {
-            Button("Sign In with a Browser") { startLogin() }
+            Button("Sign in with a Browser") { startLogin() }
                 .buttonStyle(.borderedProminent)
                 .settingsID("github.loginButton")
         }

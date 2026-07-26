@@ -102,10 +102,10 @@ struct TaskDispatchSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Send to agent")
-                .font(Theme.mono(14, .bold))
+                .font(Theme.mono(.large, .bold))
                 .foregroundStyle(Theme.text)
             Text(task.text)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
                 .lineLimit(2)
         }
@@ -116,7 +116,7 @@ struct TaskDispatchSheet: View {
     private var targetSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Target")
-                .font(Theme.mono(11.5, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
                 Button {
@@ -167,7 +167,7 @@ struct TaskDispatchSheet: View {
                 HStack(alignment: .top, spacing: 8) {
                     TablerIcon(name: "alert-triangle", size: 12, color: Theme.warn)
                     Text(crossProjectWarning)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.warn)
                 }
                 .accessibilityIdentifier("taskDispatch.crossProjectWarning")
@@ -187,10 +187,10 @@ struct TaskDispatchSheet: View {
                 .foregroundStyle(isSelected ? Theme.highlight : Theme.textFaint)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(tint ?? Theme.text)
                 Text(detail)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
@@ -203,7 +203,7 @@ struct TaskDispatchSheet: View {
     private var newSessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("New session")
-                .font(Theme.mono(11.5, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
                 pickerRow("Agent") {
@@ -312,7 +312,7 @@ struct TaskDispatchSheet: View {
                             ? "session default"
                             : "\(request.permissionProfile.count) grants"
                     )
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                 }
             }
@@ -323,7 +323,7 @@ struct TaskDispatchSheet: View {
     private var roleAndWorktreeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Role and worktree")
-                .font(Theme.mono(11.5, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
                 pickerRow("Rol") {
@@ -355,7 +355,7 @@ struct TaskDispatchSheet: View {
                             )
                         )
                         .textFieldStyle(.plain)
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.text)
                         .frame(width: 220)
                         .accessibilityIdentifier("taskDispatch.worktreeName")
@@ -377,10 +377,10 @@ struct TaskDispatchSheet: View {
                         .rotationEffect(.degrees(showsPreview ? 0 : -90))
                         .foregroundStyle(Theme.textFaint)
                     Text("Prompt preview")
-                        .font(Theme.mono(11.5, .semibold))
+                        .font(Theme.mono(.body, .semibold))
                         .foregroundStyle(Theme.text)
                     Text("\(previewPrompt.count) characters")
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                     Spacer()
                 }
@@ -391,7 +391,7 @@ struct TaskDispatchSheet: View {
 
             if showsPreview {
                 Text(previewPrompt)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -408,7 +408,7 @@ struct TaskDispatchSheet: View {
     ) -> some View {
         HStack {
             Text(title)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
             Spacer()
             content()
@@ -423,14 +423,14 @@ struct TaskDispatchSheet: View {
             // sometimes the user wants to read and edit before Enter.
             Toggle(isOn: $request.autoStart) {
                 Text("Start automatically")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
             }
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("taskDispatch.autoStart")
             if !request.autoStart {
                 Text("The prompt is typed in; you press Enter.")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()

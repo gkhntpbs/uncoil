@@ -160,12 +160,12 @@ private struct CodexApprovalPanel: View {
             TablerIcon(name: "shield-lock", size: 16, color: Theme.warn)
             VStack(alignment: .leading, spacing: 3) {
                 Text(request.title)
-                    .font(Theme.mono(12, .semibold))
+                    .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                 if let detail = request.detail {
                     Text(detail)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(2)
                 }
@@ -203,7 +203,7 @@ private struct CodexAuthenticationBanner: View {
         HStack(spacing: 10) {
             TablerIcon(name: "user-exclamation", size: 15, color: Theme.warn)
             Text("You need to sign in to your Codex account. You can run `codex login` through the terminal fallback.")
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
             Spacer()
         }
@@ -227,12 +227,12 @@ private struct ChangesPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("CHANGES")
-                    .font(Theme.mono(11, .semibold))
+                    .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .kerning(0.6)
                 if let branch = git.branch {
                     Text(branch)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
                 Spacer()
@@ -252,12 +252,12 @@ private struct ChangesPanel: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if !git.isRepo {
                         Text("This folder is not a git repository.")
-                            .font(Theme.mono(11))
+                            .font(Theme.mono(.body))
                             .foregroundStyle(Theme.textFaint)
                     } else {
                         if git.changedFiles.isEmpty {
                             Text("Worktree clean")
-                                .font(Theme.mono(11))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(Theme.ok)
                         } else {
                             VStack(alignment: .leading, spacing: 4) {
@@ -273,15 +273,15 @@ private struct ChangesPanel: View {
                                 ForEach(git.recentCommits) { commit in
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(commit.subject)
-                                            .font(Theme.mono(11))
+                                            .font(Theme.mono(.body))
                                             .foregroundStyle(Theme.textDim)
                                             .lineLimit(1)
                                         HStack(spacing: 6) {
                                             Text(commit.hash)
-                                                .font(Theme.mono(9.5))
+                                                .font(Theme.mono(.micro))
                                                 .foregroundStyle(Theme.highlight)
                                             Text(commit.relativeDate)
-                                                .font(Theme.mono(9.5))
+                                                .font(Theme.mono(.micro))
                                                 .foregroundStyle(Theme.textFaint)
                                         }
                                     }
@@ -325,11 +325,11 @@ private struct ChangedFileRow: View {
         } label: {
             HStack(spacing: 8) {
                 Text(file.status)
-                    .font(Theme.mono(10, .bold))
+                    .font(Theme.mono(.small, .bold))
                     .foregroundStyle(file.status == "??" ? Theme.textFaint : Theme.warn)
                     .frame(width: 20, alignment: .leading)
                 Text(file.path)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(hovering ? Theme.text : Theme.textDim)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -354,10 +354,10 @@ struct EmptyDetailView: View {
                 ProviderMark(provider: .codex, size: 20)
             }
             Text("Hover a project, pick an agent")
-                .font(Theme.mono(13, .medium))
+                .font(Theme.mono(.large, .medium))
                 .foregroundStyle(Theme.text)
             Text("Every agent opens side by side on the same project.")
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textFaint)
             Button("Add Project") { showFolderPicker = true }
                 .buttonStyle(AccentButtonStyle())

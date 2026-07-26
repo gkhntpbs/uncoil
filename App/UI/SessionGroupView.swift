@@ -68,10 +68,10 @@ struct SessionGroupView: View {
             TablerIcon(name: "folder", size: 18, color: Theme.highlight)
             VStack(alignment: .leading, spacing: 3) {
                 Text(group.name)
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(records.count) sessions · \(project.name)")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
@@ -95,13 +95,13 @@ struct SessionGroupView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("BULK MANAGEMENT")
-                        .font(Theme.mono(10, .semibold))
+                        .font(Theme.mono(.small, .semibold))
                         .foregroundStyle(Theme.textDim)
                         .kerning(0.6)
                     Text(selectedSessionIDs.isEmpty
                          ? "Actions apply to every session in the group."
                          : "Actions apply to the \(targetIDs.count) selected sessions.")
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
                 Spacer()
@@ -117,7 +117,7 @@ struct SessionGroupView: View {
             }
 
             TextEditor(text: $prompt)
-                .font(Theme.mono(11.5))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 64, maxHeight: 110)
@@ -158,19 +158,19 @@ struct SessionGroupView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("SESSIONS")
-                    .font(Theme.mono(10, .semibold))
+                    .font(Theme.mono(.small, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .kerning(0.6)
                 Spacer()
                 Text("\(records.count)")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             .padding(12)
 
             if records.isEmpty {
                 Text("No sessions in this group. Drag sessions here from the sidebar.")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {
@@ -203,12 +203,12 @@ struct SessionGroupView: View {
             ProviderMark(provider: record.provider, size: 12)
             VStack(alignment: .leading, spacing: 2) {
                 Text(record.displayTitle)
-                    .font(Theme.mono(11.5, .medium))
+                    .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 Text(sessionStore.detail(of: record.id)
                      ?? sessionStore.status(of: record.id).label)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()

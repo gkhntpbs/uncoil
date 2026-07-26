@@ -92,7 +92,7 @@ struct McpStatusBadge: View {
                 .fill(state.color)
                 .frame(width: 6, height: 6)
             Text(state.label)
-                .font(Theme.mono(10, .medium))
+                .font(Theme.mono(.small, .medium))
                 .foregroundStyle(state.color)
         }
         .padding(.horizontal, 8)

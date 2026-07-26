@@ -143,7 +143,7 @@ struct ExtensionNoticeStack: View {
                 TablerIcon(name: notice.level.icon, size: 12, color: tint(notice.level))
                     .padding(.top, 1)
                 Text(notice.text)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
@@ -153,7 +153,7 @@ struct ExtensionNoticeStack: View {
                         center.toggleDetail(notice.id)
                     }
                     .buttonStyle(.plain)
-                    .font(Theme.mono(9.5, .medium))
+                    .font(Theme.mono(.micro, .medium))
                     .foregroundStyle(Theme.textDim)
                 }
                 Button {
@@ -168,7 +168,7 @@ struct ExtensionNoticeStack: View {
             }
             if notice.isExpanded, let detail = notice.detail {
                 Text(detail)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

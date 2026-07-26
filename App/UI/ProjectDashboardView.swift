@@ -119,7 +119,7 @@ struct ProjectDashboardView: View {
                             )
                             if !tabsAreIconOnly {
                                 Text(candidate.title)
-                                    .font(Theme.mono(11.5, isOn ? .semibold : .regular))
+                                    .font(Theme.mono(.body, isOn ? .semibold : .regular))
                                     .foregroundStyle(isOn ? Theme.text : Theme.textDim)
                                     .lineLimit(1)
                                     .fixedSize(horizontal: true, vertical: true)
@@ -131,7 +131,7 @@ struct ProjectDashboardView: View {
                             }
                             if candidate == .tasks, openTaskCount > 0 {
                                 Text("\(openTaskCount)")
-                                    .font(Theme.mono(9, .semibold))
+                                    .font(Theme.mono(.micro, .semibold))
                                     .foregroundStyle(isOn ? Theme.bg : Theme.textFaint)
                                     .padding(.horizontal, 5)
                                     .padding(.vertical, 1)
@@ -205,7 +205,7 @@ struct ProjectDashboardView: View {
                     .padding(14)
             } else if let prMessage {
                 Text(prMessage)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {
@@ -239,7 +239,7 @@ struct ProjectDashboardView: View {
                 TextField("New worktree name (isolated task branch)", text: $newWorktreeName)
                     .accessibilityIdentifier("dashboard.worktrees.nameField")
                     .textFieldStyle(.plain)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -258,7 +258,7 @@ struct ProjectDashboardView: View {
 
             if let worktreeError {
                 Text(worktreeError)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.danger)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 10)
@@ -296,13 +296,13 @@ struct ProjectDashboardView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(project.name)
-                    .font(Theme.mono(16, .bold))
+                    .font(Theme.mono(.title, .bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if headerWidth >= 560 {
                     Text(displayPath)
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -368,7 +368,7 @@ struct ProjectDashboardView: View {
                     HStack(spacing: 6) {
                         TablerIcon(name: "sparkles", size: 12, color: Theme.highlight)
                         Text("Organise Automatically")
-                            .font(Theme.mono(10.5, .medium))
+                            .font(Theme.mono(.small, .medium))
                     }
                 }
                 .buttonStyle(GhostButtonStyle())
@@ -379,7 +379,7 @@ struct ProjectDashboardView: View {
             let records = projectStore.activeSessions(for: project.id)
             if records.isEmpty {
                 Text("No sessions yet — start an agent from the top right.")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {
@@ -428,7 +428,7 @@ struct ProjectDashboardView: View {
                     .padding(14)
             } else if !git.isRepo {
                 Text("This folder is not a git repository.")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {
@@ -436,7 +436,7 @@ struct ProjectDashboardView: View {
                     if git.changedFiles.isEmpty {
                         Label {
                             Text("Worktree clean")
-                                .font(Theme.mono(11))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(Theme.ok)
                         } icon: {
                             Circle().fill(Theme.ok).frame(width: 6, height: 6)
@@ -446,11 +446,11 @@ struct ProjectDashboardView: View {
                             ForEach(git.changedFiles.prefix(12)) { file in
                                 HStack(spacing: 8) {
                                     Text(file.status)
-                                        .font(Theme.mono(10, .bold))
+                                        .font(Theme.mono(.small, .bold))
                                         .foregroundStyle(statusColor(file.status))
                                         .frame(width: 20, alignment: .leading)
                                     Text(file.path)
-                                        .font(Theme.mono(11))
+                                        .font(Theme.mono(.body))
                                         .foregroundStyle(Theme.textDim)
                                         .lineLimit(1)
                                         .truncationMode(.middle)
@@ -458,7 +458,7 @@ struct ProjectDashboardView: View {
                             }
                             if git.changedFiles.count > 12 {
                                 Text("+ \(git.changedFiles.count - 12) more files")
-                                    .font(Theme.mono(10))
+                                    .font(Theme.mono(.small))
                                     .foregroundStyle(Theme.textFaint)
                             }
                         }
@@ -470,15 +470,15 @@ struct ProjectDashboardView: View {
                             ForEach(git.recentCommits) { commit in
                                 HStack(spacing: 8) {
                                     Text(commit.hash)
-                                        .font(Theme.mono(10))
+                                        .font(Theme.mono(.small))
                                         .foregroundStyle(Theme.highlight)
                                     Text(commit.subject)
-                                        .font(Theme.mono(11))
+                                        .font(Theme.mono(.body))
                                         .foregroundStyle(Theme.textDim)
                                         .lineLimit(1)
                                     Spacer(minLength: 4)
                                     Text(commit.relativeDate)
-                                        .font(Theme.mono(9.5))
+                                        .font(Theme.mono(.micro))
                                         .foregroundStyle(Theme.textFaint)
                                         .lineLimit(1)
                                 }
@@ -523,13 +523,13 @@ private struct PanelHeading: View {
     var body: some View {
         HStack(spacing: 7) {
             Text(title)
-                .font(Theme.mono(11, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.textDim)
                 .textCase(.uppercase)
                 .kerning(0.6)
             if let count, count > 0 {
                 Text("\(count)")
-                    .font(Theme.mono(10, .medium))
+                    .font(Theme.mono(.small, .medium))
                     .foregroundStyle(Theme.textFaint)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
@@ -558,22 +558,22 @@ private struct SessionCard: View {
                     .opacity(status == .terminated ? 0.4 : 1)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(record.displayTitle)
-                        .font(Theme.mono(12, .medium))
+                        .font(Theme.mono(.body, .medium))
                         .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
                         .lineLimit(1)
                     Text(record.provider.displayName)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
                 Spacer()
                 HStack(spacing: 6) {
                     StatusOrb(status: status, size: 11)
                     Text(status.label)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(status.color)
                 }
                 Text(RelativeClock.short(since: record.lastActivityAt))
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                     .frame(width: 38, alignment: .trailing)
             }
@@ -604,15 +604,15 @@ private struct PullRequestRow: View {
                     color: pullRequest.isDraft ? Theme.textFaint : Theme.ok
                 )
                 Text("#\(pullRequest.number)")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.highlight)
                 Text(pullRequest.title)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 if pullRequest.isDraft {
                     Text("draft")
-                        .font(Theme.mono(9))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
@@ -620,7 +620,7 @@ private struct PullRequestRow: View {
                 }
                 Spacer(minLength: 4)
                 Text(pullRequest.author)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             .padding(.horizontal, 10)
@@ -646,10 +646,10 @@ private struct WorktreeRow: View {
                 .frame(width: 14)
             VStack(alignment: .leading, spacing: 1) {
                 Text(worktree.isMain ? "ana kopya" : URL(fileURLWithPath: worktree.path).lastPathComponent)
-                    .font(Theme.mono(12, .medium))
+                    .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                 Text(worktree.branch ?? "detached")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()

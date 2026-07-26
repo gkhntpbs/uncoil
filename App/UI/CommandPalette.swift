@@ -70,13 +70,13 @@ struct CommandPaletteOverlay: View {
             TablerIcon(name: "search", size: 14, color: Theme.textDim)
             TextField("Search commands, find files, jump to a project…", text: $model.query)
                 .textFieldStyle(.plain)
-                .font(Theme.mono(14))
+                .font(Theme.mono(.large))
                 .foregroundStyle(Theme.text)
                 .focused($searchFocused)
                 .accessibilityIdentifier("palette.searchField")
             if !model.query.isEmpty {
                 Text("\(model.flatItems.count)")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
             }
         }
@@ -90,7 +90,7 @@ struct CommandPaletteOverlay: View {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if model.flatItems.isEmpty {
                         Text("No result")
-                            .font(Theme.mono(12))
+                            .font(Theme.mono(.body))
                             .foregroundStyle(Theme.textFaint)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 28)
@@ -98,7 +98,7 @@ struct CommandPaletteOverlay: View {
                     let flat = flatWithIndices()
                     ForEach(model.groups) { group in
                         Text(group.title.uppercased())
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.textFaint)
                             .kerning(0.7)
                             .padding(.horizontal, 14)
@@ -171,13 +171,13 @@ private struct PaletteRow: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
-                    .font(Theme.mono(12.5))
+                    .font(Theme.mono(.large))
                     .foregroundStyle(selected ? Theme.text : Theme.textDim)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.middle)

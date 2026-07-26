@@ -266,7 +266,7 @@ private struct FileTreeRowView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(entry.isDirectory ? Theme.warn.opacity(0.8) : Theme.textFaint)
                 Text(entry.name)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(1)
                 Spacer()

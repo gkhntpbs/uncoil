@@ -48,7 +48,7 @@ struct TaskOrchestratorSheet: View {
 
             if tasks.isEmpty {
                 Text("No open task to start.")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(24)
@@ -97,10 +97,10 @@ struct TaskOrchestratorSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("Hand tasks to agents")
-                .font(Theme.mono(14, .bold))
+                .font(Theme.mono(.large, .bold))
                 .foregroundStyle(Theme.text)
             Text("A session is opened for every task you pick, and the task is sent as its prompt.")
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,7 +112,7 @@ struct TaskOrchestratorSheet: View {
             TablerIcon(name: "search", size: 12, color: Theme.textFaint)
             TextField("Search tasks…", text: $query)
                 .textFieldStyle(.plain)
-                .font(Theme.mono(11.5))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
                 .accessibilityIdentifier("tasks.orchestrator.search")
             Spacer()
@@ -138,14 +138,14 @@ struct TaskOrchestratorSheet: View {
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(task.text)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.text)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     HStack(spacing: 6) {
                         if !task.headingPath.isEmpty {
                             Text(task.headingPath.joined(separator: " › "))
-                                .font(Theme.mono(9.5))
+                                .font(Theme.mono(.micro))
                                 .foregroundStyle(Theme.textFaint)
                                 .lineLimit(1)
                         }
@@ -153,7 +153,7 @@ struct TaskOrchestratorSheet: View {
                         // with the old alert.
                         if let skipReason {
                             Text(skipReason)
-                                .font(Theme.mono(9, .semibold))
+                                .font(Theme.mono(.micro, .semibold))
                                 .foregroundStyle(Theme.warn)
                                 .lineLimit(1)
                         }
@@ -224,7 +224,7 @@ struct TaskOrchestratorSheet: View {
 
                 Toggle(isOn: $autoStart) {
                     Text("Start automatically")
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                 }
                 .toggleStyle(.checkbox)
@@ -237,7 +237,7 @@ struct TaskOrchestratorSheet: View {
                         ? "\(selectedIDs.count) tasks selected"
                         : "\(selectedIDs.count) tasks selected · the prompt is typed in, you press Enter"
                 )
-                .font(Theme.mono(10))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
 
                 Spacer()
@@ -245,7 +245,7 @@ struct TaskOrchestratorSheet: View {
                 Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Start with \(provider.displayName) (\(selectedIDs.count))") {
+                Button("Start With \(provider.displayName) (\(selectedIDs.count))") {
                     onStart(
                         tasks.filter { selectedIDs.contains($0.id) },
                         provider, launch, autoStart

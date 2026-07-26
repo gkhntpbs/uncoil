@@ -650,6 +650,17 @@
         }
       }
     },
+    "Add a Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje ekle"
+          }
+        }
+      }
+    },
     "Add a TODO.md to the root or a subfolder and it shows up here.": {
       "extractionState": "manual",
       "localizations": {
@@ -672,17 +683,6 @@
         }
       }
     },
-    "Add a project": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Proje ekle"
-          }
-        }
-      }
-    },
     "Add an account": {
       "extractionState": "manual",
       "localizations": {
@@ -694,7 +694,7 @@
         }
       }
     },
-    "Add from folder…": {
+    "Add from Folder…": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -727,7 +727,7 @@
         }
       }
     },
-    "Adopt all": {
+    "Adopt All": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -738,7 +738,7 @@
         }
       }
     },
-    "Adopt all (%lld)": {
+    "Adopt All (%lld)": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -870,6 +870,17 @@
         }
       }
     },
+    "All Sources (Aggregate)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm kaynaklar (aggregate)"
+          }
+        }
+      }
+    },
     "All clean": {
       "extractionState": "manual",
       "localizations": {
@@ -877,17 +888,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Temiz olan hepsi"
-          }
-        }
-      }
-    },
-    "All sources (aggregate)": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tüm kaynaklar (aggregate)"
           }
         }
       }
@@ -1068,7 +1068,7 @@
         }
       }
     },
-    "Assign all to %@": {
+    "Assign All to %@": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1233,7 +1233,7 @@
         }
       }
     },
-    "Back to the previous config": {
+    "Back to the Previous Config": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1365,7 +1365,7 @@
         }
       }
     },
-    "Built-in themes": {
+    "Built-in Themes": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1519,7 +1519,7 @@
         }
       }
     },
-    "Choose the binary…": {
+    "Choose the Binary…": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1563,6 +1563,17 @@
         }
       }
     },
+    "Clear History": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçmişi sil"
+          }
+        }
+      }
+    },
     "Clear Selection": {
       "extractionState": "manual",
       "localizations": {
@@ -1570,17 +1581,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Seçimi Temizle"
-          }
-        }
-      }
-    },
-    "Clear history": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geçmişi sil"
           }
         }
       }
@@ -1629,7 +1629,7 @@
         }
       }
     },
-    "Command palette": {
+    "Command Palette": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1662,7 +1662,7 @@
         }
       }
     },
-    "Commit + open PR": {
+    "Commit + Open PR": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -1739,6 +1739,17 @@
         }
       }
     },
+    "Connect to a GitHub Source…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub kaynağına bağla…"
+          }
+        }
+      }
+    },
     "Connect to a GitHub source": {
       "extractionState": "manual",
       "localizations": {
@@ -1746,17 +1757,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "GitHub kaynağına bağla"
-          }
-        }
-      }
-    },
-    "Connect to a GitHub source…": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GitHub kaynağına bağla…"
           }
         }
       }
@@ -1948,6 +1948,17 @@
         }
       }
     },
+    "Data Location": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veri konumu"
+          }
+        }
+      }
+    },
     "Data and Transcripts": {
       "extractionState": "manual",
       "localizations": {
@@ -1959,13 +1970,13 @@
         }
       }
     },
-    "Data location": {
+    "Debug Bundle": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Veri konumu"
+            "value": "Debug paketi"
           }
         }
       }
@@ -2806,6 +2817,17 @@
         }
       }
     },
+    "In Progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sürüyor"
+          }
+        }
+      }
+    },
     "Indefinitely": {
       "extractionState": "manual",
       "localizations": {
@@ -3158,7 +3180,7 @@
         }
       }
     },
-    "Make default": {
+    "Make Default": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -3246,7 +3268,7 @@
         }
       }
     },
-    "Menu contents": {
+    "Menu Contents": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -3389,6 +3411,17 @@
         }
       }
     },
+    "New Skill…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni skill…"
+          }
+        }
+      }
+    },
     "New Uncoil Window": {
       "extractionState": "manual",
       "localizations": {
@@ -3462,17 +3495,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeni skill"
-          }
-        }
-      }
-    },
-    "New skill…": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yeni skill…"
           }
         }
       }
@@ -4236,6 +4258,17 @@
         }
       }
     },
+    "Open in Editor": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editörde aç"
+          }
+        }
+      }
+    },
     "Open in Finder": {
       "extractionState": "manual",
       "localizations": {
@@ -4243,17 +4276,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finder'da Aç"
-          }
-        }
-      }
-    },
-    "Open in editor": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Editörde aç"
           }
         }
       }
@@ -4280,6 +4302,28 @@
         }
       }
     },
+    "Open the Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasörü aç"
+          }
+        }
+      }
+    },
+    "Open the Repo": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depoyu aç"
+          }
+        }
+      }
+    },
     "Open the Setup Guide": {
       "extractionState": "manual",
       "localizations": {
@@ -4298,17 +4342,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uncoil penceresini aç"
-          }
-        }
-      }
-    },
-    "Open the folder": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Klasörü aç"
           }
         }
       }
@@ -4342,17 +4375,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Proje dizinini %@ ile aç"
-          }
-        }
-      }
-    },
-    "Open the repo": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Depoyu aç"
           }
         }
       }
@@ -4456,7 +4478,7 @@
         }
       }
     },
-    "Paths found": {
+    "Paths Found": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -4654,6 +4676,17 @@
         }
       }
     },
+    "Project Scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje taraması"
+          }
+        }
+      }
+    },
     "Project list": {
       "extractionState": "manual",
       "localizations": {
@@ -4819,7 +4852,7 @@
         }
       }
     },
-    "Quitting the app": {
+    "Quitting the App": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -4918,7 +4951,7 @@
         }
       }
     },
-    "Reattach to this task": {
+    "Reattach to This Task": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -5237,7 +5270,7 @@
         }
       }
     },
-    "Rollback history": {
+    "Rollback History": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -5633,7 +5666,7 @@
         }
       }
     },
-    "Send the review findings to the session": {
+    "Send the Review Findings to the Session": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -5666,7 +5699,7 @@
         }
       }
     },
-    "Send with details…": {
+    "Send with Details…": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -5930,17 +5963,6 @@
         }
       }
     },
-    "Sign In with a Browser": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarayıcıdan Giriş Yap"
-          }
-        }
-      }
-    },
     "Sign Out": {
       "extractionState": "manual",
       "localizations": {
@@ -5948,6 +5970,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çıkış Yap"
+          }
+        }
+      }
+    },
+    "Sign in with a Browser": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarayıcıdan Giriş Yap"
           }
         }
       }
@@ -6062,6 +6095,28 @@
         }
       }
     },
+    "Start With %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile başlat"
+          }
+        }
+      }
+    },
+    "Start With %@ (%lld)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile başlat (%lld)"
+          }
+        }
+      }
+    },
     "Start and Verify": {
       "extractionState": "manual",
       "localizations": {
@@ -6106,29 +6161,7 @@
         }
       }
     },
-    "Start with %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ ile başlat"
-          }
-        }
-      }
-    },
-    "Start with %@ (%lld)": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ ile başlat (%lld)"
-          }
-        }
-      }
-    },
-    "Start with %@ (quick)": {
+    "Start with %@ (Quick)": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -6216,7 +6249,7 @@
         }
       }
     },
-    "Switch branch/tag…": {
+    "Switch Branch/Tag…": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -6359,6 +6392,17 @@
         }
       }
     },
+    "Test It": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test et"
+          }
+        }
+      }
+    },
     "Test Workspace Could Not Be Created": {
       "extractionState": "manual",
       "localizations": {
@@ -6377,17 +6421,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Test başarısız"
-          }
-        }
-      }
-    },
-    "Test it": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Test et"
           }
         }
       }
@@ -7305,6 +7338,17 @@
         }
       }
     },
+    "now": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "şimdi"
+          }
+        }
+      }
+    },
     "preview": {
       "extractionState": "manual",
       "localizations": {
@@ -7547,13 +7591,13 @@
         }
       }
     },
-    "Debug Bundle": {
+    "Deep Scan": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Debug Paketi"
+            "value": "Derin tarama"
           }
         }
       }
@@ -7591,7 +7635,7 @@
         }
       }
     },
-    "Export setup": {
+    "Export Setup": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -7602,7 +7646,18 @@
         }
       }
     },
-    "Fetch now": {
+    "Extensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EXTENSION'LAR"
+          }
+        }
+      }
+    },
+    "Fetch Now": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -7646,7 +7701,7 @@
         }
       }
     },
-    "Import setup": {
+    "Import Setup": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -7657,18 +7712,7 @@
         }
       }
     },
-    "In Progress": {
-      "extractionState": "manual",
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Devam Eden"
-          }
-        }
-      }
-    },
-    "Inspect files": {
+    "Inspect Files": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -7866,7 +7910,7 @@
         }
       }
     },
-    "Pin commit…": {
+    "Pin Commit…": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -7910,7 +7954,7 @@
         }
       }
     },
-    "Remove source": {
+    "Remove Source": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -8163,7 +8207,7 @@
         }
       }
     },
-    "Update all reviewed": {
+    "Update All Reviewed": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -8174,7 +8218,7 @@
         }
       }
     },
-    "Update selected": {
+    "Update Selected": {
       "extractionState": "manual",
       "localizations": {
         "tr": {

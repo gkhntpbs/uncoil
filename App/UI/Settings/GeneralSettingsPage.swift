@@ -88,7 +88,7 @@ struct GeneralSettingsPage: View {
                 }
             }
 
-            Section("Quitting the app") {
+            Section("Quitting the App") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },
                     set: { settings.setSessionQuitBehavior($0) }
@@ -105,7 +105,7 @@ struct GeneralSettingsPage: View {
                 SettingsNote(settings.sessionQuitBehavior.detail)
             }
 
-            Section("Command palette") {
+            Section("Command Palette") {
                 AdaptiveRow {
                     SettingsLabel(
                         title: String(localized: "Shortcut"),

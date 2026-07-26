@@ -11,13 +11,13 @@ struct ExtensionAdoptionSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Adopt into Uncoil")
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(plan.name) · \(plan.kind.label) · \(plan.summary)")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                 Text(plan.externalPath)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -30,34 +30,34 @@ struct ExtensionAdoptionSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     if plan.changedFiles.isEmpty {
                         Text("No file difference; adoption only transfers management.")
-                            .font(Theme.mono(10.5))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textFaint)
                     }
                     ForEach(plan.changedFiles) { change in
                         HStack(spacing: 7) {
                             Text(marker(change.kind))
-                                .font(Theme.mono(10, .bold))
+                                .font(Theme.mono(.small, .bold))
                                 .foregroundStyle(color(change.kind))
                                 .frame(width: 12)
                             Text(change.path)
-                                .font(Theme.mono(10))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textDim)
                             Spacer()
                             Text(label(change.kind))
-                                .font(Theme.mono(9))
+                                .font(Theme.mono(.micro))
                                 .foregroundStyle(color(change.kind))
                         }
                     }
                     if !plan.agentCopies.isEmpty {
                         Divider().overlay(Theme.border).padding(.vertical, 6)
                         Text("Agent folders to move to the shared copy")
-                            .font(Theme.mono(10, .semibold))
+                            .font(Theme.mono(.small, .semibold))
                             .foregroundStyle(Theme.textFaint)
                         ForEach(plan.agentCopies) { copy in
                             HStack(spacing: 6) {
                                 TablerIcon(name: "link", size: 10, color: Theme.highlight)
                                 Text("\(copy.agent.displayName): \(copy.path)")
-                                    .font(Theme.mono(10))
+                                    .font(Theme.mono(.small))
                                     .foregroundStyle(Theme.textDim)
                                     .lineLimit(1)
                                     .truncationMode(.head)
@@ -65,7 +65,7 @@ struct ExtensionAdoptionSheet: View {
                             }
                         }
                         Text("Every folder is backed up first, then symlinked to a single copy.")
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
                     }
                     if !plan.findings.isEmpty {
@@ -78,7 +78,7 @@ struct ExtensionAdoptionSheet: View {
                                     color: finding.severity >= .high ? Theme.danger : Theme.warn
                                 )
                                 Text("\(finding.severity.label): \(finding.message)")
-                                    .font(Theme.mono(10))
+                                    .font(Theme.mono(.small))
                                     .foregroundStyle(Theme.textDim)
                             }
                         }
@@ -94,13 +94,13 @@ struct ExtensionAdoptionSheet: View {
             HStack(spacing: 9) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Backup: \(plan.backupPath ?? "could not be taken")")
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(plan.backupPath == nil ? Theme.danger : Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.head)
                     if !plan.blocksAdoption.isEmpty {
                         Text("A blocked finding prevents adoption.")
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.danger)
                     }
                 }
@@ -182,15 +182,15 @@ struct RepositoryLinkSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Connect to a GitHub source")
-                .font(Theme.mono(14, .bold))
+                .font(Theme.mono(.large, .bold))
                 .foregroundStyle(Theme.text)
             Text("\(packageName) is unmanaged for now. Link it to a repo and it becomes updatable.")
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
 
             TextField("owner/repo", text: $repository)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("repositoryLink.repository")
 
@@ -203,7 +203,7 @@ struct RepositoryLinkSheet: View {
             .labelsHidden()
 
             TextField(mode == .commit ? "commit SHA" : "reference", text: $reference)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("repositoryLink.reference")
 

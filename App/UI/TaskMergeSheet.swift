@@ -47,7 +47,7 @@ struct TaskMergeSheet: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if loading {
                         Text("Reading the worktree…")
-                            .font(Theme.mono(10.5))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textFaint)
                     } else {
                         blockersSection
@@ -72,15 +72,15 @@ struct TaskMergeSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Merge")
-                .font(Theme.mono(14, .bold))
+                .font(Theme.mono(.large, .bold))
                 .foregroundStyle(Theme.text)
             Text(task.text)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
                 .lineLimit(2)
             if let branch = snapshot.branch {
                 Text("\(branch) → \(project.name)")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.highlight)
             }
         }
@@ -93,25 +93,25 @@ struct TaskMergeSheet: View {
         let blockers = preview.hardBlockers
         VStack(alignment: .leading, spacing: 6) {
             Text(blockers.isEmpty ? "Ready" : "Blockers")
-                .font(Theme.mono(11.5, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(blockers.isEmpty ? Theme.ok : Theme.warn)
             if blockers.isEmpty {
                 Text("Everything is in place; the merge is only waiting for your word.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
             } else {
                 ForEach(Array(blockers.enumerated()), id: \.offset) { _, blocker in
                     HStack(spacing: 6) {
                         TablerIcon(name: "alert-triangle", size: 10, color: Theme.warn)
                         Text(blocker.message)
-                            .font(Theme.mono(10.5))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.text)
                     }
                 }
             }
             if let failure {
                 Text(failure)
-                    .font(Theme.mono(10.5, .semibold))
+                    .font(Theme.mono(.small, .semibold))
                     .foregroundStyle(Theme.danger)
                     .accessibilityIdentifier("taskMerge.failure")
             }
@@ -126,7 +126,7 @@ struct TaskMergeSheet: View {
         section("Tests") {
             if preview.tests.isEmpty {
                 Text("No recorded test run.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             } else {
                 ForEach(preview.tests.reversed()) { test in
@@ -137,15 +137,15 @@ struct TaskMergeSheet: View {
                             color: test.passed ? Theme.ok : Theme.danger
                         )
                         Text(test.command)
-                            .font(Theme.mono(10))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textDim)
                         Text(test.summary)
-                            .font(Theme.mono(10, .semibold))
+                            .font(Theme.mono(.small, .semibold))
                             .foregroundStyle(test.passed ? Theme.ok : Theme.danger)
                         Spacer()
                         if !test.artifacts.isEmpty {
                             Text(test.artifacts.joined(separator: ", "))
-                                .font(Theme.mono(9))
+                                .font(Theme.mono(.micro))
                                 .foregroundStyle(Theme.textFaint)
                                 .lineLimit(1)
                         }
@@ -160,19 +160,19 @@ struct TaskMergeSheet: View {
         section("Review") {
             if preview.reviews.isEmpty {
                 Text("No review.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             } else {
                 ForEach(preview.reviews.reversed()) { review in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(review.verdict.label)
-                            .font(Theme.mono(10.5, .semibold))
+                            .font(Theme.mono(.small, .semibold))
                             .foregroundStyle(
                                 review.verdict == .changesRequested ? Theme.warn : Theme.ok
                             )
                         ForEach(Array(review.findings.enumerated()), id: \.offset) { _, finding in
                             Text("• \(finding)")
-                                .font(Theme.mono(10))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textDim)
                         }
                     }
@@ -186,12 +186,12 @@ struct TaskMergeSheet: View {
         section("Changed files") {
             if preview.changedFiles.isEmpty {
                 Text("No uncommitted changes.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             } else {
                 ForEach(preview.changedFiles, id: \.self) { path in
                     Text(path)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.warn)
                         .lineLimit(1)
                 }
@@ -204,12 +204,12 @@ struct TaskMergeSheet: View {
         section("Diff") {
             if diff.isEmpty {
                 Text("No diff.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             } else {
                 ScrollView(.horizontal) {
                     Text(diff)
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textDim)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -226,7 +226,7 @@ struct TaskMergeSheet: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(Theme.mono(11.5, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             content()
         }
@@ -236,7 +236,7 @@ struct TaskMergeSheet: View {
     private var footer: some View {
         HStack(spacing: 9) {
             Text(worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "no worktree")
-                .font(Theme.mono(9.5))
+                .font(Theme.mono(.micro))
                 .foregroundStyle(Theme.textFaint)
             Spacer()
             Button("Cancel") {

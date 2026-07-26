@@ -53,10 +53,10 @@ struct TaskCreateSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("New task")
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("Added to the file as a single line, under the heading you pick.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,17 +98,17 @@ struct TaskCreateSheet: View {
                 field("Task") {
                     TextField("What should happen?", text: $text)
                         .textFieldStyle(.roundedBorder)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .onSubmit(create)
                         .accessibilityIdentifier("tasks.create.text")
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Line to write to the file")
-                        .font(Theme.mono(10, .semibold))
+                        .font(Theme.mono(.small, .semibold))
                         .foregroundStyle(Theme.textFaint)
                     Text(preview)
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,7 +147,7 @@ struct TaskCreateSheet: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(Theme.mono(10, .semibold))
+                .font(Theme.mono(.small, .semibold))
                 .foregroundStyle(Theme.textFaint)
             content()
         }

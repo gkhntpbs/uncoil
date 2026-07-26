@@ -16,13 +16,13 @@ struct ConfigPlanSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Config change plan")
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(transaction.agent.displayName) — \(summary)")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                 Text(transaction.configPath)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -33,7 +33,7 @@ struct ConfigPlanSheet: View {
 
             ScrollView([.vertical, .horizontal]) {
                 Text(transaction.diff.isEmpty ? "No changes." : transaction.diff)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .padding(14)
@@ -53,7 +53,7 @@ struct ConfigPlanSheet: View {
                                 color: issue.severity == .error ? Theme.danger : Theme.warn
                             )
                             Text(issue.message)
-                                .font(Theme.mono(10))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textDim)
                         }
                     }
@@ -66,7 +66,7 @@ struct ConfigPlanSheet: View {
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
                 Text("A backup is taken before it is applied; one click takes you back.")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
                 Button("Cancel", action: onCancel)

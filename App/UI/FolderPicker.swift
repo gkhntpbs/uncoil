@@ -32,7 +32,7 @@ struct FolderPickerSheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.highlight)
                 Text(displayPath)
-                    .font(Theme.mono(12))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -60,7 +60,7 @@ struct FolderPickerSheet: View {
                             currentURL = url
                         } label: {
                             Text(name)
-                                .font(Theme.mono(11))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(
                                     currentURL.path.hasPrefix(url.path) ? Theme.text : Theme.textDim
                                 )
@@ -91,7 +91,7 @@ struct FolderPickerSheet: View {
                         }
                         if entries.isEmpty {
                             Text("No subfolders")
-                                .font(Theme.mono(11))
+                                .font(Theme.mono(.body))
                                 .foregroundStyle(Theme.textFaint)
                                 .padding(.top, 24)
                         }
@@ -156,7 +156,7 @@ private struct DirectoryRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textDim)
                 Text(url.lastPathComponent)
-                    .font(Theme.mono(12))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -193,7 +193,7 @@ struct AccentButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(Theme.mono(12, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.textOnHighlight)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
@@ -218,7 +218,7 @@ struct GhostButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .font(Theme.mono(12))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)

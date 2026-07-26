@@ -58,10 +58,10 @@ struct ProjectRunView: View {
     private var toolbar: some View {
         HStack(spacing: 8) {
             Text("Run configurations")
-                .font(Theme.mono(12, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             Text(RunConfigFile.relativePath)
-                .font(Theme.mono(10))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
                 .textSelection(.enabled)
             Spacer()
@@ -71,7 +71,7 @@ struct ProjectRunView: View {
                 HStack(spacing: 5) {
                     TablerIcon(name: "radar-2", size: 12, color: Theme.textDim)
                     Text(detecting ? "Scanning…" : "Detect")
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textDim)
                 }
                 .padding(.horizontal, 10)
@@ -89,7 +89,7 @@ struct ProjectRunView: View {
             } label: {
                 HStack(spacing: 5) {
                     TablerIcon(name: "plus", size: 12, color: Theme.textDim)
-                    Text("New").font(Theme.mono(11)).foregroundStyle(Theme.textDim)
+                    Text("New").font(Theme.mono(.body)).foregroundStyle(Theme.textDim)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -122,7 +122,7 @@ struct ProjectRunView: View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(problems, id: \.self) { problem in
                 Text(problem)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.warn)
             }
         }
@@ -134,10 +134,10 @@ struct ProjectRunView: View {
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("No run configuration yet.")
-                .font(Theme.mono(12))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textDim)
             Text("“Detect” derives suggestions from the project's files; or write \(RunConfigFile.relativePath) by hand (or have an agent write it).")
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textFaint)
         }
         .padding(14)
@@ -232,15 +232,15 @@ private struct RunConfigurationRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(config.name)
-                            .font(Theme.mono(12, .semibold))
+                            .font(Theme.mono(.body, .semibold))
                             .foregroundStyle(Theme.text)
                         Text(config.id)
-                            .font(Theme.mono(10))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textFaint)
                         sourceBadge
                         if config.isDefault {
                             Text("default")
-                                .font(Theme.mono(9))
+                                .font(Theme.mono(.micro))
                                 .foregroundStyle(Theme.info)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 1)
@@ -248,7 +248,7 @@ private struct RunConfigurationRow: View {
                         }
                     }
                     Text("\(config.command)  ·  \(config.cwd)")
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -262,7 +262,7 @@ private struct RunConfigurationRow: View {
             if !showLog, !state.logTail.isEmpty,
                state.status != .idle {
                 Text(lastLines(state.logTail, 3))
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(3)
                     .truncationMode(.head)
@@ -279,7 +279,7 @@ private struct RunConfigurationRow: View {
                 } label: {
                     HStack(spacing: 5) {
                         TablerIcon(name: "external-link", size: 11, color: Theme.info)
-                        Text(preview).font(Theme.mono(10.5)).foregroundStyle(Theme.info)
+                        Text(preview).font(Theme.mono(.small)).foregroundStyle(Theme.info)
                     }
                 }
                 .buttonStyle(.plain)
@@ -298,7 +298,7 @@ private struct RunConfigurationRow: View {
 
     private var sourceBadge: some View {
         Text(config.source.rawValue)
-            .font(Theme.mono(9))
+            .font(Theme.mono(.micro))
             .foregroundStyle(Theme.textFaint)
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
@@ -314,7 +314,7 @@ private struct RunConfigurationRow: View {
                     .frame(width: 12, height: 12)
             }
             Text(statusLabel)
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(statusColor)
         }
     }
@@ -335,7 +335,7 @@ private struct RunConfigurationRow: View {
                 iconButton("player-stop", tint: Theme.danger, id: "run.stop.\(config.id)") {
                     await RunRegistry.shared.stop(project: project, configID: config.id)
                 }
-                iconButton("refresh", id: "run.restart.\(config.id)") {
+                iconButton("Refresh", id: "run.restart.\(config.id)") {
                     _ = await RunRegistry.shared.restart(project: project, configID: config.id)
                 }
             } else {
@@ -343,22 +343,22 @@ private struct RunConfigurationRow: View {
                     _ = await RunRegistry.shared.start(project: project, configID: config.id)
                 }
             }
-            plainIconButton("history", id: "run.history.\(config.id)") {
+            plainIconButton("History", id: "run.history.\(config.id)") {
                 showHistory = true
             }
             .popover(isPresented: $showHistory, arrowEdge: .bottom) {
                 RunHistoryList(project: project, configID: config.id)
             }
             plainIconButton(
-                "star", tint: config.isDefault ? Theme.warn : Theme.textDim,
+                "Star", tint: config.isDefault ? Theme.warn : Theme.textDim,
                 id: "run.default.\(config.id)"
             ) {
                 try? RunConfigFile.setDefault(config.id, projectRoot: project.rootURL)
                 onReload()
             }
             plainIconButton("file-text", id: "run.log.\(config.id)", action: onToggleLog)
-            plainIconButton("pencil", id: "run.edit.\(config.id)", action: onEdit)
-            plainIconButton("trash", id: "run.delete.\(config.id)") {
+            plainIconButton("Pencil", id: "run.edit.\(config.id)", action: onEdit)
+            plainIconButton("Trash", id: "run.delete.\(config.id)") {
                 confirmingDelete = true
             }
             // A live process would orphan silently if its row vanished —
@@ -419,10 +419,10 @@ private struct RunConfigurationRow: View {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(issue.code)
-                        .font(Theme.mono(10, .semibold))
+                        .font(Theme.mono(.small, .semibold))
                         .foregroundStyle(Theme.danger)
                     Text(issue.hint)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .textSelection(.enabled)
                 }
@@ -440,7 +440,7 @@ private struct RunConfigurationRow: View {
                     HStack(spacing: 5) {
                         TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
                         Text("Fix with agent")
-                            .font(Theme.mono(10.5, .semibold))
+                            .font(Theme.mono(.small, .semibold))
                             .foregroundStyle(Theme.textOnHighlight)
                     }
                     .padding(.horizontal, 9)
@@ -452,7 +452,7 @@ private struct RunConfigurationRow: View {
             }
             if let repairNote {
                 Text(repairNote)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
             }
         }
@@ -470,7 +470,7 @@ private struct RunConfigurationRow: View {
         VStack(spacing: 6) {
             ScrollView {
                 Text(state.logTail.isEmpty ? "(no output yet)" : state.logTail)
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -483,11 +483,11 @@ private struct RunConfigurationRow: View {
                 HStack(spacing: 6) {
                     TextField("Send input to the process (r for Flutter, for example)", text: $inputText)
                         .textFieldStyle(.roundedBorder)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .onSubmit(sendInput)
                         .accessibilityIdentifier("run.input.\(config.id)")
                     Button("Send", action: sendInput)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                 }
             }
         }
@@ -510,11 +510,11 @@ private struct RunHistoryList: View {
         let entries = RunRegistry.shared.history(project: project, configID: configID)
         VStack(alignment: .leading, spacing: 6) {
             Text("Previous runs")
-                .font(Theme.mono(11, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             if entries.isEmpty {
                 Text("No records yet.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             ForEach(entries) { entry in
@@ -528,12 +528,12 @@ private struct RunHistoryList: View {
                                 : (entry.exitCode == 0 ? Theme.ok : Theme.danger))
                             .frame(width: 6, height: 6)
                         Text(entry.startedAt.formatted(date: .abbreviated, time: .standard))
-                            .font(Theme.mono(10.5))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textDim)
                         Spacer()
                         Text(entry.exitCode.map { "exit \($0)" }
                             ?? (entry.endedAt == nil ? "in progress" : "stopped"))
-                            .font(Theme.mono(10))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textFaint)
                     }
                     .contentShape(Rectangle())
@@ -571,7 +571,7 @@ private struct RunConfigurationEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(isNew ? "New run configuration" : "Edit the configuration")
-                .font(Theme.mono(13, .semibold))
+                .font(Theme.mono(.large, .semibold))
                 .foregroundStyle(Theme.text)
 
             field("id (slug)", text: $id, disabled: !isNew)
@@ -585,7 +585,7 @@ private struct RunConfigurationEditor: View {
             field("Dependencies (ids, comma-separated)", text: $dependsOnText)
 
             if let error {
-                Text(error).font(Theme.mono(10.5)).foregroundStyle(Theme.danger)
+                Text(error).font(Theme.mono(.small)).foregroundStyle(Theme.danger)
             }
 
             HStack {
@@ -610,10 +610,10 @@ private struct RunConfigurationEditor: View {
         axis: Axis = .horizontal
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(Theme.mono(10)).foregroundStyle(Theme.textFaint)
+            Text(label).font(Theme.mono(.small)).foregroundStyle(Theme.textFaint)
             TextField("", text: text, axis: axis)
                 .textFieldStyle(.roundedBorder)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .disabled(disabled)
         }
     }

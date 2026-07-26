@@ -26,20 +26,20 @@ struct TaskStaleEditSheet: View {
                 HStack(spacing: 7) {
                     TablerIcon(name: "alert-triangle", size: 13, color: Theme.warn)
                     Text("The edit could not be applied")
-                        .font(Theme.mono(13, .bold))
+                        .font(Theme.mono(.large, .bold))
                         .foregroundStyle(Theme.text)
                 }
                 Text(taskText)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(2)
             }
             Text(detail)
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             Text("The file changed inside this task's block. It is your call what happens next.")
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 9) {

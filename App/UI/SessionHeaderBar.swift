@@ -47,23 +47,23 @@ struct SessionHeaderBar<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(record.provider.displayName)
-                        .font(Theme.mono(13, .bold))
+                        .font(Theme.mono(.large, .bold))
                         .foregroundStyle(Theme.text)
                     Text(record.displayTitle)
-                        .font(Theme.mono(13))
+                        .font(Theme.mono(.large))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
                 }
                 HStack(spacing: 6) {
                     if let account {
                         Text(account.name)
-                            .font(Theme.mono(11))
+                            .font(Theme.mono(.body))
                             .foregroundStyle(record.provider.color.opacity(0.9))
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
                     }
                     Text(displayPath)
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -77,7 +77,7 @@ struct SessionHeaderBar<Trailing: View>: View {
                         HStack(spacing: 3) {
                             TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
                             Text(branch)
-                                .font(Theme.mono(11, .medium))
+                                .font(Theme.mono(.body, .medium))
                                 .foregroundStyle(Theme.textDim)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
@@ -94,7 +94,7 @@ struct SessionHeaderBar<Trailing: View>: View {
             HStack(spacing: 7) {
                 StatusOrb(status: status, size: 13)
                 Text(sessionStore.detail(of: record.id) ?? status.label)
-                    .font(Theme.mono(11, .medium))
+                    .font(Theme.mono(.body, .medium))
                     .foregroundStyle(status.color)
                     .lineLimit(1)
             }

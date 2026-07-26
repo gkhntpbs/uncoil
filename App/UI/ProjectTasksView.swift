@@ -257,7 +257,7 @@ struct ProjectTasksView: View {
                 .accessibilityIdentifier("tasks.modePicker")
 
                 Menu {
-                    Button("All sources (aggregate)") {
+                    Button("All Sources (Aggregate)") {
                         metadata.preferences.selectedSourcePath = nil
                         metadata.savePreferences()
                     }
@@ -274,7 +274,7 @@ struct ProjectTasksView: View {
                             .flatMap { path in sources.sources.first { $0.path == path } }
                             .map(\.displayPath) ?? "All sources"
                     )
-                    .font(Theme.mono(11, .medium))
+                    .font(Theme.mono(.body, .medium))
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
@@ -283,7 +283,7 @@ struct ProjectTasksView: View {
                 Spacer()
 
                 Text("\(visibleTasks.filter { !$0.isDone }.count) open / \(visibleTasks.count)")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
 
                 Button {
@@ -292,7 +292,7 @@ struct ProjectTasksView: View {
                     HStack(spacing: 5) {
                         TablerIcon(name: "plus", size: 12, color: Theme.text)
                         Text("New task")
-                            .font(Theme.mono(10.5, .medium))
+                            .font(Theme.mono(.small, .medium))
                             .foregroundStyle(Theme.text)
                     }
                 }
@@ -307,7 +307,7 @@ struct ProjectTasksView: View {
                     HStack(spacing: 5) {
                         TablerIcon(name: "sitemap", size: 12, color: Theme.highlight)
                         Text("Start tasks…")
-                            .font(Theme.mono(10.5, .medium))
+                            .font(Theme.mono(.small, .medium))
                             .foregroundStyle(Theme.highlight)
                     }
                 }
@@ -351,24 +351,24 @@ struct ProjectTasksView: View {
                         color: sources.status(for: source.path).isMissing ? Theme.danger : Theme.textDim
                     )
                     Text(source.displayPath)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.text)
                     if sources.status(for: source.path).isMissing {
                         Text(sources.status(for: source.path).label)
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.danger)
                     }
                     if let change = sources.lastChanges[source.path] {
                         Text(changeLabel(change))
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
                     }
                     Text("changed \(RelativeClock.short(since: source.lastReadAt))")
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                     if let status = gitStatuses[source.path] {
                         Text(status.label.lowercased())
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(status.isEditable ? Theme.textFaint : Theme.warn)
                             .accessibilityIdentifier("tasks.git.\(source.displayPath)")
                     }
@@ -376,7 +376,7 @@ struct ProjectTasksView: View {
                         sources.document(for: source.path)?.task(id: id) != nil
                     }) {
                         Text("conflict — the file is read-only")
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.warn)
                     }
                     Spacer()
@@ -403,14 +403,14 @@ struct ProjectTasksView: View {
                     .joined(separator: ", ")
                     + (regions.count > 3 ? " +\(regions.count - 3)" : "")
             )
-            .font(Theme.mono(9.5))
+            .font(Theme.mono(.micro))
             .foregroundStyle(Theme.warn)
-            Button("Open in editor") {
+            Button("Open in Editor") {
                 settings.preferredEditor.open(URL(fileURLWithPath: source.path))
                 message = "\(source.displayPath):\(regions.first?.startLine ?? 1)"
             }
             .buttonStyle(.plain)
-            .font(Theme.mono(9.5, .semibold))
+            .font(Theme.mono(.micro, .semibold))
             .foregroundStyle(Theme.highlight)
             .accessibilityIdentifier("tasks.conflict.open")
             Spacer()
@@ -434,7 +434,7 @@ struct ProjectTasksView: View {
         HStack(spacing: 8) {
             TablerIcon(name: "info-circle", size: 12, color: Theme.highlight)
             Text(text)
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
             Spacer()
             Button {
@@ -456,10 +456,10 @@ struct ProjectTasksView: View {
         VStack(spacing: 8) {
             TablerIcon(name: "list-check", size: 22, color: Theme.textFaint)
             Text("No TODO.md found in this project")
-                .font(Theme.mono(11.5))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textFaint)
             Text("Add a TODO.md to the root or a subfolder and it shows up here.")
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
         }
         .frame(maxWidth: .infinity, minHeight: 180)
@@ -478,7 +478,7 @@ struct ProjectTasksView: View {
                             sources.sources.first { $0.path == document.path }?.displayPath
                                 ?? document.path
                         )
-                        .font(Theme.mono(11, .semibold))
+                        .font(Theme.mono(.body, .semibold))
                         .foregroundStyle(Theme.textDim)
                     }
                     VStack(alignment: .leading, spacing: 0) {
@@ -554,12 +554,12 @@ struct ProjectTasksView: View {
                 if editingTaskID == task.id {
                     TextField("", text: $editingText, onCommit: { commitRename(task, in: document) })
                         .textFieldStyle(.plain)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(Theme.text)
                         .accessibilityIdentifier("tasks.rename.\(task.id)")
                 } else {
                     Text(task.text)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(task.isDone ? Theme.textDim : Theme.text)
                         .strikethrough(task.isDone, color: Theme.textFaint)
                         .onTapGesture(count: 2) {
@@ -609,7 +609,7 @@ struct ProjectTasksView: View {
                     .components(separatedBy: "\n")
                     .dropFirst()
                     .joined(separator: "\n"))
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .padding(.leading, CGFloat(task.depth) * 16 + 20)
@@ -652,7 +652,7 @@ struct ProjectTasksView: View {
                     set: { metadata.preferences.filter.query = $0 }
                 ))
                 .textFieldStyle(.plain)
-                .font(Theme.mono(11))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
                 .onSubmit { metadata.savePreferences() }
                 .accessibilityIdentifier("tasks.search")
@@ -670,7 +670,7 @@ struct ProjectTasksView: View {
                             metadata.savePreferences()
                         } label: {
                             Text(status.title)
-                                .font(Theme.mono(10, isOn ? .semibold : .regular))
+                                .font(Theme.mono(.small, isOn ? .semibold : .regular))
                                 .foregroundStyle(isOn ? Theme.bg : Theme.textDim)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -697,24 +697,24 @@ struct ProjectTasksView: View {
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.text)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                 HStack(spacing: 6) {
                     Text(task.headingPath.joined(separator: " › "))
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                     Text(URL(fileURLWithPath: task.sourcePath).lastPathComponent)
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                     if state != .unassigned {
                         Text(state.label)
-                            .font(Theme.mono(9, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(state.needsAttention ? Theme.warn : Theme.highlight)
                     }
                     if assignments.contains(where: \.needsRelinking) {
                         Text("Needs relinking")
-                            .font(Theme.mono(9, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.danger)
                     }
                 }
@@ -725,7 +725,7 @@ struct ProjectTasksView: View {
                     selection = .session(assignment.sessionID)
                 } label: {
                     Text(assignment.role.label)
-                        .font(Theme.mono(9))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.highlight)
                 }
                 .buttonStyle(.plain)
@@ -735,16 +735,16 @@ struct ProjectTasksView: View {
             if !task.isDone, assignments.isEmpty {
                 Menu {
                     ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
-                        Button("Start with \(provider.displayName)") {
+                        Button("Start With \(provider.displayName)") {
                             sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
                         }
                     }
-                    Button("Send with details…") { dispatchTarget = (task, documentFor(task)) }
+                    Button("Send with Details…") { dispatchTarget = (task, documentFor(task)) }
                 } label: {
                     HStack(spacing: 4) {
                         TablerIcon(name: "player-play", size: 10, color: Theme.highlight)
                         Text("Start")
-                            .font(Theme.mono(9.5, .medium))
+                            .font(Theme.mono(.micro, .medium))
                             .foregroundStyle(Theme.highlight)
                     }
                 }
@@ -772,7 +772,7 @@ struct ProjectTasksView: View {
         return VStack(alignment: .leading, spacing: 8) {
             if selectedDocuments.count != 1 {
                 Text("Kanban works on a single source; pick a TODO.md above.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             if let document {
@@ -802,10 +802,10 @@ struct ProjectTasksView: View {
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text(column.title)
-                    .font(Theme.mono(11, .semibold))
+                    .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(Theme.text)
                 Text("\(tasks.count)")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
                 if column.isCustom {
@@ -829,7 +829,7 @@ struct ProjectTasksView: View {
             }
             if tasks.isEmpty {
                 Text("empty")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .padding(.vertical, 8)
             }
@@ -869,7 +869,7 @@ struct ProjectTasksView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(task.isDone ? Theme.ok : Theme.textFaint)
                 Text(task.text)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.text)
                     .lineLimit(3)
             }
@@ -880,7 +880,7 @@ struct ProjectTasksView: View {
                             .font(.system(size: 7))
                             .foregroundStyle(child.isDone ? Theme.ok : Theme.textFaint)
                         Text(child.text)
-                            .font(Theme.mono(9.5))
+                            .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textDim)
                             .lineLimit(1)
                     }
@@ -889,16 +889,16 @@ struct ProjectTasksView: View {
             }
             HStack(spacing: 6) {
                 Text(URL(fileURLWithPath: task.sourcePath).lastPathComponent)
-                    .font(Theme.mono(9))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                 if state != .unassigned {
                     Text(state.label)
-                        .font(Theme.mono(9, .semibold))
+                        .font(Theme.mono(.micro, .semibold))
                         .foregroundStyle(state.needsAttention ? Theme.warn : Theme.highlight)
                 }
                 if !assignments.isEmpty {
                     Text("\(assignments.count) session")
-                        .font(Theme.mono(9))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.highlight)
                 }
                 if gitTouched(task) {
@@ -927,7 +927,7 @@ struct ProjectTasksView: View {
                     color: test.passed ? Theme.ok : Theme.danger
                 )
                 Text(test.summary)
-                    .font(Theme.mono(9))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(test.passed ? Theme.ok : Theme.danger)
                     .lineLimit(1)
             }
@@ -957,7 +957,7 @@ struct ProjectTasksView: View {
         return VStack(alignment: .leading, spacing: 12) {
             if grouped.isEmpty {
                 Text("No session has been assigned to a task yet.")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .panel()
@@ -974,10 +974,10 @@ struct ProjectTasksView: View {
                                 ProviderMark(provider: record.provider, size: 11)
                             }
                             Text(record?.displayTitle ?? String(sessionID.uuidString.prefix(8)))
-                                .font(Theme.mono(11.5, .semibold))
+                                .font(Theme.mono(.body, .semibold))
                                 .foregroundStyle(Theme.text)
                             Text("\(assignments.count) tasks")
-                                .font(Theme.mono(9.5))
+                                .font(Theme.mono(.micro))
                                 .foregroundStyle(Theme.textFaint)
                             Spacer()
                             TablerIcon(name: "arrow-right", size: 11, color: Theme.textFaint)
@@ -993,22 +993,22 @@ struct ProjectTasksView: View {
                         Divider().overlay(Theme.border)
                         HStack(spacing: 8) {
                             Text(assignment.role.label)
-                                .font(Theme.mono(9.5, .semibold))
+                                .font(Theme.mono(.micro, .semibold))
                                 .foregroundStyle(Theme.highlight)
                                 .frame(width: 70, alignment: .leading)
                             Text(taskText(assignment))
-                                .font(Theme.mono(10.5))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.text)
                                 .lineLimit(1)
                             Spacer()
                             Text(assignment.state.label)
-                                .font(Theme.mono(9.5, .semibold))
+                                .font(Theme.mono(.micro, .semibold))
                                 .foregroundStyle(
                                     assignment.state.needsAttention ? Theme.warn : Theme.textDim
                                 )
                             if assignment.needsRelinking {
                                 Text("Needs relinking")
-                                    .font(Theme.mono(9, .semibold))
+                                    .font(Theme.mono(.micro, .semibold))
                                     .foregroundStyle(Theme.danger)
                             }
                         }
@@ -1035,7 +1035,7 @@ struct ProjectTasksView: View {
     @ViewBuilder
     private func cardActions(_ task: ProjectTask, in document: TaskDocument) -> some View {
         Button("Send to Agent…") { dispatchTarget = (task, document) }
-        Button("Start with \(settings.defaultProvider.displayName) (quick)") {
+        Button("Start with \(settings.defaultProvider.displayName) (Quick)") {
             sendToAgent(task, role: .implementer, reuseSession: true)
         }
         Menu("Start in a new session") {
@@ -1098,7 +1098,7 @@ struct ProjectTasksView: View {
             Button("Complete") { complete(task, in: document) }
         }
         if let review = results.latestReview(for: task.id), !review.findings.isEmpty {
-            Button("Send the review findings to the session") {
+            Button("Send the Review Findings to the Session") {
                 sendReviewFeedback(review, task: task)
             }
         }
@@ -1117,7 +1117,7 @@ struct ProjectTasksView: View {
         Button("Show Diff") { showDiff(task) }
         if assignments.contains(where: \.needsRelinking) {
             Divider()
-            Button("Reattach to this task") {
+            Button("Reattach to This Task") {
                 for assignment in assignments where assignment.needsRelinking {
                     metadata.rebind(assignmentID: assignment.id, to: task)
                 }
@@ -1701,7 +1701,7 @@ private struct EmptyTaskList: View {
 
     var body: some View {
         Text(isFiltered ? "No task matches the filter." : "No tasks.")
-            .font(Theme.mono(11))
+            .font(Theme.mono(.body))
             .foregroundStyle(Theme.textFaint)
             .frame(maxWidth: .infinity, minHeight: 100)
             .panel()

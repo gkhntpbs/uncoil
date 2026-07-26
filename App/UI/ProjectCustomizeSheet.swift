@@ -37,11 +37,11 @@ struct ProjectCustomizeSheet: View {
                         .foregroundStyle(previewColor)
                 }
                 Text(name.isEmpty ? project.name : name)
-                    .font(Theme.mono(13, .medium))
+                    .font(Theme.mono(.large, .medium))
                     .foregroundStyle(Theme.text)
                 Spacer()
                 Text("preview")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
             }
             .padding(12)
@@ -53,7 +53,7 @@ struct ProjectCustomizeSheet: View {
                 // Name
                 TextField("Project name", text: $name)
                     .textFieldStyle(.plain)
-                    .font(Theme.mono(12))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
@@ -95,7 +95,7 @@ struct ProjectCustomizeSheet: View {
                 // Icon search
                 TextField("Search icons (tabler icons — \(TablerIcons.map.count) icons)", text: $search)
                     .textFieldStyle(.plain)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)

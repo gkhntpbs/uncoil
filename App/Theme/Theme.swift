@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Uncoil design tokens — single surface, mono type, warm accent.
-/// All colors read the live user palette (Ayarlar > Tema).
+/// All colors read the live user palette (Settings > Appearance).
 @MainActor
 enum Theme {
     private static var p: ThemePalette { ThemeStore.shared.palette }
@@ -61,6 +61,36 @@ enum Theme {
     }
 
     // Type — mono carries the product's voice.
+
+    /// The type sizes the interface is allowed to use.
+    ///
+    /// `mono` used to take any `CGFloat`, and the app drifted to thirteen
+    /// different sizes — 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 14, 16, 18,
+    /// 20 — where half the pairs were the same role typed differently in two
+    /// files. Six steps is enough for a dense mono UI, and a name makes the
+    /// choice a decision rather than a number someone happened to write.
+    enum TypeScale: CGFloat {
+        /// Counters and badges.
+        case micro = 9.5
+        /// Secondary labels, metadata, captions.
+        case small = 10.5
+        /// Ordinary interface text.
+        case body = 11.5
+        /// Section and row titles.
+        case large = 13
+        /// Screen titles.
+        case title = 16
+        /// Empty states, the one-off big number.
+        case display = 20
+    }
+
+    static func mono(_ size: TypeScale, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size.rawValue, weight: weight, design: .monospaced)
+    }
+
+    /// Escape hatch for sizes that are computed rather than chosen — a terminal
+    /// font tied to a user setting, a glyph measured against its container.
+    /// Fixed interface text belongs on ``TypeScale``.
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
     }
@@ -126,15 +156,17 @@ struct DotGlyph: View {
     }
 }
 
-/// Relative timestamps the way the sidebar shows them: 2dk · 5sa · 3g
+/// Relative timestamps the way the sidebar shows them: 2m · 5h · 3d
 enum RelativeClock {
     static func short(since date: Date, now: Date = .now) -> String {
         let seconds = max(0, now.timeIntervalSince(date))
         switch seconds {
-        case ..<60: return "now"
-        case ..<3600: return "\(Int(seconds / 60))dk"
-        case ..<86_400: return "\(Int(seconds / 3600))sa"
-        default: return "\(Int(seconds / 86_400))g"
+        case ..<60: return String(localized: "now")
+        // The unit letters are part of the translation: Turkish abbreviates
+        // minute/hour/day as dk/sa/g, which no English reader would guess.
+        case ..<3600: return String(localized: "\(Int(seconds / 60))m")
+        case ..<86_400: return String(localized: "\(Int(seconds / 3600))h")
+        default: return String(localized: "\(Int(seconds / 86_400))d")
         }
     }
 }
@@ -184,7 +216,7 @@ struct StatusBadge: View {
                 TablerIcon(name: iconName, size: 9, color: level.foreground)
             }
             Text(text)
-                .font(Theme.mono(9, .semibold))
+                .font(Theme.mono(.micro, .semibold))
                 .foregroundStyle(level.foreground)
         }
         .padding(.horizontal, 6)

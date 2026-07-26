@@ -104,7 +104,7 @@ private struct AccountRow: View {
                         .settingsID("account.loginButton.\(profile.name)")
                 }
                 if !isDefault {
-                    Button("Make default") { settings.setDefaultAccount(profile) }
+                    Button("Make Default") { settings.setDefaultAccount(profile) }
                 }
                 if profile.directoryName != nil {
                     Button(role: .destructive) {
@@ -166,7 +166,7 @@ struct CLIToolsSettingsPage: View {
                 }
             }
 
-            Section("Paths found") {
+            Section("Paths Found") {
                 ForEach(providers) { provider in
                     LabeledContent(provider.displayName) {
                         Text(settings.binaryPath(for: provider) ?? "not found")

@@ -28,11 +28,11 @@ struct AttentionCenterView: View {
         HStack(spacing: 8) {
             TablerIcon(name: "bell", size: 13, color: Theme.textDim)
             Text("Attention Center")
-                .font(Theme.mono(12, .semibold))
+                .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             if store.unreadCount > 0 {
                 Text("\(store.unreadCount)")
-                    .font(Theme.mono(9.5, .semibold))
+                    .font(Theme.mono(.micro, .semibold))
                     .foregroundStyle(Theme.bg)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1.5)
@@ -56,7 +56,7 @@ struct AttentionCenterView: View {
         VStack(spacing: 8) {
             TablerIcon(name: "circle-check", size: 22, color: Theme.textFaint)
             Text("Nothing waiting")
-                .font(Theme.mono(11.5))
+                .font(Theme.mono(.body))
                 .foregroundStyle(Theme.textFaint)
         }
         .frame(maxWidth: .infinity)
@@ -100,7 +100,7 @@ private struct AttentionRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(item.kind.label)
-                        .font(Theme.mono(10, .semibold))
+                        .font(Theme.mono(.small, .semibold))
                         .foregroundStyle(item.kind.color)
                     if !item.isRead {
                         Circle()
@@ -109,16 +109,16 @@ private struct AttentionRow: View {
                     }
                     Spacer(minLength: 2)
                     Text(RelativeClock.short(since: item.createdAt))
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                 }
                 Text(item.title)
-                    .font(Theme.mono(11.5, item.isRead ? .regular : .medium))
+                    .font(Theme.mono(.body, item.isRead ? .regular : .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 if let detail = item.detail, !detail.isEmpty {
                     Text(detail)
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)

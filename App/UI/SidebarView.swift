@@ -57,9 +57,9 @@ struct SidebarView: View {
                 if projectStore.projects.isEmpty {
                     VStack(spacing: 8) {
                         Text("No projects yet")
-                            .font(Theme.mono(11))
+                            .font(Theme.mono(.body))
                             .foregroundStyle(Theme.textFaint)
-                        Button("Add a project") { showFolderPicker = true }
+                        Button("Add a Project") { showFolderPicker = true }
                             .buttonStyle(GhostButtonStyle())
                     }
                     .padding(.top, 40)
@@ -182,7 +182,7 @@ struct SidebarView: View {
     private var batchActions: some View {
         HStack(spacing: 8) {
             Text("\(selectedSessionIDs.count) selected")
-                .font(Theme.mono(10.5, .semibold))
+                .font(Theme.mono(.small, .semibold))
                 .foregroundStyle(Theme.text)
             Spacer()
             Button {
@@ -437,7 +437,7 @@ struct ProjectRowView: View {
             HStack(spacing: 8) {
                 ProjectIcon(project: project)
                 Text(project.name)
-                    .font(Theme.mono(12.5, .medium))
+                    .font(Theme.mono(.large, .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 if project.isPinned == true {
@@ -470,7 +470,7 @@ struct ProjectRowView: View {
                 if sessionsCollapsed, childCount > 0 {
                     // Collapsed, the project has to say how much it is hiding.
                     Text("\(childCount)")
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                 }
             }
@@ -642,12 +642,12 @@ struct SessionGroupRowView: View {
                 .buttonStyle(.plain)
                 TablerIcon(name: "folder", size: 12, color: Theme.textDim)
                 Text(group.name)
-                    .font(Theme.mono(11.5, .semibold))
+                    .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(1)
                 Spacer()
                 Text("\(projectStore.sessions(in: groupID).count)")
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
             }
             .padding(.leading, SidebarIndent.leading(depth: 1))
@@ -738,7 +738,7 @@ struct SessionRowView: View {
                         .accessibilityIdentifier("sidebar.drag.\(record.title)")
                         .help("Drag onto a group to move it; drop outside the window to open it in a new one")
                     Text(record.displayTitle)
-                        .font(Theme.mono(12))
+                        .font(Theme.mono(.body))
                         .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
                         .lineLimit(1)
                     Spacer(minLength: 4)
@@ -747,7 +747,7 @@ struct SessionRowView: View {
                     }
                     StatusOrb(status: status, size: 11)
                     Text(RelativeClock.short(since: record.lastActivityAt))
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                         .frame(width: 34, alignment: .trailing)
                 }

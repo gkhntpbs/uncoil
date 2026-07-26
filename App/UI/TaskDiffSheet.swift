@@ -11,10 +11,10 @@ struct TaskDiffSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Change")
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text(taskText)
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(2)
             }
@@ -23,7 +23,7 @@ struct TaskDiffSheet: View {
             Divider().overlay(Theme.border)
             ScrollView([.vertical, .horizontal]) {
                 Text(diff)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .padding(14)

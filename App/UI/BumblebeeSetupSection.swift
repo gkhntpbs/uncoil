@@ -27,7 +27,7 @@ struct BumblebeeSetupSection: View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Bumblebee install")
-                    .font(Theme.mono(12, .semibold))
+                    .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(Theme.text)
                 Text(
                     isInstalled
@@ -35,7 +35,7 @@ struct BumblebeeSetupSection: View {
                         : "Bumblebee not found. Uncoil keeps running its own scan;"
                             + " Installing Bumblebee is your call."
                 )
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
             }
 
@@ -48,13 +48,13 @@ struct BumblebeeSetupSection: View {
                     )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(isInstalled ? "Installed" : "Not installed")
-                            .font(Theme.mono(11.5, .medium))
+                            .font(Theme.mono(.body, .medium))
                             .foregroundStyle(Theme.text)
                         Text(
                             found.first.map { "\($0.source.label): \($0.path)" }
                                 ?? "Looked in: the app bundle, \(locator.managedPath), PATH"
                         )
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                         .textSelection(.enabled)
                         .lineLimit(3)
@@ -83,15 +83,15 @@ struct BumblebeeSetupSection: View {
                     .disabled(isInstalling)
                     .accessibilityIdentifier("extensions.security.bumblebee.install")
 
-                    Button("Choose the binary…") { chooseBinary() }
+                    Button("Choose the Binary…") { chooseBinary() }
                         .buttonStyle(GhostButtonStyle())
                         .disabled(isInstalling)
                         .accessibilityIdentifier("extensions.security.bumblebee.choose")
 
-                    Button("Open the folder") { revealManagedDirectory() }
+                    Button("Open the Folder") { revealManagedDirectory() }
                         .buttonStyle(GhostButtonStyle())
 
-                    Button("Open the repo") {
+                    Button("Open the Repo") {
                         NSWorkspace.shared.open(BumblebeeInstaller.homepage)
                     }
                     .buttonStyle(GhostButtonStyle())
@@ -125,12 +125,12 @@ struct BumblebeeSetupSection: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             Text(phase.label)
-                                .font(Theme.mono(10.5))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.text)
                             Spacer()
                             if let fraction = phase.fraction {
                                 Text("%\(Int(fraction * 100))")
-                                    .font(Theme.mono(9.5))
+                                    .font(Theme.mono(.micro))
                                     .foregroundStyle(Theme.textFaint)
                             }
                         }
@@ -154,7 +154,7 @@ struct BumblebeeSetupSection: View {
                 if let detail {
                     Divider().overlay(Theme.border)
                     Text(detail)
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textDim)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
@@ -171,12 +171,12 @@ struct BumblebeeSetupSection: View {
     private func step(_ number: Int, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text("\(number)")
-                .font(Theme.mono(9.5, .semibold))
+                .font(Theme.mono(.micro, .semibold))
                 .foregroundStyle(Theme.bg)
                 .frame(width: 15, height: 15)
                 .background(Theme.textDim, in: Circle())
             Text(text)
-                .font(Theme.mono(10.5))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()

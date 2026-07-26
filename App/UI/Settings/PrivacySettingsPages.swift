@@ -310,7 +310,7 @@ struct PrivacyDataSettingsPage: View {
                 }
             }
 
-            Section("Data location") {
+            Section("Data Location") {
                 LabeledContent("Folder") {
                     Text(ProjectStore.defaultDirectory().path)
                         .font(.caption.monospaced())

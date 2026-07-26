@@ -16,7 +16,7 @@ struct BranchBadge: View {
         HStack(spacing: 5) {
             TablerIcon(name: "git-branch", size: 12, color: Theme.textFaint)
             Text(shortened)
-                .font(Theme.mono(11, .medium))
+                .font(Theme.mono(.body, .medium))
                 .foregroundStyle(Theme.textDim)
                 .lineLimit(1)
         }

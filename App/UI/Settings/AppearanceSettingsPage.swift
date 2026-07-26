@@ -7,7 +7,7 @@ struct AppearanceSettingsPage: View {
 
     var body: some View {
         SettingsPage(title: String(localized: "Theme and Colours")) {
-            Section("Built-in themes") {
+            Section("Built-in Themes") {
                 Picker(selection: Binding(
                     get: { theme.palette.isLight },
                     set: { theme.apply(preset: $0 ? .light : .dark) }

@@ -127,10 +127,10 @@ struct ExtensionSearchResults: View {
             if groups.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("No result")
-                        .font(Theme.mono(12, .semibold))
+                        .font(Theme.mono(.body, .semibold))
                         .foregroundStyle(Theme.text)
                     Text("“\(query)” matched no extension, agent, source, finding or record.")
-                        .font(Theme.mono(10.5))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,10 +142,10 @@ struct ExtensionSearchResults: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Text(group.group)
-                            .font(Theme.mono(12, .semibold))
+                            .font(Theme.mono(.body, .semibold))
                             .foregroundStyle(Theme.text)
                         Text("\(group.rows.count)")
-                            .font(Theme.mono(9.5, .semibold))
+                            .font(Theme.mono(.micro, .semibold))
                             .foregroundStyle(Theme.textFaint)
                     }
                     VStack(alignment: .leading, spacing: 0) {
@@ -159,16 +159,16 @@ struct ExtensionSearchResults: View {
                                     )
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(row.title)
-                                            .font(Theme.mono(11.5, .medium))
+                                            .font(Theme.mono(.body, .medium))
                                             .foregroundStyle(row.tint ?? Theme.text)
                                         Text(row.detail)
-                                            .font(Theme.mono(10))
+                                            .font(Theme.mono(.small))
                                             .foregroundStyle(Theme.textFaint)
                                             .lineLimit(1)
                                     }
                                     Spacer()
                                     Text(row.section.title)
-                                        .font(Theme.mono(9.5))
+                                        .font(Theme.mono(.micro))
                                         .foregroundStyle(Theme.textFaint)
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 8, weight: .semibold))

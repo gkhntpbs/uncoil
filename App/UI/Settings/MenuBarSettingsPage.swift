@@ -119,7 +119,7 @@ struct MenuBarSettingsPage: View {
             }
             .disabled(!prefs.enabled)
 
-            Section("Menu contents") {
+            Section("Menu Contents") {
                 Toggle(isOn: bind(\.showTasksSection)) {
                     SettingsLabel(title: String(localized: "Task shortcuts"), detail: String(localized: "Board, task session, orchestrator."))
                 }

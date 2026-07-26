@@ -25,11 +25,11 @@ struct SessionPopoutWindow: View {
                         Spacer().frame(width: 70)  // traffic lights
                         ProviderMark(provider: record.provider, size: 13)
                         Text(record.displayTitle)
-                            .font(Theme.mono(12, .medium))
+                            .font(Theme.mono(.body, .medium))
                             .foregroundStyle(Theme.text)
                             .lineLimit(1)
                         Text(project.name)
-                            .font(Theme.mono(11))
+                            .font(Theme.mono(.body))
                             .foregroundStyle(Theme.textFaint)
                         Spacer()
                         StatusOrb(status: sessionStore.status(of: record.id), size: 12)
@@ -46,7 +46,7 @@ struct SessionPopoutWindow: View {
                 }
             } else {
                 Text("Session not found")
-                    .font(Theme.mono(12))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

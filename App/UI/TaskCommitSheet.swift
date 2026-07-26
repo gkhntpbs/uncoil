@@ -25,11 +25,11 @@ struct TaskCommitSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Commit — \(task.text)")
-                    .font(Theme.mono(13, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                 Text(repoRoot)
-                    .font(Theme.mono(9.5))
+                    .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -40,7 +40,7 @@ struct TaskCommitSheet: View {
 
             if files.isEmpty {
                 Text(didLoad ? "Nothing to commit." : "Reading changes…")
-                    .font(Theme.mono(11))
+                    .font(Theme.mono(.body))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(24)
@@ -59,18 +59,18 @@ struct TaskCommitSheet: View {
             Divider().overlay(Theme.border)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Commit message")
-                    .font(Theme.mono(10, .semibold))
+                    .font(Theme.mono(.small, .semibold))
                     .foregroundStyle(Theme.textFaint)
                 TextField("", text: $commitMessage)
                     .textFieldStyle(.roundedBorder)
-                    .font(Theme.mono(11.5))
+                    .font(Theme.mono(.body))
                     .accessibilityIdentifier("tasks.commit.message")
             }
             .padding(14)
 
             if let error {
                 Text(error)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.danger)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 14)
@@ -80,14 +80,14 @@ struct TaskCommitSheet: View {
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
                 Text("\(selected.count)/\(files.count) files")
-                    .font(Theme.mono(10))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
                 if isWorking { ProgressView().controlSize(.small) }
                 Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Commit + open PR") { commit(openPR: true) }
+                Button("Commit + Open PR") { commit(openPR: true) }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(selected.isEmpty || isWorking)
                     .accessibilityIdentifier("tasks.commit.pr")
@@ -114,7 +114,7 @@ struct TaskCommitSheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(isOn ? Theme.highlight : Theme.textFaint)
                 Text(file)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .truncationMode(.head)

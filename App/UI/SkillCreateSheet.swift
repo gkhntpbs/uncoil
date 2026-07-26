@@ -24,10 +24,10 @@ struct SkillCreateSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("New skill")
-                    .font(Theme.mono(14, .bold))
+                    .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("Created in Uncoil's own store; attached to the agents you pick.")
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textDim)
             }
 
@@ -35,25 +35,25 @@ struct SkillCreateSheet: View {
                 field("Name") {
                     TextField("e.g. release-checklist", text: $draft.name)
                         .textFieldStyle(.roundedBorder)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .accessibilityIdentifier("extensions.skills.create.name")
                 }
                 if !draft.name.isEmpty {
                     Text("Folder name: \(slug.isEmpty ? "invalid" : slug)")
-                        .font(Theme.mono(9.5))
+                        .font(Theme.mono(.micro))
                         .foregroundStyle(slug.isEmpty ? Theme.danger : Theme.textFaint)
                 }
 
                 field("Description") {
                     TextField("When should the agent use this?", text: $draft.summary)
                         .textFieldStyle(.roundedBorder)
-                        .font(Theme.mono(11.5))
+                        .font(Theme.mono(.body))
                         .accessibilityIdentifier("extensions.skills.create.summary")
                 }
 
                 field("Contents") {
                     TextEditor(text: $draft.body)
-                        .font(Theme.mono(11))
+                        .font(Theme.mono(.body))
                         .frame(height: 150)
                         .scrollContentBackground(.hidden)
                         .padding(6)
@@ -67,7 +67,7 @@ struct SkillCreateSheet: View {
 
                 if registry.installedAgents.isEmpty {
                     Text("No installed agent found; the skill is created but attached to nobody.")
-                        .font(Theme.mono(10))
+                        .font(Theme.mono(.small))
                         .foregroundStyle(Theme.warn)
                 } else {
                     field("Ata") {
@@ -80,7 +80,7 @@ struct SkillCreateSheet: View {
                                     }
                                 ))
                                 .toggleStyle(.checkbox)
-                                .font(Theme.mono(10.5))
+                                .font(Theme.mono(.small))
                                 .foregroundStyle(Theme.textDim)
                             }
                             Spacer()
@@ -91,7 +91,7 @@ struct SkillCreateSheet: View {
 
             if let error {
                 Text(error)
-                    .font(Theme.mono(10.5))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.danger)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -119,7 +119,7 @@ struct SkillCreateSheet: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(Theme.mono(10, .semibold))
+                .font(Theme.mono(.small, .semibold))
                 .foregroundStyle(Theme.textFaint)
             content()
         }
