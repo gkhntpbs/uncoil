@@ -51,6 +51,7 @@ struct CommandPaletteOverlay: View {
     private var panel: some View {
         VStack(spacing: 0) {
             searchField
+            if model.askPrompt != nil { askBanner }
             Divider().overlay(Theme.border)
             results
         }
@@ -68,7 +69,10 @@ struct CommandPaletteOverlay: View {
     private var searchField: some View {
         HStack(spacing: 10) {
             TablerIcon(name: "search", size: 14, color: Theme.textDim)
-            TextField("Search commands, find files, jump to a project…", text: $model.query)
+            TextField(model.askPrompt == nil
+                      ? String(localized: "Search commands, find files, jump to a project… (? to ask)")
+                      : String(localized: "Ask the project's agents…"),
+                      text: $model.query)
                 .textFieldStyle(.plain)
                 .font(Theme.mono(.large))
                 .foregroundStyle(Theme.text)
@@ -82,6 +86,24 @@ struct CommandPaletteOverlay: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+    }
+
+    /// Says who is about to be asked and where, so the list below reads as a
+    /// choice of target rather than as search results.
+    private var askBanner: some View {
+        HStack(spacing: 8) {
+            TablerIcon(name: "sparkles", size: 12, color: Theme.highlight)
+            Text(model.askProjectName ?? String(localized: "No project"))
+                .font(Theme.mono(.small, .semibold))
+                .foregroundStyle(Theme.text)
+            Text(String(localized: "Pick who answers · ↑↓ then Enter"))
+                .font(Theme.mono(.micro))
+                .foregroundStyle(Theme.textFaint)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 10)
+        .accessibilityIdentifier("palette.askBanner")
     }
 
     private var results: some View {

@@ -300,8 +300,10 @@ struct MainWindow: View {
             openWindow(id: "session-window", value: id)
         case .openFile(let url), .openArtifact(let url):
             settings.preferredEditor.open(url)
-        case .askClaude(let prompt, let projectID):
-            askClaude(prompt, projectID: projectID)
+        case .ask(let prompt, let target, let projectID):
+            ask(prompt, target: target, projectID: projectID)
+        case .beginAsk:
+            break                       // handled inside the palette; it stays open
         }
     }
 
@@ -318,16 +320,24 @@ struct MainWindow: View {
         return record
     }
 
-    /// Starts (or reuses a live) Claude session in the project and sends the
-    /// query as its initial prompt. Mirrors the control-plane child launcher.
-    private func askClaude(_ prompt: String, projectID: UUID) {
-        let live = projectStore.sessions(for: projectID).first {
-            $0.provider == .claude && sessionStore.status(of: $0.id) != .terminated
+    /// Sends a quick question to the agent the user picked in the palette.
+    ///
+    /// An existing session gets the question in its own conversation; a new one
+    /// is created with the question as its opening prompt. Either way the
+    /// session is focused, because the answer is the point.
+    private func ask(_ prompt: String, target: AskTarget, projectID: UUID) {
+        let record: SessionRecord
+        switch target {
+        case .session(let id):
+            guard let existing = projectStore.sessions(for: projectID)
+                .first(where: { $0.id == id }) else { return }
+            record = existing
+        case .newSession(let provider):
+            record = projectStore.createSession(
+                projectID: projectID, provider: provider,
+                accountID: settings.defaultAccount(for: provider)?.id,
+                title: String(localized: "\(provider.rawValue): \(prompt)"))
         }
-        let record = live ?? projectStore.createSession(
-            projectID: projectID, provider: .claude,
-            accountID: settings.defaultAccount(for: .claude)?.id,
-            title: String(localized: "claude: new session"))
         selection = .session(record.id)
 
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }

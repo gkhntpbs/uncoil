@@ -62,19 +62,56 @@ final class PaletteModelTests: XCTestCase {
         XCTAssertFalse(items(groups).contains { $0.action == .openProject(project.id) })
     }
 
-    func testAskClaudeAppearsForQuestion() {
+    private func askActions(_ groups: [PaletteGroup]) -> [PaletteAction] {
+        items(groups).compactMap { if case .ask = $0.action { return $0.action }; return nil }
+    }
+
+    func testAskOffersANewSessionPerProviderForAQuestion() {
         let project = makeProject("p", path: "/tmp/p")
         let groups = PaletteEngine.compute(baseContext(
             query: "bu ne işe yarar?", projects: [project], currentProjectID: project.id))
-        let ask = items(groups).first { if case .askClaude = $0.action { return true }; return false }
-        XCTAssertNotNil(ask)
+        XCTAssertEqual(askActions(groups), [
+            .ask(prompt: "bu ne işe yarar?", target: .newSession(.claude), projectID: project.id),
+            .ask(prompt: "bu ne işe yarar?", target: .newSession(.codex), projectID: project.id),
+        ])
     }
 
-    func testAskClaudeRequiresCurrentProject() {
+    /// A live session is the first thing the keyboard lands on: continuing a
+    /// conversation is the common case, starting a thread is the deliberate one.
+    func testLiveSessionsComeBeforeNewOnes() {
+        let project = makeProject("p", path: "/tmp/p")
+        let session = SessionRecord(
+            projectID: project.id, provider: .claude, accountID: nil, title: "claude: earlier")
+        let groups = PaletteEngine.compute(baseContext(
+            query: "? nasıl", projects: [project], sessions: [session],
+            currentProjectID: project.id))
+        XCTAssertEqual(
+            askActions(groups).first,
+            .ask(prompt: "nasıl", target: .session(session.id), projectID: project.id))
+    }
+
+    /// A leading "?" is how a question is started before it is finished, so an
+    /// empty one must not offer to send nothing.
+    func testBareQuestionMarkOffersNothingToSend() {
+        let project = makeProject("p", path: "/tmp/p")
+        let groups = PaletteEngine.compute(baseContext(
+            query: "?", projects: [project], currentProjectID: project.id))
+        XCTAssertTrue(askActions(groups).isEmpty)
+    }
+
+    func testAskRequiresCurrentProject() {
         let project = makeProject("p", path: "/tmp/p")
         let groups = PaletteEngine.compute(baseContext(
             query: "soru: nasıl?", projects: [project], currentProjectID: nil))
-        XCTAssertFalse(items(groups).contains { if case .askClaude = $0.action { return true }; return false })
+        XCTAssertTrue(askActions(groups).isEmpty)
+    }
+
+    /// Asking takes the list over, so Enter can only mean "send to this agent".
+    func testAskModeHidesEverythingElse() {
+        let project = makeProject("p", path: "/tmp/p")
+        let groups = PaletteEngine.compute(baseContext(
+            query: "? nasıl", projects: [project], currentProjectID: project.id))
+        XCTAssertEqual(Set(groups.map(\.kind)), [.ask])
     }
 
     func testFilesOnlyWhenSearching() {

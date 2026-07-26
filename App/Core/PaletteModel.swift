@@ -20,7 +20,20 @@ enum PaletteAction: Equatable {
     case popoutSession(UUID)
     case openFile(URL)
     case openArtifact(URL)
-    case askClaude(String, UUID)        // prompt, project id
+    case ask(prompt: String, target: AskTarget, projectID: UUID)
+    /// Puts the palette into asking mode without closing it.
+    case beginAsk
+}
+
+/// Where a quick question goes.
+///
+/// An existing session keeps the conversation — the agent already knows what
+/// the project looks like — while a new one is the "start this as its own
+/// thread" answer. Both are one Enter away, which is the whole point of asking
+/// from the palette.
+enum AskTarget: Equatable {
+    case session(UUID)
+    case newSession(AgentProvider)
 }
 
 // MARK: - Result model
@@ -91,6 +104,23 @@ struct PaletteContext {
 
 /// Pure result computation — no stores, no view state. Unit-tested directly.
 enum PaletteEngine {
+    /// The question inside a palette query, or nil when this is not one.
+    ///
+    /// A leading `?` is the deliberate way in, so a question can be typed
+    /// before it is finished. A trailing `?` also counts, because that is how
+    /// people type a question without thinking about the palette's rules.
+    static func askPrompt(in raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.hasPrefix(">") else { return nil }
+        for prefix in ["?", "soru:", "ask:"] where trimmed.lowercased().hasPrefix(prefix) {
+            let body = String(trimmed.dropFirst(prefix.count))
+                .trimmingCharacters(in: .whitespaces)
+            return body.isEmpty ? "" : body
+        }
+        if trimmed.hasSuffix("?"), trimmed.count > 1 { return trimmed }
+        return nil
+    }
+
     private static let perGroupLimit = 20
     private static let fileLimit = 30
 
@@ -102,9 +132,15 @@ enum PaletteEngine {
 
         var groups: [PaletteGroup] = []
 
-        // Ask-Claude action: query ends with "?" or starts with "soru:".
-        if let ask = askItem(raw: raw, ctx: ctx), !commandsOnly {
-            groups.append(PaletteGroup(kind: .ask, items: [ask]))
+        // A question takes the palette over: mixing "which agent do I ask" with
+        // file and project results would make Enter ambiguous, and the whole
+        // flow is meant to be answerable without looking.
+        let asks = askItems(raw: raw, ctx: ctx)
+        if !asks.isEmpty {
+            return [PaletteGroup(kind: .ask, items: asks)]
+        }
+        if !commandsOnly, askPrompt(in: raw) != nil, ctx.currentProjectID == nil {
+            return []
         }
 
         // Commands
@@ -178,7 +214,14 @@ enum PaletteEngine {
     // MARK: Helpers
 
     private static func commandItems(ctx: PaletteContext) -> [PaletteItem] {
-        var items: [PaletteItem] = [
+        var items: [PaletteItem] = []
+        if ctx.currentProjectID != nil {
+            items.append(PaletteItem(
+                id: "cmd.ask", title: String(localized: "Ask an agent…"),
+                subtitle: String(localized: "Type ? and your question"),
+                iconName: "sparkles", kind: .command, action: .beginAsk, rank: 30))
+        }
+        items += [
             PaletteItem(id: "cmd.addProject", title: String(localized: "Add a New Project"),
                         iconName: "folder-plus", kind: .command, action: .addProject),
             PaletteItem(id: "cmd.testWorkspace", title: String(localized: "Create a Test Workspace"),
@@ -220,21 +263,42 @@ enum PaletteEngine {
         return items
     }
 
-    private static func askItem(raw: String, ctx: PaletteContext) -> PaletteItem? {
-        guard let pid = ctx.currentProjectID else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        var prompt: String?
-        if trimmed.lowercased().hasPrefix("soru:") {
-            prompt = String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-        } else if trimmed.hasSuffix("?") && trimmed.count > 1 {
-            prompt = trimmed
+    /// The targets a question can go to, in the order a keyboard reaches them:
+    /// the project's live agents first (most recently active first), then a
+    /// fresh session per provider.
+    static func askItems(raw: String, ctx: PaletteContext) -> [PaletteItem] {
+        guard let pid = ctx.currentProjectID,
+              let prompt = askPrompt(in: raw), !prompt.isEmpty else { return [] }
+
+        var items: [PaletteItem] = []
+        let live = ctx.sessions
+            .filter {
+                $0.projectID == pid && $0.provider != .terminal && $0.endedAt == nil
+                    && ctx.statuses[$0.id] != .terminated
+            }
+            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+
+        for session in live {
+            items.append(PaletteItem(
+                id: "ask.session.\(session.id)",
+                title: session.displayTitle,
+                subtitle: String(localized: "Ask in this session"),
+                iconName: "message", provider: session.provider,
+                status: ctx.statuses[session.id],
+                kind: .ask, action: .ask(prompt: prompt, target: .session(session.id), projectID: pid),
+                rank: 10))
         }
-        guard let prompt, !prompt.isEmpty else { return nil }
-        return PaletteItem(
-            id: "ask.claude", title: String(localized: "Ask Claude: \(prompt)"),
-            subtitle: String(localized: "Asked in a Claude session in this project"),
-            iconName: "sparkles", provider: .claude,
-            kind: .ask, action: .askClaude(prompt, pid))
+
+        for provider in [AgentProvider.claude, .codex] {
+            items.append(PaletteItem(
+                id: "ask.new.\(provider.rawValue)",
+                title: String(localized: "New \(provider.displayName) session"),
+                subtitle: String(localized: "Ask in a session of its own"),
+                iconName: "plus", provider: provider,
+                kind: .ask,
+                action: .ask(prompt: prompt, target: .newSession(provider), projectID: pid)))
+        }
+        return items
     }
 
     /// Scores/sorts a candidate list into (at most one) group.
@@ -396,14 +460,29 @@ final class PaletteModel: ObservableObject {
 
     func executeSelected() {
         guard let item = selectedItem else { return }
+        execute(item)
+    }
+
+    func execute(_ item: PaletteItem) {
+        // Asking is the one action that keeps the palette open: it only sets up
+        // the question, and the next Enter is the one that sends it.
+        if case .beginAsk = item.action {
+            query = "? "
+            selectedIndex = 0
+            return
+        }
         close()
         pendingAction = item.action
     }
 
-    func execute(_ item: PaletteItem) {
-        close()
-        pendingAction = item.action
+    /// The project a question would go to, named for the ask banner.
+    var askProjectName: String? {
+        guard let id = currentProjectID else { return nil }
+        return projectStore?.projects.first(where: { $0.id == id })?.name
     }
+
+    /// The question currently typed, for the header the ask mode shows.
+    var askPrompt: String? { PaletteEngine.askPrompt(in: query) }
 
     // MARK: Recompute
 
