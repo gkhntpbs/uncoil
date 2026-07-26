@@ -334,6 +334,8 @@ struct ProjectDashboardView: View {
                 BranchBadge(
                     branch: branch,
                     repoPath: project.rootPath,
+                    worktreeName: WorktreeNaming.name(
+                        forTreeAt: project.rootPath, projectRoot: project.rootPath),
                     // A switch rewrites the whole working tree, so the page's
                     // git snapshot, worktrees and file list are all stale.
                     onSwitched: {
@@ -664,7 +666,7 @@ private struct WorktreeRow: View {
                 .foregroundStyle(worktree.isMain ? Theme.textFaint : Theme.warn.opacity(0.85))
                 .frame(width: 14)
             VStack(alignment: .leading, spacing: 1) {
-                Text(worktree.isMain ? "ana kopya" : URL(fileURLWithPath: worktree.path).lastPathComponent)
+                Text(WorktreeNaming.name(forTreeAt: worktree.path, projectRoot: project.rootPath))
                     .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                 Text(worktree.branch ?? "detached")

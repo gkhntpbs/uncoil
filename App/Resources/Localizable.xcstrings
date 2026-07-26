@@ -11254,6 +11254,17 @@
         }
       }
     },
+    "%@ in %@ — click to switch": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %@ — değiştirmek için tıkla"
+          }
+        }
+      }
+    },
     "%@ installed: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -12834,6 +12845,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "boşta"
+          }
+        }
+      }
+    },
+    "main copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ana kopya"
           }
         }
       }

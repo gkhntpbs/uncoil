@@ -94,12 +94,20 @@ struct SessionHeaderBar<Trailing: View>: View {
                                     .foregroundStyle(Theme.textDim)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
+                                // Which tree that branch is checked out in: a
+                                // task session runs in a worktree, and the
+                                // branch alone does not say which.
+                                Text("· \(treeName)")
+                                    .font(Theme.mono(.body))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
                             }
                         }
                         .menuStyle(.borderlessButton)
                         .menuIndicator(.hidden)
                         .fixedSize()
-                        .help("Active branch: \(branch) — click to switch")
+                        .help("\(branch) in \(treeName) — click to switch")
                     }
                 }
             }
@@ -169,6 +177,10 @@ struct SessionHeaderBar<Trailing: View>: View {
             }.value
             await MainActor.run { branch = resolved }
         }
+    }
+
+    private var treeName: String {
+        WorktreeNaming.name(forTreeAt: workingDirectory, projectRoot: project.rootPath)
     }
 
     private var displayPath: String {
