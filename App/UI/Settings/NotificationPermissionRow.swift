@@ -22,7 +22,7 @@ struct NotificationPermissionRow: View {
     var body: some View {
         AdaptiveRow {
             SettingsLabel(
-                title: "macOS bildirim izni",
+                title: "macOS notification permission",
                 detail: explanation,
                 symbol: "bell.badge"
             )
@@ -40,29 +40,29 @@ struct NotificationPermissionRow: View {
 
         SettingsActionRow(
             isWorking: isWorking,
-            note: authorization.lastTestSentAt != nil ? "Test bildirimi gönderildi." : nil,
+            note: authorization.lastTestSentAt != nil ? "Test notification sent." : nil,
             noteLevel: .ok
         ) {
             if authorization.status.canRequest {
-                Button("İzin İste") {
+                Button("Request Permission") {
                     run { await authorization.request() }
                 }
                 .buttonStyle(.borderedProminent)
                 .settingsID("notifications.request")
             } else if authorization.status == .denied {
-                Button("Sistem Ayarları’nı Aç") {
+                Button("Open System Settings") {
                     authorization.openSystemSettings()
                 }
                 .buttonStyle(.borderedProminent)
                 .settingsID("notifications.openSystemSettings")
             }
 
-            Button("Test Bildirimi Gönder") {
+            Button("Send a Test Notification") {
                 run { await authorization.sendTestNotification() }
             }
             .settingsID("notifications.sendTest")
 
-            Button("Durumu Yenile") {
+            Button("Refresh Status") {
                 run { await authorization.refresh() }
             }
             .settingsID("notifications.refresh")
@@ -77,15 +77,15 @@ struct NotificationPermissionRow: View {
     private var explanation: String {
         switch authorization.status {
         case .granted:
-            "Bir ajan girdi beklediğinde ya da turunu bitirdiğinde bildirim gelir."
+            "A notification arrives when an agent waits for input or finishes its turn."
         case .provisional:
-            "Bildirimler sessizce Bildirim Merkezi'ne düşer, banner çıkmaz."
+            "Notifications land silently in Notification Center; no banner appears."
         case .denied:
-            "macOS izni reddedildi ve tekrar sormaz; yalnızca Sistem Ayarları'ndan açılabilir."
+            "macOS permission was denied and will not be asked for again; it can only be turned on in System Settings."
         case .notRequested:
-            "macOS henüz sormadı. İzin verilmeden hiçbir bildirim gösterilemez."
+            "macOS has not asked yet. No notification can be shown until permission is given."
         case .unknown:
-            "Durum okunuyor…"
+            "Reading the status…"
         }
     }
 

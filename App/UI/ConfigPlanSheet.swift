@@ -15,7 +15,7 @@ struct ConfigPlanSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Config değişiklik planı")
+                Text("Config change plan")
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(transaction.agent.displayName) — \(summary)")
@@ -32,7 +32,7 @@ struct ConfigPlanSheet: View {
             Divider().overlay(Theme.border)
 
             ScrollView([.vertical, .horizontal]) {
-                Text(transaction.diff.isEmpty ? "Değişiklik yok." : transaction.diff)
+                Text(transaction.diff.isEmpty ? "No changes." : transaction.diff)
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
@@ -65,15 +65,15 @@ struct ConfigPlanSheet: View {
 
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
-                Text("Uygulanmadan önce yedek alınır; tek tıkla geri dönebilirsin.")
+                Text("A backup is taken before it is applied; one click takes you back.")
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityIdentifier("configPlan.cancel")
-                Button("Uygula", action: onApply)
+                Button("Apply", action: onApply)
                     .buttonStyle(AccentButtonStyle())
                     .disabled(transaction.diff.isEmpty)
                     .accessibilityIdentifier("configPlan.apply")

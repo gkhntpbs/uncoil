@@ -49,7 +49,7 @@ enum TaskAttentionEngine {
             if task.assignments.contains(where: \.needsRelinking) {
                 items.append(item(
                     .relinkNeeded, task: task, title: title,
-                    detail: "Görev metni değişti; oturumun hangi göreve ait olduğu doğrulanmalı.",
+                    detail: "The task's wording changed; which task the session belongs to must be confirmed.",
                     now: now
                 ))
             }
@@ -68,7 +68,7 @@ enum TaskAttentionEngine {
                 case .waitingForPermission:
                     items.append(item(
                         .permission, task: task, title: who,
-                        detail: "Görev için izin bekleniyor.",
+                        detail: "Waiting for permission for the task.",
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -76,7 +76,7 @@ enum TaskAttentionEngine {
                 case .waitingForUser:
                     items.append(item(
                         .input, task: task, title: who,
-                        detail: "Görev için kullanıcı yanıtı bekleniyor.",
+                        detail: "Waiting for your answer on the task.",
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -84,7 +84,7 @@ enum TaskAttentionEngine {
                 case .testsFailing:
                     items.append(item(
                         .testFailure, task: task, title: who,
-                        detail: "Görevin testleri başarısız.",
+                        detail: "The task's tests are failing.",
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -100,7 +100,7 @@ enum TaskAttentionEngine {
                 case .blocked:
                     items.append(item(
                         .taskBlocked, task: task, title: who,
-                        detail: "Görev bloklandı.",
+                        detail: "The task is blocked.",
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -108,7 +108,7 @@ enum TaskAttentionEngine {
                 case .failed:
                     items.append(item(
                         .taskFailed, task: task, title: who,
-                        detail: "Görev yürütmesi başarısız oldu.",
+                        detail: "The task run failed.",
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -121,14 +121,14 @@ enum TaskAttentionEngine {
             if task.latestReview == .changesRequested {
                 items.append(item(
                     .changesRequested, task: task, title: title,
-                    detail: "Review değişiklik istedi.", now: now
+                    detail: "The review requested changes.", now: now
                 ))
             }
 
             if task.isDone {
                 items.append(item(
                     .taskCompleted, task: task, title: title,
-                    detail: "Görev tamamlandı olarak işaretlendi.", now: now
+                    detail: "The task was marked as done.", now: now
                 ))
             }
 
@@ -138,20 +138,20 @@ enum TaskAttentionEngine {
             if let blockers = task.mergeBlockers, blockers.isEmpty, !task.assignments.isEmpty {
                 items.append(item(
                     .mergeReady, task: task, title: title,
-                    detail: "Testler, review ve çalışma ağacı hazır; onayını bekliyor.",
+                    detail: "Tests, review and worktree are ready; waiting for your word.",
                     now: now
                 ))
             }
         }
 
         for (projectID, paths) in snapshot.conflictedSources where !paths.isEmpty {
-            let name = snapshot.projectNames[projectID] ?? "Proje"
+            let name = snapshot.projectNames[projectID] ?? "Project"
             for path in paths {
                 items.append(AttentionItem(
                     id: sourceConflictID(path),
                     kind: .mergeConflict,
                     title: "\(name) › \(URL(fileURLWithPath: path).lastPathComponent)",
-                    detail: "Görev kaynağı conflict içeriyor; düzenleme kapalı.",
+                    detail: "The task's source contains a conflict; editing is off.",
                     projectID: projectID, sessionID: nil, createdAt: now,
                     // Stamped `now` per scan; the path is what makes this the
                     // same conflict rather than a new one.

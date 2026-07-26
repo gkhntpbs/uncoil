@@ -24,21 +24,21 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .permission: "İzin bekliyor"
-        case .input: "Yanıt bekliyor"
-        case .testFailure: "Test başarısız"
+        case .permission: "Waiting for permission"
+        case .input: "Waiting for a reply"
+        case .testFailure: "Test failed"
         case .mergeConflict: "Merge conflict"
-        case .authentication: "Giriş gerekli"
+        case .authentication: "Login required"
         case .runtime: "Runtime sorunu"
-        case .completed: "Tamamlandı"
-        case .taskAssigned: "Göreve agent atandı"
+        case .completed: "Done"
+        case .taskAssigned: "An agent was assigned to the task"
         case .reviewRequested: "Review istendi"
-        case .changesRequested: "Değişiklik istendi"
-        case .taskBlocked: "Görev bloklandı"
-        case .taskFailed: "Görev başarısız"
-        case .taskCompleted: "Görev tamamlandı"
-        case .mergeReady: "Merge hazır"
-        case .relinkNeeded: "Görev bağlantısı kayıp"
+        case .changesRequested: "Changes requested"
+        case .taskBlocked: "Task blocked"
+        case .taskFailed: "Task failed"
+        case .taskCompleted: "Task done"
+        case .mergeReady: "Ready to merge"
+        case .relinkNeeded: "Task link lost"
         }
     }
 
@@ -218,7 +218,7 @@ enum AttentionEngine {
             case .required:
                 items.append(AttentionItem(
                     id: authenticationID(session.id), kind: .authentication, title: where_,
-                    detail: "Codex hesabında oturum açılmalı.",
+                    detail: "You need to sign in to your Codex account.",
                     projectID: session.projectID, sessionID: session.id,
                     createdAt: session.lastActivityAt
                 ))
@@ -234,7 +234,7 @@ enum AttentionEngine {
         }
 
         for (projectID, paths) in snapshot.conflicts where !paths.isEmpty {
-            let name = snapshot.projectNames[projectID] ?? "Proje"
+            let name = snapshot.projectNames[projectID] ?? "Project"
             // Stamped `now` on every scan, so the files themselves — not the
             // clock — are what says whether this is the same conflict the user
             // already dealt with.
@@ -249,12 +249,12 @@ enum AttentionEngine {
         case .failed:
             items.append(AttentionItem(
                 id: runtimeID, kind: .runtime, title: "Runtime daemon",
-                detail: "uncoil-runtimed erişilemiyor; oturumlar uygulama içi PTY ile çalışıyor.",
+                detail: "uncoil-runtimed is unreachable; sessions run on the in-app PTY.",
                 projectID: nil, sessionID: nil, createdAt: now, signature: "failed"
             ))
         case .incompatible(let message):
             items.append(AttentionItem(
-                id: runtimeID, kind: .runtime, title: "Runtime uyumsuzluğu",
+                id: runtimeID, kind: .runtime, title: "Runtime mismatch",
                 detail: message, projectID: nil, sessionID: nil, createdAt: now,
                 signature: "incompatible:\(message)"
             ))
@@ -269,8 +269,8 @@ enum AttentionEngine {
     static func conflictDetail(_ paths: [String]) -> String {
         let shown = paths.prefix(3).joined(separator: ", ")
         return paths.count > 3
-            ? "\(paths.count) dosyada çözülmemiş conflict: \(shown)…"
-            : "Çözülmemiş conflict: \(shown)"
+            ? "Unresolved conflicts in \(paths.count) files: \(shown)…"
+            : "Unresolved conflict: \(shown)"
     }
 
     /// Panel order: urgency first, then most recent.

@@ -39,7 +39,7 @@ struct TaskCommitSheet: View {
             Divider().overlay(Theme.border)
 
             if files.isEmpty {
-                Text(didLoad ? "Commit edilecek değişiklik yok." : "Değişiklikler okunuyor…")
+                Text(didLoad ? "Nothing to commit." : "Reading changes…")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -58,7 +58,7 @@ struct TaskCommitSheet: View {
 
             Divider().overlay(Theme.border)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Commit mesajı")
+                Text("Commit message")
                     .font(Theme.mono(10, .semibold))
                     .foregroundStyle(Theme.textFaint)
                 TextField("", text: $commitMessage)
@@ -79,15 +79,15 @@ struct TaskCommitSheet: View {
 
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
-                Text("\(selected.count)/\(files.count) dosya")
+                Text("\(selected.count)/\(files.count) files")
                     .font(Theme.mono(10))
                     .foregroundStyle(Theme.textFaint)
                 Spacer()
                 if isWorking { ProgressView().controlSize(.small) }
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Commit + PR aç") { commit(openPR: true) }
+                Button("Commit + open PR") { commit(openPR: true) }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(selected.isEmpty || isWorking)
                     .accessibilityIdentifier("tasks.commit.pr")
@@ -161,9 +161,9 @@ struct TaskCommitSheet: View {
                     let url = try await TaskGitActions()
                         .createPullRequest(task: task, repoRoot: root)
                     NSWorkspace.shared.open(url)
-                    onDone("Commit \(hash) yapıldı, PR açıldı: \(url.absoluteString)")
+                    onDone("Committed \(hash), PR opened: \(url.absoluteString)")
                 } else {
-                    onDone("Commit \(hash) yapıldı (\(picked.count) dosya).")
+                    onDone("Committed \(hash) (\(picked.count) files).")
                 }
             } catch {
                 self.error = error.localizedDescription

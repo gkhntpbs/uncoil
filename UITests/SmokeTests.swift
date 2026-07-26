@@ -232,7 +232,7 @@ final class SmokeTests: XCTestCase {
         let sessionRow = app.descendants(matching: .any)["sidebar.session.terminal"]
         XCTAssertTrue(sessionRow.waitForExistence(timeout: 10))
         sessionRow.rightClick()
-        let popoutAction = app.menuItems["Yeni Pencerede Aç"]
+        let popoutAction = app.menuItems["Open in a New Window"]
         XCTAssertTrue(popoutAction.waitForExistence(timeout: 5))
         popoutAction.click()
 

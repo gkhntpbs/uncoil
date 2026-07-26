@@ -79,15 +79,15 @@ struct CodexAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).command",
                     severity: .error,
-                    message: "\(server.name) STDIO sunucusunun komutu yok.",
-                    remedy: "Komutu ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) STDIO server has no command.",
+                    remedy: "Add the command, or remove the server."
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).url",
                     severity: .error,
-                    message: "\(server.name) HTTP sunucusunun adresi yok.",
-                    remedy: "URL ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) HTTP server has no address.",
+                    remedy: "Add a URL, or remove the server."
                 ))
             default:
                 break
@@ -96,8 +96,8 @@ struct CodexAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).secrets",
                     severity: .warning,
-                    message: "\(server.name) config.toml içinde secret tutuyor: \(server.environmentKeys.joined(separator: ", ")).",
-                    remedy: "Uncoil launcher'a taşıyarak değeri Keychain'de tut."
+                    message: "\(server.name) keeps a secret in config.toml: \(server.environmentKeys.joined(separator: ", ")).",
+                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
                 ))
             }
         }
@@ -107,8 +107,8 @@ struct CodexAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "codex.mcp.coverage",
                 severity: .warning,
-                message: "Codex TOML MCP config'i Bumblebee taramasının kapsamı dışında.",
-                remedy: "Bu sunucular için Uncoil'in kendi taramasına güven."
+                message: "Codex's TOML MCP config is outside the Bumblebee scan's reach.",
+                remedy: "Trust Uncoil's own scan for these servers."
             ))
         }
         return issues
@@ -139,7 +139,7 @@ struct CodexAdapter: AgentAdapter {
         }
         guard let pendingContent = transaction.pendingContent else {
             result.status = .failed
-            result.failureReason = "Plan içeriği yok; değişiklik yeniden planlanmalı."
+            result.failureReason = "There is no plan content; the change has to be replanned."
             return result
         }
         let current = (try? String(contentsOfFile: transaction.configPath, encoding: .utf8)) ?? ""
@@ -174,7 +174,7 @@ struct CodexAdapter: AgentAdapter {
         var result = transaction
         guard let backupPath = transaction.backupPath,
               let data = FileManager.default.contents(atPath: backupPath) else {
-            result.failureReason = "Geri alınacak yedek yok; eski durum korunuyor."
+            result.failureReason = "No backup to roll back to; the previous state is kept."
             return result
         }
         do {
@@ -188,7 +188,7 @@ struct CodexAdapter: AgentAdapter {
     }
 
     func reload(_ installation: AgentInstallation) -> ReloadOutcome {
-        .restartRequired("Codex config.toml'u başlangıçta okur; app-server yeniden başlatılmalı.")
+        .restartRequired("Codex reads config.toml at startup; the app-server must be restarted.")
     }
 
     func skillsDirectory(for installation: AgentInstallation) -> URL? {
@@ -211,7 +211,7 @@ struct CodexAdapter: AgentAdapter {
             case .addMCPServer(let definition):
                 switch definition.transport {
                 case .stdio where (definition.command ?? "").isEmpty:
-                    throw AgentAdapterError.unsupportedChange("\(definition.name): komut gerekli")
+                    throw AgentAdapterError.unsupportedChange("\(definition.name): a command is required")
                 case .http where (definition.url ?? "").isEmpty:
                     throw AgentAdapterError.unsupportedChange("\(definition.name): URL gerekli")
                 default:
@@ -225,7 +225,7 @@ struct CodexAdapter: AgentAdapter {
             case .setMCPServerEnabled(let name, let isEnabled):
                 guard var definition = CodexTOML.servers(in: result)
                     .first(where: { $0.name == name }) else {
-                    throw AgentAdapterError.unsupportedChange("\(name) tanımlı değil")
+                    throw AgentAdapterError.unsupportedChange("\(name) is not defined")
                 }
                 definition.isEnabled = isEnabled
                 result = CodexTOML.rewrite(

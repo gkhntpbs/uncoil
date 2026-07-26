@@ -42,7 +42,7 @@ struct SessionDetailView: View {
                                 sessionStore.setCodexApproval(nil, for: record.id)
                                 sessionStore.setStatus(
                                     .idle,
-                                    detail: "Fixture onayı: \(decision)",
+                                    detail: "Fixture approval: \(decision)",
                                     for: record.id
                                 )
                                 return
@@ -105,7 +105,7 @@ struct SessionDetailView: View {
             record: record,
             project: project,
             leadingIcon: "chevron.left",
-            leadingHelp: "Proje panosuna dön",
+            leadingHelp: "Back to the project dashboard",
             onLeading: { selection = .project(project.id) },
             onRestart: { restart() }
         ) {
@@ -118,8 +118,8 @@ struct SessionDetailView: View {
                     ? "layout-sidebar-right-collapse"
                     : "layout-sidebar-right-expand",
                 help: showChangesPanel
-                    ? "Değişiklikler panelini kapat"
-                    : "Değişiklikler panelini aç",
+                    ? "Close the changes panel"
+                    : "Open the changes panel",
                 identifier: "session.changesButton",
                 tint: showChangesPanel ? Theme.highlight : nil
             ) {
@@ -172,17 +172,17 @@ private struct CodexApprovalPanel: View {
             }
             Spacer()
             if request.availableDecisions.contains("decline") {
-                Button("Reddet") { respond("decline") }
+                Button("Deny") { respond("decline") }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("session.codexApproval.decline")
             }
             if request.availableDecisions.contains("acceptForSession") {
-                Button("Oturum Boyunca") { respond("acceptForSession") }
+                Button("For the Session") { respond("acceptForSession") }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("session.codexApproval.session")
             }
             if request.availableDecisions.contains("accept") {
-                Button("Bir Kez İzin Ver") { respond("accept") }
+                Button("Allow Once") { respond("accept") }
                     .buttonStyle(AccentButtonStyle())
                     .accessibilityIdentifier("session.codexApproval.accept")
             }
@@ -202,7 +202,7 @@ private struct CodexAuthenticationBanner: View {
     var body: some View {
         HStack(spacing: 10) {
             TablerIcon(name: "user-exclamation", size: 15, color: Theme.warn)
-            Text("Codex hesabında oturum açılması gerekiyor. Terminal fallback üzerinden `codex login` çalıştırabilirsin.")
+            Text("You need to sign in to your Codex account. You can run `codex login` through the terminal fallback.")
                 .font(Theme.mono(11))
                 .foregroundStyle(Theme.textDim)
             Spacer()
@@ -226,7 +226,7 @@ private struct ChangesPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("DEĞİŞİKLİKLER")
+                Text("CHANGES")
                     .font(Theme.mono(11, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .kerning(0.6)
@@ -251,12 +251,12 @@ private struct ChangesPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if !git.isRepo {
-                        Text("Bu klasör bir git deposu değil.")
+                        Text("This folder is not a git repository.")
                             .font(Theme.mono(11))
                             .foregroundStyle(Theme.textFaint)
                     } else {
                         if git.changedFiles.isEmpty {
-                            Text("Çalışma ağacı temiz")
+                            Text("Worktree clean")
                                 .font(Theme.mono(11))
                                 .foregroundStyle(Theme.ok)
                         } else {
@@ -340,7 +340,7 @@ private struct ChangedFileRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("\(settings.preferredEditor.displayName) ile aç")
+        .help("Open with \(settings.preferredEditor.displayName)")
     }
 }
 
@@ -353,13 +353,13 @@ struct EmptyDetailView: View {
                 ProviderMark(provider: .claude, size: 20)
                 ProviderMark(provider: .codex, size: 20)
             }
-            Text("Bir projenin üzerine gel, agent seç")
+            Text("Hover a project, pick an agent")
                 .font(Theme.mono(13, .medium))
                 .foregroundStyle(Theme.text)
-            Text("Her agent aynı projeye yan yana açılır.")
+            Text("Every agent opens side by side on the same project.")
                 .font(Theme.mono(11))
                 .foregroundStyle(Theme.textFaint)
-            Button("Proje Ekle") { showFolderPicker = true }
+            Button("Add Project") { showFolderPicker = true }
                 .buttonStyle(AccentButtonStyle())
                 .accessibilityIdentifier("empty.addProjectButton")
                 .padding(.top, 6)
@@ -386,7 +386,7 @@ struct SplitSessionPane: View {
                 record: record,
                 project: project,
                 leadingIcon: "xmark",
-                leadingHelp: "Bölmeyi kapat",
+                leadingHelp: "Close the pane",
                 onLeading: onClose,
                 onRestart: { restart() },
                 trailing: { EmptyView() }

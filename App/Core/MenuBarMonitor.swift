@@ -36,12 +36,12 @@ struct MenuBarTaskCounts: Equatable {
 
     var headline: String {
         var parts: [String] = []
-        if running > 0 { parts.append("\(running) görev çalışıyor") }
+        if running > 0 { parts.append("\(running) tasks running") }
         if queued > 0 { parts.append("\(queued) kuyrukta") }
         if blocked > 0 { parts.append("\(blocked) bloklu") }
         if awaitingReview > 0 { parts.append("\(awaitingReview) review bekliyor") }
-        if completed > 0 { parts.append("\(completed) tamamlandı") }
-        if mergeReady > 0 { parts.append("\(mergeReady) merge hazır") }
+        if completed > 0 { parts.append("\(completed) done") }
+        if mergeReady > 0 { parts.append("\(mergeReady) ready to merge") }
         return parts.joined(separator: " · ")
     }
 }
@@ -63,12 +63,12 @@ struct MenuBarSummary: Equatable {
     /// One-line summary for the top of the menu.
     var headline: String {
         var parts: [String] = []
-        if running > 0 { parts.append("\(running) çalışıyor") }
+        if running > 0 { parts.append("\(running) running") }
         if waitingPermission > 0 { parts.append("\(waitingPermission) izin bekliyor") }
-        if waitingInput > 0 { parts.append("\(waitingInput) yanıt bekliyor") }
-        if completed > 0 { parts.append("\(completed) tamamlandı") }
+        if waitingInput > 0 { parts.append("\(waitingInput) waiting for a reply") }
+        if completed > 0 { parts.append("\(completed) done") }
         if problems > 0 { parts.append("\(problems) sorun") }
-        return parts.isEmpty ? "Bekleyen iş yok" : parts.joined(separator: " · ")
+        return parts.isEmpty ? "Nothing pending" : parts.joined(separator: " · ")
     }
 
     /// Second line of the menu: tasks, when there are any.

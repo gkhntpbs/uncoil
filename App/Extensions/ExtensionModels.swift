@@ -172,13 +172,13 @@ enum ExtensionSource: Equatable, Codable {
         case .managedGitHub(let repository, _, let tracking):
             "\(repository) · \(tracking.label)"
         case .bundled:
-            "Uncoil ile gelen"
+            "Shipped with Uncoil"
         case .local:
             "Unmanaged (yerel)"
         case .adopted:
             "Sahiplenildi · Uncoil deposunda"
         case .detectedExternal:
-            "Unmanaged (dışarıda kurulmuş)"
+            "Unmanaged (installed outside)"
         case .remoteMCP(let url, _):
             "Remote MCP · \(url)"
         }
@@ -220,7 +220,7 @@ enum ExtensionState: String, Codable, Equatable {
     var label: String {
         switch self {
         case .active: "Etkin"
-        case .disabled: "Kapalı"
+        case .disabled: "Off"
         case .quarantined: "Karantinada"
         case .broken: "Bozuk"
         }
@@ -466,10 +466,10 @@ struct HealthCheckResult: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .ok: "Sağlıklı"
-            case .warning: "Uyarı"
-            case .failure: "Başarısız"
-            case .notApplicable: "Kapsam dışı"
+            case .ok: "Healthy"
+            case .warning: "Warning"
+            case .failure: "Failed"
+            case .notApplicable: "Out of reach"
             }
         }
     }
@@ -494,7 +494,7 @@ struct SecurityFinding: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .info: "Bilgi"
+            case .info: "Information"
             case .low: "Low Risk"
             case .needsReview: "Needs Review"
             case .high: "High Risk"
@@ -576,11 +576,11 @@ struct ConfigurationTransaction: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .planned: "Planlandı"
-            case .applied: "Uygulandı"
-            case .rolledBack: "Geri alındı"
-            case .staleConfig: "Config değişti"
-            case .failed: "Başarısız"
+            case .planned: "Planned"
+            case .applied: "Applied"
+            case .rolledBack: "Undone"
+            case .staleConfig: "Config changed"
+            case .failed: "Failed"
             }
         }
     }
@@ -651,17 +651,17 @@ struct AuditEvent: Identifiable, Equatable, Codable {
         var label: String {
             switch self {
             case .skillInstalled: "Skill kuruldu"
-            case .skillRemoved: "Skill kaldırıldı"
-            case .mcpEnabled: "MCP etkinleştirildi"
-            case .mcpDisabled: "MCP kapatıldı"
-            case .assignmentChanged: "Assignment değişti"
-            case .configChanged: "Config değişti"
-            case .updateApplied: "Update yapıldı"
-            case .rolledBack: "Rollback yapıldı"
+            case .skillRemoved: "Skill removed"
+            case .mcpEnabled: "MCP enabled"
+            case .mcpDisabled: "MCP disabled"
+            case .assignmentChanged: "Assignment changed"
+            case .configChanged: "Config changed"
+            case .updateApplied: "Updated"
+            case .rolledBack: "Rolled back"
             case .findingAccepted: "Security finding kabul edildi"
-            case .scanCompleted: "Scan çalıştı"
-            case .quarantined: "Karantinaya alındı"
-            case .restored: "Geri yüklendi"
+            case .scanCompleted: "Scan ran"
+            case .quarantined: "Quarantined"
+            case .restored: "Restored"
             }
         }
     }

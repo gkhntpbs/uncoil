@@ -17,10 +17,10 @@ struct RemoteMCPStatus: Equatable {
 
         var label: String {
             switch self {
-            case .reachable: "Erişilebilir"
-            case .authenticationRequired: "Kimlik doğrulaması gerekli"
-            case .unreachable: "Erişilemiyor"
-            case .localProcess: "Yerel süreç"
+            case .reachable: "Reachable"
+            case .authenticationRequired: "Authentication required"
+            case .unreachable: "Unreachable"
+            case .localProcess: "Local process"
             }
         }
 
@@ -40,7 +40,7 @@ struct RemoteMCPStatus: Equatable {
     /// Only the server can answer this, so an unreachable server has no version
     /// rather than a stale one.
     var versionLabel: String {
-        serverVersion ?? "sunucu sürüm bildirmedi"
+        serverVersion ?? "the server reported no version"
     }
 }
 
@@ -55,7 +55,7 @@ struct RemoteMCPCapabilityDiff: Equatable {
     var isEmpty: Bool { added.isEmpty && removed.isEmpty }
 
     var summary: String {
-        if isEmpty { return "Değişiklik yok" }
+        if isEmpty { return "No changes" }
         var parts: [String] = []
         if !added.isEmpty { parts.append("+\(added.joined(separator: ", "))") }
         if !removed.isEmpty { parts.append("-\(removed.joined(separator: ", "))") }
@@ -110,7 +110,7 @@ struct RemoteMCPProbe {
         guard let endpoint = URL(string: url), endpoint.scheme?.hasPrefix("http") == true else {
             return RemoteMCPStatus(
                 url: url, transport: transport,
-                reachability: .unreachable("Geçersiz URL"), checkedAt: now
+                reachability: .unreachable("Invalid URL"), checkedAt: now
             )
         }
         do {
@@ -137,7 +137,7 @@ struct RemoteMCPProbe {
         switch response.statusCode {
         case 401, 403:
             status.reachability = .authenticationRequired(
-                "Sunucu \(response.statusCode) döndü; token gerekiyor."
+                "The server returned \(response.statusCode); a token is required."
             )
         case 200...299:
             status.reachability = .reachable

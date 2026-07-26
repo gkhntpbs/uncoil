@@ -442,7 +442,7 @@ final class RemoteMCPProbeTests: XCTestCase {
         XCTAssertEqual(status.reachability, .reachable)
         XCTAssertNil(status.serverVersion)
         XCTAssertEqual(
-            status.versionLabel, "sunucu sürüm bildirmedi",
+            status.versionLabel, "the server reported no version",
             "an unreported version is never filled in from a repository"
         )
     }
@@ -492,7 +492,7 @@ final class RemoteMCPProbeTests: XCTestCase {
 
         let same = RemoteMCPCapabilityDiff.between(known: ["tools"], reported: ["tools"])
         XCTAssertTrue(same.isEmpty)
-        XCTAssertEqual(same.summary, "Değişiklik yok")
+        XCTAssertEqual(same.summary, "No changes")
     }
 }
 
@@ -547,7 +547,7 @@ final class RemoteMCPFlapTests: XCTestCase {
         status = await probe.probe(url: "https://mcp.test/sse", transport: .http, now: now)
         registry.record(probe: status, packageID: "remote:srv", now: now)
         XCTAssertNil(status.serverVersion)
-        XCTAssertEqual(status.versionLabel, "sunucu sürüm bildirmedi")
+        XCTAssertEqual(status.versionLabel, "the server reported no version")
         XCTAssertEqual(registry.lastErrors["remote:srv"], "ağ yok")
 
         // Up again: the error clears rather than lingering.

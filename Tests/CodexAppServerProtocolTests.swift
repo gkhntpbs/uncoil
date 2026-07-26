@@ -79,7 +79,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
                             .object([
                                 "id": .string("agent-1"),
                                 "type": .string("agentMessage"),
-                                "text": .string("Tamamlandı"),
+                                "text": .string("Done"),
                             ]),
                         ]),
                     ]),
@@ -88,7 +88,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
         ])
         let history = CodexStructuredFormatter.history(from: result)
         XCTAssertTrue(history.contains("Durumu kontrol et"))
-        XCTAssertTrue(history.contains("Tamamlandı"))
+        XCTAssertTrue(history.contains("Done"))
 
         let command: JSONValue = .object([
             "id": .string("command-1"),

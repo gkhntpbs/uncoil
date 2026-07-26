@@ -11,7 +11,7 @@ struct FolderPickerSheet: View {
     private var shortcuts: [(String, URL)] {
         var items: [(String, URL)] = [
             ("Ev", FileManager.default.homeDirectoryForCurrentUser),
-            ("Masaüstü", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")),
+            ("Desktop", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")),
             ("Belgeler", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")),
         ]
         let volumes = FileManager.default.mountedVolumeURLs(
@@ -90,7 +90,7 @@ struct FolderPickerSheet: View {
                             }
                         }
                         if entries.isEmpty {
-                            Text("Alt klasör yok")
+                            Text("No subfolders")
                                 .font(Theme.mono(11))
                                 .foregroundStyle(Theme.textFaint)
                                 .padding(.top, 24)
@@ -106,11 +106,11 @@ struct FolderPickerSheet: View {
 
             // Footer
             HStack {
-                Button("Vazgeç") { dismiss() }
+                Button("Cancel") { dismiss() }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("folderPicker.cancelButton")
                 Spacer()
-                Button("Bu Klasörü Ekle") {
+                Button("Add This Folder") {
                     onPick(currentURL)
                     dismiss()
                 }

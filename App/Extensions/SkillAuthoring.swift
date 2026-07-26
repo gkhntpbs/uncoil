@@ -15,13 +15,13 @@ enum SkillAuthoringError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .emptyName:
-            "Skill adı boş olamaz."
+            "The skill's name cannot be empty."
         case .invalidName(let name):
-            "\"\(name)\" kullanılabilir bir klasör adına dönüşmüyor; harf veya rakam içermeli."
+            "“\(name)” does not turn into a usable folder name; it needs a letter or a digit."
         case .alreadyExists(let name):
-            "\(name) adında bir skill zaten var."
+            "A skill named \(name) already exists."
         case .notASkillFolder(let path):
-            "\(path) bir skill klasörü değil: içinde SKILL.md yok."
+            "\(path) is not a skill folder: there is no SKILL.md inside."
         }
     }
 }
@@ -130,7 +130,7 @@ struct SkillAuthoringService {
             id: "created:\(name)",
             kind: .skill,
             name: name,
-            summary: trimmedSummary?.isEmpty == false ? trimmedSummary : "Uncoil içinde oluşturuldu",
+            summary: trimmedSummary?.isEmpty == false ? trimmedSummary : "Created inside Uncoil",
             source: .local(path: revision.path),
             state: .active,
             activeRevision: revision,

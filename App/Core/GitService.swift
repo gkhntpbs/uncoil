@@ -186,13 +186,13 @@ enum GitService {
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
-        guard !slug.isEmpty else { return .failure(GitFailure(message: "Geçerli bir isim gerekli.")) }
+        guard !slug.isEmpty else { return .failure(GitFailure(message: "A valid name is required.")) }
 
         let container = URL(fileURLWithPath: repoPath)
             .appendingPathComponent(".uncoil-worktrees", isDirectory: true)
         let destination = container.appendingPathComponent(slug, isDirectory: true)
         guard !FileManager.default.fileExists(atPath: destination.path) else {
-            return .failure(GitFailure(message: "\(slug) zaten var."))
+            return .failure(GitFailure(message: "\(slug) already exists."))
         }
 
         let branch = "uncoil/\(slug)"
@@ -212,7 +212,7 @@ enum GitService {
         guard process.terminationStatus == 0 else {
             let message = String(data: errData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            return .failure(GitFailure(message: message?.isEmpty == false ? message! : "git worktree add başarısız"))
+            return .failure(GitFailure(message: message?.isEmpty == false ? message! : "git worktree add failed"))
         }
         return .success(Worktree(path: destination.path, branch: branch, isMain: false))
     }
@@ -227,7 +227,7 @@ enum GitService {
         let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
         guard lines.count > maxLines else { return output }
         return lines.prefix(maxLines).joined(separator: "\n")
-            + "\n… \(lines.count - maxLines) satır daha (tamamı için editörde aç)"
+            + "\n… \(lines.count - maxLines) more lines (open in your editor for all of it)"
     }
 
     /// Merges `branch` into the checkout at `repoPath`.
@@ -242,7 +242,7 @@ enum GitService {
         message: String
     ) -> Result<String?, GitFailure> {
         guard isRepository(repoPath) else {
-            return .failure(GitFailure(message: "\(repoPath) bir git deposu değil."))
+            return .failure(GitFailure(message: "\(repoPath) is not a git repository."))
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -251,7 +251,7 @@ enum GitService {
         process.standardOutput = Pipe()
         process.standardError = errorPipe
         guard (try? process.run()) != nil else {
-            return .failure(GitFailure(message: "git çalıştırılamadı."))
+            return .failure(GitFailure(message: "git could not be run."))
         }
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
@@ -261,7 +261,7 @@ enum GitService {
             let detail = String(data: errorData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return .failure(GitFailure(
-                message: detail?.isEmpty == false ? detail! : "git merge başarısız."
+                message: detail?.isEmpty == false ? detail! : "git merge failed."
             ))
         }
         return .success(run(["-C", repoPath, "rev-parse", "--short", "HEAD"]))

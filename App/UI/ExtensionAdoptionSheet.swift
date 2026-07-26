@@ -10,7 +10,7 @@ struct ExtensionAdoptionSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Uncoil'e devral")
+                Text("Adopt into Uncoil")
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(plan.name) · \(plan.kind.label) · \(plan.summary)")
@@ -29,7 +29,7 @@ struct ExtensionAdoptionSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 3) {
                     if plan.changedFiles.isEmpty {
-                        Text("Dosya farkı yok; devralma yalnızca yönetimi devreder.")
+                        Text("No file difference; adoption only transfers management.")
                             .font(Theme.mono(10.5))
                             .foregroundStyle(Theme.textFaint)
                     }
@@ -50,7 +50,7 @@ struct ExtensionAdoptionSheet: View {
                     }
                     if !plan.agentCopies.isEmpty {
                         Divider().overlay(Theme.border).padding(.vertical, 6)
-                        Text("Ortak kopyaya alınacak agent klasörleri")
+                        Text("Agent folders to move to the shared copy")
                             .font(Theme.mono(10, .semibold))
                             .foregroundStyle(Theme.textFaint)
                         ForEach(plan.agentCopies) { copy in
@@ -64,7 +64,7 @@ struct ExtensionAdoptionSheet: View {
                                 Spacer()
                             }
                         }
-                        Text("Her klasör önce yedeklenir, sonra tek kopyaya symlink olur.")
+                        Text("Every folder is backed up first, then symlinked to a single copy.")
                             .font(Theme.mono(9.5))
                             .foregroundStyle(Theme.textFaint)
                     }
@@ -93,22 +93,22 @@ struct ExtensionAdoptionSheet: View {
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Yedek: \(plan.backupPath ?? "alınamadı")")
+                    Text("Backup: \(plan.backupPath ?? "could not be taken")")
                         .font(Theme.mono(9.5))
                         .foregroundStyle(plan.backupPath == nil ? Theme.danger : Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.head)
                     if !plan.blocksAdoption.isEmpty {
-                        Text("Blocked bulgu devralmayı engelliyor.")
+                        Text("A blocked finding prevents adoption.")
                             .font(Theme.mono(9.5, .semibold))
                             .foregroundStyle(Theme.danger)
                     }
                 }
                 Spacer()
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Devral", action: onAdopt)
+                Button("Adopt", action: onAdopt)
                     .buttonStyle(AccentButtonStyle())
                     .disabled(!plan.isAdoptable)
                     .accessibilityIdentifier("adoption.adopt")
@@ -132,9 +132,9 @@ struct ExtensionAdoptionSheet: View {
     private func label(_ kind: ExtensionAdoptionService.FileChange.Kind) -> String {
         switch kind {
         case .added: "eklenecek"
-        case .modified: "üzerine yazılacak"
+        case .modified: "will be overwritten"
         case .removed: "geride kalacak"
-        case .unchanged: "aynı"
+        case .unchanged: "same"
         }
     }
 
@@ -181,10 +181,10 @@ struct RepositoryLinkSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("GitHub kaynağına bağla")
+            Text("Connect to a GitHub source")
                 .font(Theme.mono(14, .bold))
                 .foregroundStyle(Theme.text)
-            Text("\(packageName) şu an unmanaged. Bir depoya bağlanınca güncellenebilir olur.")
+            Text("\(packageName) is unmanaged for now. Link it to a repo and it becomes updatable.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
@@ -202,17 +202,17 @@ struct RepositoryLinkSheet: View {
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            TextField(mode == .commit ? "commit SHA" : "referans", text: $reference)
+            TextField(mode == .commit ? "commit SHA" : "reference", text: $reference)
                 .font(Theme.mono(11))
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("repositoryLink.reference")
 
             HStack(spacing: 9) {
                 Spacer()
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Bağla") { onLink(repository, tracking) }
+                Button("Connect") { onLink(repository, tracking) }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(
                         !repository.contains("/")

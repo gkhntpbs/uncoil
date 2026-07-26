@@ -56,10 +56,10 @@ struct SidebarView: View {
             .overlay(alignment: .top) {
                 if projectStore.projects.isEmpty {
                     VStack(spacing: 8) {
-                        Text("Henüz proje yok")
+                        Text("No projects yet")
                             .font(Theme.mono(11))
                             .foregroundStyle(Theme.textFaint)
-                        Button("Proje ekle") { showFolderPicker = true }
+                        Button("Add a project") { showFolderPicker = true }
                             .buttonStyle(GhostButtonStyle())
                     }
                     .padding(.top, 40)
@@ -71,11 +71,11 @@ struct SidebarView: View {
             }
 
             HStack(spacing: 2) {
-                RailButton(iconName: "settings", help: "Ayarlar") {
+                RailButton(iconName: "settings", help: "Settings") {
                     openWindow(id: "settings")
                 }
                 .accessibilityIdentifier("sidebar.settingsButton")
-                RailButton(iconName: "plus", help: "Proje ekle") {
+                RailButton(iconName: "plus", help: "Add a project") {
                     showFolderPicker = true
                 }
                 .accessibilityIdentifier("sidebar.addProjectButton")
@@ -90,7 +90,7 @@ struct SidebarView: View {
                 Spacer()
                 RailButton(
                     iconName: "list-check",
-                    help: isMultiSelecting ? "Çoklu seçimi kapat" : "Birden fazla seç",
+                    help: isMultiSelecting ? "Turn off multiple selection" : "Select several",
                     isOn: isMultiSelecting
                 ) {
                     withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
@@ -101,67 +101,67 @@ struct SidebarView: View {
                     }
                 }
                 .accessibilityIdentifier("sidebar.multiSelectButton")
-                .accessibilityValue(isMultiSelecting ? "Açık" : "Kapalı")
+                .accessibilityValue(isMultiSelecting ? "On" : "Off")
                 CollapseAllButton()
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .alert("Yeni Grup", isPresented: $showCreateGroup) {
-            TextField("Grup adı", text: $groupName)
-            Button("Oluştur") { createGroup() }
-            Button("Vazgeç", role: .cancel) {}
+        .alert("New Group", isPresented: $showCreateGroup) {
+            TextField("Group name", text: $groupName)
+            Button("Create") { createGroup() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("\(selectedSessionIDs.count) oturum bu gruba taşınacak.")
+            Text("\(selectedSessionIDs.count) sessions will move into this group.")
         }
         .confirmationDialog(
-            "\(selectedSessionIDs.count) oturum silinsin mi?",
+            "Delete \(selectedSessionIDs.count) sessions?",
             isPresented: $showBulkDelete,
             titleVisibility: .visible
         ) {
-            Button("Oturumları Sil", role: .destructive) { deleteSelectedSessions() }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Delete Sessions", role: .destructive) { deleteSelectedSessions() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Çalışan süreçler kapatılır; kayıtlar geri alınamaz.")
+            Text("Running processes are closed; the recordings cannot be recovered.")
         }
         .sheet(item: $customizingProject) { project in
             ProjectCustomizeSheet(project: project)
         }
-        .alert("Yeni Grup", isPresented: isPresenting($groupingProject)) {
-            TextField("Grup adı", text: $groupName)
-            Button("Oluştur") {
+        .alert("New Group", isPresented: isPresenting($groupingProject)) {
+            TextField("Group name", text: $groupName)
+            Button("Create") {
                 guard let project = groupingProject,
                       let group = projectStore.createGroup(
                           projectID: project.id, name: groupName
                       ) else { return }
                 selection = .group(group.id)
             }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Boş bir grup oluşturulur; oturumları içine sürükleyebilirsin.")
+            Text("An empty group is created; drag sessions into it.")
         }
-        .alert("Grubu Yeniden Adlandır", isPresented: isPresenting($renamingGroup)) {
-            TextField("Grup adı", text: $renameValue)
-            Button("Kaydet") {
+        .alert("Rename Group", isPresented: isPresenting($renamingGroup)) {
+            TextField("Group name", text: $renameValue)
+            Button("Save") {
                 let value = renameValue.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !value.isEmpty, let group = renamingGroup else { return }
                 projectStore.updateGroup(group.id) { $0.name = value }
             }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog(
-            deletingSession.map { "\"\($0.displayTitle)\" oturumu silinsin mi?" } ?? "",
+            deletingSession.map { "Delete the \"\($0.displayTitle)\" session?" } ?? "",
             isPresented: isPresenting($deletingSession),
             titleVisibility: .visible
         ) {
-            Button("Sil", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 guard let record = deletingSession else { return }
                 TerminalRegistry.shared.closeTerminal(for: record.id)
                 projectStore.removeSession(record.id)
             }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Çalışan süreç kapatılır; kayıt geri alınamaz.")
+            Text("The running process is closed; the recording cannot be recovered.")
         }
     }
 
@@ -181,7 +181,7 @@ struct SidebarView: View {
 
     private var batchActions: some View {
         HStack(spacing: 8) {
-            Text("\(selectedSessionIDs.count) seçili")
+            Text("\(selectedSessionIDs.count) selected")
                 .font(Theme.mono(10.5, .semibold))
                 .foregroundStyle(Theme.text)
             Spacer()
@@ -193,7 +193,7 @@ struct SidebarView: View {
             }
             .buttonStyle(.plain)
             .disabled(selectedProjectIDs.count != 1)
-            .help("Seçilenleri grupla")
+            .help("Group the selected")
             .accessibilityIdentifier("sidebar.selection.createGroup")
             Button {
                 showBulkDelete = true
@@ -201,7 +201,7 @@ struct SidebarView: View {
                 TablerIcon(name: "trash", size: 13, color: Theme.danger)
             }
             .buttonStyle(.plain)
-            .help("Seçilenleri sil")
+            .help("Delete the selected")
             .accessibilityIdentifier("sidebar.selection.delete")
             Button {
                 selectedSessionIDs.removeAll()
@@ -211,7 +211,7 @@ struct SidebarView: View {
                     .foregroundStyle(Theme.textDim)
             }
             .buttonStyle(.plain)
-            .help("Seçimi temizle")
+            .help("Clear the selection")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
@@ -379,14 +379,14 @@ struct WindowControlsCluster: View {
         HStack(spacing: 2) {
             RailButton(
                 iconName: "layout-sidebar",
-                help: sidebarVisible ? "Kenar çubuğunu gizle" : "Kenar çubuğunu göster"
+                help: sidebarVisible ? "Hide the sidebar" : "Show the sidebar"
             ) {
                 withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
                     sidebarVisible.toggle()
                 }
             }
             .accessibilityIdentifier("sidebar.toggleButton")
-            RailButton(iconName: "search", help: "Komut paletini aç (⌘K)") {
+            RailButton(iconName: "search", help: "Open the command palette (⌘K)") {
                 onOpenPalette()
             }
             .accessibilityIdentifier("sidebar.paletteButton")
@@ -442,7 +442,7 @@ struct ProjectRowView: View {
                     .lineLimit(1)
                 if project.isPinned == true {
                     PinMark(isPinned: true, size: 10, color: Theme.textDim)
-                        .help("Sabitlenmiş")
+                        .help("Pinned")
                 }
                 if hasChildren {
                     Button {
@@ -579,7 +579,7 @@ struct AgentLauncherStrip: View {
             accountID: provider == .terminal ? nil : account?.id,
             title: provider == .terminal
                 ? (worktreeName.map { "terminal @ \($0)" } ?? "terminal")
-                : "\(provider.rawValue): yeni oturum",
+                : "\(provider.rawValue): new session",
             worktreePath: worktreePath
         )
         selection = .session(record.id)
@@ -600,7 +600,7 @@ private struct LauncherButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityIdentifier("launcher.\(provider.rawValue)")
-        .help("\(provider.displayName) başlat")
+        .help("Start \(provider.displayName)")
     }
 }
 
@@ -736,7 +736,7 @@ struct SessionRowView: View {
                     ProviderMark(provider: record.provider, size: 11)
                         .opacity(status == .terminated ? 0.45 : 1)
                         .accessibilityIdentifier("sidebar.drag.\(record.title)")
-                        .help("Sürükleyip gruba taşı, pencere dışına bırakınca yeni pencerede açılır")
+                        .help("Drag onto a group to move it; drop outside the window to open it in a new one")
                     Text(record.displayTitle)
                         .font(Theme.mono(12))
                         .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
@@ -835,7 +835,7 @@ private struct PinButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.pin.\(record.title)")
-        .help(isPinned ? "Sabitlemeyi kaldır" : "Sabitle")
+        .help(isPinned ? "Unpin" : "Pin")
     }
 }
 
@@ -866,6 +866,6 @@ private struct CollapseAllButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.collapseAllButton")
-        .help(allCollapsed ? "Tüm oturumları göster" : "Tüm oturumları gizle")
+        .help(allCollapsed ? "Show all sessions" : "Hide all sessions")
     }
 }

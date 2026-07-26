@@ -26,14 +26,14 @@ struct BumblebeeSetupSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Bumblebee kurulumu")
+                Text("Bumblebee install")
                     .font(Theme.mono(12, .semibold))
                     .foregroundStyle(Theme.text)
                 Text(
                     isInstalled
-                        ? "Binary bulundu; taramalar Security ekranından çalıştırılır."
-                        : "Bumblebee bulunamadı. Uncoil kendi taramasını yapmaya devam eder;"
-                            + " Bumblebee'yi kurmak senin kararın."
+                        ? "Binary found; scans are run from the Security screen."
+                        : "Bumblebee not found. Uncoil keeps running its own scan;"
+                            + " Installing Bumblebee is your call."
                 )
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
@@ -47,12 +47,12 @@ struct BumblebeeSetupSection: View {
                         color: isInstalled ? Theme.ok : Theme.warn
                     )
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isInstalled ? "Kurulu" : "Kurulu değil")
+                        Text(isInstalled ? "Installed" : "Not installed")
                             .font(Theme.mono(11.5, .medium))
                             .foregroundStyle(Theme.text)
                         Text(
                             found.first.map { "\($0.source.label): \($0.path)" }
-                                ?? "Aranan yerler: uygulama paketi, \(locator.managedPath), PATH"
+                                ?? "Looked in: the app bundle, \(locator.managedPath), PATH"
                         )
                         .font(Theme.mono(9.5))
                         .foregroundStyle(Theme.textFaint)
@@ -66,9 +66,9 @@ struct BumblebeeSetupSection: View {
                 if !isInstalled {
                     Divider().overlay(Theme.border)
                     VStack(alignment: .leading, spacing: 5) {
-                        step(1, "Uncoil, \(BumblebeeInstaller.repository) deposunun son sürümünü indirir.")
-                        step(2, "Arşiv, aynı sürümle yayınlanan checksums.txt ile doğrulanır; eşleşmezse atılır.")
-                        step(3, "Binary \(locator.managedPath) altına açılır ve sürümü sorulur.")
+                        step(1, "Uncoil downloads the latest release of the \(BumblebeeInstaller.repository) repo.")
+                        step(2, "Verified against the checksums.txt published with the same release; discarded on a mismatch.")
+                        step(3, "The binary is unpacked under \(locator.managedPath) and asked for its version.")
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -76,32 +76,32 @@ struct BumblebeeSetupSection: View {
 
                 Divider().overlay(Theme.border)
                 FlowRow(spacing: 9) {
-                    Button(isInstalling ? "İndiriliyor…" : (isInstalled ? "Yeniden indir" : "İndir ve kur")) {
+                    Button(isInstalling ? "Downloading…" : (isInstalled ? "Download again" : "Download and install")) {
                         install()
                     }
                     .buttonStyle(isInstalled ? AnyButtonStyle(GhostButtonStyle()) : AnyButtonStyle(AccentButtonStyle()))
                     .disabled(isInstalling)
                     .accessibilityIdentifier("extensions.security.bumblebee.install")
 
-                    Button("Binary'yi seç…") { chooseBinary() }
+                    Button("Choose the binary…") { chooseBinary() }
                         .buttonStyle(GhostButtonStyle())
                         .disabled(isInstalling)
                         .accessibilityIdentifier("extensions.security.bumblebee.choose")
 
-                    Button("Klasörü aç") { revealManagedDirectory() }
+                    Button("Open the folder") { revealManagedDirectory() }
                         .buttonStyle(GhostButtonStyle())
 
-                    Button("Depoyu aç") {
+                    Button("Open the repo") {
                         NSWorkspace.shared.open(BumblebeeInstaller.homepage)
                     }
                     .buttonStyle(GhostButtonStyle())
 
-                    Button("Yeniden denetle") { refresh() }
+                    Button("Re-audit") { refresh() }
                         .buttonStyle(GhostButtonStyle())
                         .accessibilityIdentifier("extensions.security.bumblebee.recheck")
 
                     if isInstalled, let onVerify {
-                        Button(isVerifying ? "Doğrulanıyor…" : "Sürümü doğrula") {
+                        Button(isVerifying ? "Verifying…" : "Verify the version") {
                             isVerifying = true
                             Task {
                                 detail = await onVerify()
@@ -204,7 +204,7 @@ struct BumblebeeSetupSection: View {
                 onChange()
             } catch {
                 phase = nil
-                detail = "Kurulamadı: \(error.localizedDescription)"
+                detail = "Could not install: \(error.localizedDescription)"
             }
             isInstalling = false
             // The finished bar stays for a moment, then the state row speaks.
@@ -217,13 +217,13 @@ struct BumblebeeSetupSection: View {
     /// downloaded and nothing is executed here.
     private func chooseBinary() {
         let picker = NSOpenPanel()
-        picker.title = "Bumblebee binary'sini seç"
+        picker.title = "Choose the Bumblebee binary"
         picker.canChooseFiles = true
         picker.canChooseDirectories = false
         picker.allowsMultipleSelection = false
         guard picker.runModal() == .OK, let url = picker.url else { return }
         guard FileManager.default.isExecutableFile(atPath: url.path) else {
-            detail = "Seçilen dosya çalıştırılabilir değil: \(url.lastPathComponent)"
+            detail = "The chosen file is not executable: \(url.lastPathComponent)"
             return
         }
         let destination = URL(fileURLWithPath: locator.managedPath)
@@ -238,11 +238,11 @@ struct BumblebeeSetupSection: View {
             try FileManager.default.setAttributes(
                 [.posixPermissions: 0o755], ofItemAtPath: destination.path
             )
-            detail = "Kopyalandı: \(destination.path)"
+            detail = "Copied: \(destination.path)"
             refresh()
             onChange()
         } catch {
-            detail = "Kopyalanamadı: \(error.localizedDescription)"
+            detail = "Could not be copied: \(error.localizedDescription)"
         }
     }
 

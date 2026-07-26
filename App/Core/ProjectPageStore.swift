@@ -117,14 +117,14 @@ final class ProjectPageStore: ObservableObject {
             switch await GitHubService.openPullRequests(slug: slug) {
             case .success(let pullRequests):
                 snapshot.pullRequests = pullRequests
-                snapshot.prMessage = pullRequests.isEmpty ? "Açık PR yok." : nil
+                snapshot.prMessage = pullRequests.isEmpty ? "No open PRs." : nil
             case .failure(let error):
                 snapshot.pullRequests = []
                 snapshot.prMessage = error.errorDescription
             }
         } else {
             snapshot.pullRequests = []
-            snapshot.prMessage = "Origin GitHub deposu değil ya da remote yok."
+            snapshot.prMessage = "Origin is not a GitHub repo, or there is no remote."
         }
 
         snapshot.loadedAt = .now

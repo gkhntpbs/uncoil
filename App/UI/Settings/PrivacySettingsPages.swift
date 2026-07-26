@@ -27,8 +27,8 @@ struct PermissionsSettingsPage: View {
         [
             AccessGroup(
                 id: "projects",
-                title: "Projeler ve Dosyalar",
-                detail: "Projeleri, worktree'leri ve artifact'ları yönetir.",
+                title: "Projects and Files",
+                detail: "Manages projects, worktrees and artifacts.",
                 symbol: "folder",
                 keys: [
                     "projects.read", "worktrees.read", "worktrees.create",
@@ -38,8 +38,8 @@ struct PermissionsSettingsPage: View {
             ),
             AccessGroup(
                 id: "sessions",
-                title: "Oturum Yönetimi",
-                detail: "Oturumları görür, düzenler, gruplar ve alt agent başlatır.",
+                title: "Session Management",
+                detail: "Sees, edits and groups sessions, and starts child agents.",
                 symbol: "bubble.left.and.bubble.right",
                 keys: [
                     "sessions.read", "sessions.read_all", "sessions.control_children",
@@ -51,7 +51,7 @@ struct PermissionsSettingsPage: View {
             AccessGroup(
                 id: "browser",
                 title: "Agent Browser",
-                detail: "Yönetilen Chromium tarayıcısını ve kalıcı durumunu kullanır.",
+                detail: "Uses the managed Chromium browser and its persistent state.",
                 symbol: "globe",
                 keys: ["browser.use", "browser.persistent_state"],
                 requiresApproval: false
@@ -59,7 +59,7 @@ struct PermissionsSettingsPage: View {
             AccessGroup(
                 id: "computer",
                 title: "Computer Use",
-                detail: "Mac ekranını görür, fare ve klavyeyi kontrol eder.",
+                detail: "Sees the Mac's screen, controls the mouse and keyboard.",
                 symbol: "display",
                 keys: [
                     "computer.inspect", "computer.background_control",
@@ -75,12 +75,12 @@ struct PermissionsSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "İzinler") {
+        SettingsPage(title: "Permissions") {
             Section {
                 Label {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Güvenli otomasyon hazır").font(.headline)
-                        Text("Proje, oturum, artifact ve Agent Browser yeni oturumlarda otomatik açıktır. Computer Use her oturum için sen açana kadar kapalı kalır.")
+                        Text("Safe automation ready").font(.headline)
+                        Text("Project, session, artifact and Agent Browser are on by default in new sessions. Computer Use stays off for every session until you turn it on.")
                             .font(.callout)
                             .foregroundStyle(Theme.textDim)
                             .fixedSize(horizontal: false, vertical: true)
@@ -94,14 +94,14 @@ struct PermissionsSettingsPage: View {
             .settingsID("permissions.overview")
 
             if !service.pending().isEmpty {
-                Section("Onay Bekleyenler") {
+                Section("Awaiting Approval") {
                     ForEach(service.pending()) { request in
                         requestRow(request) {
-                            Button("Bir Kez") { service.grant(id: request.id, scope: .once) }
+                            Button("Once") { service.grant(id: request.id, scope: .once) }
                                 .settingsID("permissions.grantOnce")
-                            Button("Kalıcı") { service.grant(id: request.id, scope: .persistent) }
+                            Button("Permanent") { service.grant(id: request.id, scope: .persistent) }
                                 .settingsID("permissions.grantPersistent")
-                            Button("Reddet", role: .destructive) { service.deny(id: request.id) }
+                            Button("Deny", role: .destructive) { service.deny(id: request.id) }
                         }
                     }
                 }
@@ -112,18 +112,18 @@ struct PermissionsSettingsPage: View {
                 Section {
                     ForEach(Array(service.expired().prefix(5))) { request in
                         requestRow(request) {
-                            Button("Kaldır") { service.revoke(id: request.id) }
+                            Button("Remove") { service.revoke(id: request.id) }
                         }
                     }
                 } header: {
-                    Text("Zaman Aşımına Düşenler")
+                    Text("Timed Out")
                 } footer: {
-                    SettingsNote("Kimse zamanında cevaplamadı; agent yeniden istemek zorunda.")
+                    SettingsNote("Nobody answered in time; the agent has to ask again.")
                 }
                 .settingsID("permissions.expired")
             }
 
-            Section("İzin Zaman Aşımı") {
+            Section("Permission Timeout") {
                 Picker(selection: Binding(
                     get: { settings.permissionTimeoutMinutes },
                     set: {
@@ -131,12 +131,12 @@ struct PermissionsSettingsPage: View {
                         service.pendingTTL = settings.permissionTimeout
                     }
                 )) {
-                    Text("Kapalı").tag(0)
-                    ForEach([1, 5, 10, 30], id: \.self) { Text("\($0) dk").tag($0) }
+                    Text("Off").tag(0)
+                    ForEach([1, 5, 10, 30], id: \.self) { Text("\($0) min").tag($0) }
                 } label: {
                     SettingsLabel(
-                        title: "Süre",
-                        detail: "Cevaplanmayan istek bu süre sonunda zaman aşımına düşer."
+                        title: "Duration",
+                        detail: "An unanswered request times out after this long."
                     )
                 }
                 .settingsID("permissions.timeout")
@@ -144,7 +144,7 @@ struct PermissionsSettingsPage: View {
 
             Section {
                 if projectStore.sessions.isEmpty {
-                    Text("İzin verilecek bir oturum henüz yok.")
+                    Text("There is no session to grant anything to yet.")
                         .foregroundStyle(Theme.textDim)
                 } else {
                     Picker(selection: $selectedSessionID) {
@@ -152,7 +152,7 @@ struct PermissionsSettingsPage: View {
                             Text(sessionLabel(session)).tag(UUID?.some(session.id))
                         }
                     } label: {
-                        SettingsLabel(title: "Oturum")
+                        SettingsLabel(title: "Session")
                     }
                     .settingsID("permissions.sessionPicker")
 
@@ -175,18 +175,18 @@ struct PermissionsSettingsPage: View {
                     }
                 }
             } header: {
-                Text("Oturum Erişimi")
+                Text("Session Access")
             } footer: {
                 if let record = selectedSession {
                     HStack {
                         Text(record.capabilities == nil
-                             ? "Varsayılan profil kullanılıyor"
-                             : "Bu oturum için özelleştirildi")
+                             ? "Using the default profile"
+                             : "Customised for this session")
                             .font(.caption)
                             .foregroundStyle(Theme.textDim)
                         Spacer()
                         if record.capabilities != nil {
-                            Button("Varsayılana Dön") {
+                            Button("Back to Default") {
                                 projectStore.updateSession(record.id) { $0.capabilities = nil }
                             }
                             .settingsID("permissions.reset")
@@ -215,11 +215,11 @@ struct PermissionsSettingsPage: View {
 
                 ForEach(service.granted()) { request in
                     requestRow(request) {
-                        Button("İptal", role: .destructive) { service.revoke(id: request.id) }
+                        Button("Cancel", role: .destructive) { service.revoke(id: request.id) }
                     }
                 }
             } header: {
-                Text("Gelişmiş İzinler")
+                Text("Advanced Permissions")
             }
             .settingsID("permissions.advanced")
         }
@@ -285,8 +285,8 @@ struct PrivacyDataSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Veri ve Transcript",
-            subtitle: "Terminal çıktılarının diskte ne kadar süre saklanacağını seç. Varsayılan olarak kayıt kapalıdır."
+            title: "Data and Transcripts",
+            subtitle: "Choose how long terminal output is kept on disk. Recording is off by default."
         ) {
             Section {
                 Picker(selection: Binding(
@@ -297,40 +297,40 @@ struct PrivacyDataSettingsPage: View {
                         Text(policy.title).tag(policy)
                     }
                 } label: {
-                    SettingsLabel(title: "Saklama süresi", symbol: "doc.text")
+                    SettingsLabel(title: "Retention", symbol: "doc.text")
                 }
                 .settingsID("transcripts.retention")
             } footer: {
                 HStack {
                     Spacer()
-                    Button("Tüm Transcriptleri Sil", role: .destructive) {
+                    Button("Delete All Transcripts", role: .destructive) {
                         confirmingClear = true
                     }
                     .settingsID("transcripts.clear")
                 }
             }
 
-            Section("Veri konumu") {
-                LabeledContent("Klasör") {
+            Section("Data location") {
+                LabeledContent("Folder") {
                     Text(ProjectStore.defaultDirectory().path)
                         .font(.caption.monospaced())
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                Button("Finder’da Göster") {
+                Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([ProjectStore.defaultDirectory()])
                 }
             }
         }
         .confirmationDialog(
-            "Tüm session transcriptleri silinsin mi?",
+            "Delete every session transcript?",
             isPresented: $confirmingClear
         ) {
-            Button("Transcriptleri Sil", role: .destructive) { settings.clearTranscripts() }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Delete Transcripts", role: .destructive) { settings.clearTranscripts() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Bu işlem geri alınamaz ve saklanan hassas terminal çıktılarının tamamını kaldırır.")
+            Text("This cannot be undone, and it removes every stored piece of sensitive terminal output.")
         }
     }
 }
@@ -343,8 +343,8 @@ struct HooksSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Durum Takibi",
-            subtitle: "Claude Code’un hook’ları, oturum durumlarının Uncoil’e canlı akmasını sağlar."
+            title: "Status Tracking",
+            subtitle: "Claude Code's hooks are what make session states stream into Uncoil live."
         ) {
             Section {
                 AdaptiveRow {
@@ -354,9 +354,9 @@ struct HooksSettingsPage: View {
                     )
                 } control: {
                     if status == .installed {
-                        Button("Kaldır", role: .destructive) { run(install: false) }
+                        Button("Remove", role: .destructive) { run(install: false) }
                     } else {
-                        Button("Kur") { run(install: true) }
+                        Button("Install") { run(install: true) }
                             .buttonStyle(.borderedProminent)
                     }
                 }
@@ -370,8 +370,8 @@ struct HooksSettingsPage: View {
 
     private var statusLabel: String {
         switch status {
-        case .installed: "Kurulu — durumlar canlı akıyor"
-        case .notInstalled: "Kurulu değil"
+        case .installed: "Installed — states stream live"
+        case .notInstalled: "Not installed"
         case .partiallyInstalled(let missing): "Eksik: \(missing.joined(separator: ", "))"
         }
     }
@@ -380,10 +380,10 @@ struct HooksSettingsPage: View {
         do {
             if install {
                 try HookInstaller.install()
-                message = "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
+                message = "settings.json updated; its backup is under config-backups/. Restart open Claude sessions."
             } else {
                 try HookInstaller.uninstall()
-                message = "Uncoil girdileri kaldırıldı; diğer hook'lara dokunulmadı."
+                message = "Uncoil's entries were removed; other hooks were left alone."
             }
         } catch {
             message = error.localizedDescription

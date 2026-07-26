@@ -102,11 +102,11 @@ enum SkillLinkStatus: Equatable {
 
     var label: String {
         switch self {
-        case .linked: "Bağlı"
-        case .missing: "Bağlantı yok"
-        case .broken: "Kırık bağlantı"
-        case .wrongTarget: "Yanlış hedefe bağlı"
-        case .foreign: "Kullanıcının kendi skill'i"
+        case .linked: "Connected"
+        case .missing: "No connection"
+        case .broken: "Broken link"
+        case .wrongTarget: "Linked to the wrong target"
+        case .foreign: "Your own skill"
         }
     }
 }
@@ -120,13 +120,13 @@ enum SkillStoreError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notASkill(let path):
-            "\(path) bir skill değil (SKILL.md yok)."
+            "\(path) is not a skill (no SKILL.md)."
         case .alreadyExists(let name):
-            "\(name) merkezi depoda zaten var."
+            "\(name) is already in the central store."
         case .foreignEntry(let path):
-            "\(path) Uncoil'e ait değil; üzerine yazılmadı."
+            "\(path) does not belong to Uncoil; it was not overwritten."
         case .linkFailed(let detail):
-            "Symlink oluşturulamadı: \(detail)"
+            "The symlink could not be created: \(detail)"
         }
     }
 }

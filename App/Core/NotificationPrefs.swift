@@ -20,25 +20,25 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .permission: "İzin bekliyor"
+        case .permission: "Waiting for permission"
         case .input: "Girdi bekliyor"
-        case .turnCompleted: "Tur tamamlandı"
-        case .problem: "Hata ve sorunlar"
-        case .taskCompleted: "Görev tamamlandı"
-        case .mergeReady: "Merge hazır"
-        case .loginRequired: "Giriş gerekiyor"
+        case .turnCompleted: "Turn done"
+        case .problem: "Errors and problems"
+        case .taskCompleted: "Task done"
+        case .mergeReady: "Ready to merge"
+        case .loginRequired: "Login needed"
         }
     }
 
     var detail: String {
         switch self {
-        case .permission: "Agent bir aracı kullanmak için onay istiyor."
-        case .input: "Agent sorusunu sordu ve yanıtını bekliyor."
-        case .turnCompleted: "Agent turu bitirdi, söz sende."
-        case .problem: "Çalışma hatası, başarısız test veya kopan bağlantı."
-        case .taskCompleted: "Bir görev tamamlandı."
-        case .mergeReady: "Bir görev dalı merge edilmeye hazır."
-        case .loginRequired: "Sağlayıcı oturumu düştü, yeniden giriş gerekiyor."
+        case .permission: "The agent is asking to use a tool."
+        case .input: "The agent asked a question and is waiting for your answer."
+        case .turnCompleted: "The agent finished its turn; over to you."
+        case .problem: "A runtime error, a failing test or a dropped connection."
+        case .taskCompleted: "A task finished."
+        case .mergeReady: "A task branch is ready to merge."
+        case .loginRequired: "The provider session dropped; you need to sign in again."
         }
     }
 
@@ -128,17 +128,17 @@ struct NotificationPrefs: Codable, Equatable, Sendable {
 
         var label: String {
             switch self {
-            case .low: "Düşük"
+            case .low: "Low"
             case .normal: "Normal"
-            case .high: "Yüksek"
+            case .high: "High"
             }
         }
 
         var detail: String {
             switch self {
-            case .low: "Sessizce bildirim merkezine düşer."
-            case .normal: "Normal banner olarak görünür."
-            case .high: "Odak modunu deler, zaman duyarlı gösterilir."
+            case .low: "Lands silently in Notification Center."
+            case .normal: "Appears as an ordinary banner."
+            case .high: "Breaks through Focus, shown as time-sensitive."
             }
         }
 
@@ -254,8 +254,8 @@ struct NotificationPrefs: Codable, Equatable, Sendable {
 
     static func soundLabel(_ value: String) -> String {
         switch value {
-        case "default": "Varsayılan"
-        case "none": "Sessiz"
+        case "default": "Default"
+        case "none": "Silent"
         default: value
         }
     }
@@ -376,7 +376,7 @@ enum AttentionNotifier {
         guard prefs.isEnabled(project: projectID) else { return }
         let content = UNMutableNotificationContent()
         content.title = title
-        content.body = dispatch?.isReminder == true ? "\(body) · hatırlatma" : body
+        content.body = dispatch?.isReminder == true ? "\(body) · reminder" : body
         content.interruptionLevel = (dispatch?.priority ?? prefs.priority(project: projectID))
             .interruptionLevel
         if prefs.groupByProject {

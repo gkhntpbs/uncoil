@@ -29,7 +29,7 @@ struct UninstallPlan: Equatable {
     var kept: [Item] { items.filter { !$0.disposition.isRemoved } }
 
     var summary: String {
-        "\(removals.count) öğe silinecek, \(kept.count) öğe korunacak"
+        "\(removals.count) items will be deleted, \(kept.count) kept"
     }
 }
 
@@ -90,8 +90,8 @@ struct UninstallService {
                 } else {
                     items.append(.init(
                         path: url.path,
-                        detail: isLink ? "Başkasının symlink'i" : "Kullanıcının kendi dosyası",
-                        disposition: .kept(reason: "Uncoil oluşturmadı")
+                        detail: isLink ? "Someone else's symlink" : "Your own file",
+                        disposition: .kept(reason: "Not created by Uncoil")
                     ))
                 }
             }
@@ -102,7 +102,7 @@ struct UninstallService {
         let skillLock = ExtensionLockFiles.defaultSkillLockURL(home: homeDirectory)
         if FileManager.default.fileExists(atPath: skillLock.path) {
             items.append(.init(
-                path: skillLock.path, detail: "Uncoil lock dosyası", disposition: .removed
+                path: skillLock.path, detail: "Uncoil lock file", disposition: .removed
             ))
         }
 
@@ -116,7 +116,7 @@ struct UninstallService {
             items.append(.init(
                 path: url.path,
                 detail: "Agent config",
-                disposition: .kept(reason: "Agent'ın kendi dosyası; Uncoil silmez")
+                disposition: .kept(reason: "The agent's own file; Uncoil never deletes it")
             ))
         }
 
@@ -155,13 +155,13 @@ struct CrashReportingPolicy: Equatable, Codable {
 
     var summary: String {
         isEnabled
-            ? "Açık — çökme bilgisi yalnızca yerel debug paketine yazılır."
-            : "Kapalı — çökme bilgisi toplanmaz."
+            ? "On — crash details are written only to the local debug bundle."
+            : "Off — no crash information is collected."
     }
 
     /// The one thing Uncoil promises about data leaving the machine.
     static let networkStatement =
-        "Uncoil hiçbir telemetri veya çökme raporunu ağ üzerinden göndermez."
+        "Uncoil sends no telemetry or crash report over the network."
 
     /// Paths a debug bundle collects when reporting is on.
     func crashLogPaths(home: URL) -> [String] {

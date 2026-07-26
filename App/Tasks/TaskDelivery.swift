@@ -23,7 +23,7 @@ struct TaskWorktreePolicy: Equatable, Codable {
         var label: String {
             switch self {
             case .manual: "Elle"
-            case .afterCompletedAndClean: "Tamamlanan ve temiz olanlar"
+            case .afterCompletedAndClean: "Finished and clean"
             case .anyClean: "Temiz olan hepsi"
             }
         }
@@ -110,9 +110,9 @@ struct TaskReviewResult: Identifiable, Equatable, Codable {
 
         var label: String {
             switch self {
-            case .approved: "Onaylandı"
-            case .changesRequested: "Değişiklik istendi"
-            case .commented: "Yorum bırakıldı"
+            case .approved: "Approved"
+            case .changesRequested: "Changes requested"
+            case .commented: "Comment left"
             }
         }
     }
@@ -175,15 +175,15 @@ enum TaskCompletionGate {
 
         var message: String {
             switch self {
-            case .testsFailing(let summary): "Testler başarısız: \(summary)"
-            case .testsMissing: "Test sonucu yok."
-            case .reviewMissing: "Review sonucu yok."
-            case .changesRequested: "Review değişiklik istedi."
+            case .testsFailing(let summary): "Tests failing: \(summary)"
+            case .testsMissing: "No test result."
+            case .reviewMissing: "No review result."
+            case .changesRequested: "The review requested changes."
             case .mergeConflict(let files):
                 "Merge conflict: \(files.prefix(3).joined(separator: ", "))"
             case .uncommittedChanges(let count):
-                "\(count) commit edilmemiş değişiklik var."
-            case .approvalRequired: "Kullanıcı onayı gerekiyor."
+                "\(count) uncommitted changes."
+            case .approvalRequired: "Your approval is required."
             }
         }
     }

@@ -57,7 +57,7 @@ struct ProjectRunView: View {
 
     private var toolbar: some View {
         HStack(spacing: 8) {
-            Text("Run yapılandırmaları")
+            Text("Run configurations")
                 .font(Theme.mono(12, .semibold))
                 .foregroundStyle(Theme.text)
             Text(RunConfigFile.relativePath)
@@ -70,7 +70,7 @@ struct ProjectRunView: View {
             } label: {
                 HStack(spacing: 5) {
                     TablerIcon(name: "radar-2", size: 12, color: Theme.textDim)
-                    Text(detecting ? "Taranıyor…" : "Tespit et")
+                    Text(detecting ? "Scanning…" : "Detect")
                         .font(Theme.mono(11))
                         .foregroundStyle(Theme.textDim)
                 }
@@ -89,7 +89,7 @@ struct ProjectRunView: View {
             } label: {
                 HStack(spacing: 5) {
                     TablerIcon(name: "plus", size: 12, color: Theme.textDim)
-                    Text("Yeni").font(Theme.mono(11)).foregroundStyle(Theme.textDim)
+                    Text("New").font(Theme.mono(11)).foregroundStyle(Theme.textDim)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -133,10 +133,10 @@ struct ProjectRunView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Henüz run yapılandırması yok.")
+            Text("No run configuration yet.")
                 .font(Theme.mono(12))
                 .foregroundStyle(Theme.textDim)
-            Text("“Tespit et” proje dosyalarından öneri çıkarır; ya da \(RunConfigFile.relativePath) dosyasını elle (veya bir agent'a) yazdır.")
+            Text("“Detect” derives suggestions from the project's files; or write \(RunConfigFile.relativePath) by hand (or have an agent write it).")
                 .font(Theme.mono(11))
                 .foregroundStyle(Theme.textFaint)
         }
@@ -170,11 +170,11 @@ struct RunDefaultControl: View {
                     .controlSize(.small)
                     .scaleEffect(0.55)
                     .frame(width: 18, height: 24)
-                    .help("\(config.name) başlıyor…")
+                    .help("\(config.name) starting…")
             }
             ControlButton(
                 iconName: active ? "player-stop" : "player-play",
-                help: active ? "\(config.name) — durdur" : "\(config.name) — çalıştır",
+                help: active ? "\(config.name) — durdur" : "\(config.name) — run",
                 identifier: "session.runButton",
                 tint: status == .failed ? Theme.warn : (active ? Theme.danger : Theme.ok)
             ) {
@@ -239,7 +239,7 @@ private struct RunConfigurationRow: View {
                             .foregroundStyle(Theme.textFaint)
                         sourceBadge
                         if config.isDefault {
-                            Text("varsayılan")
+                            Text("default")
                                 .font(Theme.mono(9))
                                 .foregroundStyle(Theme.info)
                                 .padding(.horizontal, 5)
@@ -321,11 +321,11 @@ private struct RunConfigurationRow: View {
 
     private var statusLabel: String {
         switch state.status {
-        case .idle: "hazır"
-        case .starting: "başlıyor…"
-        case .running: state.pid.map { "çalışıyor · pid \($0)" } ?? "çalışıyor"
+        case .idle: "ready"
+        case .starting: "starting…"
+        case .running: state.pid.map { "running · pid \($0)" } ?? "running"
         case .exited(let code): "bitti (\(code))"
-        case .failed: "başarısız"
+        case .failed: "failed"
         }
     }
 
@@ -365,19 +365,19 @@ private struct RunConfigurationRow: View {
             // stop first, same rule as the MCP `remove` action.
             .disabled(state.status == .running || state.status == .starting)
             .confirmationDialog(
-                "'\(config.name)' yapılandırması silinsin mi?",
+                "Delete the '\(config.name)' configuration?",
                 isPresented: $confirmingDelete,
                 titleVisibility: .visible
             ) {
-                Button("Sil", role: .destructive) {
+                Button("Delete", role: .destructive) {
                     let remaining = RunConfigFile.load(projectRoot: project.rootURL)
                         .configurations.filter { $0.id != config.id }
                     try? RunConfigFile.save(remaining, projectRoot: project.rootURL)
                     onReload()
                 }
-                Button("Vazgeç", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             } message: {
-                Text(".uncoil/run.json'dan kaldırılır; koşu geçmişi ve loglar durur.")
+                Text("Removed from .uncoil/run.json; run history and logs stop.")
             }
         }
         .disabled(busy)
@@ -434,12 +434,12 @@ private struct RunConfigurationRow: View {
                         language: settings.language.resolvedAgent()
                     )
                     repairNote = handed
-                        ? "Agent'a gönderildi"
-                        : "Canlı agent yok — istem panoya kopyalandı"
+                        ? "Sent to the agent"
+                        : "No live agent — the prompt was copied to the clipboard"
                 } label: {
                     HStack(spacing: 5) {
                         TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
-                        Text("Agent'la düzelt")
+                        Text("Fix with agent")
                             .font(Theme.mono(10.5, .semibold))
                             .foregroundStyle(Theme.textOnHighlight)
                     }
@@ -469,7 +469,7 @@ private struct RunConfigurationRow: View {
     private var logView: some View {
         VStack(spacing: 6) {
             ScrollView {
-                Text(state.logTail.isEmpty ? "(henüz çıktı yok)" : state.logTail)
+                Text(state.logTail.isEmpty ? "(no output yet)" : state.logTail)
                     .font(Theme.mono(10))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
@@ -481,12 +481,12 @@ private struct RunConfigurationRow: View {
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1))
             if state.status == .running || state.status == .starting {
                 HStack(spacing: 6) {
-                    TextField("Sürece girdi gönder (ör. flutter için r)", text: $inputText)
+                    TextField("Send input to the process (r for Flutter, for example)", text: $inputText)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(10.5))
                         .onSubmit(sendInput)
                         .accessibilityIdentifier("run.input.\(config.id)")
-                    Button("Gönder", action: sendInput)
+                    Button("Send", action: sendInput)
                         .font(Theme.mono(10.5))
                 }
             }
@@ -509,11 +509,11 @@ private struct RunHistoryList: View {
     var body: some View {
         let entries = RunRegistry.shared.history(project: project, configID: configID)
         VStack(alignment: .leading, spacing: 6) {
-            Text("Önceki çalıştırmalar")
+            Text("Previous runs")
                 .font(Theme.mono(11, .semibold))
                 .foregroundStyle(Theme.text)
             if entries.isEmpty {
-                Text("Henüz kayıt yok.")
+                Text("No records yet.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             }
@@ -532,14 +532,14 @@ private struct RunHistoryList: View {
                             .foregroundStyle(Theme.textDim)
                         Spacer()
                         Text(entry.exitCode.map { "exit \($0)" }
-                            ?? (entry.endedAt == nil ? "sürüyor" : "durduruldu"))
+                            ?? (entry.endedAt == nil ? "in progress" : "stopped"))
                             .font(Theme.mono(10))
                             .foregroundStyle(Theme.textFaint)
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Log dosyasını aç")
+                .help("Open the log file")
             }
         }
         .padding(12)
@@ -570,19 +570,19 @@ private struct RunConfigurationEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(isNew ? "Yeni run yapılandırması" : "Yapılandırmayı düzenle")
+            Text(isNew ? "New run configuration" : "Edit the configuration")
                 .font(Theme.mono(13, .semibold))
                 .foregroundStyle(Theme.text)
 
             field("id (slug)", text: $id, disabled: !isNew)
-            field("Ad", text: $name)
-            field("Komut", text: $command)
-            field("Çalışma dizini (köke göre)", text: $cwd)
-            field("Env (KEY=değer, satır başına bir)", text: $envText, axis: .vertical)
-            field("Portlar (virgülle)", text: $portsText)
-            field("Önizleme URL'i", text: $previewURL)
-            field("Hazır deseni (regex)", text: $readyPattern)
-            field("Bağımlılıklar (id, virgülle)", text: $dependsOnText)
+            field("Name", text: $name)
+            field("Command", text: $command)
+            field("Working directory (relative to the root)", text: $cwd)
+            field("Env (KEY=value, one per line)", text: $envText, axis: .vertical)
+            field("Ports (comma-separated)", text: $portsText)
+            field("Preview URL", text: $previewURL)
+            field("Ready pattern (regex)", text: $readyPattern)
+            field("Dependencies (ids, comma-separated)", text: $dependsOnText)
 
             if let error {
                 Text(error).font(Theme.mono(10.5)).foregroundStyle(Theme.danger)
@@ -590,12 +590,12 @@ private struct RunConfigurationEditor: View {
 
             HStack {
                 if !isNew {
-                    Button("Sil", role: .destructive) { remove() }
+                    Button("Delete", role: .destructive) { remove() }
                         .accessibilityIdentifier("run.editor.delete")
                 }
                 Spacer()
-                Button("Vazgeç") { dismiss() }
-                Button("Kaydet") { save() }
+                Button("Cancel") { dismiss() }
+                Button("Save") { save() }
                     .keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("run.editor.save")
             }
@@ -634,7 +634,7 @@ private struct RunConfigurationEditor: View {
     private func save() {
         let slug = id.trimmingCharacters(in: .whitespaces)
         guard !slug.isEmpty, !command.trimmingCharacters(in: .whitespaces).isEmpty else {
-            error = "id ve komut zorunlu."
+            error = "id and command are required."
             return
         }
         var env: [String: String] = [:]

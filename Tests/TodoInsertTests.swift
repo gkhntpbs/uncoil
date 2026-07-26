@@ -17,7 +17,7 @@ final class TodoInsertTests: XCTestCase {
         """
         let document = parse(raw)
         let patch = try TodoEditor.insertTaskPatch(
-            text: "yeni görev", under: ["Plan", "Arayüz"], in: document
+            text: "yeni görev", under: ["Plan", "Interface"], in: document
         )
         let result = try TodoEditor.apply([patch], to: raw)
         XCTAssertEqual(result, raw + "\n- [ ] yeni görev\n")
@@ -109,11 +109,11 @@ final class TodoInsertTests: XCTestCase {
         """
         let document = parse(raw)
         let patch = try TodoEditor.insertTaskPatch(
-            text: "yeni", under: ["Plan", "Arayüz"], in: document
+            text: "yeni", under: ["Plan", "Interface"], in: document
         )
         let reparsed = parse(try TodoEditor.apply([patch], to: raw))
         XCTAssertEqual(
-            reparsed.tasks(under: ["Plan", "Arayüz"]).map(\.text),
+            reparsed.tasks(under: ["Plan", "Interface"]).map(\.text),
             ["eski", "yeni"]
         )
     }

@@ -91,14 +91,14 @@ struct MenuBarMonitorMenu: View {
             projectStore.sessions, statuses: sessionStore.statuses
         )
         if !interruptible.isEmpty {
-            Menu("Kes") {
+            Menu("Interrupt") {
                 ForEach(interruptible) { record in
                     Button(label(for: record)) {
                         TerminalRegistry.shared.interrupt(record.id)
                     }
                 }
                 Divider()
-                Button("Tümünü Kes") {
+                Button("Interrupt All") {
                     for record in interruptible {
                         TerminalRegistry.shared.interrupt(record.id)
                     }
@@ -107,7 +107,7 @@ struct MenuBarMonitorMenu: View {
         }
 
         if settings.menuBar.showQuickLaunch, !projectStore.projects.isEmpty {
-            Menu("Yeni Oturum") {
+            Menu("New Session") {
                 ForEach(projectStore.projects) { project in
                     Menu(project.name) {
                         ForEach([AgentProvider.claude, .codex, .terminal]) { provider in
@@ -121,7 +121,7 @@ struct MenuBarMonitorMenu: View {
             Divider()
         }
 
-        Button("Uncoil’i Aç") {
+        Button("Open Uncoil") {
             activateMainWindow()
         }
         .keyboardShortcut("o")
@@ -133,7 +133,7 @@ struct MenuBarMonitorMenu: View {
     private var taskSection: some View {
         let taskRows = attention.items.filter { $0.kind.isTaskRow && $0.sessionID != nil }
         if !projectStore.projects.isEmpty {
-            Menu("Görev Board’u") {
+            Menu("Task Board") {
                 ForEach(projectStore.projects) { project in
                     Button(project.name) {
                         MainRoute.shared.request(.project(project.id))
@@ -143,14 +143,14 @@ struct MenuBarMonitorMenu: View {
             }
         }
         if !taskRows.isEmpty {
-            Menu("Görev Oturumu") {
+            Menu("Task Session") {
                 ForEach(taskRows.prefix(8)) { row in
                     Button("\(row.kind.label): \(row.title)") { open(row) }
                 }
             }
         }
         if !projectStore.projects.isEmpty {
-            Menu("Orchestrator’ı Durdur") {
+            Menu("Stop the Orchestrator") {
                 ForEach(projectStore.projects) { project in
                     Button(project.name) { stopOrchestrator(project) }
                 }
@@ -160,7 +160,7 @@ struct MenuBarMonitorMenu: View {
     }
 
     /// Drops the pending plan. Running agents are left alone on purpose —
-    /// killing an agent mid-edit is the user's call, and "Kes" does that.
+    /// killing an agent mid-edit is the user's call, and "Interrupt" does that.
     private func stopOrchestrator(_ project: Project) {
         let store = OrchestratorStore(projectID: project.id)
         store.stopDispatching()
@@ -187,7 +187,7 @@ struct MenuBarMonitorMenu: View {
             projectID: project.id,
             provider: provider,
             accountID: provider == .terminal ? nil : account?.id,
-            title: provider == .terminal ? "terminal" : "\(provider.rawValue): yeni oturum"
+            title: provider == .terminal ? "terminal" : "\(provider.rawValue): new session"
         )
         MainRoute.shared.request(.session(record.id))
         activateMainWindow()

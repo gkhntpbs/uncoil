@@ -9,7 +9,7 @@ struct GitHubSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: "GitHub",
-            subtitle: "Tarayıcıdan giriş yap; token yalnızca Keychain'de saklanır."
+            subtitle: "Sign in with a browser; the token is stored only in the Keychain."
         ) {
             Section {
                 GitHubLoginView(loggedIn: $loggedIn)
@@ -44,7 +44,7 @@ struct GitHubLoginView: View {
                 case .requesting:
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
-                        Text("GitHub'dan kod isteniyor…").foregroundStyle(Theme.textDim)
+                        Text("Requesting a code from GitHub…").foregroundStyle(Theme.textDim)
                     }
                 case .waitingForBrowser(let code):
                     codeRow(code)
@@ -63,9 +63,9 @@ struct GitHubLoginView: View {
 
     private var loggedInRow: some View {
         AdaptiveRow {
-            SettingsStatusLine(level: .ok, text: username.map { "@\($0)" } ?? "Giriş yapıldı")
+            SettingsStatusLine(level: .ok, text: username.map { "@\($0)" } ?? "Signed in")
         } control: {
-            Button("Çıkış Yap", role: .destructive) {
+            Button("Sign Out", role: .destructive) {
                 KeychainStore.delete(key: "github-token")
                 loggedIn = false
                 username = nil
@@ -76,9 +76,9 @@ struct GitHubLoginView: View {
 
     private var startRow: some View {
         AdaptiveRow {
-            SettingsLabel(title: "GitHub hesabınla bağlan")
+            SettingsLabel(title: "Connect with your GitHub account")
         } control: {
-            Button("Tarayıcıdan Giriş Yap") { startLogin() }
+            Button("Sign In with a Browser") { startLogin() }
                 .buttonStyle(.borderedProminent)
                 .settingsID("github.loginButton")
         }
@@ -95,20 +95,20 @@ struct GitHubLoginView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(code.userCode, forType: .string)
                 } label: {
-                    Label("Kodu kopyala", systemImage: "doc.on.doc").labelStyle(.iconOnly)
+                    Label("Copy the code", systemImage: "doc.on.doc").labelStyle(.iconOnly)
                 }
                 .buttonStyle(.borderless)
                 Spacer()
                 ProgressView().controlSize(.small)
             }
 
-            Text("Kod panoya kopyalandı — aşağıdan bir tarayıcı seçip sayfaya yapıştır; onaylayınca otomatik bağlanır.")
+            Text("The code is on your clipboard — pick a browser below and paste it into the page; approving connects it automatically.")
                 .font(.caption)
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
-                Button("Varsayılanda Aç") { NSWorkspace.shared.open(code.verificationURL) }
+                Button("Open in the Default") { NSWorkspace.shared.open(code.verificationURL) }
                     .buttonStyle(.borderedProminent)
 
                 ForEach(BrowserApp.installed) { browser in
@@ -122,7 +122,7 @@ struct GitHubLoginView: View {
                         }
                     }
                     .buttonStyle(.borderless)
-                    .help("\(browser.displayName) ile aç")
+                    .help("Open with \(browser.displayName)")
                 }
 
                 Button {
@@ -131,12 +131,12 @@ struct GitHubLoginView: View {
                         code.verificationURL.absoluteString, forType: .string
                     )
                 } label: {
-                    Label("Linki kopyala", systemImage: "link").labelStyle(.iconOnly)
+                    Label("Copy the link", systemImage: "link").labelStyle(.iconOnly)
                 }
                 .buttonStyle(.borderless)
 
                 Spacer()
-                Button("Vazgeç") {
+                Button("Cancel") {
                     pollTask?.cancel()
                     phase = .idle
                 }
@@ -149,7 +149,7 @@ struct GitHubLoginView: View {
         pollTask = Task {
             switch await GitHubAuthService.requestDeviceCode() {
             case .failure(let error):
-                phase = .failed(error.errorDescription ?? "Bağlantı hatası")
+                phase = .failed(error.errorDescription ?? "Connection error")
             case .success(let code):
                 // Copy the code and open the page right away.
                 NSPasteboard.general.clearContents()
@@ -164,7 +164,7 @@ struct GitHubLoginView: View {
                     phase = .idle
                 case .failure(let error):
                     if !Task.isCancelled {
-                        phase = .failed(error.errorDescription ?? "Giriş tamamlanamadı")
+                        phase = .failed(error.errorDescription ?? "Login could not be completed")
                     }
                 }
             }
@@ -177,8 +177,8 @@ struct GitHubLoginView: View {
 struct DriversSettingsPage: View {
     var body: some View {
         SettingsPage(
-            title: "Sürücüler",
-            subtitle: "Agent Browser ve Computer Use bağlantılarını kur ve doğrula. Kurulum her zaman senin onayınla başlar."
+            title: "Drivers",
+            subtitle: "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval."
         ) {
             Section("Agent Browser") {
                 AgentBrowserSetupSection()

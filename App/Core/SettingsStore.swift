@@ -16,9 +16,9 @@ enum SessionQuitBehavior: String, Codable, CaseIterable, Identifiable {
     var detail: String {
         switch self {
         case .keepSessionsRunning:
-            "Uncoil kapansa da agent’lar runtime daemon içinde çalışmaya devam eder."
+            "Agents keep running inside the runtime daemon even after Uncoil closes."
         case .terminateAllAgents:
-            "Uncoil’den çıkarken çalışan tüm agent ve terminal süreçleri kapatılır."
+            "Every running agent and terminal process is closed when you quit Uncoil."
         }
     }
 }
@@ -319,7 +319,7 @@ final class SettingsStore: ObservableObject {
                     }
                 }
             }
-            return "bağlı"  // auth file exists but no readable identity
+            return "linked"  // auth file exists but no readable identity
 
         case .terminal:
             return nil
@@ -391,7 +391,7 @@ final class SettingsStore: ObservableObject {
             CLIToolService.source(forBinaryAt: $0, provider: provider)
         } ?? .unknown
         guard let command = CLIToolService.updateCommand(provider: provider, source: source) else {
-            cliUpdateResult[provider.rawValue] = "Bu kurulum için güncelleme yolu bilinmiyor."
+            cliUpdateResult[provider.rawValue] = "No update path is known for this installation."
             return
         }
         cliUpdating.insert(provider.rawValue)
@@ -452,7 +452,7 @@ final class SettingsStore: ObservableObject {
     private func ensureDefaultAccounts() {
         for provider in [AgentProvider.claude, .codex]
         where !accounts.contains(where: { $0.provider == provider && $0.directoryName == nil }) {
-            accounts.append(AccountProfile(provider: provider, name: "Varsayılan", directoryName: nil))
+            accounts.append(AccountProfile(provider: provider, name: "Default", directoryName: nil))
         }
         save()
     }

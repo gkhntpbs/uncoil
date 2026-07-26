@@ -27,8 +27,8 @@ final class NotificationAuthorization: ObservableObject {
         var label: String {
             switch self {
             case .unknown: "Bilinmiyor"
-            case .notRequested: "Henüz sorulmadı"
-            case .granted: "İzin verildi"
+            case .notRequested: "Not asked yet"
+            case .granted: "Allowed"
             case .provisional: "Sessiz teslim"
             case .denied: "Reddedildi"
             }
@@ -84,7 +84,7 @@ final class NotificationAuthorization: ObservableObject {
                 .requestAuthorization(options: [.alert, .sound])
             await refresh()
             if !granted, status == .denied {
-                lastError = "İzin reddedildi. Sistem Ayarları'ndan açabilirsin."
+                lastError = "Permission denied. You can turn it on in System Settings."
             }
             return granted
         } catch {
@@ -116,7 +116,7 @@ final class NotificationAuthorization: ObservableObject {
         }
         let content = UNMutableNotificationContent()
         content.title = "Uncoil"
-        content.body = "Bildirimler çalışıyor. Bir ajan girdi beklediğinde böyle görünecek."
+        content.body = "Notifications work. This is how it looks when an agent is waiting for input."
         content.sound = .default
         content.interruptionLevel = .active
         try? await UNUserNotificationCenter.current().add(

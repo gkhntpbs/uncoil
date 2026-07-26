@@ -94,7 +94,7 @@ final class TerminalRegistry {
                         requestID: .string("fixture-approval"),
                         kind: .command,
                         title: "git status",
-                        detail: "Proje durumunu okumak için izin istiyor.",
+                        detail: "Asks for permission to read the project's state.",
                         permissions: nil,
                         availableDecisions: ["accept", "acceptForSession", "decline"]
                     ),

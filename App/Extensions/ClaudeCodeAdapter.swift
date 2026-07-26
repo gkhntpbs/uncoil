@@ -75,8 +75,8 @@ struct ClaudeCodeAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "claude.json.invalid",
                 severity: .error,
-                message: "~/.claude.json geçerli JSON değil.",
-                remedy: "Dosyayı elle düzelt; Uncoil bozuk JSON'a yazmaz."
+                message: "~/.claude.json is not valid JSON.",
+                remedy: "Repair the file by hand; Uncoil does not write to broken JSON."
             ))
         }
         for server in configuration.mcpServers {
@@ -85,15 +85,15 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).command",
                     severity: .error,
-                    message: "\(server.name) STDIO sunucusunun komutu yok.",
-                    remedy: "Komutu ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) STDIO server has no command.",
+                    remedy: "Add the command, or remove the server."
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).url",
                     severity: .error,
-                    message: "\(server.name) HTTP sunucusunun adresi yok.",
-                    remedy: "URL ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) HTTP server has no address.",
+                    remedy: "Add a URL, or remove the server."
                 ))
             default:
                 break
@@ -102,8 +102,8 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).secrets",
                     severity: .warning,
-                    message: "\(server.name) config içinde secret tutuyor: \(server.environmentKeys.joined(separator: ", ")).",
-                    remedy: "Uncoil launcher'a taşıyarak değeri Keychain'de tut."
+                    message: "\(server.name) keeps a secret in its config: \(server.environmentKeys.joined(separator: ", ")).",
+                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
                 ))
             }
         }
@@ -135,7 +135,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
         }
         guard let pendingContent = transaction.pendingContent else {
             result.status = .failed
-            result.failureReason = "Plan içeriği yok; değişiklik yeniden planlanmalı."
+            result.failureReason = "There is no plan content; the change has to be replanned."
             return result
         }
         let current = (try? String(contentsOfFile: transaction.configPath, encoding: .utf8)) ?? ""
@@ -168,7 +168,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
         var result = transaction
         guard let backupPath = transaction.backupPath,
               let data = FileManager.default.contents(atPath: backupPath) else {
-            result.failureReason = "Geri alınacak yedek yok; eski durum korunuyor."
+            result.failureReason = "No backup to roll back to; the previous state is kept."
             return result
         }
         do {
@@ -182,7 +182,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
     }
 
     func reload(_ installation: AgentInstallation) -> ReloadOutcome {
-        .restartRequired("Claude Code config'i başlangıçta okur; açık oturumlar yeniden başlatılmalı.")
+        .restartRequired("Claude Code reads its config at startup; open sessions must be restarted.")
     }
 
     func skillsDirectory(for installation: AgentInstallation) -> URL? {
@@ -243,7 +243,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 switch definition.transport {
                 case .stdio:
                     guard let command = definition.command, !command.isEmpty else {
-                        throw AgentAdapterError.unsupportedChange("\(definition.name): komut gerekli")
+                        throw AgentAdapterError.unsupportedChange("\(definition.name): a command is required")
                     }
                     entry["command"] = command
                     if !definition.arguments.isEmpty { entry["args"] = definition.arguments }
@@ -266,7 +266,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 servers.removeValue(forKey: name)
             case .setMCPServerEnabled(let name, let isEnabled):
                 guard var entry = servers[name] as? [String: Any] else {
-                    throw AgentAdapterError.unsupportedChange("\(name) tanımlı değil")
+                    throw AgentAdapterError.unsupportedChange("\(name) is not defined")
                 }
                 if isEnabled {
                     entry.removeValue(forKey: "disabled")
@@ -286,7 +286,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
             withJSONObject: root, options: [.prettyPrinted, .sortedKeys]
         )
         guard let text = String(data: data, encoding: .utf8) else {
-            throw AgentAdapterError.writeFailed("JSON kodlanamadı")
+            throw AgentAdapterError.writeFailed("JSON could not be encoded")
         }
         return text + "\n"
     }

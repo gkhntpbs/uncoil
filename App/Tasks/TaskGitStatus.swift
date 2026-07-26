@@ -18,7 +18,7 @@ enum TaskFileGitStatus: Equatable {
         case .untracked: "Untracked"
         case .conflict: "Conflict"
         case .ignored: "Ignored"
-        case .notTracked: "Git dışı"
+        case .notTracked: "Not a git repo"
         }
     }
 
@@ -229,9 +229,9 @@ enum TaskDiffAudit {
         var label: String {
             switch self {
             case .checkbox: "checkbox"
-            case .title: "başlık"
-            case .description: "açıklama"
-            case .move: "taşıma"
+            case .title: "heading"
+            case .description: "description"
+            case .move: "move"
             case .delete: "silme"
             }
         }
@@ -255,7 +255,7 @@ enum TaskDiffAudit {
                 kind: .unexpectedLineCountChange(
                     before: beforeLines.count, after: afterLines.count
                 ),
-                message: "\(expectation.label) düzenlemesi satır sayısını değiştirdi."
+                message: "The \(expectation.label) edit changed the number of lines."
             ))
         }
 
@@ -284,8 +284,8 @@ enum TaskDiffAudit {
                 kind: .wholeFileRewritten(
                     changedLines: unexpectedlyVanished.count, totalLines: beforeLines.count
                 ),
-                message: "Dosyanın büyük bölümü yeniden yazıldı: blok dışındaki "
-                    + "\(outsideBefore.count) satırın \(unexpectedlyVanished.count) tanesi kayboldu."
+                message: "Most of the file was rewritten: outside the block "
+                    + "\(unexpectedlyVanished.count) of \(outsideBefore.count) lines disappeared."
             ))
         }
 
@@ -295,7 +295,7 @@ enum TaskDiffAudit {
             if !unexpectedlyVanished.isEmpty {
                 findings.append(Finding(
                     kind: .changedOutsideBlock(lines: []),
-                    message: "Görev bloğu dışında \(unexpectedlyVanished.count) satır değişti."
+                    message: "\(unexpectedlyVanished.count) lines changed outside the task block."
                 ))
             }
             return findings
@@ -310,7 +310,7 @@ enum TaskDiffAudit {
         if !outside.isEmpty {
             findings.append(Finding(
                 kind: .changedOutsideBlock(lines: outside),
-                message: "Görev bloğu dışında değişen satırlar: "
+                message: "Lines changed outside the task block: "
                     + outside.prefix(5).map(String.init).joined(separator: ", ")
             ))
         }

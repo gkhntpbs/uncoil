@@ -36,13 +36,13 @@ enum PaletteGroupKind: Int, CaseIterable {
 
     var title: String {
         switch self {
-        case .ask: "Hızlı Soru"
+        case .ask: "Quick Question"
         case .command: "Komutlar"
         case .project: "Projeler"
         case .session: "Oturumlar"
         case .file: "Dosyalar"
         case .artifact: "Artefaktlar"
-        case .settings: "Ayarlar"
+        case .settings: "Settings"
         }
     }
 }
@@ -165,7 +165,7 @@ enum PaletteEngine {
         if !isEmpty {
             let panes = ctx.settingsPanes.map { pane in
                 PaletteItem(
-                    id: "settings.\(pane.id)", title: "Ayarlar: \(pane.title)",
+                    id: "settings.\(pane.id)", title: "Settings: \(pane.title)",
                     iconName: "settings", kind: .settings,
                     action: .openSettings(pane.id))
             }
@@ -179,15 +179,15 @@ enum PaletteEngine {
 
     private static func commandItems(ctx: PaletteContext) -> [PaletteItem] {
         var items: [PaletteItem] = [
-            PaletteItem(id: "cmd.addProject", title: "Yeni Proje Ekle",
+            PaletteItem(id: "cmd.addProject", title: "Add a New Project",
                         iconName: "folder-plus", kind: .command, action: .addProject),
-            PaletteItem(id: "cmd.testWorkspace", title: "Test Workspace Oluştur",
+            PaletteItem(id: "cmd.testWorkspace", title: "Create a Test Workspace",
                         iconName: "flask", kind: .command, action: .createTestWorkspace),
-            PaletteItem(id: "cmd.debugBundle", title: "Debug Bundle Oluştur",
+            PaletteItem(id: "cmd.debugBundle", title: "Create Debug Bundle",
                         iconName: "package-export", kind: .command, action: .createDebugBundle),
             PaletteItem(id: "cmd.extensions", title: "Extensions",
                         iconName: "puzzle", kind: .command, action: .openExtensions),
-            PaletteItem(id: "cmd.settings", title: "Ayarlar",
+            PaletteItem(id: "cmd.settings", title: "Settings",
                         iconName: "settings", kind: .command, action: .openSettings(nil)),
         ]
 
@@ -195,25 +195,25 @@ enum PaletteEngine {
             for provider in [AgentProvider.claude, .codex, .terminal] {
                 items.append(PaletteItem(
                     id: "cmd.new.\(provider.rawValue).\(project.id)",
-                    title: "Yeni Oturum: \(provider.displayName) [\(project.name)]",
+                    title: "New Session: \(provider.displayName) [\(project.name)]",
                     iconName: "plus", provider: provider,
                     kind: .command, action: .newSession(project.id, provider)))
             }
             items.append(PaletteItem(
                 id: "cmd.worktree.\(project.id)",
-                title: "Worktree Oluştur… [\(project.name)]",
+                title: "Create Worktree… [\(project.name)]",
                 iconName: "git-branch", kind: .command,
                 action: .createWorktree(project.id)))
         }
 
         if let sid = ctx.currentSessionID {
-            items.append(PaletteItem(id: "cmd.restart", title: "Oturumu Yeniden Başlat",
+            items.append(PaletteItem(id: "cmd.restart", title: "Restart the Session",
                                      iconName: "refresh", kind: .command,
                                      action: .restartSession(sid)))
-            items.append(PaletteItem(id: "cmd.close", title: "Oturumu Kapat",
+            items.append(PaletteItem(id: "cmd.close", title: "Close the Session",
                                      iconName: "x", kind: .command,
                                      action: .closeSession(sid)))
-            items.append(PaletteItem(id: "cmd.popout", title: "Popout Pencerede Aç",
+            items.append(PaletteItem(id: "cmd.popout", title: "Open in a Popout Window",
                                      iconName: "external-link", kind: .command,
                                      action: .popoutSession(sid)))
         }

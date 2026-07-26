@@ -32,7 +32,7 @@ struct ConfigurationTransactionService {
         installation: AgentInstallation
     ) throws -> (transaction: ConfigurationTransaction, configuration: AgentConfiguration) {
         guard let adapter = registry.adapter(for: agent) else {
-            throw AgentAdapterError.unsupportedChange("\(agent.displayName) için adapter yok")
+            throw AgentAdapterError.unsupportedChange("No adapter for \(agent.displayName)")
         }
         let configuration = try adapter.readConfiguration(installation)
         return (try adapter.plan(changes, for: configuration), configuration)
@@ -50,7 +50,7 @@ struct ConfigurationTransactionService {
     ) throws -> Outcome {
         guard let adapter = registry.adapter(for: transaction.agent) else {
             throw AgentAdapterError.unsupportedChange(
-                "\(transaction.agent.displayName) için adapter yok"
+                "No adapter for \(transaction.agent.displayName)"
             )
         }
         let applied = try adapter.apply(transaction)
@@ -80,7 +80,7 @@ struct ConfigurationTransactionService {
     ) throws -> Outcome {
         guard let adapter = registry.adapter(for: transaction.agent) else {
             throw AgentAdapterError.unsupportedChange(
-                "\(transaction.agent.displayName) için adapter yok"
+                "No adapter for \(transaction.agent.displayName)"
             )
         }
         let rolledBack = try adapter.rollback(transaction)
@@ -113,7 +113,7 @@ struct ConfigurationTransactionService {
                 kind: .configChanged,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath): \(changed) satır değişti",
+                detail: "\(transaction.configPath): \(changed) lines changed",
                 undoToken: transaction.backupPath
             )
         case .rolledBack:
@@ -121,14 +121,14 @@ struct ConfigurationTransactionService {
                 kind: .rolledBack,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath) yedekten geri yüklendi"
+                detail: "\(transaction.configPath) was restored from the backup"
             )
         case .staleConfig:
             return AuditEvent(
                 kind: .configChanged,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath) dışarıdan değişti; plan yenilendi"
+                detail: "\(transaction.configPath) changed on disk; the plan was refreshed"
             )
         case .planned, .failed:
             return AuditEvent(
@@ -136,7 +136,7 @@ struct ConfigurationTransactionService {
                 extensionID: extensionID,
                 agent: transaction.agent,
                 detail: transaction.failureReason
-                    ?? "\(transaction.configPath) için plan hazır"
+                    ?? "The plan for \(transaction.configPath) is ready"
             )
         }
     }

@@ -45,7 +45,7 @@ struct SessionPopoutWindow: View {
                     .padding([.horizontal, .bottom], 8)
                 }
             } else {
-                Text("Oturum bulunamadı")
+                Text("Session not found")
                     .font(Theme.mono(12))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

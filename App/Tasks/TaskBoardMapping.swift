@@ -23,12 +23,12 @@ enum TaskBoardMapping {
         var title: String {
             switch self {
             case .backlog: "Backlog"
-            case .todo: "Yapılacak"
-            case .inProgress: "Devam Eden"
-            case .blocked: "Engellendi"
-            case .review: "İnceleme"
-            case .done: "Tamamlandı"
-            case .custom: "Diğer"
+            case .todo: "To do"
+            case .inProgress: "In Progress"
+            case .blocked: "Blocked"
+            case .review: "Review"
+            case .done: "Done"
+            case .custom: "Other"
             }
         }
 
@@ -133,7 +133,7 @@ enum TaskBoardMapping {
         // Tasks with no heading at all still need somewhere to live.
         if document.tasks.contains(where: { $0.headingPath.isEmpty }) {
             columns.append(Column(
-                heading: "", lane: .custom, title: "Başlıksız", sortIndex: Lane.custom.sortIndex
+                heading: "", lane: .custom, title: "Untitled", sortIndex: Lane.custom.sortIndex
             ))
         }
         return sort(columns, order: columnOrder)
@@ -183,9 +183,9 @@ enum TaskBoardMapping {
         // ones, so diacritic folding leaves them alone and "tamamlandı" would
         // never match "tamamlandi". They are mapped explicitly.
         let transliterated = heading
-            .replacingOccurrences(of: "ı", with: "i")
+            .replacingOccurrences(of: "i", with: "i")
             .replacingOccurrences(of: "I", with: "i")
-            .replacingOccurrences(of: "İ", with: "i")
+            .replacingOccurrences(of: "I", with: "i")
         let folded = transliterated
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en"))
         var result = folded
@@ -265,12 +265,12 @@ struct TaskFilter: Equatable, Codable {
 
         var title: String {
             switch self {
-            case .all: "Tümü"
-            case .open: "Açık"
-            case .done: "Tamamlanmış"
-            case .assigned: "Atanmış"
-            case .unassigned: "Atanmamış"
-            case .running: "Agent çalışıyor"
+            case .all: "All"
+            case .open: "On"
+            case .done: "Completed"
+            case .assigned: "Assigned"
+            case .unassigned: "Unassigned"
+            case .running: "Agent running"
             case .awaitingReview: "Review bekliyor"
             case .blocked: "Blocked"
             }

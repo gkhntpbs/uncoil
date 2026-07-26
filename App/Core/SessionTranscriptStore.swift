@@ -11,9 +11,9 @@ enum TranscriptRetentionPolicy: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .disabled: "Saklama"
-        case .sevenDays: "7 gün"
-        case .thirtyDays: "30 gün"
-        case .forever: "Süresiz"
+        case .sevenDays: "7 days"
+        case .thirtyDays: "30 days"
+        case .forever: "Indefinitely"
         }
     }
 

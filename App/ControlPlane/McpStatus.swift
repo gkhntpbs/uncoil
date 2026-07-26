@@ -53,20 +53,20 @@ enum McpLinkState: Equatable {
 
     var label: String {
         switch self {
-        case .off: "MCP kapalı"
+        case .off: "MCP off"
         case .waiting: "MCP bekliyor"
-        case .connected: "MCP bağlı"
+        case .connected: "MCP connected"
         }
     }
 
     var help: String {
         switch self {
         case .off:
-            "Uncoil kontrol düzlemi çalışmıyor; bu oturumun uncoil MCP araçları yok."
+            "The Uncoil control plane is not running; this session has no uncoil MCP tools."
         case .waiting:
-            "Kontrol düzlemi açık, ajan henüz uncoil MCP'sini çağırmadı."
+            "The control plane is up; the agent has not called the uncoil MCP yet."
         case .connected(let since):
-            "Son uncoil MCP çağrısı: \(RelativeClock.short(since: since)) önce"
+            "Last uncoil MCP call: \(RelativeClock.short(since: since)) ago"
         }
     }
 

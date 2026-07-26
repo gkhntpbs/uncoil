@@ -41,14 +41,14 @@ struct SettingsView: View {
 
         var title: String {
             switch self {
-            case .general: "Genel"
-            case .agents: "Agentlar"
-            case .notifications: "Bildirimler"
-            case .menuBar: "Menü Çubuğu"
-            case .appearance: "Görünüm"
-            case .privacy: "Gizlilik ve İzinler"
-            case .integrations: "Entegrasyonlar"
-            case .about: "Hakkında"
+            case .general: "General"
+            case .agents: "Agents"
+            case .notifications: "Notifications"
+            case .menuBar: "Menu Bar"
+            case .appearance: "Appearance"
+            case .privacy: "Privacy and Permissions"
+            case .integrations: "Integrations"
+            case .about: "About"
             }
         }
 
@@ -96,25 +96,25 @@ struct SettingsView: View {
 
         var title: String {
             switch self {
-            case .general: "Genel"
+            case .general: "General"
             case .accounts: "Hesaplar"
-            case .cliTools: "CLI Araçları"
-            case .launchArgs: "Çalıştırma Parametreleri"
-            case .agentBehavior: "Mod ve Klavye"
+            case .cliTools: "CLI Tools"
+            case .launchArgs: "Run Parameters"
+            case .agentBehavior: "Mode and Keyboard"
             case .presets: "Session Presetleri"
-            case .notifications: "Genel"
+            case .notifications: "General"
             case .notificationEvents: "Olaylar"
-            case .reminders: "Hatırlatmalar"
+            case .reminders: "Reminders"
             case .quietHours: "Sessiz Saatler"
-            case .projectNotifications: "Proje Bazında"
-            case .menuBar: "Menü Çubuğu"
-            case .theme: "Tema ve Renkler"
-            case .permissions: "İzinler"
-            case .privacyData: "Veri ve Transcript"
-            case .hooks: "Durum Takibi"
+            case .projectNotifications: "Per Project"
+            case .menuBar: "Menu Bar"
+            case .theme: "Theme and Colours"
+            case .permissions: "Permissions"
+            case .privacyData: "Data and Transcripts"
+            case .hooks: "Status Tracking"
             case .github: "GitHub"
-            case .drivers: "Sürücüler"
-            case .about: "Hakkında"
+            case .drivers: "Drivers"
+            case .about: "About"
             }
         }
 
@@ -149,24 +149,24 @@ struct SettingsView: View {
             switch self {
             case .general:
                 "varsayılan default editör editor agent kapanış quit çıkış kısayol hotkey komut paleti palette"
-            case .accounts: "hesap account claude codex login giriş profil e-posta"
-            case .cliTools: "cli güncelle update sürüm version brew npm kurulum"
+            case .accounts: "hesap account claude codex login giriş profil profile e-posta email"
+            case .cliTools: "cli güncelle update sürüm version brew npm kurulum install"
             case .launchArgs: "parametre argüman argument model flag bayrak"
-            case .agentBehavior: "agent davranış behavior mod mode auto plan shift enter newline satır klavye keyboard"
-            case .presets: "preset alt agent yetki capability prompt şablon"
-            case .notifications: "bildirim notification izin permission ses sound gruplama teslimat arka plan"
-            case .notificationEvents: "olay event izin girdi tur tamamlandı hata sorun görev merge öncelik ses"
-            case .reminders: "hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor"
-            case .quietHours: "sessiz saat quiet hours rahatsız etme gece odak"
-            case .projectNotifications: "proje project bazında override bildirim"
-            case .menuBar: "menü bar menubar ikon icon simge sayaç counter status durum çubuğu"
-            case .theme: "tema theme renk color açık koyu light dark terminal palet"
-            case .permissions: "izin permission mcp grant onay agent kontrol computer use browser"
-            case .privacyData: "transcript kayıt saklama retention veri data gizlilik sil temizle"
-            case .hooks: "hook durum status izleme kanca claude settings.json"
-            case .github: "github token pr pull request giriş login"
-            case .drivers: "sürücü driver agent-browser cua computer use kurulum"
-            case .about: "hakkında about sürüm version veri klasörü debug bundle kaldır uninstall"
+            case .agentBehavior: "agent davranış behavior mod mode auto plan shift enter newline satır klavye keyboard behaviour line"
+            case .presets: "preset alt agent child yetki capability prompt şablon template"
+            case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background"
+            case .notificationEvents: "olay event izin permission girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority ses sound"
+            case .reminders: "hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor waiting"
+            case .quietHours: "sessiz saat quiet hours rahatsız etme do not disturb gece night odak focus"
+            case .projectNotifications: "proje project bazında override bildirim notification"
+            case .menuBar: "menü bar menubar ikon icon simge sayaç counter status durum çubuğu mark"
+            case .theme: "tema theme renk color açık koyu light dark terminal palet palette"
+            case .permissions: "izin permission mcp grant onay approval agent kontrol control computer use browser"
+            case .privacyData: "transcript kayıt saklama retention veri data gizlilik privacy sil temizle delete clear"
+            case .hooks: "hook durum status izleme watching kanca claude settings.json"
+            case .github: "github token pr pull request giriş login sign in"
+            case .drivers: "sürücü driver agent-browser cua computer use kurulum install"
+            case .about: "hakkında about sürüm version veri klasörü data folder debug bundle kaldır uninstall"
             }
         }
 
@@ -209,7 +209,7 @@ struct SettingsView: View {
         }
         .navigationTitle(pane.title)
         .navigationSubtitle(pane.category.title)
-        .searchable(text: $search, placement: .sidebar, prompt: "Ayarlarda ara")
+        .searchable(text: $search, placement: .sidebar, prompt: "Search settings")
         .frame(minWidth: 700, idealWidth: 840, minHeight: 460, idealHeight: 620)
         .tint(Theme.highlight)
         .foregroundStyle(Theme.text)
@@ -230,9 +230,9 @@ struct SettingsView: View {
     private var sidebar: some View {
         List(selection: $pane) {
             if isSearching {
-                Section("Sonuçlar") {
+                Section("Results") {
                     if matches.isEmpty {
-                        Text("Eşleşen ayar yok")
+                        Text("No matching setting")
                             .foregroundStyle(Theme.textFaint)
                     }
                     ForEach(matches) { paneRow($0, showsCategory: true) }
@@ -292,8 +292,8 @@ struct SettingsView: View {
             } else {
                 SettingsUnavailablePage(
                     symbol: "lock.slash",
-                    title: "Kontrol düzlemi çalışmıyor",
-                    detail: "MCP kontrol düzlemi kapalıyken izin isteği gelmez."
+                    title: "Control plane not running",
+                    detail: "No permission request arrives while the MCP control plane is off."
                 )
             }
         case .privacyData: PrivacyDataSettingsPage()

@@ -12,7 +12,7 @@ struct NotificationPriorityPicker: View {
     var body: some View {
         Picker(title, selection: $value) {
             if let inheritedLabel {
-                Text("Varsayılan (\(inheritedLabel))").tag(NotificationPrefs.Priority?.none)
+                Text("Default (\(inheritedLabel))").tag(NotificationPrefs.Priority?.none)
                 Divider()
             }
             ForEach(NotificationPrefs.Priority.allCases) { priority in
@@ -32,11 +32,11 @@ struct NotificationSoundPicker: View {
     var body: some View {
         Picker(title, selection: $value) {
             if let inheritedLabel {
-                Text("Varsayılan (\(inheritedLabel))").tag(String?.none)
+                Text("Default (\(inheritedLabel))").tag(String?.none)
                 Divider()
             }
-            Text("Sistem sesi").tag(String?.some("default"))
-            Text("Sessiz").tag(String?.some("none"))
+            Text("System sound").tag(String?.some("default"))
+            Text("Silent").tag(String?.some("none"))
             Divider()
             ForEach(NotificationPrefs.systemSounds, id: \.self) { name in
                 Text(name).tag(String?.some(name))
@@ -59,7 +59,7 @@ struct NotificationGeneralPage: View {
     private var prefs: NotificationPrefs { settings.notifications }
 
     var body: some View {
-        SettingsPage(title: "Bildirimler") {
+        SettingsPage(title: "Notifications") {
             Section {
                 NotificationPermissionRow()
             }
@@ -67,16 +67,16 @@ struct NotificationGeneralPage: View {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Bildirimler",
-                        detail: "Kapalıyken Uncoil hiçbir banner göndermez."
+                        title: "Notifications",
+                        detail: "While it is off, Uncoil sends no banner at all."
                     )
                 }
                 .settingsID("notifications.enabled")
             }
 
-            Section("Varsayılanlar") {
+            Section("Defaults") {
                 NotificationPriorityPicker(
-                    title: "Öncelik",
+                    title: "Priority",
                     value: Binding(
                         get: { Optional(prefs.priority) },
                         set: { newValue in
@@ -103,35 +103,35 @@ struct NotificationGeneralPage: View {
             }
             .disabled(!prefs.enabled)
 
-            Section("Teslimat") {
+            Section("Delivery") {
                 Toggle(isOn: bind(\.onlyWhenBackgrounded)) {
                     SettingsLabel(
-                        title: "Yalnızca arka plandayken bildir",
-                        detail: "Uncoil ön plandayken banner gönderilmez; satırlar yine işaretlenir."
+                        title: "Notify only while in the background",
+                        detail: "No banner is sent while Uncoil is in the foreground; the rows are still marked."
                     )
                 }
                 Toggle(isOn: bind(\.suppressForVisibleSession)) {
                     SettingsLabel(
-                        title: "Açık oturum için bildirme",
-                        detail: "Ekranda duran oturum hakkında banner gönderilmez."
+                        title: "Stay quiet about the session on screen",
+                        detail: "No banner is sent about the session already on screen."
                     )
                 }
                 Toggle(isOn: bind(\.groupByProject)) {
                     SettingsLabel(
-                        title: "Projeye göre grupla",
-                        detail: "Aynı projenin bildirimleri bildirim merkezinde tek yığın olur."
+                        title: "Group by project",
+                        detail: "A project's notifications stack into one group in Notification Center."
                     )
                 }
             }
             .disabled(!prefs.enabled)
 
             Section {
-                Button("Test Bildirimi Gönder") {
+                Button("Send a Test Notification") {
                     Task { await NotificationAuthorization.shared.sendTestNotification() }
                 }
                 .settingsID("notifications.selfTest")
             } footer: {
-                SettingsNote("Her durum değişimi için yalnızca bir bildirim gönderilir; tekrarını Hatırlatmalar sayfası yönetir.")
+                SettingsNote("Only one notification is sent per state change; repeats are handled by the Reminders page.")
             }
         }
     }
@@ -161,7 +161,7 @@ struct NotificationEventsPage: View {
     var body: some View {
         SettingsPage(
             title: "Olaylar",
-            subtitle: "Her olay kendi ayarını taşır. “Varsayılan” seçili olduğu sürece Genel sayfasındaki değer geçerlidir."
+            subtitle: "Every event carries its own setting. While “Default” is selected, the value on the General page applies."
         ) {
             ForEach(NotificationEvent.allCases) { event in
                 Section {
@@ -182,7 +182,7 @@ struct NotificationEventsPage: View {
 
                     if prefs.isEnabled(event) {
                         NotificationPriorityPicker(
-                            title: "Öncelik",
+                            title: "Priority",
                             value: Binding(
                                 get: { prefs.prefs(for: event).priority },
                                 set: { newValue in
@@ -215,10 +215,10 @@ struct NotificationEventsPage: View {
                                 }
                             )) {
                                 SettingsLabel(
-                                    title: "Hatırlat",
+                                    title: "Remind",
                                     detail: prefs.reminders.enabled
-                                        ? "\(prefs.reminders.intervalMinutes) dakikada bir tekrarlanır."
-                                        : "Hatırlatmalar sayfasından açılana kadar etkisiz."
+                                        ? "Repeated every \(prefs.reminders.intervalMinutes) minutes."
+                                        : "Inactive until it is turned on from the Reminders page."
                                 )
                             }
                             .settingsID("notifications.event.remind.\(event.rawValue)")
@@ -248,14 +248,14 @@ struct NotificationRemindersPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Hatırlatmalar",
-            subtitle: "Bir agent yanıt beklemeye devam ettiği sürece Uncoil bildirimi tekrarlayabilir. İlk banner’ı kaçırdığında ikinci, üçüncü kez haber alırsın."
+            title: "Reminders",
+            subtitle: "As long as an agent keeps waiting for an answer, Uncoil can repeat the notification. Miss the first banner and you hear about it a second and a third time."
         ) {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Hatırlatmalar açık",
-                        detail: "Yalnızca kullanıcı işlem yapana kadar süren durumlar tekrarlanır."
+                        title: "Reminders on",
+                        detail: "Only states that last until you act on them are repeated."
                     )
                 }
                 .settingsID("notifications.reminders.enabled")
@@ -264,27 +264,27 @@ struct NotificationRemindersPage: View {
             Section {
                 Picker(selection: bind(\.intervalMinutes)) {
                     ForEach([1, 2, 5, 10, 15, 30, 60], id: \.self) { minutes in
-                        Text(minutes < 60 ? "\(minutes) dakikada bir" : "Saatte bir").tag(minutes)
+                        Text(minutes < 60 ? "Every \(minutes) minutes" : "Hourly").tag(minutes)
                     }
                 } label: {
-                    SettingsLabel(title: "Tekrar aralığı")
+                    SettingsLabel(title: "Repeat interval")
                 }
                 .settingsID("notifications.reminders.interval")
 
                 Picker(selection: bind(\.maxCount)) {
-                    Text("Sınırsız").tag(0)
+                    Text("Unlimited").tag(0)
                     ForEach([1, 2, 3, 5, 10], id: \.self) { count in
-                        Text("\(count) kez").tag(count)
+                        Text("\(count) times").tag(count)
                     }
                 } label: {
                     SettingsLabel(
                         title: "En fazla",
-                        detail: "İlk bildirimden sonra kaç kez hatırlatılacağı."
+                        detail: "How many times it is repeated after the first notification."
                     )
                 }
                 .settingsID("notifications.reminders.maxCount")
             } header: {
-                Text("Sıklık")
+                Text("Frequency")
             } footer: {
                 SettingsNote(summary)
             }
@@ -308,11 +308,11 @@ struct NotificationRemindersPage: View {
                     .settingsID("notifications.reminders.event.\(event.rawValue)")
                 }
             } header: {
-                Text("Hangi olaylar")
+                Text("Which events")
             } footer: {
                 SettingsNote(
-                    "Tur tamamlandı gibi anlık olaylar listede yok: tekrarlanacak bir durum "
-                    + "bırakmazlar. Bir oturum beklemekten çıktığında hatırlatması da düşer."
+                    "Momentary events such as a finished turn are not on the list: there is no state "
+                    + "behind. A session that stops waiting drops its reminder too."
                 )
             }
             .disabled(!reminders.enabled)
@@ -321,13 +321,13 @@ struct NotificationRemindersPage: View {
     }
 
     private var summary: String {
-        guard reminders.enabled else { return "Hatırlatmalar kapalı." }
-        let every = "\(reminders.intervalMinutes) dakikada bir"
+        guard reminders.enabled else { return "Reminders are off." }
+        let every = "Every \(reminders.intervalMinutes) minutes"
         guard reminders.maxCount > 0 else {
-            return "Durum sürdüğü sürece \(every) hatırlatılır."
+            return "Repeated every \(every) while the state lasts."
         }
         let total = reminders.maxCount * reminders.intervalMinutes
-        return "\(every), en fazla \(reminders.maxCount) kez — yaklaşık \(total) dakika boyunca."
+        return "\(every), up to \(reminders.maxCount) times — for about \(total) minutes."
     }
 
     private func bind<Value>(
@@ -353,26 +353,26 @@ struct NotificationQuietHoursPage: View {
     var body: some View {
         SettingsPage(
             title: "Sessiz Saatler",
-            subtitle: "Belirlediğin aralıkta bildirimler susturulur. Gece boyunca çalışan bir agent seni uyandırmaz."
+            subtitle: "Notifications are silenced during the window you set. An agent working through the night will not wake you."
         ) {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
-                    SettingsLabel(title: "Sessiz saatler açık")
+                    SettingsLabel(title: "Quiet hours on")
                 }
                 .settingsID("notifications.quietHours.enabled")
             }
 
             Section {
-                minutePicker("Başlangıç", value: bind(\.startMinute))
+                minutePicker("Start", value: bind(\.startMinute))
                 .settingsID("notifications.quietHours.start")
 
-                minutePicker("Bitiş", value: bind(\.endMinute))
+                minutePicker("End", value: bind(\.endMinute))
                 .settingsID("notifications.quietHours.end")
 
                 Toggle(isOn: bind(\.allowHighPriority)) {
                     SettingsLabel(
-                        title: "Yüksek öncelikliler geçsin",
-                        detail: "İzin ve giriş gibi işi durduran olaylar sessiz saatlerde de bildirilir."
+                        title: "Let high-priority events through",
+                        detail: "Events that stop the work, such as permission and login, are announced during quiet hours too."
                     )
                 }
             } footer: {
@@ -394,13 +394,13 @@ struct NotificationQuietHoursPage: View {
     }
 
     private var summary: String {
-        guard quiet.enabled else { return "Sessiz saatler kapalı." }
+        guard quiet.enabled else { return "Quiet hours off." }
         let start = QuietHours.label(forMinute: quiet.startMinute)
         let end = QuietHours.label(forMinute: quiet.endMinute)
         let exception = quiet.allowHighPriority
-            ? " Yüksek öncelikli olaylar bu aralıkta da bildirilir."
-            : " Bu aralıkta hiçbir bildirim gönderilmez."
-        return "\(start) – \(end) arası sessiz.\(exception)"
+            ? " High-priority events are still announced during this window."
+            : " No notification is delivered during this window."
+        return "Quiet between \(start) and \(end).\(exception)"
     }
 
     private func bind<Value>(
@@ -424,12 +424,12 @@ struct ProjectNotificationsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Proje Bazında",
-            subtitle: "Bir projeyi tamamen susturabilir ya da yalnızca onun için öncelik ve ses değiştirebilirsin."
+            title: "Per Project",
+            subtitle: "You can silence a project completely, or change only its priority and sound."
         ) {
             if projectStore.projects.isEmpty {
                 Section {
-                    Text("Henüz proje yok.")
+                    Text("No projects yet.")
                         .foregroundStyle(Theme.textDim)
                 }
             }
@@ -457,12 +457,12 @@ private struct ProjectNotificationRows: View {
             get: { override.enabled ?? true },
             set: { newValue in mutate { $0.enabled = newValue } }
         )) {
-            SettingsLabel(title: "Bildirimler açık")
+            SettingsLabel(title: "Notifications on")
         }
         .settingsID("notifications.project.\(project.id.uuidString)")
 
         NotificationPriorityPicker(
-            title: "Öncelik",
+            title: "Priority",
             value: Binding(
                 get: { override.priority },
                 set: { newValue in mutate { $0.priority = newValue } }

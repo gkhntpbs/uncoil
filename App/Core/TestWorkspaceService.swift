@@ -238,7 +238,7 @@ struct TestWorkspaceService {
             let message = String(decoding: data, as: UTF8.self)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw TestWorkspaceError.commandFailed(
-                message.isEmpty ? "Git komutu başarısız oldu." : message
+                message.isEmpty ? "The git command failed." : message
             )
         }
     }

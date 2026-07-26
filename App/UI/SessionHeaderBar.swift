@@ -83,7 +83,7 @@ struct SessionHeaderBar<Trailing: View>: View {
                                 .truncationMode(.middle)
                         }
                         .fixedSize()
-                        .help("Aktif dal: \(branch)")
+                        .help("Active branch: \(branch)")
                     }
                 }
             }
@@ -114,8 +114,8 @@ struct SessionHeaderBar<Trailing: View>: View {
 
                 ControlButton(
                     iconName: "refresh",
-                    help: "Oturumu yeniden başlat" +
-                        (record.providerSessionID != nil ? " (geçmişiyle devam eder)" : ""),
+                    help: "Restart the session" +
+                        (record.providerSessionID != nil ? " (continues with its history)" : ""),
                     identifier: "session.restartButton",
                     action: onRestart
                 )

@@ -28,7 +28,7 @@ struct BranchBadge: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1)
         )
-        .help("Aktif dal: \(branch)")
+        .help("Active branch: \(branch)")
         .accessibilityIdentifier("branch.badge")
     }
 

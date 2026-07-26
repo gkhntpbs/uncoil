@@ -28,7 +28,7 @@ struct StagedRevision: Equatable {
         if let blocked = findings.first(where: { $0.severity == .blocked && !$0.isAccepted }) {
             return blocked.message
         }
-        if !smokeTestPassed { return "Smoke test başarısız." }
+        if !smokeTestPassed { return "The smoke test failed." }
         return nil
     }
 }
@@ -43,15 +43,15 @@ enum ExtensionUpdateError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notManaged(let id):
-            "\(id) yönetilen bir git kaynağı değil; update kontrolü yapılmaz."
+            "\(id) is not a managed git source; it is not checked for updates."
         case .staleStage(let id):
-            "\(id) için hazırlanan revision artık geçerli değil."
+            "The revision prepared for \(id) is no longer valid."
         case .notActivatable(let reason):
-            "Revision etkinleştirilemez: \(reason)"
+            "The revision cannot be enabled: \(reason)"
         case .diskFull(let detail):
-            "Disk yetersiz, işlem güvenle durduruldu: \(detail)"
+            "Out of disk space, stopped safely: \(detail)"
         case .noPreviousRevision(let id):
-            "\(id) için geri dönülecek önceki revision yok."
+            "There is no earlier revision of \(id) to fall back to."
         }
     }
 }
@@ -166,7 +166,7 @@ struct ExtensionUpdateEngine {
         var issues: [String] = []
         let manager = FileManager.default
         guard manager.fileExists(atPath: path.path) else {
-            return ["Revision dizini yok."]
+            return ["No revision directory."]
         }
         switch kind {
         case .skill:
@@ -182,10 +182,10 @@ struct ExtensionUpdateEngine {
             }
         }
         if let escapes = symlinkEscapes(at: path), !escapes.isEmpty {
-            issues.append("Paket dışına çıkan symlink: \(escapes.joined(separator: ", "))")
+            issues.append("Symlink pointing outside the package: \(escapes.joined(separator: ", "))")
         }
         if (try? manager.contentsOfDirectory(atPath: path.path))?.isEmpty != false {
-            issues.append("Revision boş.")
+            issues.append("The revision is empty.")
         }
         return issues
     }
@@ -293,10 +293,10 @@ struct ExtensionUpdateEngine {
             updated,
             HealthCheckResult(
                 id: "rollback.\(package.id)",
-                name: "Rollback sonrası bağlantı",
+                name: "Link after rollback",
                 outcome: status == .linked ? .ok : .failure,
                 detail: status.label,
-                remedy: status == .linked ? nil : "Bağlantıyı Repair ile onar.",
+                remedy: status == .linked ? nil : "Repair the connection with Repair.",
                 checkedAt: .now
             )
         )
@@ -323,7 +323,7 @@ struct ExtensionUpdateEngine {
         )
         guard let available = values?.volumeAvailableCapacityForImportantUsage else { return }
         guard available >= minimumFreeBytes else {
-            throw ExtensionUpdateError.diskFull("\(available / 1_048_576) MB boş")
+            throw ExtensionUpdateError.diskFull("\(available / 1_048_576) MB free")
         }
     }
 }

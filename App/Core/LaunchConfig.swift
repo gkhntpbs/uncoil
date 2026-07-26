@@ -106,13 +106,13 @@ struct LaunchConfig {
         try? Data("""
         # Demo TODO
 
-        ## Arayüz
-        - [ ] Oturum listesine arama ekle
-        - [x] Karanlık tema kontrastını düzelt
-        1. [ ] Ayarlar penceresine kısayol ekle
+        ## Interface
+        - [ ] Add search to the session list
+        - [x] Fix dark-theme contrast
+        1. [ ] Add a shortcut for the settings window
 
-        ## Altyapı
-        - [ ] Daemon heartbeat logla
+        ## Infrastructure
+        - [ ] Log the daemon heartbeat
         """.utf8).write(to: projectDir.appendingPathComponent("TODO.md"))
         projectStore.addProject(at: projectDir)
         guard let project = projectStore.projects.first else { return }
@@ -120,13 +120,13 @@ struct LaunchConfig {
             projectID: project.id, provider: .terminal, accountID: nil, title: "terminal"
         )
         projectStore.createSession(
-            projectID: project.id, provider: .claude, accountID: nil, title: "claude: demo görev"
+            projectID: project.id, provider: .claude, accountID: nil, title: "claude: demo task"
         )
         let history = projectStore.createSession(
             projectID: project.id,
             provider: .codex,
             accountID: nil,
-            title: "codex: geçmiş görev"
+            title: "codex: past task"
         )
         projectStore.updateSession(history.id) {
             $0.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
@@ -160,7 +160,7 @@ struct LaunchConfig {
         AttentionStore.shared.report(
             kind: .testFailure,
             title: "\(project.name) › \(session.displayTitle)",
-            detail: "3 test başarısız",
+            detail: "3 tests failing",
             projectID: project.id,
             sessionID: session.id,
             id: "test:fixture"

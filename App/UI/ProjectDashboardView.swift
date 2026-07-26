@@ -38,7 +38,7 @@ struct ProjectDashboardView: View {
 
         var title: String {
             switch self {
-            case .overview: "Genel"
+            case .overview: "General"
             case .tasks: "Tasks"
             case .run: "Run"
             }
@@ -236,7 +236,7 @@ struct ProjectDashboardView: View {
             Divider().overlay(Theme.border)
 
             HStack(spacing: 8) {
-                TextField("Yeni worktree adı (izole görev dalı)", text: $newWorktreeName)
+                TextField("New worktree name (isolated task branch)", text: $newWorktreeName)
                     .accessibilityIdentifier("dashboard.worktrees.nameField")
                     .textFieldStyle(.plain)
                     .font(Theme.mono(11.5))
@@ -249,7 +249,7 @@ struct ProjectDashboardView: View {
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
                     .onSubmit { createWorktree() }
-                Button(creatingWorktree ? "Oluşturuluyor…" : "Oluştur") { createWorktree() }
+                Button(creatingWorktree ? "Creating…" : "Create") { createWorktree() }
                     .accessibilityIdentifier("dashboard.worktrees.createButton")
                     .buttonStyle(GhostButtonStyle())
                     .disabled(creatingWorktree || newWorktreeName.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -367,7 +367,7 @@ struct ProjectDashboardView: View {
                 } label: {
                     HStack(spacing: 6) {
                         TablerIcon(name: "sparkles", size: 12, color: Theme.highlight)
-                        Text("Otomatik Düzenle")
+                        Text("Organise Automatically")
                             .font(Theme.mono(10.5, .medium))
                     }
                 }
@@ -378,7 +378,7 @@ struct ProjectDashboardView: View {
 
             let records = projectStore.activeSessions(for: project.id)
             if records.isEmpty {
-                Text("Henüz oturum yok — sağ üstten bir agent başlat.")
+                Text("No sessions yet — start an agent from the top right.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
@@ -399,7 +399,7 @@ struct ProjectDashboardView: View {
     private var historyPanel: some View {
         let records = projectStore.sessionHistory(for: project.id)
         return VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Kapanmış Oturumlar", count: records.count)
+            PanelHeading(title: "Closed Sessions", count: records.count)
             VStack(spacing: 1) {
                 ForEach(records) { record in
                     SessionCard(record: record) {
@@ -427,7 +427,7 @@ struct ProjectDashboardView: View {
                 SkeletonRows(count: 4)
                     .padding(14)
             } else if !git.isRepo {
-                Text("Bu klasör bir git deposu değil.")
+                Text("This folder is not a git repository.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
@@ -435,7 +435,7 @@ struct ProjectDashboardView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if git.changedFiles.isEmpty {
                         Label {
-                            Text("Çalışma ağacı temiz")
+                            Text("Worktree clean")
                                 .font(Theme.mono(11))
                                 .foregroundStyle(Theme.ok)
                         } icon: {
@@ -457,7 +457,7 @@ struct ProjectDashboardView: View {
                                 }
                             }
                             if git.changedFiles.count > 12 {
-                                Text("+ \(git.changedFiles.count - 12) dosya daha")
+                                Text("+ \(git.changedFiles.count - 12) more files")
                                     .font(Theme.mono(10))
                                     .foregroundStyle(Theme.textFaint)
                             }
@@ -611,7 +611,7 @@ private struct PullRequestRow: View {
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 if pullRequest.isDraft {
-                    Text("taslak")
+                    Text("draft")
                         .font(Theme.mono(9))
                         .foregroundStyle(Theme.textFaint)
                         .padding(.horizontal, 5)

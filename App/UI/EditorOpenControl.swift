@@ -38,7 +38,7 @@ struct EditorOpenControl: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("editor.openButton")
-            .help("Proje dizinini \(editor.displayName) ile aç")
+            .help("Open the project directory in \(editor.displayName)")
 
             Menu {
                 ForEach(PreferredEditor.directoryCapable) { candidate in
@@ -54,7 +54,7 @@ struct EditorOpenControl: View {
                     }
                 }
                 Divider()
-                Button("Finder'da Aç") {
+                Button("Open in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting(
                         [URL(fileURLWithPath: directory, isDirectory: true)]
                     )

@@ -32,39 +32,39 @@ struct MenuBarSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "Menü Çubuğu") {
+        SettingsPage(title: "Menu Bar") {
             Section {
                 Toggle(isOn: bind(\.enabled)) {
                     SettingsLabel(
-                        title: "Menü çubuğu monitörü",
-                        detail: "Uncoil’in penceresi kapalıyken agent’ları izlemeyi sürdürür."
+                        title: "Menu-bar monitor",
+                        detail: "Keeps watching the agents while Uncoil's window is closed."
                     )
                 }
                 .settingsID("menuBar.enabled")
             }
 
             Section {
-                LabeledContent("Şu an") {
+                LabeledContent("Now") {
                     MenuBarMonitorLabel(summary: liveSummary, prefs: prefs)
                 }
-                LabeledContent("Yoğunken") {
+                LabeledContent("When busy") {
                     MenuBarMonitorLabel(summary: sampleSummary, prefs: prefs)
                 }
             } header: {
-                Text("Önizleme")
+                Text("Preview")
             } footer: {
                 SettingsNote(liveSummary.headline)
             }
             .disabled(!prefs.enabled)
 
-            Section("Simge") {
+            Section("Icon") {
                 Picker(selection: bind(\.iconStyle)) {
                     ForEach(MenuBarPrefs.IconStyle.allCases) { style in
                         Text(style.title).tag(style)
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Simge biçimi",
+                        title: "Icon style",
                         detail: prefs.iconStyle.detail
                     )
                 }
@@ -73,8 +73,8 @@ struct MenuBarSettingsPage: View {
                 if prefs.iconStyle == .logo {
                     Toggle(isOn: bind(\.monochrome)) {
                         SettingsLabel(
-                            title: "Tek renk",
-                            detail: "Durum rengini kapatır; simge menü çubuğunun kendi rengini alır."
+                            title: "Single colour",
+                            detail: "Turns off the status colour; the icon takes the menu bar's own."
                         )
                     }
                     .settingsID("menuBar.monochrome")
@@ -82,8 +82,8 @@ struct MenuBarSettingsPage: View {
 
                 Toggle(isOn: bind(\.hideWhenIdle)) {
                     SettingsLabel(
-                        title: "Boştayken gizle",
-                        detail: "Çalışan ya da bekleyen bir şey yokken simge menü çubuğundan çıkar."
+                        title: "Hide while idle",
+                        detail: "The icon leaves the menu bar when nothing is running or waiting."
                     )
                 }
                 .settingsID("menuBar.hideWhenIdle")
@@ -102,32 +102,32 @@ struct MenuBarSettingsPage: View {
                         SettingsLabel(
                             title: counter.title,
                             detail: counter.marker.isEmpty
-                                ? "Simgenin yanında sayı olarak görünür."
-                                : "Simgenin yanında “\(counter.marker)” işaretiyle görünür."
+                                ? "Shown as a number next to the icon."
+                                : "Shown next to the icon, marked “\(counter.marker)”."
                         )
                     }
                     .settingsID("menuBar.counter.\(counter.rawValue)")
                 }
             } header: {
-                Text("Sayaçlar")
+                Text("Counters")
             } footer: {
                 SettingsNote(
                     prefs.label(for: sampleSummary).isEmpty
-                        ? "Hiçbiri seçili değil — menü çubuğunda yalnızca simge görünür."
-                        : "Yoğunken şöyle görünür: \(prefs.label(for: sampleSummary))"
+                        ? "None selected — only the icon shows in the menu bar."
+                        : "Busy, it looks like this: \(prefs.label(for: sampleSummary))"
                 )
             }
             .disabled(!prefs.enabled)
 
-            Section("Menü içeriği") {
+            Section("Menu contents") {
                 Toggle(isOn: bind(\.showTasksSection)) {
-                    SettingsLabel(title: "Görev kısayolları", detail: "Board, görev oturumu, orchestrator.")
+                    SettingsLabel(title: "Task shortcuts", detail: "Board, task session, orchestrator.")
                 }
                 Toggle(isOn: bind(\.showSessionsSection)) {
                     SettingsLabel(title: "Dikkat isteyen oturumlar")
                 }
                 Toggle(isOn: bind(\.showQuickLaunch)) {
-                    SettingsLabel(title: "Yeni oturum menüsü")
+                    SettingsLabel(title: "New-session menu")
                 }
             }
             .disabled(!prefs.enabled)

@@ -187,7 +187,7 @@ final class TodoParserTests: XCTestCase {
     func testCheckboxesRightUnderAHeadingWithNoBlankLine() {
         let document = parse("## Başlık\n- [ ] hemen altında\n1. [ ] numaralı da\n")
         XCTAssertEqual(document.tasks.count, 2)
-        XCTAssertTrue(document.tasks.allSatisfy { $0.headingPath == ["Başlık"] })
+        XCTAssertTrue(document.tasks.allSatisfy { $0.headingPath == ["Title"] })
     }
 
     func testCRLFFileParsesAndRoundTrips() {
@@ -617,7 +617,7 @@ final class TaskFingerprintTests: XCTestCase {
     }
 
     func testResolutionLabelsExplainThemselves() {
-        XCTAssertEqual(TaskRelinker.Resolution.exact(newTaskID: "x").label, "Aynı görev")
+        XCTAssertEqual(TaskRelinker.Resolution.exact(newTaskID: "x").label, "Same task")
         XCTAssertTrue(
             TaskRelinker.Resolution.similar(newTaskID: "x", score: 0.8).label.contains("80")
         )

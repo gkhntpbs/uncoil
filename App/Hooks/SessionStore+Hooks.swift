@@ -65,7 +65,7 @@ extension SessionStore {
         applyMeta(sessionID, event.sessionID, Self.titleCandidate(from: event))
 
         let prefs = notificationPrefs()
-        let sessionTitle = sessionTitle(sessionID) ?? "oturum"
+        let sessionTitle = sessionTitle(sessionID) ?? "session"
 
         switch event.kind {
         case .sessionStart:
@@ -76,7 +76,7 @@ extension SessionStore {
             // New turn started: allow the next attention/completion ping.
             clearNotificationDedup(sessionID)
         case .preToolUse:
-            setStatus(.running, detail: event.toolName.map { "araç: \($0)" }, for: sessionID)
+            setStatus(.running, detail: event.toolName.map { "tool: \($0)" }, for: sessionID)
         case .postToolUse:
             setStatus(.thinking, for: sessionID)
         case .notification:
@@ -86,7 +86,7 @@ extension SessionStore {
                 notify(
                     .permission,
                     title: project.name,
-                    body: "İzin bekliyor · \(sessionTitle)",
+                    body: "Waiting for permission · \(sessionTitle)",
                     projectID: project.id,
                     sessionID: sessionID,
                     prefs: prefs
@@ -110,7 +110,7 @@ extension SessionStore {
             notify(
                 .turnCompleted,
                 title: project.name,
-                body: "Tur tamamlandı · \(sessionTitle)",
+                body: "Turn done · \(sessionTitle)",
                 projectID: project.id,
                 sessionID: sessionID,
                 prefs: prefs
@@ -231,7 +231,7 @@ extension SessionStore {
             notify(
                 entry.event,
                 title: projectName(entry.sessionID) ?? "Uncoil",
-                body: "\(entry.event.title) · \(sessionTitle(entry.sessionID) ?? "oturum")",
+                body: "\(entry.event.title) · \(sessionTitle(entry.sessionID) ?? "session")",
                 projectID: project,
                 sessionID: entry.sessionID,
                 prefs: prefs,

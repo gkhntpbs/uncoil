@@ -38,23 +38,23 @@ enum SkillTriggerTester {
 
         var label: String {
             switch self {
-            case .noMatch: "Eşleşme yok"
-            case .single: "Tek eşleşme"
-            case .conflict(let count): "\(count) skill çakışıyor"
-            case .tooBroad(let count): "\(count) skill eşleşti"
+            case .noMatch: "No match"
+            case .single: "One match"
+            case .conflict(let count): "\(count) skills clash"
+            case .tooBroad(let count): "\(count) skills matched"
             }
         }
 
         var advice: String {
             switch self {
             case .noMatch:
-                "Hiçbir açıklama bu promptu karşılamıyor; açıklamalar fazla dar olabilir."
+                "No description covers this prompt; the descriptions may be too narrow."
             case .single:
-                "Tek bir skill tetiklenir; açıklama bu prompt için ayırt edici."
+                "A single skill triggers; the description is distinctive for this prompt."
             case .conflict:
-                "Birden fazla skill aynı promptu üstleniyor; açıklamaları ayrıştır."
+                "Several skills claim the same prompt; make their descriptions distinct."
             case .tooBroad:
-                "Çok fazla skill eşleşiyor; açıklamalar fazla geniş olabilir."
+                "Too many skills match; the descriptions may be too broad."
             }
         }
     }
@@ -205,8 +205,8 @@ enum SkillTriggerTester {
     static let stopWords: Set<String> = [
         "the", "and", "for", "with", "that", "this", "from", "into", "when",
         "use", "used", "using", "you", "your", "ают", "are", "was", "were",
-        "bir", "bu", "şu", "ile", "için", "olan", "veya", "gibi", "daha",
-        "sonra", "önce", "ama", "her", "çok", "kullan", "kullanarak",
+        "bir", "bu", "this", "ile", "for", "olan", "veya", "gibi", "daha",
+        "sonra", "before", "ama", "her", "many", "kullan", "kullanarak",
     ]
 }
 

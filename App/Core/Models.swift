@@ -86,7 +86,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
 
     func label(for provider: AgentProvider) -> String {
         switch self {
-        case .providerDefault: "Provider varsayılanı"
+        case .providerDefault: "Provider default"
         case .auto: "Auto"
         case .plan: "Plan"
         case .manual: "Manual"
@@ -104,25 +104,25 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
     func detail(for provider: AgentProvider) -> String {
         switch (provider, self) {
         case (_, .providerDefault):
-            "CLI kendi varsayılan davranışıyla başlar."
+            "The CLI starts with its own default behaviour."
         case (.claude, .auto):
-            "Claude gerekli izinleri bağlama göre otomatik yönetir."
+            "Claude manages the permissions it needs based on context."
         case (.claude, .plan):
-            "Claude uygulama yapmadan önce planlama modunda başlar."
+            "Claude starts in planning mode, before implementing anything."
         case (.claude, .manual):
-            "Claude her işlem için manuel kontrolle başlar."
+            "Claude starts with manual review for every action."
         case (.claude, .acceptEdits):
-            "Dosya düzenlemeleri otomatik kabul edilir."
+            "File edits are accepted automatically."
         case (.claude, .dangerouslySkipPermissions):
-            "Claude tüm izin kontrollerini atlayarak başlar."
+            "Claude starts with every permission check bypassed."
         case (.codex, .askForApproval):
-            "Codex gerektiğinde senden işlem onayı ister."
+            "Codex asks you to approve actions when it needs to."
         case (.codex, .approveForMe):
-            "Codex workspace sınırları içinde onay istemeden çalışır."
+            "Codex runs without asking for approval inside the workspace bounds."
         case (.codex, .fullAccess):
-            "Codex onay ve sandbox kısıtlamaları olmadan çalışır."
+            "Codex runs without approval prompts or sandbox limits."
         default:
-            "CLI kendi varsayılan davranışıyla başlar."
+            "The CLI starts with its own default behaviour."
         }
     }
 
@@ -279,13 +279,13 @@ enum AgentSessionStatus: String, Codable {
 
     var label: String {
         switch self {
-        case .idle: "Hazır"
-        case .thinking: "Düşünüyor"
-        case .running: "Çalışıyor"
-        case .waitingForPermission: "İzin bekliyor"
-        case .waitingForInput: "Yanıt bekliyor"
-        case .completed: "Tamamlandı"
-        case .terminated: "Kapandı"
+        case .idle: "Ready"
+        case .thinking: "Thinking"
+        case .running: "Running"
+        case .waitingForPermission: "Waiting for permission"
+        case .waitingForInput: "Waiting for a reply"
+        case .completed: "Done"
+        case .terminated: "Closed"
         }
     }
 
@@ -437,7 +437,11 @@ struct SessionRecord: Identifiable, Codable, Equatable {
 
     /// Default titles get replaced by the first real prompt.
     var hasPlaceholderTitle: Bool {
-        title.hasSuffix(": yeni oturum") || title == "terminal"
+        // ": yeni oturum" is the pre-localization default; sessions created by
+        // an older build keep that title on disk and would otherwise never get
+        // renamed by their first prompt.
+        title.hasSuffix(": new session") || title.hasSuffix(": yeni oturum")
+            || title == "terminal"
     }
 }
 

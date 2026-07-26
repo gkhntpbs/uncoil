@@ -12,7 +12,7 @@ enum CLIToolService {
             switch self {
             case .homebrew: "Homebrew"
             case .npm: "npm"
-            case .nativeInstaller: "yerleşik güncelleyici"
+            case .nativeInstaller: "built-in updater"
             case .unknown: "bilinmiyor"
             }
         }

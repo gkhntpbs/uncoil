@@ -296,7 +296,7 @@ enum HelpRegistry {
                 ActionDoc(action: "dependencies", summary: "External driver integration status.",
                     doc: "# dependencies\nReports the optional external drivers `agent-browser` and `cua-driver` with `{installed, path, version, remedy}` (or `not_installed`)."),
                 ActionDoc(action: "request_permission", summary: "Ask the user to authorize a denied action.",
-                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → İzinler. Grants are revocable and pending requests auto-expire after 10 minutes."),
+                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → Permissions. Grants are revocable and pending requests auto-expire after 10 minutes."),
             ])
     }()
 

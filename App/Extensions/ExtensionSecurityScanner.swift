@@ -21,9 +21,9 @@ enum ExtensionSecurityScanner {
             case .shell: "Shell script"
             case .python: "Python script"
             case .node: "Node script"
-            case .markdown: "Talimat dosyası"
+            case .markdown: "Instruction file"
             case .binary: "Binary"
-            case .other: "Diğer"
+            case .other: "Other"
             }
         }
     }
@@ -113,46 +113,46 @@ enum ExtensionSecurityScanner {
 
     static let commandRules: [CommandRule] = [
         .init(rule: "risky-command.sudo", severity: .high,
-              message: "sudo ile yükseltilmiş yetki isteniyor.",
+              message: "Asks for elevated privileges with sudo.",
               needles: ["sudo "]),
         .init(rule: "risky-command.rm-rf", severity: .high,
-              message: "rm -rf ile geri dönüşsüz silme.",
+              message: "Irreversible deletion with rm -rf.",
               needles: ["rm -rf", "rm -fr"]),
         // `curl … | sh` is matched per line rather than by substring, because the
         // URL and flags in between make a literal needle useless.
         .init(rule: "risky-command.curl-pipe-shell", severity: .blocked,
-              message: "İnternetten indirileni doğrudan shell'e veriyor.",
+              message: "Pipes something downloaded from the internet straight into the shell.",
               needles: []),
         .init(rule: "risky-command.eval", severity: .needsReview,
-              message: "eval ile dinamik kod çalıştırıyor.",
+              message: "Runs dynamic code through eval.",
               needles: ["eval ", "eval(", "exec("]),
         // The subcommand names alone, because a script may pass them as separate
         // argv entries rather than in one command string.
         .init(rule: "credential.keychain", severity: .high,
-              message: "Keychain'e erişiyor.",
+              message: "Reaches into the Keychain.",
               needles: ["find-generic-password", "find-internet-password",
                         "/Library/Keychains", "SecItemCopyMatching"]),
         .init(rule: "credential.ssh", severity: .high,
-              message: "SSH anahtarlarına erişiyor.",
+              message: "Reaches for SSH keys.",
               needles: [".ssh/id_", ".ssh/config", "~/.ssh"]),
         .init(rule: "credential.git", severity: .high,
-              message: "Git kimlik bilgilerine erişiyor.",
+              message: "Reaches for git credentials.",
               needles: [".git-credentials", "credential.helper", ".netrc"]),
         .init(rule: "credential.cloud", severity: .high,
-              message: "Bulut kimlik bilgisi yollarına erişiyor.",
+              message: "Reaches for cloud credential paths.",
               needles: [".aws/credentials", ".config/gcloud", ".azure",
                         ".kube/config", ".docker/config.json"]),
         .init(rule: "filesystem.home-write", severity: .needsReview,
-              message: "Home dizinine geniş yazma yapıyor.",
+              message: "Writes broadly into the home directory.",
               needles: ["> ~/", ">> ~/", "cp -r ~/", "mv ~/"]),
         .init(rule: "filesystem.outside-project", severity: .needsReview,
-              message: "Proje dışına yazıyor.",
+              message: "Writes outside the project.",
               needles: ["> /etc/", "> /usr/", "> /Library/", "/LaunchAgents/"]),
         .init(rule: "process.child", severity: .low,
-              message: "Alt process başlatıyor.",
+              message: "Starting a child process.",
               needles: ["subprocess.", "child_process", "spawn(", "Popen(", "system("]),
         .init(rule: "network.connection", severity: .low,
-              message: "Ağ bağlantısı kuruyor.",
+              message: "Opening a network connection.",
               needles: ["curl ", "wget ", "http://", "https://", "requests.get",
                         "urllib", "fetch(", "nc -"]),
     ]
@@ -161,26 +161,26 @@ enum ExtensionSecurityScanner {
     /// tells an agent to bypass its own safeguards.
     static let instructionRules: [CommandRule] = [
         .init(rule: "instruction.disable-safety", severity: .blocked,
-              message: "Güvenlik kontrollerini kapatmayı söylüyor.",
+              message: "Tells the agent to turn security checks off.",
               needles: ["ignore previous instructions", "ignore all previous",
                         "disregard the system prompt", "disable safety",
-                        "güvenlik kontrollerini kapat", "bypass approval",
+                        "turn security checks off", "bypass approval",
                         "skip permission", "--dangerously-skip-permissions"]),
         .init(rule: "instruction.destructive-without-approval", severity: .high,
-              message: "Onay almadan yıkıcı işlem yapmayı söylüyor.",
+              message: "Tells the agent to do destructive work without asking.",
               needles: ["without asking the user", "do not ask for confirmation",
-                        "kullanıcıya sormadan", "onay almadan sil"]),
+                        "without asking you", "delete without asking"]),
         .init(rule: "instruction.secret-exfiltration", severity: .blocked,
-              message: "Secret istemeye veya dışarı göndermeye yönlendiriyor.",
+              message: "Steers toward asking for secrets or sending them out.",
               needles: ["print the api key", "send the token", "cat ~/.env",
-                        "read the credentials", "tokenı gönder", "api key'i yaz"]),
+                        "read the credentials", "send the token", "api key'i yaz"]),
         .init(rule: "instruction.hidden-files", severity: .needsReview,
-              message: "Gizli dosyaları okumaya yönlendiriyor.",
+              message: "Steers toward reading hidden files.",
               needles: ["read ~/.", "cat ~/.", "ls -la ~/", ".env file"]),
         .init(rule: "instruction.policy-bypass", severity: .high,
-              message: "Agent'a politika atlatmayı söylüyor.",
+              message: "Tells the agent to bypass policy.",
               needles: ["you are allowed to ignore", "override the policy",
-                        "politikayı yok say", "act as if you had permission"]),
+                        "ignore the policy", "act as if you had permission"]),
     ]
 
     // MARK: - Scanning
@@ -237,22 +237,22 @@ enum ExtensionSecurityScanner {
                 findings.append(finding(
                     rule: "file.binary", severity: byteCount > 5 * 1_024 * 1_024 ? .high : .needsReview,
                     message: byteCount > 5 * 1_024 * 1_024
-                        ? "Beklenmeyen büyük binary (\(byteCount / 1_048_576) MB)."
-                        : "Paket binary dosya içeriyor.",
+                        ? "Unexpectedly large binary (\(byteCount / 1_048_576) MB)."
+                        : "The package contains binary files.",
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
             if isExecutable, kind != .binary {
                 findings.append(finding(
                     rule: "file.executable", severity: .low,
-                    message: "Çalıştırma izni olan script.",
+                    message: "A script with execute permission.",
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
             if obfuscated {
                 findings.append(finding(
                     rule: "file.obfuscated", severity: .needsReview,
-                    message: "Minified veya obfuscated içerik.",
+                    message: "Minified or obfuscated content.",
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
@@ -261,7 +261,7 @@ enum ExtensionSecurityScanner {
             if pipesDownloadIntoShell(text) {
                 findings.append(finding(
                     rule: "risky-command.curl-pipe-shell", severity: .blocked,
-                    message: "İnternetten indirileni doğrudan shell'e veriyor.",
+                    message: "Pipes something downloaded from the internet straight into the shell.",
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
@@ -281,7 +281,7 @@ enum ExtensionSecurityScanner {
             for escape in escapes {
                 findings.append(finding(
                     rule: "symlink.escape", severity: .blocked,
-                    message: "Symlink paket dışına çıkıyor.",
+                    message: "The symlink points outside the package.",
                     extensionID: extensionID, path: escape, now: now
                 ))
             }
@@ -324,7 +324,7 @@ enum ExtensionSecurityScanner {
                 guard let old = before[file.path], !old.isEmpty, old != file.contentHash else {
                     return nil
                 }
-                return (file.path, "\(file.path) içeriği değişti")
+                return (file.path, "\(file.path)'s content changed")
             }
             .sorted { $0.path < $1.path }
     }
@@ -344,7 +344,7 @@ enum ExtensionSecurityScanner {
             .map { file in
                 finding(
                     rule: "binary.unsigned", severity: .high,
-                    message: "İmzasız binary: \(file.path)",
+                    message: "Unsigned binary: \(file.path)",
                     extensionID: report.extensionID, path: file.path, now: now
                 )
             }
@@ -385,7 +385,7 @@ enum ExtensionSecurityScanner {
         for path in newExecutables.sorted() {
             findings.append(finding(
                 rule: "diff.new-executable", severity: .needsReview,
-                message: "Update yeni çalıştırılabilir dosya ekledi.",
+                message: "The update added a new executable file.",
                 extensionID: extensionID, path: path, now: now
             ))
         }
@@ -396,7 +396,7 @@ enum ExtensionSecurityScanner {
         where scriptKinds.contains(file.kind) && !previousScripts.contains(file.path) {
             findings.append(finding(
                 rule: "diff.new-script", severity: .needsReview,
-                message: "Update yeni script ekledi.",
+                message: "The update added a new script.",
                 extensionID: extensionID, path: file.path, now: now
             ))
         }
@@ -406,7 +406,7 @@ enum ExtensionSecurityScanner {
         for domain in newDomains.sorted() {
             findings.append(finding(
                 rule: "diff.new-domain", severity: .needsReview,
-                message: "Update yeni ağ adresi ekledi: \(domain)",
+                message: "The update added a new network address: \(domain)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -415,7 +415,7 @@ enum ExtensionSecurityScanner {
         for rule in Set(current.findings.map(\.rule)).subtracting(previousRules).sorted() {
             findings.append(finding(
                 rule: "diff.permission-widened", severity: .needsReview,
-                message: "Update yeni riskli davranış ekledi: \(rule)",
+                message: "The update added new risky behaviour: \(rule)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -430,14 +430,14 @@ enum ExtensionSecurityScanner {
                 severity: writes ? .high : .needsReview,
                 message: writes
                     ? "Update yazma/silme yetkili tool ekledi: \(tool)"
-                    : "Update yeni tool ekledi: \(tool)",
+                    : "The update added a new tool: \(tool)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }
         for tool in removed.sorted() {
             findings.append(finding(
                 rule: "diff.removed-tool", severity: .info,
-                message: "Update tool kaldırdı: \(tool)",
+                message: "The update removed a tool: \(tool)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -445,7 +445,7 @@ enum ExtensionSecurityScanner {
         if let previousEntrypoint, let currentEntrypoint, previousEntrypoint != currentEntrypoint {
             findings.append(finding(
                 rule: "diff.entrypoint-changed", severity: .high,
-                message: "Entrypoint değişti: \(previousEntrypoint) → \(currentEntrypoint)",
+                message: "Entrypoint changed: \(previousEntrypoint) → \(currentEntrypoint)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -455,7 +455,7 @@ enum ExtensionSecurityScanner {
         for change in shellCommandChanges(from: previous, to: current) {
             findings.append(finding(
                 rule: "diff.shell-command-changed", severity: .needsReview,
-                message: "Shell komutu değişti: \(change.detail)",
+                message: "The shell command changed: \(change.detail)",
                 extensionID: extensionID, path: change.path, now: now
             ))
         }
@@ -464,7 +464,7 @@ enum ExtensionSecurityScanner {
            sourceIdentity(previousSource) != sourceIdentity(currentSource) {
             findings.append(finding(
                 rule: "diff.source-changed", severity: .blocked,
-                message: "Kaynak veya repo sahibi değişti: \(previousSource.label) → \(currentSource.label)",
+                message: "The source or repo owner changed: \(previousSource.label) → \(currentSource.label)",
                 extensionID: extensionID, path: nil, now: now
             ))
         }

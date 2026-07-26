@@ -6,41 +6,41 @@ struct AppearanceSettingsPage: View {
     @EnvironmentObject private var theme: ThemeStore
 
     var body: some View {
-        SettingsPage(title: "Tema ve Renkler") {
-            Section("Hazır temalar") {
+        SettingsPage(title: "Theme and Colours") {
+            Section("Built-in themes") {
                 Picker(selection: Binding(
                     get: { theme.palette.isLight },
                     set: { theme.apply(preset: $0 ? .light : .dark) }
                 )) {
-                    Text("Koyu").tag(false)
-                    Text("Açık").tag(true)
+                    Text("Dark").tag(false)
+                    Text("On").tag(true)
                 } label: {
-                    SettingsLabel(title: "Görünüm")
+                    SettingsLabel(title: "Appearance")
                 }
                 .pickerStyle(.segmented)
                 .settingsID("theme.preset")
             }
 
-            Section("Arayüz") {
+            Section("Interface") {
                 colorRow("Arka plan", \.bg)
                 colorRow("Panel", \.panel)
-                colorRow("Kenarlık", \.border)
-                colorRow("Metin", \.text)
-                colorRow("Soluk metin", \.textDim)
+                colorRow("Border", \.border)
+                colorRow("Text", \.text)
+                colorRow("Dim text", \.textDim)
             }
 
-            Section("Sağlayıcılar") {
+            Section("Providers") {
                 colorRow("Claude rengi", \.claude)
                 colorRow("Codex rengi", \.codex)
             }
 
             Section {
-                colorRow("Terminal arka planı", \.terminalBg)
+                colorRow("Terminal background", \.terminalBg)
                 colorRow("Terminal metni", \.terminalFg)
             } header: {
                 Text("Terminal")
             } footer: {
-                SettingsNote("Terminal renkleri yeni açılan oturumlarda geçerli olur.")
+                SettingsNote("Terminal colours apply to newly opened sessions.")
             }
         }
     }

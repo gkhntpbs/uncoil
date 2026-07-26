@@ -64,7 +64,7 @@ struct ExtensionSearchResults: View {
             .map { repository in
                 Row(
                     id: "source:\(repository)", icon: "brand-github", title: repository,
-                    detail: "Kaynak deposu", section: .sources, packageID: nil
+                    detail: "Source repo", section: .sources, packageID: nil
                 )
             }
 
@@ -114,9 +114,9 @@ struct ExtensionSearchResults: View {
             ("Skill", skills),
             ("MCP server", servers),
             ("Agent", agents),
-            ("Kaynak", sources),
-            ("Güvenlik bulgusu", findings),
-            ("Güncelleme", updates),
+            ("Source", sources),
+            ("Security finding", findings),
+            ("Update", updates),
             ("Etkinlik", Array(events)),
         ].filter { !$0.1.isEmpty }
     }
@@ -126,10 +126,10 @@ struct ExtensionSearchResults: View {
         VStack(alignment: .leading, spacing: 18) {
             if groups.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Sonuç yok")
+                    Text("No result")
                         .font(Theme.mono(12, .semibold))
                         .foregroundStyle(Theme.text)
-                    Text("\"\(query)\" hiçbir extension, agent, kaynak, bulgu veya kayıtla eşleşmedi.")
+                    Text("“\(query)” matched no extension, agent, source, finding or record.")
                         .font(Theme.mono(10.5))
                         .foregroundStyle(Theme.textFaint)
                 }

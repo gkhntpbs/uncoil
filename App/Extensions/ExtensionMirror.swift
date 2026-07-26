@@ -12,7 +12,7 @@ struct ExtensionMirror {
         let command: String
         let message: String
         var errorDescription: String? {
-            message.isEmpty ? "git \(command) başarısız" : message
+            message.isEmpty ? "git \(command) failed" : message
         }
     }
 
@@ -70,7 +70,7 @@ struct ExtensionMirror {
         ])
         let sha = output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard sha.count >= 7 else {
-            throw Failure(command: "rev-parse", message: "\(ref) çözümlenemedi")
+            throw Failure(command: "rev-parse", message: "\(ref) could not be resolved")
         }
         return sha
     }
@@ -170,7 +170,7 @@ struct ExtensionMirror {
             if let subpath, !subpath.isEmpty {
                 contentRoot = staging.appendingPathComponent(subpath, isDirectory: true)
                 guard FileManager.default.fileExists(atPath: contentRoot.path) else {
-                    throw Failure(command: "archive", message: "\(subpath) bu commit'te yok")
+                    throw Failure(command: "archive", message: "\(subpath) is not in this commit")
                 }
             }
             try FileManager.default.moveItem(at: contentRoot, to: destination)

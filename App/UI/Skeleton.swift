@@ -60,7 +60,7 @@ struct SkeletonRows: View {
             }
         }
         .accessibilityElement()
-        .accessibilityLabel("Yükleniyor")
+        .accessibilityLabel("Loading")
     }
 }
 
@@ -81,6 +81,6 @@ struct SkeletonListRows: View {
             }
         }
         .accessibilityElement()
-        .accessibilityLabel("Yükleniyor")
+        .accessibilityLabel("Loading")
     }
 }

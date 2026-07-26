@@ -35,14 +35,14 @@ struct SessionGroupView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("group.container")
         .confirmationDialog(
-            "\(targetIDs.count) oturum silinsin mi?",
+            "Delete \(targetIDs.count) sessions?",
             isPresented: $showDelete,
             titleVisibility: .visible
         ) {
-            Button("Oturumları Sil", role: .destructive) { deleteTargets() }
-            Button("Vazgeç", role: .cancel) {}
+            Button("Delete Sessions", role: .destructive) { deleteTargets() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Çalışan süreçler kapatılır ve kayıtlar geri alınamaz.")
+            Text("Running processes are closed and the recordings cannot be recovered.")
         }
     }
 
@@ -70,12 +70,12 @@ struct SessionGroupView: View {
                 Text(group.name)
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
-                Text("\(records.count) oturum · \(project.name)")
+                Text("\(records.count) sessions · \(project.name)")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
-            Button("Grubu Sil") {
+            Button("Delete Group") {
                 projectStore.removeGroup(group.id)
                 selectedSessionIDs.removeAll()
                 selection = .project(project.id)
@@ -94,18 +94,18 @@ struct SessionGroupView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("TOPLU YÖNETİM")
+                    Text("BULK MANAGEMENT")
                         .font(Theme.mono(10, .semibold))
                         .foregroundStyle(Theme.textDim)
                         .kerning(0.6)
                     Text(selectedSessionIDs.isEmpty
-                         ? "İşlemler gruptaki tüm oturumlara uygulanır."
-                         : "İşlemler seçili \(targetIDs.count) oturuma uygulanır.")
+                         ? "Actions apply to every session in the group."
+                         : "Actions apply to the \(targetIDs.count) selected sessions.")
                         .font(Theme.mono(10))
                         .foregroundStyle(Theme.textFaint)
                 }
                 Spacer()
-                Button(selectedSessionIDs.isEmpty ? "Tümünü Seç" : "Seçimi Temizle") {
+                Button(selectedSessionIDs.isEmpty ? "Select All" : "Clear Selection") {
                     if selectedSessionIDs.isEmpty {
                         selectedSessionIDs = Set(records.map(\.id))
                     } else {
@@ -130,21 +130,21 @@ struct SessionGroupView: View {
                 .accessibilityIdentifier("group.prompt")
 
             HStack(spacing: 8) {
-                Button("Tümüne Gönder") { sendPrompt() }
+                Button("Send to All") { sendPrompt() }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                               || targetIDs.isEmpty)
                     .accessibilityIdentifier("group.send")
-                Button("Kes") { interruptTargets() }
+                Button("Interrupt") { interruptTargets() }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(targetIDs.isEmpty)
                     .accessibilityIdentifier("group.interrupt")
-                Button("Yeniden Başlat") { restartTargets() }
+                Button("Restart") { restartTargets() }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(targetIDs.isEmpty)
                     .accessibilityIdentifier("group.restart")
                 Spacer()
-                Button("Sil", role: .destructive) { showDelete = true }
+                Button("Delete", role: .destructive) { showDelete = true }
                     .buttonStyle(GhostButtonStyle())
                     .disabled(targetIDs.isEmpty)
                     .accessibilityIdentifier("group.deleteSessions")
@@ -157,7 +157,7 @@ struct SessionGroupView: View {
     private var sessionsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("OTURUMLAR")
+                Text("SESSIONS")
                     .font(Theme.mono(10, .semibold))
                     .foregroundStyle(Theme.textDim)
                     .kerning(0.6)
@@ -169,7 +169,7 @@ struct SessionGroupView: View {
             .padding(12)
 
             if records.isEmpty {
-                Text("Bu grupta oturum yok. Kenar çubuğundan oturumları buraya sürükleyebilirsin.")
+                Text("No sessions in this group. Drag sessions here from the sidebar.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
@@ -213,7 +213,7 @@ struct SessionGroupView: View {
             }
             Spacer()
             StatusOrb(status: sessionStore.status(of: record.id), size: 11)
-            Button("Aç") {
+            Button("Open") {
                 selectedSessionIDs.removeAll()
                 selection = .session(record.id)
             }
@@ -227,7 +227,7 @@ struct SessionGroupView: View {
                     .foregroundStyle(Theme.textDim)
             }
             .buttonStyle(.plain)
-            .help("Gruptan çıkar")
+            .help("Remove from group")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)

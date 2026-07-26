@@ -15,7 +15,7 @@ struct AccountsSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: "Hesaplar",
-            subtitle: "Her hesap kendi config klasörünü kullanır; aynı sağlayıcıda iş ve kişisel oturumları ayrı tutabilirsin."
+            subtitle: "Each account uses its own config folder, so work and personal sessions on the same provider stay apart."
         ) {
             ForEach(providers) { provider in
                 Section {
@@ -25,31 +25,31 @@ struct AccountsSettingsPage: View {
 
                     if addingFor == provider {
                         SettingsTextField(
-                            title: "Yeni hesap",
-                            detail: "Kendi config klasörüyle ayrı bir profil oluşturulur.",
-                            prompt: "ör. İş, Kişisel",
+                            title: "New account",
+                            detail: "A separate profile is created, with its own config folder.",
+                            prompt: "e.g. Work, Personal",
                             text: $newAccountName,
                             onSubmit: { commit(provider) }
                         )
                         .settingsID("accounts.newName.\(provider.rawValue)")
 
                         HStack {
-                            Button("Ekle") { commit(provider) }
+                            Button("Add") { commit(provider) }
                                 .buttonStyle(.borderedProminent)
                                 .disabled(newAccountName.trimmingCharacters(in: .whitespaces).isEmpty)
-                            Button("Vazgeç") { addingFor = nil }
+                            Button("Cancel") { addingFor = nil }
                             Spacer()
                         }
                     }
                 } header: {
                     HStack {
-                        Text("\(provider.displayName) hesapları")
+                        Text("\(provider.displayName) accounts")
                         Spacer()
                         Button {
                             addingFor = provider
                             newAccountName = ""
                         } label: {
-                            Label("Hesap ekle", systemImage: "plus")
+                            Label("Add an account", systemImage: "plus")
                                 .labelStyle(.iconOnly)
                         }
                         .buttonStyle(.borderless)
@@ -85,14 +85,14 @@ private struct AccountRow: View {
                 HStack(spacing: 6) {
                     Text(profile.name)
                     if isDefault {
-                        Text("varsayılan")
+                        Text("default")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 1)
                             .background(Theme.highlightMuted, in: Capsule())
                     }
                 }
-                Text(email ?? "giriş yapılmamış — oturum başlatınca sağlayıcının login akışı açılır")
+                Text(email ?? "not signed in — starting a session opens the provider's login flow")
                     .font(.caption)
                     .foregroundStyle(email == nil ? Theme.textFaint : Theme.ok)
                     .fixedSize(horizontal: false, vertical: true)
@@ -100,17 +100,17 @@ private struct AccountRow: View {
         } control: {
             HStack(spacing: 8) {
                 if profile.provider.loginCommand != nil, email == nil {
-                    Button("Giriş Yap") { showLogin = true }
+                    Button("Sign In") { showLogin = true }
                         .settingsID("account.loginButton.\(profile.name)")
                 }
                 if !isDefault {
-                    Button("Varsayılan yap") { settings.setDefaultAccount(profile) }
+                    Button("Make default") { settings.setDefaultAccount(profile) }
                 }
                 if profile.directoryName != nil {
                     Button(role: .destructive) {
                         settings.removeAccount(profile)
                     } label: {
-                        Label("Sil", systemImage: "trash").labelStyle(.iconOnly)
+                        Label("Delete", systemImage: "trash").labelStyle(.iconOnly)
                     }
                     .buttonStyle(.borderless)
                 }
@@ -139,8 +139,8 @@ struct CLIToolsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "CLI Araçları",
-            subtitle: "Kurulu sürümleri kontrol et ve tek tıkla güncelle."
+            title: "CLI Tools",
+            subtitle: "Check the installed versions and update with one click."
         ) {
             Section {
                 ForEach(providers) { provider in
@@ -155,10 +155,10 @@ struct CLIToolsSettingsPage: View {
                         if settings.cliChecking {
                             HStack(spacing: 6) {
                                 ProgressView().controlSize(.small)
-                                Text("Kontrol ediliyor…")
+                                Text("Checking…")
                             }
                         } else {
-                            Text("Güncellemeleri Kontrol Et")
+                            Text("Check for Updates")
                         }
                     }
                     .disabled(settings.cliChecking)
@@ -166,10 +166,10 @@ struct CLIToolsSettingsPage: View {
                 }
             }
 
-            Section("Bulunan yollar") {
+            Section("Paths found") {
                 ForEach(providers) { provider in
                     LabeledContent(provider.displayName) {
-                        Text(settings.binaryPath(for: provider) ?? "bulunamadı")
+                        Text(settings.binaryPath(for: provider) ?? "not found")
                             .font(.caption.monospaced())
                             .foregroundStyle(
                                 settings.binaryPath(for: provider) == nil
@@ -212,7 +212,7 @@ private struct CLIToolRow: View {
                         }
                     }
                     Text(settings.cliVersions[provider.rawValue]
-                         ?? (path == nil ? "kurulu değil" : "sürüm okunuyor…"))
+                         ?? (path == nil ? "not installed" : "reading the version…"))
                         .font(.caption)
                         .foregroundStyle(path == nil ? Theme.danger : Theme.textFaint)
                 }
@@ -220,21 +220,21 @@ private struct CLIToolRow: View {
                 if updating {
                     HStack(spacing: 6) {
                         ProgressView().controlSize(.small)
-                        Text("güncelleniyor…").font(.caption).foregroundStyle(Theme.textDim)
+                        Text("updating…").font(.caption).foregroundStyle(Theme.textDim)
                     }
                 } else if settings.updateAvailable(for: provider) {
                     HStack(spacing: 8) {
                         if let latest = settings.cliLatest[provider.rawValue] {
-                            Text("yeni: \(latest)").font(.caption).foregroundStyle(Theme.warn)
+                            Text("new: \(latest)").font(.caption).foregroundStyle(Theme.warn)
                         }
-                        Button("Güncelle") { Task { await settings.updateCLI(provider) } }
+                        Button("Update") { Task { await settings.updateCLI(provider) } }
                             .buttonStyle(.borderedProminent)
                             .disabled(path == nil)
                     }
                 } else if path != nil {
-                    SettingsStatusLine(level: .ok, text: "güncel")
+                    SettingsStatusLine(level: .ok, text: "up to date")
                 } else {
-                    SettingsStatusLine(level: .error, text: "kurulu değil")
+                    SettingsStatusLine(level: .error, text: "not installed")
                 }
             }
 
@@ -257,14 +257,14 @@ struct LaunchArgumentsSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: "Çalıştırma Parametreleri",
-            subtitle: "Agent başlatılırken komuta eklenir; bir sonraki oturumdan itibaren geçerli."
+            title: "Run Parameters",
+            subtitle: "Appended to the launch command; applies from the next session on."
         ) {
             Section {
                 ForEach(providers) { provider in
                     SettingsTextField(
                         title: provider.displayName,
-                        prompt: provider == .claude ? "ör. --model opus" : "ör. --full-auto",
+                        prompt: provider == .claude ? "e.g. --model opus" : "e.g. --full-auto",
                         text: Binding(
                             get: { settings.extraArguments[provider.rawValue] ?? "" },
                             set: { settings.extraArguments[provider.rawValue] = $0 }
@@ -288,7 +288,7 @@ struct AgentBehaviorSettingsPage: View {
     private let providers: [AgentProvider] = [.claude, .codex]
 
     var body: some View {
-        SettingsPage(title: "Mod ve Klavye") {
+        SettingsPage(title: "Mode and Keyboard") {
             Section {
                 ForEach(providers) { provider in
                     Picker(selection: Binding(
@@ -307,9 +307,9 @@ struct AgentBehaviorSettingsPage: View {
                     .settingsID("agentBehavior.workingMode.\(provider.rawValue)")
                 }
             } header: {
-                Text("Varsayılan agent modu")
+                Text("Default agent mode")
             } footer: {
-                SettingsNote("Yeni oturumlar seçilen modda başlar; açık oturumlar etkilenmez.")
+                SettingsNote("New sessions start in the selected mode; open sessions are unaffected.")
             }
 
             Section {
@@ -320,17 +320,17 @@ struct AgentBehaviorSettingsPage: View {
                     )) {
                         SettingsLabel(
                             title: provider.displayName,
-                            detail: "Shift+Enter yeni satır"
+                            detail: "Shift+Enter for a newline"
                         )
                     }
                     .settingsID("agentBehavior.shiftEnter.\(provider.rawValue)")
                 }
             } header: {
-                Text("Klavye davranışı")
+                Text("Keyboard behaviour")
             } footer: {
                 SettingsNote(
-                    "Shift+Enter (ve Option+Enter) prompt içinde satır atlar; agent'a gönderim "
-                    + "yerine ters bölü + satır başı (\\⏎) yollar. Açık oturumlara anında uygulanır."
+                    "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent "
+                    + "sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately."
                 )
             }
         }
@@ -353,7 +353,7 @@ struct SessionPresetsSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: "Session Presetleri",
-            subtitle: "Alt agent’ların sağlayıcı, başlangıç promptu ve yetki sınırlarını düzenle."
+            subtitle: "Set the provider, opening prompt and permission bounds for child agents."
         ) {
             Section {
                 ForEach(settings.presets) { preset in
@@ -366,14 +366,14 @@ struct SessionPresetsSettingsPage: View {
                         }
                     } control: {
                         HStack(spacing: 8) {
-                            Button("Düzenle") {
+                            Button("Edit") {
                                 editorRequest = PresetEditorRequest(preset: preset)
                             }
                             .settingsID("presets.edit.\(preset.id)")
                             Button(role: .destructive) {
                                 settings.removePreset(id: preset.id)
                             } label: {
-                                Label("Sil", systemImage: "trash").labelStyle(.iconOnly)
+                                Label("Delete", systemImage: "trash").labelStyle(.iconOnly)
                             }
                             .buttonStyle(.borderless)
                             .settingsID("presets.delete.\(preset.id)")
@@ -382,13 +382,13 @@ struct SessionPresetsSettingsPage: View {
                 }
             } footer: {
                 HStack {
-                    Button("Varsayılanlara Dön") { settings.resetPresets() }
+                    Button("Back to Defaults") { settings.resetPresets() }
                         .settingsID("presets.reset")
                     Spacer()
                     Button {
                         editorRequest = PresetEditorRequest(preset: nil)
                     } label: {
-                        Label("Preset Ekle", systemImage: "plus")
+                        Label("Add Preset", systemImage: "plus")
                     }
                     .settingsID("presets.add")
                 }
@@ -445,18 +445,18 @@ private struct SessionPresetEditorSheet: View {
                 Section {
                     SettingsTextField(
                         title: "Kimlik",
-                        detail: "Değiştirilemez; alt agent’lar preseti bu adla ister.",
-                        prompt: "ör. reviewer",
+                        detail: "Cannot be changed; child agents ask for the preset by this name.",
+                        prompt: "e.g. reviewer",
                         text: $id,
                         monospaced: true
                     )
                     .disabled(preset != nil)
                     .settingsID("presets.editor.id")
 
-                    SettingsTextField(title: "Ad", prompt: "ör. Kod İnceleyici", text: $name)
+                    SettingsTextField(title: "Name", prompt: "e.g. Code Reviewer", text: $name)
                         .settingsID("presets.editor.name")
 
-                    Picker("Sağlayıcı", selection: $provider) {
+                    Picker("Provider", selection: $provider) {
                         ForEach([AgentProvider.claude, .codex]) { candidate in
                             Text(candidate.displayName).tag(candidate)
                         }
@@ -470,10 +470,10 @@ private struct SessionPresetEditorSheet: View {
                     )
                 }
 
-                Section("Başlatma") {
+                Section("Startup") {
                     SettingsTextField(
-                        title: "CLI argümanları",
-                        detail: "Satır başına bir argüman.",
+                        title: "CLI arguments",
+                        detail: "One argument per line.",
                         prompt: "--model opus",
                         text: $argumentsText,
                         monospaced: true,
@@ -481,14 +481,14 @@ private struct SessionPresetEditorSheet: View {
                     )
 
                     SettingsTextField(
-                        title: "Başlangıç promptu",
-                        detail: "Oturum açılır açılmaz agent’a gönderilir.",
+                        title: "Opening prompt",
+                        detail: "Sent to the agent the moment the session opens.",
                         text: $prompt,
                         lineLimit: 3...6
                     )
                 }
 
-                Section("Yetkiler") {
+                Section("Grants") {
                     ForEach(CapabilityCatalog.all) { capability in
                         Toggle(isOn: Binding(
                             get: { capabilities.contains(capability.key) },
@@ -512,9 +512,9 @@ private struct SessionPresetEditorSheet: View {
 
             HStack {
                 Spacer()
-                Button("Vazgeç") { dismiss() }
+                Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button("Kaydet") {
+                Button("Save") {
                     onSave(SessionPreset(
                         id: normalizedID,
                         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -539,6 +539,6 @@ private struct SessionPresetEditorSheet: View {
             .padding(16)
         }
         .frame(width: 560, height: 620)
-        .navigationTitle(preset == nil ? "Preset Ekle" : "Preset Düzenle")
+        .navigationTitle(preset == nil ? "Add Preset" : "Edit Preset")
     }
 }

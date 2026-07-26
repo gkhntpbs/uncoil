@@ -17,11 +17,11 @@ struct MCPProcessHealth: Identifiable, Equatable {
 
         var label: String {
             switch self {
-            case .running: "Çalışıyor"
+            case .running: "Running"
             case .stopped: "Durdu"
-            case .crashed: "Çöktü"
-            case .crashLoop: "Sürekli çöküyor"
-            case .neverStarted: "Hiç başlamadı"
+            case .crashed: "Crashed"
+            case .crashLoop: "Crashing repeatedly"
+            case .neverStarted: "Never started"
             }
         }
     }
@@ -157,7 +157,7 @@ struct MCPProcessSupervisor {
                 }(),
                 detail: health.state.label,
                 remedy: health.state == .crashLoop
-                    ? "Logları incele; düzelene kadar yeniden başlatma."
+                    ? "Look at the logs; do not restart until it is fixed."
                     : nil,
                 checkedAt: now
             ),
@@ -165,10 +165,10 @@ struct MCPProcessSupervisor {
         if health.needsRestart {
             results.append(HealthCheckResult(
                 id: "process.\(health.id).stale",
-                name: "Eski revision",
+                name: "Old revision",
                 outcome: .warning,
-                detail: "\(health.stalePIDs.count) process eski revision ile çalışıyor.",
-                remedy: "Restart now ile yeni revision'a geç.",
+                detail: "\(health.stalePIDs.count) processes are running an old revision.",
+                remedy: "Move to the new revision with Restart now.",
                 checkedAt: now
             ))
         }

@@ -233,7 +233,7 @@ final class ExtensionRegistry: ObservableObject {
         save()
         record(AuditEvent(
             kind: .assignmentChanged, extensionID: packageID, agent: agent,
-            detail: isEnabled ? "atandı" : "kaldırıldı"
+            detail: isEnabled ? "assigned" : "removed"
         ))
     }
 
@@ -274,7 +274,7 @@ final class ExtensionRegistry: ObservableObject {
         save()
         record(AuditEvent(
             kind: .quarantined, extensionID: packageID,
-            detail: "karantinaya alındı: \(reason)"
+            detail: "quarantined: \(reason)"
                 + (findingID.map { " (bulgu \($0))" } ?? "")
                 + "; dosyalar silinmedi"
         ))
@@ -293,13 +293,13 @@ final class ExtensionRegistry: ObservableObject {
         var filesKept: Bool
 
         var summary: String {
-            var parts: [String] = ["karantinaya alındı"]
+            var parts: [String] = ["quarantined"]
             if !disabledAgents.isEmpty {
                 parts.append(
-                    "kapatıldı: " + disabledAgents.map(\.displayName).joined(separator: ", ")
+                    "closed: " + disabledAgents.map(\.displayName).joined(separator: ", ")
                 )
             }
-            if unlinked { parts.append("bağlantılar kaldırıldı") }
+            if unlinked { parts.append("links removed") }
             parts.append("dosyalar korundu")
             return parts.joined(separator: " · ")
         }
@@ -341,7 +341,7 @@ final class ExtensionRegistry: ObservableObject {
         record(AuditEvent(
             kind: .assignmentChanged, extensionID: binding.extensionID,
             agent: binding.agent,
-            detail: binding.isGlobal ? "global atama" : "proje ataması"
+            detail: binding.isGlobal ? "global atama" : "project assignment"
         ))
     }
 
@@ -512,7 +512,7 @@ final class ExtensionRegistry: ObservableObject {
         guard scan.isUsableAsCurrentState else {
             record(AuditEvent(
                 kind: .scanCompleted,
-                detail: "Bumblebee taraması kullanılmadı: \(scan.unusableReason ?? "bilinmiyor")"
+                detail: "Bumblebee's scan was not used: \(scan.unusableReason ?? "unknown")"
             ))
             save()
             return false
@@ -595,11 +595,11 @@ final class ExtensionRegistry: ObservableObject {
             processHealth[health.id] = health
             lastHealthCheckAt[health.id] = now
             if let exitCode = health.lastExitCode, exitCode != 0 {
-                lastErrors[health.id] = "çıkış kodu \(exitCode)"
+                lastErrors[health.id] = "exit code \(exitCode)"
             } else if let signal = health.lastSignal {
-                lastErrors[health.id] = "sinyal \(signal) ile sonlandı"
+                lastErrors[health.id] = "ended with signal \(signal)"
             } else if health.crashCount > 0 {
-                lastErrors[health.id] = "\(health.crashCount) kez çöktü"
+                lastErrors[health.id] = "Crashed \(health.crashCount) times"
             }
         }
     }
@@ -641,7 +641,7 @@ final class ExtensionRegistry: ObservableObject {
         let stopped = MCPProcessSupervisor().shutdown(health)
         record(AuditEvent(
             kind: .mcpEnabled, extensionID: package.id,
-            detail: "\(stopped.count) süreç durduruldu; agent yeniden başlatacak"
+            detail: "\(stopped.count) processes stopped; the agent will restart them"
         ))
         return stopped.count
     }
@@ -663,7 +663,7 @@ final class ExtensionRegistry: ObservableObject {
         )
         record(AuditEvent(
             kind: .configChanged, extensionID: packageID,
-            detail: "takip değişti: \(previous.label) → \(tracking.label)"
+            detail: "tracking changed: \(previous.label) → \(tracking.label)"
         ))
         save()
         return true
@@ -690,10 +690,10 @@ final class ExtensionRegistry: ObservableObject {
         switch event.kind {
         case .quarantined:
             setState(.active, packageID: extensionID)
-            return "Karantina geri alındı."
+            return "The quarantine was undone."
         case .restored:
             setState(.quarantined, packageID: extensionID)
-            return "Geri yükleme geri alındı; paket yeniden karantinada."
+            return "The restore was undone; the package is quarantined again."
         case .assignmentChanged:
             // The detail carries the agent and the direction it moved.
             guard let agent = ExtensionAgentID.allCases.first(where: {
@@ -701,14 +701,14 @@ final class ExtensionRegistry: ObservableObject {
             }) else { return nil }
             let isOn = agents(for: extensionID).contains(agent)
             setAgentBinding(!isOn, packageID: extensionID, agent: agent)
-            return "Atama geri alındı: \(agent.displayName)."
+            return "Assignment withdrawn: \(agent.displayName)."
         case .findingAccepted:
             guard let index = findings.firstIndex(where: {
                 $0.extensionID == extensionID && $0.isAccepted
             }) else { return nil }
             findings[index].isAccepted = false
             save()
-            return "Bulgu kabulü geri alındı."
+            return "Finding acceptance undone."
         case .updateApplied:
             return nil
         default:
@@ -799,24 +799,24 @@ final class ExtensionRegistry: ObservableObject {
 
         results.append(HealthCheckResult(
             id: "health.agents",
-            name: "Agent kurulumları",
+            name: "Agent installations",
             outcome: installations.isEmpty ? .failure : .ok,
             detail: installations.isEmpty
-                ? "Yönetilebilir agent bulunamadı."
+                ? "No manageable agent found."
                 : installations.map { $0.agent.displayName }.joined(separator: ", "),
-            remedy: installations.isEmpty ? "Claude Code veya Codex kur." : nil,
+            remedy: installations.isEmpty ? "Install Claude Code or Codex." : nil,
             checkedAt: now
         ))
 
         let broken = brokenPackages
         results.append(HealthCheckResult(
             id: "health.links",
-            name: "Symlink sağlığı",
+            name: "Symlink health",
             outcome: broken.isEmpty ? .ok : .failure,
             detail: broken.isEmpty
-                ? "Tüm bağlantılar yerinde."
-                : "\(broken.count) extension bozuk bağlantıya sahip.",
-            remedy: broken.isEmpty ? nil : "Repair ile onar.",
+                ? "Every link is in place."
+                : "\(broken.count) extensions have a broken link.",
+            remedy: broken.isEmpty ? nil : "Fix it with Repair.",
             checkedAt: now
         ))
 
@@ -825,7 +825,7 @@ final class ExtensionRegistry: ObservableObject {
             id: "health.drift",
             name: "Config drift",
             outcome: drift == 0 ? .ok : .warning,
-            detail: drift == 0 ? "Kayıtla eşleşiyor." : "\(drift) sapma.",
+            detail: drift == 0 ? "Matches the record." : "\(drift) sapma.",
             remedy: drift == 0 ? nil : "Diff'i incele; gerekirse rollback yap.",
             checkedAt: now
         ))
@@ -833,12 +833,12 @@ final class ExtensionRegistry: ObservableObject {
         let blocking = openFindings.filter { $0.severity >= .high }
         results.append(HealthCheckResult(
             id: "health.security",
-            name: "Güvenlik bulguları",
+            name: "Security findings",
             outcome: blocking.isEmpty ? .ok : (blocking.contains { $0.severity == .blocked } ? .failure : .warning),
             detail: openFindings.isEmpty
-                ? "Açık bulgu yok."
-                : "\(openFindings.count) açık bulgu, \(blocking.count) yüksek.",
-            remedy: blocking.isEmpty ? nil : "Security ekranından incele.",
+                ? "No open findings."
+                : "\(openFindings.count) open findings, \(blocking.count) of them high.",
+            remedy: blocking.isEmpty ? nil : "Review it on the Security screen.",
             checkedAt: now
         ))
 
@@ -853,7 +853,7 @@ final class ExtensionRegistry: ObservableObject {
                 id: "health.remote",
                 name: "Remote MCP",
                 outcome: .notApplicable,
-                detail: "\(remote.count) uzak sunucu; sürüm sunucudan gelir.",
+                detail: "\(remote.count) remote servers; the version comes from the server.",
                 remedy: nil,
                 checkedAt: now
             ))

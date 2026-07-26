@@ -14,7 +14,7 @@ struct AboutSettingsPage: View {
     }
 
     var body: some View {
-        SettingsPage(title: "Hakkında") {
+        SettingsPage(title: "About") {
             Section {
                 LabeledContent("Uncoil", value: version)
                 LabeledContent("Bundle", value: Bundle.main.bundleIdentifier ?? "—")
@@ -24,14 +24,14 @@ struct AboutSettingsPage: View {
                 AdaptiveRow {
                     SettingsLabel(
                         title: "Debug paketi",
-                        detail: "Logları ve yapılandırmayı tek dosyada toplar; hassas içerik ayıklanır."
+                        detail: "Collects the logs and the configuration into one file; sensitive content is stripped."
                     )
                 } control: {
-                    Button("Oluştur") { createDebugBundle() }
+                    Button("Create") { createDebugBundle() }
                         .settingsID("about.debugBundle")
                 }
             } header: {
-                Text("Destek")
+                Text("Support")
             } footer: {
                 if let debugBundleURL {
                     HStack {
@@ -39,7 +39,7 @@ struct AboutSettingsPage: View {
                             .font(.caption.monospaced())
                             .foregroundStyle(Theme.textDim)
                         Spacer()
-                        Button("Finder’da Göster") {
+                        Button("Show in Finder") {
                             NSWorkspace.shared.activateFileViewerSelecting([debugBundleURL])
                         }
                     }

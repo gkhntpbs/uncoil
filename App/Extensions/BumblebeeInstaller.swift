@@ -57,19 +57,19 @@ struct BumblebeeInstaller {
         var errorDescription: String? {
             switch self {
             case .releaseUnreadable:
-                "GitHub sürüm bilgisi okunamadı."
+                "The GitHub release information could not be read."
             case .noBuildForArchitecture(let architecture):
-                "Bu sürümde macOS \(architecture) yapısı yok."
+                "This release has no macOS \(architecture) build."
             case .checksumMissing(let name):
-                "\(name) için yayınlanmış bir sağlama toplamı yok; kurulum yapılmadı."
+                "There is no published checksum for \(name); nothing was installed."
             case .checksumMismatch(let expected, let found):
-                "İndirilen dosya beklenen sağlama toplamıyla eşleşmiyor"
+                "The downloaded file does not match the expected checksum"
                     + " (beklenen \(expected.prefix(12))…, bulunan \(found.prefix(12))…);"
-                    + " dosya atıldı."
+                    + " file dropped."
             case .archiveHasNoBinary:
-                "Arşivin içinde bumblebee binary'si bulunamadı."
+                "No bumblebee binary inside the archive."
             case .notExecutable(let path):
-                "\(path) çalıştırılabilir değil."
+                "\(path) is not executable."
             }
         }
     }
@@ -85,14 +85,14 @@ struct BumblebeeInstaller {
 
         var label: String {
             switch self {
-            case .askingGitHub: "Sürüm bilgisi alınıyor…"
+            case .askingGitHub: "Reading the version…"
             case .downloading(let received, let total):
                 total.map {
-                    "İndiriliyor… \(Self.megabytes(received)) / \(Self.megabytes($0)) MB"
-                } ?? "İndiriliyor… \(Self.megabytes(received)) MB"
-            case .verifying: "Sağlama toplamı doğrulanıyor…"
-            case .unpacking: "Arşiv açılıyor…"
-            case .installing: "Yerine kopyalanıyor…"
+                    "Downloading… \(Self.megabytes(received)) / \(Self.megabytes($0)) MB"
+                } ?? "Downloading… \(Self.megabytes(received)) MB"
+            case .verifying: "Verifying the checksum…"
+            case .unpacking: "Unpacking the archive…"
+            case .installing: "Copying into place…"
             case .done(let version): "Kuruldu: \(version)"
             }
         }

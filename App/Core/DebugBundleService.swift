@@ -105,7 +105,7 @@ struct DebugBundleService {
             "/usr/bin/ditto",
             ["-c", "-k", "--sequesterRsrc", staging.path, destination.path]
         ) != nil, fileManager.fileExists(atPath: destination.path) else {
-            throw DebugBundleError.archiveFailed("Debug bundle arşivi oluşturulamadı.")
+            throw DebugBundleError.archiveFailed("The debug bundle archive could not be created.")
         }
         return Result(bundleURL: destination, includedFiles: included.sorted())
     }

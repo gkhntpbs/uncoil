@@ -258,7 +258,7 @@ final class TaskReviewResultTests: XCTestCase {
             findings: ["hata yolu ele alınmamış", "test yok"]
         )
         let prompt = review.feedbackPrompt(taskText: "daemon heartbeat ekle")
-        XCTAssertTrue(prompt.contains("Değişiklik istendi"))
+        XCTAssertTrue(prompt.contains("Changes requested"))
         XCTAssertTrue(prompt.contains("hata yolu ele alınmamış"))
         XCTAssertTrue(prompt.contains("test yok"))
         XCTAssertTrue(
@@ -270,7 +270,7 @@ final class TaskReviewResultTests: XCTestCase {
     func testAnApprovalDoesNotTellTheImplementerToStop() {
         let prompt = TaskReviewResult(taskID: "t1", verdict: .approved)
             .feedbackPrompt(taskText: "iş")
-        XCTAssertTrue(prompt.contains("Onaylandı"))
+        XCTAssertTrue(prompt.contains("Approved"))
         XCTAssertFalse(prompt.contains("Checkbox'ı şimdi işaretleme"))
     }
 

@@ -248,7 +248,7 @@ final class SkillTriggerHistoryTests: XCTestCase {
         history.record(result())
         XCTAssertEqual(history.entries.count, 1)
         XCTAssertEqual(history.entries[0].matchedNames, ["dataviz"])
-        XCTAssertEqual(history.entries[0].verdict, "Tek eşleşme")
+        XCTAssertEqual(history.entries[0].verdict, "One match")
 
         let reloaded = SkillTriggerHistory(layout: layout, isEnabled: true)
         XCTAssertEqual(reloaded.entries.count, 1)

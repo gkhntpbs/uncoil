@@ -26,13 +26,13 @@ enum ExtensionDiscoverySource: Equatable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .localFolder(let path): "Yerel klasör · \(path)"
+        case .localFolder(let path): "Local folder · \(path)"
         case .gitHubRepository(let repository, _, let reference):
             "GitHub · \(repository)\(reference.map { " @\($0)" } ?? "")"
         case .gitHubRelease(let repository, let tag, _): "GitHub release · \(repository) \(tag)"
         case .curatedRegistry(let name, _): "Registry · \(name)"
         case .agentSkillsDirectory(let agent, _): "\(agent.displayName) skill dizini"
-        case .bundled: "Uncoil ile gelen"
+        case .bundled: "Shipped with Uncoil"
         }
     }
 
@@ -371,14 +371,14 @@ enum ExtensionInstallGuard {
         var message: String {
             switch self {
             case .referenceNotResolved(let reference):
-                "\"\(reference)\" bir sürüm değil; kurulacak commit çözülemedi."
+                "“\(reference)” is not a version; the commit to install could not be resolved."
             case .blockedFinding(let message):
-                "Güvenlik bulgusu kurulumu engelliyor: \(message)"
+                "A security finding blocks the install: \(message)"
             case .executablesNotApproved(let paths):
-                "Çalıştırılabilir dosyalar onay bekliyor: "
+                "Executable files are waiting for approval: "
                     + paths.prefix(3).joined(separator: ", ")
             case .structureInvalid(let issues):
-                "Paket yapısı geçersiz: " + issues.prefix(2).joined(separator: ", ")
+                "The package layout is invalid: " + issues.prefix(2).joined(separator: ", ")
             }
         }
     }

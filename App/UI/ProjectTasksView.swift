@@ -80,7 +80,7 @@ struct ProjectTasksView: View {
             }
             if sources.sources.isEmpty {
                 // Before the first scan finishes there is nothing to say yet;
-                // "bulunamadı" belongs only to a scan that actually came back empty.
+                // "not found" belongs only to a scan that actually came back empty.
                 if !sources.hasLoadedOnce {
                     // The shape of what is coming — a list of tasks — instead of
                     // a spinner that says only that something is happening.
@@ -257,7 +257,7 @@ struct ProjectTasksView: View {
                 .accessibilityIdentifier("tasks.modePicker")
 
                 Menu {
-                    Button("Tüm kaynaklar (aggregate)") {
+                    Button("All sources (aggregate)") {
                         metadata.preferences.selectedSourcePath = nil
                         metadata.savePreferences()
                     }
@@ -272,7 +272,7 @@ struct ProjectTasksView: View {
                     Text(
                         preferences.selectedSourcePath
                             .flatMap { path in sources.sources.first { $0.path == path } }
-                            .map(\.displayPath) ?? "Tüm kaynaklar"
+                            .map(\.displayPath) ?? "All sources"
                     )
                     .font(Theme.mono(11, .medium))
                 }
@@ -282,7 +282,7 @@ struct ProjectTasksView: View {
 
                 Spacer()
 
-                Text("\(visibleTasks.filter { !$0.isDone }.count) açık / \(visibleTasks.count)")
+                Text("\(visibleTasks.filter { !$0.isDone }.count) open / \(visibleTasks.count)")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
 
@@ -291,14 +291,14 @@ struct ProjectTasksView: View {
                 } label: {
                     HStack(spacing: 5) {
                         TablerIcon(name: "plus", size: 12, color: Theme.text)
-                        Text("Yeni görev")
+                        Text("New task")
                             .font(Theme.mono(10.5, .medium))
                             .foregroundStyle(Theme.text)
                     }
                 }
                 .buttonStyle(.plain)
                 .disabled(selectedDocuments.isEmpty)
-                .help("TODO dosyasına yeni bir görev satırı ekle")
+                .help("Add a new task line to the TODO file")
                 .accessibilityIdentifier("tasks.newTask")
 
                 Button {
@@ -306,13 +306,13 @@ struct ProjectTasksView: View {
                 } label: {
                     HStack(spacing: 5) {
                         TablerIcon(name: "sitemap", size: 12, color: Theme.highlight)
-                        Text("Görevleri başlat…")
+                        Text("Start tasks…")
                             .font(Theme.mono(10.5, .medium))
                             .foregroundStyle(Theme.highlight)
                     }
                 }
                 .buttonStyle(.plain)
-                .help("Açık görevleri seç, agent'ını seç ve topluca başlat")
+                .help("Pick the open tasks, pick an agent, start them together")
                 .accessibilityIdentifier("tasks.runOrchestrator")
 
                 Button {
@@ -321,7 +321,7 @@ struct ProjectTasksView: View {
                     TablerIcon(name: "refresh", size: 12, color: Theme.textDim)
                 }
                 .buttonStyle(.plain)
-                .help("Kaynakları yeniden tara")
+                .help("Rescan sources")
                 .accessibilityIdentifier("tasks.refresh")
             }
 
@@ -363,7 +363,7 @@ struct ProjectTasksView: View {
                             .font(Theme.mono(9.5))
                             .foregroundStyle(Theme.textFaint)
                     }
-                    Text("değişiklik \(RelativeClock.short(since: source.lastReadAt))")
+                    Text("changed \(RelativeClock.short(since: source.lastReadAt))")
                         .font(Theme.mono(9.5))
                         .foregroundStyle(Theme.textFaint)
                     if let status = gitStatuses[source.path] {
@@ -375,7 +375,7 @@ struct ProjectTasksView: View {
                     if conflictTaskIDs.contains(where: { id in
                         sources.document(for: source.path)?.task(id: id) != nil
                     }) {
-                        Text("conflict — dosya salt okunur")
+                        Text("conflict — the file is read-only")
                             .font(Theme.mono(9.5, .semibold))
                             .foregroundStyle(Theme.warn)
                     }
@@ -405,7 +405,7 @@ struct ProjectTasksView: View {
             )
             .font(Theme.mono(9.5))
             .foregroundStyle(Theme.warn)
-            Button("Editörde aç") {
+            Button("Open in editor") {
                 settings.preferredEditor.open(URL(fileURLWithPath: source.path))
                 message = "\(source.displayPath):\(regions.first?.startLine ?? 1)"
             }
@@ -421,12 +421,12 @@ struct ProjectTasksView: View {
     private func changeLabel(_ change: TodoSourceChange) -> String {
         switch change {
         case .added: "eklendi"
-        case .unchanged: "değişmedi"
+        case .unchanged: "unchanged"
         case .checkboxesChanged(let ids): "\(ids.count) checkbox"
-        case .structureChanged: "yapı değişti"
-        case .missing: "kayıp"
+        case .structureChanged: "the layout changed"
+        case .missing: "lost"
         case .restored: "geri geldi"
-        case .moved(let from): "taşındı: \(URL(fileURLWithPath: from).lastPathComponent)"
+        case .moved(let from): "moved: \(URL(fileURLWithPath: from).lastPathComponent)"
         }
     }
 
@@ -455,10 +455,10 @@ struct ProjectTasksView: View {
     private var emptyState: some View {
         VStack(spacing: 8) {
             TablerIcon(name: "list-check", size: 22, color: Theme.textFaint)
-            Text("Bu projede TODO.md bulunamadı")
+            Text("No TODO.md found in this project")
                 .font(Theme.mono(11.5))
                 .foregroundStyle(Theme.textFaint)
-            Text("Kök veya alt klasörlere TODO.md ekleyince burada görünür.")
+            Text("Add a TODO.md to the root or a subfolder and it shows up here.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
         }
@@ -599,7 +599,7 @@ struct ProjectTasksView: View {
                     TablerIcon(name: "external-link", size: 11, color: Theme.textFaint)
                 }
                 .buttonStyle(.plain)
-                .help("Kaynak satırı aç: \(task.lineRange.startLine)")
+                .help("Open source line: \(task.lineRange.startLine)")
                 .accessibilityIdentifier("tasks.reveal.\(task.id)")
             }
             .padding(.leading, CGFloat(task.depth) * 16)
@@ -647,7 +647,7 @@ struct ProjectTasksView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 TablerIcon(name: "search", size: 12, color: Theme.textFaint)
-                TextField("Görev ara…", text: Binding(
+                TextField("Search tasks…", text: Binding(
                     get: { preferences.filter.query },
                     set: { metadata.preferences.filter.query = $0 }
                 ))
@@ -735,15 +735,15 @@ struct ProjectTasksView: View {
             if !task.isDone, assignments.isEmpty {
                 Menu {
                     ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
-                        Button("\(provider.displayName) ile başlat") {
+                        Button("Start with \(provider.displayName)") {
                             sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
                         }
                     }
-                    Button("Ayrıntılı gönder…") { dispatchTarget = (task, documentFor(task)) }
+                    Button("Send with details…") { dispatchTarget = (task, documentFor(task)) }
                 } label: {
                     HStack(spacing: 4) {
                         TablerIcon(name: "player-play", size: 10, color: Theme.highlight)
-                        Text("Başlat")
+                        Text("Start")
                             .font(Theme.mono(9.5, .medium))
                             .foregroundStyle(Theme.highlight)
                     }
@@ -771,7 +771,7 @@ struct ProjectTasksView: View {
         let document = selectedDocuments.first
         return VStack(alignment: .leading, spacing: 8) {
             if selectedDocuments.count != 1 {
-                Text("Kanban tek bir kaynak üzerinde çalışır; yukarıdan bir TODO.md seç.")
+                Text("Kanban works on a single source; pick a TODO.md above.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             }
@@ -821,14 +821,14 @@ struct ProjectTasksView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("Bu başlığı bir board durumuna eşle")
+                    .help("Map this heading to a board state")
                 }
             }
             ForEach(tasks) { task in
                 kanbanCard(task, in: document)
             }
             if tasks.isEmpty {
-                Text("boş")
+                Text("empty")
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
                     .padding(.vertical, 8)
@@ -956,7 +956,7 @@ struct ProjectTasksView: View {
         let grouped = Dictionary(grouping: metadata.document.assignments, by: \.sessionID)
         return VStack(alignment: .leading, spacing: 12) {
             if grouped.isEmpty {
-                Text("Henüz bir göreve session atanmadı.")
+                Text("No session has been assigned to a task yet.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, minHeight: 120)
@@ -976,7 +976,7 @@ struct ProjectTasksView: View {
                             Text(record?.displayTitle ?? String(sessionID.uuidString.prefix(8)))
                                 .font(Theme.mono(11.5, .semibold))
                                 .foregroundStyle(Theme.text)
-                            Text("\(assignments.count) görev")
+                            Text("\(assignments.count) tasks")
                                 .font(Theme.mono(9.5))
                                 .foregroundStyle(Theme.textFaint)
                             Spacer()
@@ -1024,7 +1024,7 @@ struct ProjectTasksView: View {
     private func taskText(_ assignment: TaskSessionAssignment) -> String {
         sources.document(for: assignment.sourcePath)?
             .task(id: assignment.taskID)?.text
-            ?? "görev bulunamadı"
+            ?? "task not found"
     }
 
 
@@ -1035,10 +1035,10 @@ struct ProjectTasksView: View {
     @ViewBuilder
     private func cardActions(_ task: ProjectTask, in document: TaskDocument) -> some View {
         Button("Send to Agent…") { dispatchTarget = (task, document) }
-        Button("\(settings.defaultProvider.displayName) ile başlat (hızlı)") {
+        Button("Start with \(settings.defaultProvider.displayName) (quick)") {
             sendToAgent(task, role: .implementer, reuseSession: true)
         }
-        Menu("Yeni oturumda başlat") {
+        Menu("Start in a new session") {
             ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
                 Button(provider.displayName) {
                     sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
@@ -1048,7 +1048,7 @@ struct ProjectTasksView: View {
         Menu("Assign Existing Session") {
             let candidates = projectStore.sessions(for: project.id)
             if candidates.isEmpty {
-                Text("Oturum yok")
+                Text("No session")
             }
             ForEach(candidates) { record in
                 Menu(record.displayTitle) {
@@ -1087,7 +1087,7 @@ struct ProjectTasksView: View {
             reviewOrTest(task, role: .tester, state: .testsFailing)
         }
         Button("Mark Blocked") {
-            metadata.setState(.blocked, taskID: task.id, detail: "Kullanıcı bloklandı olarak işaretledi")
+            metadata.setState(.blocked, taskID: task.id, detail: "You marked it blocked")
         }
         if task.isDone {
             Button("Reopen") {
@@ -1098,7 +1098,7 @@ struct ProjectTasksView: View {
             Button("Complete") { complete(task, in: document) }
         }
         if let review = results.latestReview(for: task.id), !review.findings.isEmpty {
-            Button("Review bulgularını session’a gönder") {
+            Button("Send the review findings to the session") {
                 sendReviewFeedback(review, task: task)
             }
         }
@@ -1117,7 +1117,7 @@ struct ProjectTasksView: View {
         Button("Show Diff") { showDiff(task) }
         if assignments.contains(where: \.needsRelinking) {
             Divider()
-            Button("Bu göreve yeniden bağla") {
+            Button("Reattach to this task") {
                 for assignment in assignments where assignment.needsRelinking {
                     metadata.rebind(assignmentID: assignment.id, to: task)
                 }
@@ -1148,7 +1148,7 @@ struct ProjectTasksView: View {
                 case .success(let worktree):
                     worktreePath = worktree.path
                 case .failure(let error):
-                    message = "Worktree oluşturulamadı: \(error.message)"
+                    message = "The worktree could not be created: \(error.message)"
                     return
                 }
             }
@@ -1196,7 +1196,7 @@ struct ProjectTasksView: View {
         AttentionStore.shared.report(
             kind: .input,
             title: "\(project.name) › \(task.text)",
-            detail: "\(request.role.label) olarak \(record.displayTitle) oturumuna atandı",
+            detail: "Assigned to the \(record.displayTitle) session as \(request.role.label)",
             projectID: project.id,
             sessionID: record.id,
             id: "task-assigned:\(assignment.id.uuidString)"
@@ -1214,7 +1214,7 @@ struct ProjectTasksView: View {
         ))
         deliver(prompt: prompt, to: record, autoStart: request.autoStart)
         if !request.autoStart {
-            message = "Prompt yazıldı; başlatmak için oturumda Enter'a bas."
+            message = "The prompt is typed in; press Enter in the session to start it."
         }
     }
 
@@ -1243,8 +1243,8 @@ struct ProjectTasksView: View {
                         launch: launch, autoStart: autoStart)
         }
         message = autoStart
-            ? "\(tasks.count) görev \(provider.displayName) oturumlarına gönderildi."
-            : "\(tasks.count) oturum açıldı; prompt'lar yazıldı, başlatmak sende."
+            ? "\(tasks.count) tasks were sent to \(provider.displayName) sessions."
+            : "\(tasks.count) sessions opened; the prompts are typed in, starting them is up to you."
     }
 
     private func sendToAgent(
@@ -1310,25 +1310,25 @@ struct ProjectTasksView: View {
         switch role {
         case .reviewer:
             return """
-            \(location) altındaki şu görevi review et. Uygulama yapma, bulgularını bildir.
+            Review the task below, under \(location). Do not implement anything; report your findings.
 
             \(body)
             """
         case .tester:
             return """
-            \(location) altındaki şu görev için testleri çalıştır ve sonucu bildir.
+            Run the tests for the task below, under \(location), and report the result.
 
             \(body)
             """
         case .orchestrator:
             return """
-            \(location) altındaki şu görevi alt görevlere bölerek yürüt. Gerekirse alt oturum aç ve sonuçları bana bildir.
+            Carry out the task below, under \(location), by breaking it into subtasks. Open child sessions if needed and report the results back to me.
 
             \(body)
             """
         case .owner, .implementer, .observer:
             return """
-            \(location) altındaki şu görevi uygula. Bitirdiğinde TODO.md'deki checkbox'ı işaretle.
+            Carry out the task below, under \(location). Tick the checkbox in TODO.md when you are done.
 
             \(body)
             """
@@ -1367,16 +1367,16 @@ struct ProjectTasksView: View {
         let path = worktree ?? project.rootPath
         var sections: [String] = []
         if let written = writtenDiffs[task.id] {
-            sections.append("# TODO.md değişikliği\n\(written)")
+            sections.append("# TODO.md change\n\(written)")
         }
         let git = worktreeDiff(path: path)
         if !git.isEmpty {
-            sections.append("# \(URL(fileURLWithPath: path).lastPathComponent) çalışma ağacı\n\(git)")
+            sections.append("# \(URL(fileURLWithPath: path).lastPathComponent) worktree\n\(git)")
         }
         diffPreview = (
             task,
             sections.isEmpty
-                ? "Bu görev için kayıtlı bir değişiklik yok."
+                ? "No recorded change for this task."
                 : sections.joined(separator: "\n\n")
         )
     }
@@ -1454,8 +1454,8 @@ struct ProjectTasksView: View {
         for transition in transitions {
             switch transition {
             case .becameConflicted(let path):
-                message = "\(URL(fileURLWithPath: path).lastPathComponent) conflict içeriyor; "
-                    + "düzenleme kapalı. Çözüp kaydedince otomatik yeniden okunur."
+                message = "\(URL(fileURLWithPath: path).lastPathComponent) contains a conflict; "
+                    + "editing is off. It is re-read automatically once you resolve and save it."
             case .resolved(let path):
                 resolved.append(path)
             }
@@ -1463,7 +1463,7 @@ struct ProjectTasksView: View {
         guard !resolved.isEmpty else { return }
         refresh()
         let names = resolved.map { URL(fileURLWithPath: $0).lastPathComponent }
-        message = "Conflict çözüldü: \(names.joined(separator: ", ")) yeniden okundu."
+        message = "Conflict resolved: \(names.joined(separator: ", ")) re-read."
     }
 
     /// Whether a source may be written. Refused while a conflict is unresolved.
@@ -1525,7 +1525,7 @@ struct ProjectTasksView: View {
     /// against the current content instead of clobbering it.
     private func createTask(_ text: String, under headingPath: [String], in document: TaskDocument) {
         guard isEditable(document.path) else {
-            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict içeriyor; önce çözülmeli."
+            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) contains a conflict; resolve it first."
             return
         }
         do {
@@ -1546,11 +1546,11 @@ struct ProjectTasksView: View {
             )
             switch outcome {
             case .written:
-                message = "Görev eklendi: \(text.prefix(60))"
+                message = "Task added: \(text.prefix(60))"
             case .recomputed:
-                message = "Dosya dışarıdan değişmişti; görev güncel içeriğe eklendi."
+                message = "The file had changed on disk; the task was added to the current content."
             case .conflict(let detail):
-                message = "Görev eklenemedi: \(detail)"
+                message = "The task could not be added: \(detail)"
             }
         } catch {
             message = error.localizedDescription
@@ -1569,7 +1569,7 @@ struct ProjectTasksView: View {
         guard isEditable(document.path) else {
             let regions = gitStatuses[document.path]?.conflicts.count ?? 0
             message = "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict "
-                + "içeriyor (\(regions) bölge); önce çözülmeli."
+                + "contains (\(regions) regions); resolve it first."
             return
         }
         writtenDiffs[task.id] = TodoEditor.diff(patches, in: document.raw)
@@ -1587,7 +1587,7 @@ struct ProjectTasksView: View {
                 conflictTaskIDs.remove(task.id)
             case .recomputed:
                 conflictTaskIDs.remove(task.id)
-                message = "Dosya dışarıdan değişmişti; düzenleme güncel içerik üzerinde uygulandı."
+                message = "The file had changed on disk; the edit was applied to the current content."
             case .conflict(let detail):
                 conflictTaskIDs.insert(task.id)
                 staleEdit = (
@@ -1609,7 +1609,7 @@ struct ProjectTasksView: View {
         case .reload:
             conflictTaskIDs.remove(stale.task.id)
             refresh()
-            message = "Dosya yeniden yüklendi; düzenleme uygulanmadı."
+            message = "The file was reloaded; the edit was not applied."
         case .compare:
             let onDisk = sources.document(for: stale.task.sourcePath)?
                 .task(id: stale.task.id)?.rawBlock
@@ -1622,7 +1622,7 @@ struct ProjectTasksView: View {
                 )
             )
         case .cancel:
-            message = "Düzenleme uygulanmadı; dosya olduğu gibi kaldı."
+            message = "The edit was not applied; the file is unchanged."
         }
     }
 
@@ -1632,7 +1632,7 @@ struct ProjectTasksView: View {
     private func completeAfterMerge(_ task: ProjectTask) -> String {
         guard let document = sources.document(for: task.sourcePath),
               let current = document.task(id: task.id) else {
-            return " — görev dosyada bulunamadı, checkbox elle işaretlenmeli."
+            return " — task not found in the file; tick the checkbox by hand."
         }
         let doneHeading = document.headings
             .map(\.text)
@@ -1644,15 +1644,15 @@ struct ProjectTasksView: View {
                 )
                 write(patches: patches, task: current, document: document, rebuild: { _ in [] })
                 metadata.setState(.completed, taskID: task.id)
-                return " — görev \(doneHeading) altına taşındı."
+                return " — task moved under \(doneHeading)."
             } catch {
-                return " — görev taşınamadı: \(error.localizedDescription)"
+                return " — task could not be moved: \(error.localizedDescription)"
             }
         }
         guard !current.isDone else { return "" }
         metadata.setState(.completed, taskID: task.id)
         toggle(current, in: document)
-        return " — görev tamamlandı olarak işaretlendi."
+        return " — task marked as done."
     }
 
     /// Ticking a checkbox from the UI honours the same gate the MCP path does:
@@ -1660,7 +1660,7 @@ struct ProjectTasksView: View {
     private func complete(_ task: ProjectTask, in document: TaskDocument) {
         let blockers = results.failingTestBlockers(taskID: task.id)
         guard blockers.isEmpty else {
-            message = "Görev tamamlanamaz — " + blockers.map(\.message).joined(separator: " ")
+            message = "The task cannot be completed — " + blockers.map(\.message).joined(separator: " ")
             return
         }
         metadata.setState(.completed, taskID: task.id)
@@ -1678,14 +1678,14 @@ struct ProjectTasksView: View {
             }),
             let record = projectStore.sessions.first(where: { $0.id == target.sessionID })
         else {
-            message = "Bulguları iletecek bir implementation oturumu yok."
+            message = "There is no implementation session to hand the findings to."
             return
         }
         deliver(
             prompt: review.feedbackPrompt(
                 taskText: task.text, language: settings.language.resolvedAgent()),
             to: record)
-        message = "Review bulguları \(record.displayTitle) oturumuna gönderildi."
+        message = "Review findings were sent to the \(record.displayTitle) session."
     }
 
     private func revealSource(_ task: ProjectTask) {
@@ -1700,7 +1700,7 @@ private struct EmptyTaskList: View {
     let isFiltered: Bool
 
     var body: some View {
-        Text(isFiltered ? "Filtreye uyan görev yok." : "Görev yok.")
+        Text(isFiltered ? "No task matches the filter." : "No tasks.")
             .font(Theme.mono(11))
             .foregroundStyle(Theme.textFaint)
             .frame(maxWidth: .infinity, minHeight: 100)

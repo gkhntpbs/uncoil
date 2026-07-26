@@ -30,13 +30,13 @@ enum CodexAppServerProtocolError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidEnvelope:
-            "Codex app-server geçersiz bir JSONL mesajı gönderdi."
+            "The Codex app-server sent an invalid JSONL message."
         case .invalidResponse:
-            "Codex app-server yanıtı beklenen alanları içermiyor."
+            "The Codex app-server's reply is missing expected fields."
         case .server(let message):
             message
         case .incompatibleVersion(let version):
-            "Codex \(version) structured protokolü desteklenmiyor."
+            "Codex \(version) does not support the structured protocol."
         case .processLaunch(let message):
             message
         }
@@ -160,8 +160,8 @@ enum CodexStructuredFormatter {
             let changes = object["changes"]?.arrayValue?
                 .compactMap { $0.objectValue?["path"]?.stringValue }
                 .joined(separator: ", ")
-            guard let changes, !changes.isEmpty else { return "\r\n\u{001B}[1;35mDosya değişikliği\u{001B}[0m\r\n" }
-            return "\r\n\u{001B}[1;35mDosya değişikliği:\u{001B}[0m \(changes)\r\n"
+            guard let changes, !changes.isEmpty else { return "\r\n\u{001B}[1;35mFile change\u{001B}[0m\r\n" }
+            return "\r\n\u{001B}[1;35mFile change:\u{001B}[0m \(changes)\r\n"
         case "mcpToolCall":
             let server = object["server"]?.stringValue ?? "MCP"
             let tool = object["tool"]?.stringValue ?? object["name"]?.stringValue ?? "tool"

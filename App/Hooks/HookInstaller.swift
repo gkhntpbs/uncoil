@@ -30,11 +30,11 @@ enum HookInstaller {
         var errorDescription: String? {
             switch self {
             case .helperMissing:
-                "uncoil-hook yardımcı aracı uygulama paketinde bulunamadı."
+                "The uncoil-hook helper was not found in the app bundle."
             case .invalidSettingsJSON:
-                "~/.claude/settings.json geçerli JSON değil — elle düzeltilmeden hook kurulamaz."
+                "~/.claude/settings.json is not valid JSON — the hook cannot be installed until it is fixed by hand."
             case .writeFailed(let detail):
-                "settings.json yazılamadı: \(detail)"
+                "settings.json could not be written: \(detail)"
             }
         }
     }

@@ -26,17 +26,17 @@ enum TodoEditor {
         var errorDescription: String? {
             switch self {
             case .unknownTask(let id):
-                "Görev bulunamadı: \(id)"
+                "Task not found: \(id)"
             case .staleFile(let path):
-                "\(path) Uncoil dışında değişti."
+                "\(path) changed outside Uncoil."
             case .rangeOutOfBounds:
-                "Patch aralığı dosya sınırlarının dışında."
+                "The patch range falls outside the file."
             case .overlappingPatches:
-                "Çakışan patch aralıkları."
+                "Overlapping patch ranges."
             case .conflict(let detail):
-                "Çakışma: \(detail)"
+                "Clash: \(detail)"
             case .writeFailed(let detail):
-                "Dosya yazılamadı: \(detail)"
+                "The file could not be written: \(detail)"
             }
         }
     }
@@ -67,8 +67,8 @@ enum TodoEditor {
             range: task.checkbox.markerRange,
             replacement: "[\(character)]",
             summary: task.isDone
-                ? "\(task.text): tamamlandı işareti kaldırılıyor"
-                : "\(task.text): tamamlandı olarak işaretleniyor"
+                ? "\(task.text): clearing the done marker"
+                : "\(task.text): marking it done"
         )
     }
 
@@ -109,7 +109,7 @@ enum TodoEditor {
                     startColumn: 1
                 ),
                 replacement: body,
-                summary: "\(task.text): açıklama ekleniyor"
+                summary: "\(task.text): adding a description"
             )
         }
         let body = normalizedBody(newBody, indent: task.checkbox.indent)
@@ -122,7 +122,7 @@ enum TodoEditor {
                 startColumn: 1
             ),
             replacement: body,
-            summary: "\(task.text): açıklama güncelleniyor"
+            summary: "\(task.text): updating the description"
         )
     }
 
@@ -139,10 +139,10 @@ enum TodoEditor {
         }
         let block = blockWithDescendants(of: task, in: document)
         guard let insertion = insertionPoint(forHeading: headingPath, in: document) else {
-            throw EditError.conflict("hedef başlık bulunamadı: \(headingPath.joined(separator: " › "))")
+            throw EditError.conflict("target heading not found: \(headingPath.joined(separator: " › "))")
         }
         guard !block.range.overlaps(insertion.range) else {
-            throw EditError.conflict("görev zaten bu başlığın altında")
+            throw EditError.conflict("the task is already under this heading")
         }
 
         var moved = block.text
@@ -151,7 +151,7 @@ enum TodoEditor {
         let cut = Patch(
             range: block.range,
             replacement: "",
-            summary: "\(task.text): eski konumundan kaldırılıyor"
+            summary: "\(task.text): removing it from its old position"
         )
         let paste = Patch(
             range: insertion.range,
@@ -176,11 +176,11 @@ enum TodoEditor {
         let title = text.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\n", with: " ")
         guard !title.isEmpty else {
-            throw EditError.conflict("görev metni boş olamaz")
+            throw EditError.conflict("the task's text cannot be empty")
         }
         guard let insertion = insertionPoint(forHeading: headingPath, in: document) else {
             throw EditError.conflict(
-                "hedef başlık bulunamadı: \(headingPath.joined(separator: " › "))"
+                "target heading not found: \(headingPath.joined(separator: " › "))"
             )
         }
         let sibling = document.tasks(under: headingPath).last
@@ -195,7 +195,7 @@ enum TodoEditor {
         return Patch(
             range: insertion.range,
             replacement: separator(before: insertion.range.startByte, in: document.raw) + line,
-            summary: "yeni görev: \(title)"
+            summary: "new task: \(title)"
         )
     }
 
@@ -256,7 +256,7 @@ enum TodoEditor {
                 let before = patch.range.startByte < patch.range.endByte
                     ? String(decoding: bytes[patch.range.startByte..<patch.range.endByte], as: UTF8.self)
                     : ""
-                var lines = ["@@ satır \(patch.range.startLine) @@ \(patch.summary)"]
+                var lines = ["@@ line \(patch.range.startLine) @@ \(patch.summary)"]
                 lines.append(contentsOf: before
                     .components(separatedBy: "\n")
                     .filter { !$0.isEmpty }
@@ -296,7 +296,7 @@ enum TodoEditor {
                 throw EditError.staleFile(path: path)
             }
             guard !rebuilt.isEmpty else {
-                return .conflict(detail: "Düzenlenen görev bloğu dosyada değişti.")
+                return .conflict(detail: "The edited task block changed in the file.")
             }
             effectivePatches = rebuilt
             recomputed = true

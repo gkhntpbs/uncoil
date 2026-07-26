@@ -71,16 +71,18 @@ final class ExtensionNoticeCenter: ObservableObject {
     static func level(of message: String) -> Level {
         let lowered = message.lowercased()
         let failures = [
-            "başarısız", "yapılamadı", "okunamadı", "hata", "engelliyor",
-            "kaldırılamadı", "bulunamadı", "geçersiz", "yapılmadı", "atıldı",
-            "kurulamadı", "geri yüklenemedi",
+            "failed", "could not be done", "could not be read", "error", "blocks",
+            "could not be removed", "not found", "invalid", "not done", "dropped",
+            "could not be installed", "could not be restored",
         ]
         if failures.contains(where: lowered.contains) { return .failure }
-        let warnings = ["uyarı", "atlandı", "değişmedi", "dışarıdan değiş", "gerekiyor"]
+        let warnings = [
+            "warning", "skipped", "unchanged", "changed on disk", "requires", "needs",
+        ]
         if warnings.contains(where: lowered.contains) { return .warning }
         let successes = [
-            "uygulandı", "sahiplenildi", "oluşturuldu", "güncellendi", "eklendi",
-            "kuruldu", "geri yüklendi", "kaldırıldı", "onarıldı", "bitti",
+            "applied", "sahiplenildi", "created", "updated", "eklendi",
+            "kuruldu", "restored", "removed", "repaired", "bitti",
         ]
         if successes.contains(where: lowered.contains) { return .success }
         return .info
@@ -147,7 +149,7 @@ struct ExtensionNoticeStack: View {
                     .textSelection(.enabled)
                 Spacer(minLength: 8)
                 if notice.detail != nil {
-                    Button(notice.isExpanded ? "Gizle" : "Ayrıntı") {
+                    Button(notice.isExpanded ? "Hide" : "Detail") {
                         center.toggleDetail(notice.id)
                     }
                     .buttonStyle(.plain)

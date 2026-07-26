@@ -39,7 +39,7 @@ struct ExtensionsMenuCommands: Commands {
 
     var body: some Commands {
         CommandMenu("Extensions") {
-            Button("Extensions'ı Aç") { open(nil) }
+            Button("Open Extensions") { open(nil) }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
 
             Divider()
@@ -50,10 +50,10 @@ struct ExtensionsMenuCommands: Commands {
 
             Divider()
 
-            Button("Yeniden Tara") { open(.overview, action: .rediscover) }
+            Button("Rescan") { open(.overview, action: .rediscover) }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-            Button("Health Check Çalıştır") { open(.overview, action: .healthCheck) }
-            Button("Bumblebee Taraması Çalıştır") { open(.security, action: .bumblebeeScan) }
+            Button("Run Health Check") { open(.overview, action: .healthCheck) }
+            Button("Run Bumblebee Scan") { open(.security, action: .bumblebeeScan) }
         }
     }
 

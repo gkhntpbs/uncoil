@@ -62,10 +62,10 @@ struct ExtensionAdoptionService {
             let counts = Dictionary(grouping: changedFiles, by: \.kind)
                 .mapValues(\.count)
             var parts: [String] = []
-            if let added = counts[.added] { parts.append("\(added) yeni") }
-            if let modified = counts[.modified] { parts.append("\(modified) değişen") }
+            if let added = counts[.added] { parts.append("\(added) new") }
+            if let modified = counts[.modified] { parts.append("\(modified) changed") }
             if let removed = counts[.removed] { parts.append("\(removed) kaybolan") }
-            return parts.isEmpty ? "Dosya farkı yok" : parts.joined(separator: ", ")
+            return parts.isEmpty ? "No file difference" : parts.joined(separator: ", ")
         }
     }
 
@@ -197,8 +197,8 @@ struct ExtensionAdoptionService {
         guard plan.isAdoptable else {
             throw AgentAdapterError.unsupportedChange(
                 plan.blocksAdoption.isEmpty
-                    ? "Yedek alınamadı; sahiplenme yapılmadı."
-                    : "Güvenlik bulgusu sahiplenmeyi engelliyor: "
+                    ? "No backup could be taken; nothing was adopted."
+                    : "A security finding blocks adoption: "
                         + plan.blocksAdoption[0].message
             )
         }
@@ -262,9 +262,9 @@ struct ExtensionAdoptionService {
                     return "Sahiplenildi · \(definition.transport.label) · \(definition.displayTarget)"
                 }
                 return collected.isEmpty
-                    ? "Uncoil dışında kurulmuşken sahiplenildi"
+                    ? "Adopted while installed outside Uncoil"
                     : "Sahiplenildi; \(collected.map { $0.agent.displayName }.joined(separator: ", "))"
-                        + " artık ortak kopyayı okuyor"
+                        + " now reads the shared copy"
             }(),
             // Adopting does not invent a repository: the files are Uncoil's copy
             // now, and the user can attach a GitHub source afterwards.
@@ -316,7 +316,7 @@ struct ExtensionAdoptionService {
     /// Puts back what the plan's backup captured.
     func rollback(_ plan: Plan) throws {
         guard let backupPath = plan.backupPath else {
-            throw AgentAdapterError.unsupportedChange("Geri alınacak yedek yok.")
+            throw AgentAdapterError.unsupportedChange("No backup to roll back to.")
         }
         let destination = URL(fileURLWithPath: plan.destinationPath)
         let previous = URL(fileURLWithPath: backupPath).appendingPathComponent("previous")

@@ -46,7 +46,7 @@ struct TaskMergeSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     if loading {
-                        Text("Çalışma ağacı okunuyor…")
+                        Text("Reading the worktree…")
                             .font(Theme.mono(10.5))
                             .foregroundStyle(Theme.textFaint)
                     } else {
@@ -92,11 +92,11 @@ struct TaskMergeSheet: View {
     private var blockersSection: some View {
         let blockers = preview.hardBlockers
         VStack(alignment: .leading, spacing: 6) {
-            Text(blockers.isEmpty ? "Hazır" : "Engeller")
+            Text(blockers.isEmpty ? "Ready" : "Blockers")
                 .font(Theme.mono(11.5, .semibold))
                 .foregroundStyle(blockers.isEmpty ? Theme.ok : Theme.warn)
             if blockers.isEmpty {
-                Text("Her şey yerinde; merge yalnızca onayını bekliyor.")
+                Text("Everything is in place; the merge is only waiting for your word.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
             } else {
@@ -123,9 +123,9 @@ struct TaskMergeSheet: View {
 
     @ViewBuilder
     private var testsSection: some View {
-        section("Testler") {
+        section("Tests") {
             if preview.tests.isEmpty {
-                Text("Kayıtlı test çalıştırması yok.")
+                Text("No recorded test run.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             } else {
@@ -159,7 +159,7 @@ struct TaskMergeSheet: View {
     private var reviewSection: some View {
         section("Review") {
             if preview.reviews.isEmpty {
-                Text("Review yok.")
+                Text("No review.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             } else {
@@ -183,9 +183,9 @@ struct TaskMergeSheet: View {
 
     @ViewBuilder
     private var changesSection: some View {
-        section("Değişen dosyalar") {
+        section("Changed files") {
             if preview.changedFiles.isEmpty {
-                Text("Commit edilmemiş değişiklik yok.")
+                Text("No uncommitted changes.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             } else {
@@ -203,7 +203,7 @@ struct TaskMergeSheet: View {
     private var diffSection: some View {
         section("Diff") {
             if diff.isEmpty {
-                Text("Diff yok.")
+                Text("No diff.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textFaint)
             } else {
@@ -235,16 +235,16 @@ struct TaskMergeSheet: View {
 
     private var footer: some View {
         HStack(spacing: 9) {
-            Text(worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "worktree yok")
+            Text(worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "no worktree")
                 .font(Theme.mono(9.5))
                 .foregroundStyle(Theme.textFaint)
             Spacer()
-            Button("Vazgeç") {
-                record(outcome: .refused(reason: "kullanıcı vazgeçti"), approved: false)
+            Button("Cancel") {
+                record(outcome: .refused(reason: "you cancelled"), approved: false)
                 onCancel()
             }
             .buttonStyle(GhostButtonStyle())
-            Button(merging ? "Merge ediliyor…" : "Onayla ve merge et") { merge() }
+            Button(merging ? "Merging…" : "Approve and merge") { merge() }
                 .buttonStyle(AccentButtonStyle())
                 .disabled(loading || merging || !preview.hardBlockers.isEmpty)
                 .accessibilityIdentifier("taskMerge.approve")
@@ -257,7 +257,7 @@ struct TaskMergeSheet: View {
     private func load() async {
         guard let worktree = worktreePath else {
             loading = false
-            failure = "Görevin worktree'si yok; merge edilecek bir dal bulunmuyor."
+            failure = "The task has no worktree; there is no branch to merge."
             return
         }
         let read = await Task.detached(priority: .userInitiated) {
@@ -275,7 +275,7 @@ struct TaskMergeSheet: View {
 
     private func merge() {
         guard let branch = snapshot.branch else {
-            failure = "Dal adı okunamadı; merge edilemez."
+            failure = "The branch name could not be read; cannot merge."
             return
         }
         merging = true

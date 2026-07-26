@@ -118,7 +118,7 @@ final class TodoEditorTests: XCTestCase {
 
     func testRenameToTheSameTextOrEmptyIsANoOp() throws {
         let (_, document) = try file("- [ ] aynı\n")
-        XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "aynı"))
+        XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "same"))
         XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "   "))
     }
 
@@ -359,10 +359,10 @@ final class TodoEditorTests: XCTestCase {
 
         let block = TodoEditor.blockWithDescendants(of: task, in: document)
         let deleteDiff = TodoEditor.diff(
-            [.init(range: block.range, replacement: "", summary: "görev silindi")], in: raw
+            [.init(range: block.range, replacement: "", summary: "task deleted")], in: raw
         )
         XCTAssertTrue(deleteDiff.contains("-- [ ] taşınacak"), deleteDiff)
-        XCTAssertTrue(deleteDiff.contains("görev silindi"), deleteDiff)
+        XCTAssertTrue(deleteDiff.contains("task deleted"), deleteDiff)
         XCTAssertFalse(deleteDiff.contains("+"), "a delete adds nothing")
     }
 

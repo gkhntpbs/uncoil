@@ -25,7 +25,7 @@ struct TaskStaleEditSheet: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
                     TablerIcon(name: "alert-triangle", size: 13, color: Theme.warn)
-                    Text("Düzenleme uygulanamadı")
+                    Text("The edit could not be applied")
                         .font(Theme.mono(13, .bold))
                         .foregroundStyle(Theme.text)
                 }
@@ -38,20 +38,20 @@ struct TaskStaleEditSheet: View {
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Dosya bu görevin bloğunda değişti. Ne yapılacağına sen karar ver.")
+            Text("The file changed inside this task's block. It is your call what happens next.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textFaint)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 9) {
                 Spacer()
-                Button("İptal") { onChoose(.cancel) }
+                Button("Cancel") { onChoose(.cancel) }
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
                     .accessibilityIdentifier("staleEdit.cancel")
-                Button("Karşılaştır") { onChoose(.compare) }
+                Button("Compare") { onChoose(.compare) }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("staleEdit.compare")
-                Button("Yeniden yükle") { onChoose(.reload) }
+                Button("Reload") { onChoose(.reload) }
                     .buttonStyle(AccentButtonStyle())
                     .accessibilityIdentifier("staleEdit.reload")
             }
@@ -71,13 +71,13 @@ enum StaleEditComparison {
         attempted: String,
         onDisk: String?
     ) -> String {
-        var sections = ["# Senin düzenlemen — \(taskText)", attempted]
+        var sections = ["# Your edit — \(taskText)", attempted]
         if let onDisk, !onDisk.isEmpty {
             sections.append("# Dosyadaki hâli")
             sections.append(onDisk)
         } else {
             sections.append("# Dosyadaki hâli")
-            sections.append("Bu görev dosyada bulunamadı; başkası silmiş ya da taşımış olabilir.")
+            sections.append("This task is not in the file; someone may have deleted or moved it.")
         }
         return sections.joined(separator: "\n\n")
     }

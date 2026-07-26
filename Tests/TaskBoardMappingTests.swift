@@ -28,14 +28,14 @@ final class TaskBoardMappingTests: XCTestCase {
 
     func testRecognisesTurkishHeadings() {
         let expected: [String: TaskBoardMapping.Lane] = [
-            "Yapılacak": .todo,
+            "To do": .todo,
             "Planlanan": .todo,
             "Devam Eden": .inProgress,
             "Üzerinde Çalışılıyor": .inProgress,
             "Engellendi": .blocked,
-            "İnceleme": .review,
+            "Review": .review,
             "Kontrol": .review,
-            "Tamamlandı": .done,
+            "Done": .done,
             "Bitenler": .done,
         ]
         for (heading, lane) in expected {
@@ -83,7 +83,7 @@ final class TaskBoardMappingTests: XCTestCase {
         let columns = TaskBoardMapping.columns(for: board)
         XCTAssertEqual(columns.map(\.heading), ["Todo", "In Progress", "Done"])
         XCTAssertEqual(columns.map(\.lane), [.todo, .inProgress, .done])
-        XCTAssertEqual(columns.map(\.title), ["Yapılacak", "Devam Eden", "Tamamlandı"])
+        XCTAssertEqual(columns.map(\.title), ["To do", "Devam Eden", "Done"])
         XCTAssertFalse(columns.contains(where: \.isCustom))
     }
 
@@ -117,7 +117,7 @@ final class TaskBoardMappingTests: XCTestCase {
     func testTasksWithoutAHeadingStillGetAColumn() {
         let board = document("- [ ] başlıksız görev\n")
         let columns = TaskBoardMapping.columns(for: board)
-        XCTAssertEqual(columns.map(\.title), ["Başlıksız"])
+        XCTAssertEqual(columns.map(\.title), ["Untitled"])
         XCTAssertEqual(TaskBoardMapping.tasks(in: columns[0], of: board).map(\.text), ["başlıksız görev"])
     }
 
@@ -262,7 +262,7 @@ final class TaskFilterTests: XCTestCase {
 
     func testHeadingAndSourceFilters() {
         var filter = TaskFilter()
-        filter.heading = "Arayüz"
+        filter.heading = "Interface"
         XCTAssertEqual(filter.apply(to: document.tasks).count, 2)
         filter.heading = nil
         filter.sourcePath = "/other/TODO.md"

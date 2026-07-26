@@ -43,15 +43,15 @@ struct ThreatCatalogStore {
 
         var errorDescription: String? {
             switch self {
-            case .invalidJSON(let detail): "Catalog JSON geçersiz: \(detail)"
+            case .invalidJSON(let detail): "Catalog JSON is invalid: \(detail)"
             case .unsupportedSchema(let version):
-                "Catalog şeması sürüm \(version) bu Uncoil sürümünden yeni."
+                "Catalog schema version \(version) is newer than this build of Uncoil."
             case .missingFields(let fields):
-                "Catalog alanları eksik: \(fields.joined(separator: ", "))"
+                "Catalog fields missing: \(fields.joined(separator: ", "))"
             case .executableInCatalog(let paths):
-                "Catalog deposunda çalıştırılabilir dosya var; yalnızca JSON alınır: "
+                "The catalog repo contains executable files; only JSON is taken: "
                     + paths.prefix(3).joined(separator: ", ")
-            case .noPreviousCatalog: "Geri dönülecek önceki catalog yok."
+            case .noPreviousCatalog: "No previous catalog to fall back to."
             }
         }
     }
@@ -87,7 +87,7 @@ struct ThreatCatalogStore {
     ) throws -> ThreatCatalog {
         guard let data = text.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw CatalogError.invalidJSON("kök nesne okunamadı")
+            throw CatalogError.invalidJSON("the root object could not be read")
         }
         let schema = root["schema_version"] as? Int ?? root["schemaVersion"] as? Int ?? 1
         guard schema <= ThreatCatalog.currentSchemaVersion else {
@@ -218,11 +218,11 @@ struct ThreatCatalogUpdate: Equatable {
     var shouldRescan: Bool { !isEmpty }
 
     var summary: String {
-        guard !isEmpty else { return "Kural değişikliği yok" }
+        guard !isEmpty else { return "No rule change" }
         var parts: [String] = []
-        if !addedRules.isEmpty { parts.append("+\(addedRules.count) kural") }
-        if !removedRules.isEmpty { parts.append("-\(removedRules.count) kural") }
-        if !changedRules.isEmpty { parts.append("\(changedRules.count) kural değişti") }
+        if !addedRules.isEmpty { parts.append("+\(addedRules.count) rules") }
+        if !removedRules.isEmpty { parts.append("-\(removedRules.count) rules") }
+        if !changedRules.isEmpty { parts.append("\(changedRules.count) rules changed") }
         return parts.joined(separator: " · ")
     }
 }

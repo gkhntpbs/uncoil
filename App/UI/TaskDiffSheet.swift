@@ -10,7 +10,7 @@ struct TaskDiffSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Değişiklik")
+                Text("Change")
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
                 Text(taskText)
@@ -34,7 +34,7 @@ struct TaskDiffSheet: View {
             Divider().overlay(Theme.border)
             HStack {
                 Spacer()
-                Button("Kapat", action: onClose)
+                Button("Close", action: onClose)
                     .buttonStyle(AccentButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
             }

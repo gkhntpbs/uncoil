@@ -18,9 +18,9 @@ struct ExtensionSourceCapabilities: Equatable {
         var label: String {
             switch self {
             case .git: "Git revision"
-            case .appBundle: "Uncoil sürümü"
-            case .server: "Sunucunun bildirdiği sürüm"
-            case .none: "Sürüm bilgisi yok"
+            case .appBundle: "Uncoil version"
+            case .server: "Version reported by the server"
+            case .none: "No version information"
             }
         }
     }
@@ -151,10 +151,10 @@ struct BundledExtensionCatalog {
 
         var message: String {
             switch self {
-            case .verified: "Doğrulandı"
-            case .missing(let path): "Dosya yok: \(path)"
+            case .verified: "Verified"
+            case .missing(let path): "No such file: \(path)"
             case .modified(let path, _, _):
-                "\(path) bundle'da geldiğinden farklı; çalıştırılmamalı."
+                "\(path) differs from what shipped in the bundle; it must not be run."
             }
         }
     }

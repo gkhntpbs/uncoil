@@ -89,7 +89,7 @@ struct UncoilApp: App {
 
         // Terminal-only popout: a session dragged/sent out of the main
         // window lives here; the PTY is shared via TerminalRegistry.
-        WindowGroup("Oturum", id: "session-window", for: UUID.self) { $sessionID in
+        WindowGroup("Session", id: "session-window", for: UUID.self) { $sessionID in
             if let sessionID {
                 ThemedWindow {
                     SessionPopoutWindow(sessionID: sessionID)
@@ -101,7 +101,7 @@ struct UncoilApp: App {
         }
         .windowStyle(.hiddenTitleBar)
 
-        Window("Uncoil Ayarları", id: "settings") {
+        Window("Uncoil Settings", id: "settings") {
             // Not wrapped in ThemedWindow on purpose: Settings owns the colour
             // pickers, and rebuilding it on every value change would tear the
             // picker down mid-drag. It observes the store directly instead.
@@ -195,7 +195,7 @@ struct MainWindowCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Yeni Uncoil Penceresi") {
+            Button("New Uncoil Window") {
                 openWindow(id: "main")
             }
             .keyboardShortcut("n", modifiers: .command)

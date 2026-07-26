@@ -7,8 +7,8 @@ struct GeneralSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        SettingsPage(title: "Genel") {
-            Section("Varsayılanlar") {
+        SettingsPage(title: "General") {
+            Section("Defaults") {
                 Picker(selection: Binding(
                     get: { settings.defaultProvider },
                     set: { settings.defaultProvider = $0; settings.save() }
@@ -18,8 +18,8 @@ struct GeneralSettingsPage: View {
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Varsayılan agent",
-                        detail: "Yeni oturumlar bu sağlayıcıyla açılır."
+                        title: "Default agent",
+                        detail: "New sessions open with this provider."
                     )
                 }
                 .settingsID("general.defaultProvider")
@@ -31,13 +31,13 @@ struct GeneralSettingsPage: View {
                     ForEach(PreferredEditor.allCases) { editor in
                         Text(editor.isInstalled
                              ? editor.displayName
-                             : "\(editor.displayName) (kurulu değil)")
+                             : "\(editor.displayName) (not installed)")
                             .tag(editor)
                     }
                 } label: {
                     SettingsLabel(
-                        title: "Editör",
-                        detail: "“Editörde aç” bu uygulamayı çalıştırır."
+                        title: "Editor",
+                        detail: "“Open in editor” launches this app."
                     )
                 }
                 .settingsID("general.editor")
@@ -88,7 +88,7 @@ struct GeneralSettingsPage: View {
                 }
             }
 
-            Section("Uygulama kapanışı") {
+            Section("Quitting the app") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },
                     set: { settings.setSessionQuitBehavior($0) }
@@ -97,7 +97,7 @@ struct GeneralSettingsPage: View {
                         Text(behavior.title).tag(behavior)
                     }
                 } label: {
-                    SettingsLabel(title: "Çıkarken oturumlar")
+                    SettingsLabel(title: "Sessions on quit")
                 }
                 .pickerStyle(.inline)
                 .settingsID("agentBehavior.quit")
@@ -105,11 +105,11 @@ struct GeneralSettingsPage: View {
                 SettingsNote(settings.sessionQuitBehavior.detail)
             }
 
-            Section("Komut paleti") {
+            Section("Command palette") {
                 AdaptiveRow {
                     SettingsLabel(
-                        title: "Kısayol",
-                        detail: "En az bir değiştirici tuş (⌘⌥⌃⇧) gerekir. Anında uygulanır.",
+                        title: "Shortcut",
+                        detail: "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately.",
                         symbol: "command"
                     )
                 } control: {
@@ -118,7 +118,7 @@ struct GeneralSettingsPage: View {
                             binding: settings.commandPaletteHotkey,
                             onCapture: { settings.setCommandPaletteHotkey($0) }
                         )
-                        Button("Sıfırla") { settings.resetCommandPaletteHotkey() }
+                        Button("Reset") { settings.resetCommandPaletteHotkey() }
                             .settingsID("hotkey.palette.reset")
                     }
                 }
@@ -141,7 +141,7 @@ struct HotkeyRecorder: View {
         Button {
             if recording { stop() } else { start() }
         } label: {
-            Text(recording ? "Tuşa basın…" : binding.displayString)
+            Text(recording ? "Press a key…" : binding.displayString)
                 .font(.system(.body, design: .monospaced))
                 .frame(minWidth: 64)
         }

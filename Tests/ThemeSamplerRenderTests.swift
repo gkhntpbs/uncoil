@@ -73,7 +73,7 @@ final class ThemeSamplerRenderTests: XCTestCase {
 
                 HStack(spacing: 6) {
                     StatusBadge(text: "Tamam", level: .success)
-                    StatusBadge(text: "Uyarı", level: .warning)
+                    StatusBadge(text: "Warning", level: .warning)
                     StatusBadge(text: "Hata", level: .danger)
                     StatusBadge(text: "Vurgu", level: .accent(Theme.highlight))
                 }

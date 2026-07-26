@@ -737,7 +737,7 @@ final class ThreatCatalogTests: XCTestCase {
         let update = try store.install(catalog)
         XCTAssertTrue(update.isEmpty)
         XCTAssertFalse(update.shouldRescan)
-        XCTAssertEqual(update.summary, "Kural değişikliği yok")
+        XCTAssertEqual(update.summary, "No rule change")
     }
 }
 
@@ -1167,7 +1167,7 @@ final class BumblebeeFindingKindTests: XCTestCase {
         XCTAssertTrue(summary.hasParserDiagnostics)
         XCTAssertEqual(summary.actionableCount, 0)
         let caption = summary.caption(scanned: 10)
-        XCTAssertTrue(caption.contains("okunamadı"), caption)
+        XCTAssertTrue(caption.contains("could not be read"), caption)
         XCTAssertFalse(caption.contains("bulgu yok"), caption)
     }
 

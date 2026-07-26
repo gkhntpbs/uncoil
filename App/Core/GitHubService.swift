@@ -23,11 +23,11 @@ enum GitHubService {
 
         var errorDescription: String? {
             switch self {
-            case .notGitHub: "Origin GitHub deposu değil."
+            case .notGitHub: "Origin is not a GitHub repo."
             case .http(let code):
                 code == 404
-                    ? "Depo bulunamadı — özel depo için ayarlardan token ekle."
-                    : "GitHub \(code) döndürdü."
+                    ? "Repo not found — add a token in settings for a private repo."
+                    : "GitHub returned \(code)."
             case .network(let message): message
             }
         }
@@ -113,9 +113,9 @@ enum GitHubAuthService {
         var errorDescription: String? {
             switch self {
             case .network(let message): message
-            case .denied: "Giriş reddedildi."
-            case .expired: "Kod süresi doldu — yeniden dene."
-            case .malformed: "GitHub beklenmedik bir yanıt döndürdü."
+            case .denied: "Login was refused."
+            case .expired: "The code expired — try again."
+            case .malformed: "GitHub returned an unexpected response."
             }
         }
     }

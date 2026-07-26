@@ -45,13 +45,13 @@ struct MainWindow: View {
             if let action { perform(action); palette.pendingAction = nil }
         }
         .alert(
-            "Test Workspace Oluşturulamadı",
+            "Test Workspace Could Not Be Created",
             isPresented: Binding(
                 get: { testWorkspaceError != nil },
                 set: { if !$0 { testWorkspaceError = nil } }
             )
         ) {
-            Button("Tamam", role: .cancel) {}
+            Button("OK", role: .cancel) {}
         } message: {
             Text(testWorkspaceError ?? "")
         }
@@ -63,22 +63,22 @@ struct MainWindow: View {
             )
         ) {
             if let debugBundleURL {
-                Button("Finder’da Göster") {
+                Button("Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([debugBundleURL])
                 }
             }
-            Button("Tamam", role: .cancel) {}
+            Button("OK", role: .cancel) {}
         } message: {
             Text(debugBundleMessage ?? "")
         }
         .alert(
-            "Runtime Uyumsuzluğu",
+            "Runtime Mismatch",
             isPresented: Binding(
                 get: { runtimeCompatibilityError != nil },
                 set: { if !$0 { runtimeCompatibilityError = nil } }
             )
         ) {
-            Button("Tamam", role: .cancel) {}
+            Button("OK", role: .cancel) {}
         } message: {
             Text(runtimeCompatibilityError ?? "")
         }
@@ -96,7 +96,7 @@ struct MainWindow: View {
         .task {
             if LaunchConfig.shared.runtimeMismatchFixture {
                 runtimeCompatibilityError =
-                    "Runtime protokolü uyumsuz: uygulama 1.1, daemon 2.0."
+                    "Runtime protocol mismatch: app 1.1, daemon 2.0."
             }
         }
         .task {
@@ -270,7 +270,7 @@ struct MainWindow: View {
             do {
                 let result = try DebugBundleService().create()
                 debugBundleURL = result.bundleURL
-                debugBundleMessage = "Oluşturuldu: \(result.bundleURL.path)"
+                debugBundleMessage = "Created: \(result.bundleURL.path)"
             } catch {
                 debugBundleURL = nil
                 debugBundleMessage = error.localizedDescription
@@ -312,7 +312,7 @@ struct MainWindow: View {
             projectID: projectID,
             provider: provider,
             accountID: provider == .terminal ? nil : account?.id,
-            title: provider == .terminal ? "terminal" : "\(provider.rawValue): yeni oturum"
+            title: provider == .terminal ? "terminal" : "\(provider.rawValue): new session"
         )
         selection = .session(record.id)
         return record
@@ -327,7 +327,7 @@ struct MainWindow: View {
         let record = live ?? projectStore.createSession(
             projectID: projectID, provider: .claude,
             accountID: settings.defaultAccount(for: .claude)?.id,
-            title: "claude: yeni oturum")
+            title: "claude: new session")
         selection = .session(record.id)
 
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }

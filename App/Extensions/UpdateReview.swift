@@ -36,9 +36,9 @@ struct UpdateReview: Equatable {
 
         var label: String {
             switch self {
-            case .unlikely: "Düşük"
+            case .unlikely: "Low"
             case .possible: "Olabilir"
-            case .likely: "Yüksek"
+            case .likely: "High"
             }
         }
     }
@@ -53,13 +53,13 @@ struct UpdateReview: Equatable {
     var summary: String {
         var parts: [String] = []
         if commitCount > 0 { parts.append("\(commitCount) commit") }
-        if !changedFiles.isEmpty { parts.append("\(changedFiles.count) dosya") }
+        if !changedFiles.isEmpty { parts.append("\(changedFiles.count) files") }
         if !addedPermissions.isEmpty {
             parts.append("+\(addedPermissions.count) permission")
         }
         if !removedTools.isEmpty { parts.append("-\(removedTools.count) tool") }
-        if !securityDiff.isEmpty { parts.append("\(securityDiff.count) güvenlik bulgusu") }
-        return parts.isEmpty ? "Değişiklik yok" : parts.joined(separator: " · ")
+        if !securityDiff.isEmpty { parts.append("\(securityDiff.count) security findings") }
+        return parts.isEmpty ? "No changes" : parts.joined(separator: " · ")
     }
 
     /// Builds the review from the two revisions on disk plus what the update

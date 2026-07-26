@@ -22,7 +22,7 @@ struct TaskCreateSheet: View {
         documents.first { $0.path == selectedPath } ?? documents.first
     }
 
-    /// Heading chains of the chosen file, in file order: what "altına ekle"
+    /// Heading chains of the chosen file, in file order: what "add under"
     /// can point at. The root (file end) is always offered.
     private var headingChoices: [[String]] {
         guard let document else { return [] }
@@ -52,10 +52,10 @@ struct TaskCreateSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Yeni görev")
+                Text("New task")
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
-                Text("Dosyaya, seçtiğin başlığın altına tek satır olarak eklenir.")
+                Text("Added to the file as a single line, under the heading you pick.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
             }
@@ -65,7 +65,7 @@ struct TaskCreateSheet: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 if documents.count > 1 {
-                    field("Dosya") {
+                    field("File") {
                         Picker("", selection: Binding(
                             get: { document?.path },
                             set: { path in
@@ -84,9 +84,9 @@ struct TaskCreateSheet: View {
                     }
                 }
 
-                field("Başlık") {
+                field("Title") {
                     Picker("", selection: $headingPath) {
-                        Text("Dosya sonu (başlıksız)").tag([String]())
+                        Text("End of file (no heading)").tag([String]())
                         ForEach(headingChoices, id: \.self) { chain in
                             Text(chain.joined(separator: " › ")).tag(chain)
                         }
@@ -95,8 +95,8 @@ struct TaskCreateSheet: View {
                     .accessibilityIdentifier("tasks.create.heading")
                 }
 
-                field("Görev") {
-                    TextField("Ne yapılacak?", text: $text)
+                field("Task") {
+                    TextField("What should happen?", text: $text)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(11.5))
                         .onSubmit(create)
@@ -104,7 +104,7 @@ struct TaskCreateSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Dosyaya yazılacak satır")
+                    Text("Line to write to the file")
                         .font(Theme.mono(10, .semibold))
                         .foregroundStyle(Theme.textFaint)
                     Text(preview)
@@ -122,10 +122,10 @@ struct TaskCreateSheet: View {
             Divider().overlay(Theme.border)
             HStack(spacing: 9) {
                 Spacer()
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Ekle", action: create)
+                Button("Add", action: create)
                     .buttonStyle(AccentButtonStyle())
                     .disabled(
                         document == nil

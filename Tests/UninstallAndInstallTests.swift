@@ -132,7 +132,7 @@ final class UninstallServiceTests: XCTestCase {
 final class CrashReportingPolicyTests: XCTestCase {
     func testReportingIsOffByDefault() {
         XCTAssertFalse(CrashReportingPolicy.default.isEnabled)
-        XCTAssertTrue(CrashReportingPolicy.default.summary.contains("Kapalı"))
+        XCTAssertTrue(CrashReportingPolicy.default.summary.contains("Off"))
     }
 
     func testNothingIsCollectedWhileItIsOff() {

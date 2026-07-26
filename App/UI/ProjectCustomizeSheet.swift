@@ -40,7 +40,7 @@ struct ProjectCustomizeSheet: View {
                     .font(Theme.mono(13, .medium))
                     .foregroundStyle(Theme.text)
                 Spacer()
-                Text("önizleme")
+                Text("preview")
                     .font(Theme.mono(10))
                     .foregroundStyle(Theme.textFaint)
             }
@@ -51,7 +51,7 @@ struct ProjectCustomizeSheet: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 // Name
-                TextField("Proje adı", text: $name)
+                TextField("Project name", text: $name)
                     .textFieldStyle(.plain)
                     .font(Theme.mono(12))
                     .foregroundStyle(Theme.text)
@@ -84,7 +84,7 @@ struct ProjectCustomizeSheet: View {
                     }
                     Spacer()
                     if selectedIcon != nil || selectedColor != nil {
-                        Button("Sıfırla") {
+                        Button("Reset") {
                             selectedIcon = nil
                             selectedColor = nil
                         }
@@ -93,7 +93,7 @@ struct ProjectCustomizeSheet: View {
                 }
 
                 // Icon search
-                TextField("İkon ara (tabler icons — \(TablerIcons.map.count) ikon)", text: $search)
+                TextField("Search icons (tabler icons — \(TablerIcons.map.count) icons)", text: $search)
                     .textFieldStyle(.plain)
                     .font(Theme.mono(11.5))
                     .foregroundStyle(Theme.text)
@@ -144,10 +144,10 @@ struct ProjectCustomizeSheet: View {
             Divider().overlay(Theme.border)
 
             HStack {
-                Button("Vazgeç") { dismiss() }
+                Button("Cancel") { dismiss() }
                     .buttonStyle(GhostButtonStyle())
                 Spacer()
-                Button("Kaydet") {
+                Button("Save") {
                     projectStore.updateProject(project.id) { p in
                         let trimmed = name.trimmingCharacters(in: .whitespaces)
                         if !trimmed.isEmpty { p.name = trimmed }

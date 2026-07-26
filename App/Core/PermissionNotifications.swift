@@ -63,12 +63,12 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         )
         let deny = UNNotificationAction(
             identifier: PermissionNotificationPolicy.denyAction,
-            title: "Reddet",
+            title: "Deny",
             options: []
         )
         let open = UNNotificationAction(
             identifier: PermissionNotificationPolicy.openAction,
-            title: "Uncoil’de aç",
+            title: "Open in Uncoil",
             options: [.foreground]
         )
         center.setNotificationCategories([
@@ -91,7 +91,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         guard prefs.enabled, prefs.notifyPermission else { return }
         let sensitive = PermissionNotificationPolicy.isSensitive(grantKey: request.grantKey)
         post(
-            title: sensitive ? "İzin isteği (hassas)" : "İzin isteği",
+            title: sensitive ? "Permission request (sensitive)" : "Permission request",
             body: PermissionNotificationPolicy.body(
                 grantKey: request.grantKey,
                 from: request.fromSessionID,
@@ -113,7 +113,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         let prefs = notificationPrefs()
         guard prefs.enabled, prefs.notifyPermission else { return }
         post(
-            title: "Codex onay bekliyor",
+            title: "Codex is waiting for approval",
             body: approval.title,
             category: PermissionNotificationPolicy.sensitiveCategory,
             userInfo: ["session_id": approval.sessionID.uuidString],

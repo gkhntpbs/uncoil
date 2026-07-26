@@ -68,7 +68,7 @@ struct CommandPaletteOverlay: View {
     private var searchField: some View {
         HStack(spacing: 10) {
             TablerIcon(name: "search", size: 14, color: Theme.textDim)
-            TextField("Komut ara, dosya bul, projeye git…", text: $model.query)
+            TextField("Search commands, find files, jump to a project…", text: $model.query)
                 .textFieldStyle(.plain)
                 .font(Theme.mono(14))
                 .foregroundStyle(Theme.text)
@@ -89,7 +89,7 @@ struct CommandPaletteOverlay: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if model.flatItems.isEmpty {
-                        Text("Sonuç yok")
+                        Text("No result")
                             .font(Theme.mono(12))
                             .foregroundStyle(Theme.textFaint)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -235,7 +235,13 @@ enum PaletteHotkeyMonitor {
     }
 
     private static func isAuxiliaryWindow(_ window: NSWindow?) -> Bool {
-        guard let title = window?.title else { return false }
-        return title.contains("Ayarları") || title.contains("Oturum")
+        guard let window else { return false }
+        // Identified by scene id, not by title: the titles are localized, so
+        // matching on them made the palette open over Settings the moment the
+        // interface language stopped being English.
+        if let identifier = window.identifier?.rawValue {
+            return identifier.contains("settings") || identifier.contains("session-window")
+        }
+        return false
     }
 }

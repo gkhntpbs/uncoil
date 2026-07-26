@@ -317,7 +317,7 @@ final class ExtensionUpdateTests: XCTestCase {
         let candidate = try engine().checkForUpdate(package(), remote: remote.path)!
         let staged = try engine(smokeTest: { _ in false }).stage(candidate, package: package())
         XCTAssertFalse(staged.isActivatable)
-        XCTAssertEqual(staged.blockingReason, "Smoke test başarısız.")
+        XCTAssertEqual(staged.blockingReason, "The smoke test failed.")
     }
 
     func testSymlinkEscapeIsCaught() throws {

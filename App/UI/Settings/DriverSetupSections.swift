@@ -22,7 +22,7 @@ struct AgentBrowserSetupSection: View {
             get: { executablePath },
             set: { newValue in
                 executablePath = newValue
-                resultMessage = "Yeni tarayıcı bir sonraki browser oturumunda kullanılacak."
+                resultMessage = "The new browser will be used from the next browser session on."
                 refresh()
             }
         )) {
@@ -31,8 +31,8 @@ struct AgentBrowserSetupSection: View {
             }
         } label: {
             SettingsLabel(
-                title: "Tarayıcı",
-                detail: "Yalnızca bu Mac'te kurulu Chromium tabanlı tarayıcılar gösterilir.",
+                title: "Browser",
+                detail: "Only Chromium-based browsers installed on this Mac are listed.",
                 symbol: "globe"
             )
         }
@@ -43,26 +43,26 @@ struct AgentBrowserSetupSection: View {
         } control: {
             SettingsStatusLine(
                 level: status?.installed == true ? .ok : .warning,
-                text: status?.installed == true ? "hazır" : "eksik"
+                text: status?.installed == true ? "ready" : "eksik"
             )
         }
 
         SettingsActionRow(isWorking: isWorking, note: resultMessage) {
             if status?.installed == true {
-                Button("Başlat ve Doğrula") { startAndVerify() }
+                Button("Start and Verify") { startAndVerify() }
                     .buttonStyle(.borderedProminent)
                     .settingsID("permissions.browser.start")
             } else if status?.path != nil {
-                Button("Chromium'u Kur") { installRuntime() }
+                Button("Install Chromium") { installRuntime() }
                     .buttonStyle(.borderedProminent)
                     .settingsID("permissions.browser.install")
             } else {
-                Button("Kurulum Rehberini Aç") { openInstallGuide() }
+                Button("Open the Setup Guide") { openInstallGuide() }
                     .buttonStyle(.borderedProminent)
                     .settingsID("permissions.browser.installGuide")
             }
 
-            Button("Yenile") { refresh() }
+            Button("Refresh") { refresh() }
                 .settingsID("permissions.browser.refresh")
         }
         .task { await refreshStatus() }
@@ -70,9 +70,9 @@ struct AgentBrowserSetupSection: View {
 
     private var statusTitle: String {
         guard let status else { return "Agent Browser denetleniyor" }
-        guard status.path != nil else { return "Agent Browser CLI kurulu değil" }
+        guard status.path != nil else { return "Agent Browser CLI not installed" }
         guard status.installed else { return "Chromium runtime gerekli" }
-        return status.version ?? "Agent Browser hazır"
+        return status.version ?? "Agent Browser ready"
     }
 
     private func refresh() {
@@ -83,7 +83,7 @@ struct AgentBrowserSetupSection: View {
         guard !isWorking, let binary = status?.path,
               let invocation = AgentBrowserAdapter.installInvocation(binary: binary)
         else {
-            resultMessage = "Node veya agent-browser Playwright CLI bulunamadı."
+            resultMessage = "Neither Node nor the agent-browser Playwright CLI was found."
             return
         }
         isWorking = true
@@ -127,7 +127,7 @@ struct AgentBrowserSetupSection: View {
                 switch opened {
                 case .success:
                     _ = adapter.perform(.stop, session: "uncoil-setup", profileDir: nil)
-                    message = "Agent Browser hazır; Example Domain başarıyla açıldı."
+                    message = "Agent Browser is ready; Example Domain opened successfully."
                 case .failure(let error):
                     message = error.remedy.map { "\(error.message)\n\($0)" } ?? error.message
                 }
@@ -165,31 +165,31 @@ struct CuaDriverSetupSection: View {
         AdaptiveRow {
             SettingsLabel(
                 title: statusTitle,
-                detail: status?.detail ?? "Cua Driver kurulumu, daemon ve macOS izinlerini hazırlar.",
+                detail: status?.detail ?? "Installing the Cua Driver sets up the daemon and the macOS permissions.",
                 symbol: "display"
             )
         } control: {
             SettingsStatusLine(
                 level: status?.installed == true ? .ok : .warning,
-                text: status?.installed == true ? "hazır" : "eksik"
+                text: status?.installed == true ? "ready" : "eksik"
             )
         }
 
         SettingsActionRow(isWorking: isWorking, note: resultMessage) {
             if status?.installed == true {
-                Button("Başlat ve Doğrula") { startAndVerify() }
+                Button("Start and Verify") { startAndVerify() }
                     .buttonStyle(.borderedProminent)
                     .settingsID("permissions.cua.start")
 
-                Button("İzinleri Ayarla") { grantPermissions() }
+                Button("Set Permissions") { grantPermissions() }
                     .settingsID("permissions.cua.permissions")
             } else {
-                Button("Kurulum Rehberini Aç") { openInstallGuide() }
+                Button("Open the Setup Guide") { openInstallGuide() }
                     .buttonStyle(.borderedProminent)
                     .settingsID("permissions.cua.installGuide")
             }
 
-            Button("Yenile") { refresh() }
+            Button("Refresh") { refresh() }
                 .settingsID("permissions.cua.refresh")
         }
         .task { await refreshStatus() }
@@ -197,7 +197,7 @@ struct CuaDriverSetupSection: View {
 
     private var statusTitle: String {
         guard let status else { return "Cua Driver denetleniyor" }
-        guard status.installed else { return "Cua Driver kurulu değil" }
+        guard status.installed else { return "Cua Driver not installed" }
         if let version = status.version, !version.isEmpty {
             return version
         }
@@ -219,7 +219,7 @@ struct CuaDriverSetupSection: View {
                 let message: String
                 switch outcome {
                 case .success:
-                    message = "Cua Driver hazır ve araç çağrısı başarılı."
+                    message = "Cua Driver is ready and the tool call succeeded."
                 case .failure(let error):
                     message = error.remedy.map { "\(error.message)\n\($0)" } ?? error.message
                 }

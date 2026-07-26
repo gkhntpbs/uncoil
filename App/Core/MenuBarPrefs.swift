@@ -17,16 +17,16 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
         var title: String {
             switch self {
             case .logo: "Uncoil logosu"
-            case .symbol: "Sistem sembolü"
-            case .countOnly: "Yalnızca sayılar"
+            case .symbol: "System symbol"
+            case .countOnly: "Counters only"
             }
         }
 
         var detail: String {
             switch self {
-            case .logo: "Duruma göre renk değiştiren Uncoil işareti."
-            case .symbol: "Menü çubuğuna daha iyi uyan tek renkli SF Symbol."
-            case .countOnly: "Simge yok; yalnızca seçtiğin sayaçlar görünür."
+            case .logo: "The Uncoil mark, coloured by state."
+            case .symbol: "A single-colour SF Symbol, which sits better in the menu bar."
+            case .countOnly: "No icon; only the counters you picked are shown."
             }
         }
     }
@@ -40,8 +40,8 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .openMenu: "Menüyü aç"
-            case .openMainWindow: "Uncoil penceresini aç"
+            case .openMenu: "Open the menu"
+            case .openMainWindow: "Open the Uncoil window"
             }
         }
     }
@@ -57,10 +57,10 @@ struct MenuBarPrefs: Codable, Equatable, Sendable {
 
         var title: String {
             switch self {
-            case .running: "Çalışan oturumlar"
+            case .running: "Running sessions"
             case .waiting: "Bekleyenler"
             case .problems: "Sorunlar"
-            case .tasks: "Aktif görevler"
+            case .tasks: "Active tasks"
             }
         }
 

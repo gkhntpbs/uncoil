@@ -55,15 +55,15 @@ enum AgentAdapterError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .configUnreadable(let path):
-            "Agent config okunamadı: \(path)"
+            "Agent config could not be read: \(path)"
         case .configMalformed(let detail):
-            "Agent config beklenen biçimde değil: \(detail)"
+            "Agent config is not in the expected shape: \(detail)"
         case .staleConfig(let path):
-            "\(path) Uncoil dışında değişti; plan yeniden hesaplanmalı."
+            "\(path) changed outside Uncoil; the plan has to be recalculated."
         case .unsupportedChange(let detail):
-            "Bu agent için desteklenmeyen değişiklik: \(detail)"
+            "Unsupported change for this agent: \(detail)"
         case .writeFailed(let detail):
-            "Agent config yazılamadı: \(detail)"
+            "Agent config could not be written: \(detail)"
         }
     }
 }

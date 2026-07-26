@@ -157,7 +157,7 @@ final class TaskResultStoreTests: XCTestCase {
         let store = self.store()
         store.record(merge: TaskMergeRecord(
             taskID: "t1", branch: "uncoil/t1",
-            outcome: .refused(reason: "kullanıcı onayı bekleniyor"), approvedByUser: false,
+            outcome: .refused(reason: "waiting for the user's approval"), approvedByUser: false,
             at: Date(timeIntervalSince1970: 0)
         ))
         store.record(merge: TaskMergeRecord(

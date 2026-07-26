@@ -158,7 +158,7 @@ final class ExtensionSecretServer: @unchecked Sendable {
     private func handle(_ line: Data, clientFD: Int32) {
         guard let request = try? JSONDecoder()
             .decode(ExtensionSecretProtocol.Request.self, from: line) else {
-            write(.failure("geçersiz istek"), to: clientFD)
+            write(.failure("invalid request"), to: clientFD)
             return
         }
         let resolve = resolve

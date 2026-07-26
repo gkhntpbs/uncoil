@@ -27,7 +27,7 @@ struct AttentionCenterView: View {
     private var header: some View {
         HStack(spacing: 8) {
             TablerIcon(name: "bell", size: 13, color: Theme.textDim)
-            Text("Dikkat Merkezi")
+            Text("Attention Center")
                 .font(Theme.mono(12, .semibold))
                 .foregroundStyle(Theme.text)
             if store.unreadCount > 0 {
@@ -40,10 +40,10 @@ struct AttentionCenterView: View {
             }
             Spacer()
             if !store.items.isEmpty {
-                Button("Okundu") { store.markAllRead() }
+                Button("Read") { store.markAllRead() }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("attention.markAllRead")
-                Button("Temizle") { store.resolveAll() }
+                Button("Clear") { store.resolveAll() }
                     .buttonStyle(GhostButtonStyle())
                     .accessibilityIdentifier("attention.resolveAll")
             }
@@ -55,7 +55,7 @@ struct AttentionCenterView: View {
     private var empty: some View {
         VStack(spacing: 8) {
             TablerIcon(name: "circle-check", size: 22, color: Theme.textFaint)
-            Text("Bekleyen bir şey yok")
+            Text("Nothing waiting")
                 .font(Theme.mono(11.5))
                 .foregroundStyle(Theme.textFaint)
         }
@@ -135,7 +135,7 @@ private struct AttentionRow: View {
             }
             .buttonStyle(.plain)
             .opacity(hovering ? 1 : 0.35)
-            .help("Çözüldü olarak işaretle")
+            .help("Mark as resolved")
             .accessibilityIdentifier("attention.resolve.\(item.id)")
         }
         .padding(.horizontal, 9)
@@ -186,8 +186,8 @@ struct AttentionRailButton: View {
         .onHover { hovering = $0 }
         .help(
             store.unreadCount > 0
-                ? "\(store.unreadCount) bekleyen bildirim"
-                : "Dikkat merkezi"
+                ? "\(store.unreadCount) pending notifications"
+                : "Attention center"
         )
         .accessibilityIdentifier("sidebar.attentionButton")
         .accessibilityValue("\(store.unreadCount)")

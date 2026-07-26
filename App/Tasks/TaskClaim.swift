@@ -17,13 +17,13 @@ enum TaskClaimState: String, Equatable, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .available: "Alınabilir"
-        case .claimed: "Alındı"
-        case .running: "Çalışıyor"
-        case .released: "Bırakıldı"
-        case .expired: "Süresi doldu"
-        case .blocked: "Bloklandı"
-        case .completed: "Tamamlandı"
+        case .available: "Available"
+        case .claimed: "Claimed"
+        case .running: "Running"
+        case .released: "Released"
+        case .expired: "Expired"
+        case .blocked: "Blocked"
+        case .completed: "Done"
         }
     }
 
@@ -76,9 +76,9 @@ enum TaskClaimPolicy {
         heldBy existing: TaskAgentRole
     ) -> String {
         guard claims(role) else {
-            return "\(role.label) rolü claim almaz; atama yeterli."
+            return "The \(role.label) role takes no claim; assignment is enough."
         }
-        return "Görev \(existing.label) tarafından tutuluyor."
+        return "The task is held by \(existing.label)."
     }
 
     /// The claim state of a task, from its lease and what its agents report.

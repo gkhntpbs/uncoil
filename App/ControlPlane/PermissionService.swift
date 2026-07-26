@@ -34,8 +34,8 @@ struct PermissionRequest: Codable, Equatable, Identifiable {
 
         var label: String {
             switch self {
-            case .once: "Bir kez"
-            case .persistent: "Kalıcı"
+            case .once: "Once"
+            case .persistent: "Permanent"
             }
         }
     }

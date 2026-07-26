@@ -28,11 +28,11 @@ enum RuntimeProtocol {
 
     static func negotiate(peerVersion: Int?, peerMinor: Int?) -> Compatibility {
         guard let peerVersion else {
-            return .incompatible("Runtime daemon sürüm bilgisi göndermedi.")
+            return .incompatible("The runtime daemon sent no version information.")
         }
         guard peerVersion == version else {
             return .incompatible(
-                "Runtime protokolü uyumsuz: uygulama \(version).\(minor), daemon \(peerVersion).\(peerMinor ?? 0)."
+                "Runtime protocol mismatch: app \(version).\(minor), daemon \(peerVersion).\(peerMinor ?? 0)."
             )
         }
         return .compatible(minor: min(minor, peerMinor ?? 0))

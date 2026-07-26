@@ -680,39 +680,39 @@ struct SidebarOutline: NSViewRepresentable {
                 else { return nil }
                 add(
                     to: menu,
-                    title: project.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle"
+                    title: project.isPinned == true ? "Unpin" : "Pin"
                 ) { environment.projectStore.toggleProjectPin(id) }
-                add(to: menu, title: "Yukarı Taşı") {
+                add(to: menu, title: "Move Up") {
                     environment.projectStore.nudgeProject(id, by: -1)
                 }
-                add(to: menu, title: "Aşağı Taşı") {
+                add(to: menu, title: "Move Down") {
                     environment.projectStore.nudgeProject(id, by: 1)
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Yeni Grup…") {
+                add(to: menu, title: "New Group…") {
                     environment.actions.createGroup(project)
                 }
-                add(to: menu, title: "Özelleştir…") {
+                add(to: menu, title: "Customise…") {
                     environment.actions.customizeProject(project)
                 }
                 let collapsed = CollapsedProjects.shared.contains(id)
-                add(to: menu, title: collapsed ? "Oturumları Göster" : "Oturumları Gizle") {
+                add(to: menu, title: collapsed ? "Show Sessions" : "Hide Sessions") {
                     CollapsedProjects.shared.set(id, collapsed: !collapsed)
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Finder'da Göster") {
+                add(to: menu, title: "Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
                 }
-                add(to: menu, title: "Listeden Kaldır") {
+                add(to: menu, title: "Remove from List") {
                     environment.projectStore.removeProject(project)
                 }
             case .group(let id):
                 guard let group = environment.projectStore.sessionGroups
                     .first(where: { $0.id == id }) else { return nil }
-                add(to: menu, title: "Yeniden Adlandır") {
+                add(to: menu, title: "Rename") {
                     environment.actions.renameGroup(group)
                 }
-                add(to: menu, title: "Grubu Sil") {
+                add(to: menu, title: "Delete Group") {
                     environment.projectStore.removeGroup(id)
                     environment.selection.wrappedValue = .project(group.projectID)
                 }
@@ -721,41 +721,41 @@ struct SidebarOutline: NSViewRepresentable {
                 else { return nil }
                 add(
                     to: menu,
-                    title: record.isPinned == true ? "Sabitlemeyi Kaldır" : "Sabitle"
+                    title: record.isPinned == true ? "Unpin" : "Pin"
                 ) { environment.projectStore.togglePin(id) }
                 // Ordering a session should not require a steady hand: the same
                 // nudges projects have, applied among its siblings.
-                add(to: menu, title: "Yukarı Taşı") {
+                add(to: menu, title: "Move Up") {
                     environment.projectStore.nudgeSession(id, by: -1)
                 }
-                add(to: menu, title: "Aşağı Taşı") {
+                add(to: menu, title: "Move Down") {
                     environment.projectStore.nudgeSession(id, by: 1)
                 }
                 if record.groupID != nil {
-                    add(to: menu, title: "Gruptan Çıkar") {
+                    add(to: menu, title: "Remove from Group") {
                         environment.projectStore.moveSessions(
                             [id], toGroup: nil, inProject: record.projectID, at: -1
                         )
                     }
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Yeni Pencerede Aç") {
+                add(to: menu, title: "Open in a New Window") {
                     environment.actions.openSessionWindow(id)
                 }
                 menu.addItem(.separator())
                 // The session ID is what the control plane and the MCP tools
                 // address a session by, so copying it is the fastest way to
                 // hand one to an agent.
-                add(to: menu, title: "Oturum ID'sini Kopyala") {
+                add(to: menu, title: "Copy the Session ID") {
                     copyToPasteboard(id.uuidString)
                 }
                 if let providerID = record.providerSessionID, !providerID.isEmpty {
-                    add(to: menu, title: "Sağlayıcı Oturum ID'sini Kopyala") {
+                    add(to: menu, title: "Copy the Provider Session ID") {
                         copyToPasteboard(providerID)
                     }
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Oturumu Sil") {
+                add(to: menu, title: "Delete the Session") {
                     environment.actions.confirmDeleteSession(record)
                 }
             }

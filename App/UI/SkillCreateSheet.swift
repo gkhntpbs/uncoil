@@ -23,35 +23,35 @@ struct SkillCreateSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Yeni skill")
+                Text("New skill")
                     .font(Theme.mono(14, .bold))
                     .foregroundStyle(Theme.text)
-                Text("Uncoil'in deposunda oluşturulur; seçtiğin agent'lara bağlanır.")
+                Text("Created in Uncoil's own store; attached to the agents you pick.")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                field("Ad") {
-                    TextField("örn. release-checklist", text: $draft.name)
+                field("Name") {
+                    TextField("e.g. release-checklist", text: $draft.name)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(11.5))
                         .accessibilityIdentifier("extensions.skills.create.name")
                 }
                 if !draft.name.isEmpty {
-                    Text("Klasör adı: \(slug.isEmpty ? "geçersiz" : slug)")
+                    Text("Folder name: \(slug.isEmpty ? "invalid" : slug)")
                         .font(Theme.mono(9.5))
                         .foregroundStyle(slug.isEmpty ? Theme.danger : Theme.textFaint)
                 }
 
-                field("Açıklama") {
-                    TextField("Agent bunu ne zaman kullanmalı?", text: $draft.summary)
+                field("Description") {
+                    TextField("When should the agent use this?", text: $draft.summary)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(11.5))
                         .accessibilityIdentifier("extensions.skills.create.summary")
                 }
 
-                field("İçerik") {
+                field("Contents") {
                     TextEditor(text: $draft.body)
                         .font(Theme.mono(11))
                         .frame(height: 150)
@@ -66,7 +66,7 @@ struct SkillCreateSheet: View {
                 }
 
                 if registry.installedAgents.isEmpty {
-                    Text("Kurulu agent bulunamadı; skill oluşturulur ama kimseye bağlanmaz.")
+                    Text("No installed agent found; the skill is created but attached to nobody.")
                         .font(Theme.mono(10))
                         .foregroundStyle(Theme.warn)
                 } else {
@@ -98,10 +98,10 @@ struct SkillCreateSheet: View {
 
             HStack(spacing: 9) {
                 Spacer()
-                Button("Vazgeç") { onFinish(nil) }
+                Button("Cancel") { onFinish(nil) }
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("Oluştur") { create() }
+                Button("Create") { create() }
                     .buttonStyle(AccentButtonStyle())
                     .disabled(!canCreate)
                     .accessibilityIdentifier("extensions.skills.create.confirm")
@@ -132,7 +132,7 @@ struct SkillCreateSheet: View {
             registry.upsert(package)
             registry.record(AuditEvent(
                 kind: .skillInstalled, extensionID: package.id,
-                detail: "Uncoil içinde oluşturuldu"
+                detail: "Created inside Uncoil"
             ))
             var linked: [String] = []
             for installation in registry.installations
@@ -144,8 +144,8 @@ struct SkillCreateSheet: View {
             }
             onFinish(
                 linked.isEmpty
-                    ? "\(package.name) oluşturuldu."
-                    : "\(package.name) oluşturuldu ve bağlandı: \(linked.joined(separator: ", "))."
+                    ? "\(package.name) created."
+                    : "\(package.name) created and linked: \(linked.joined(separator: ", "))."
             )
         } catch {
             self.error = error.localizedDescription

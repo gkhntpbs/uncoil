@@ -157,18 +157,18 @@ enum ProjectTaskExecutionState: String, Equatable, Codable, CaseIterable {
 
     var label: String {
         switch self {
-        case .unassigned: "Atanmadı"
+        case .unassigned: "Not assigned"
         case .queued: "Kuyrukta"
-        case .assigned: "Atandı"
-        case .agentStarting: "Agent başlıyor"
-        case .running: "Çalışıyor"
-        case .waitingForPermission: "İzin bekliyor"
-        case .waitingForUser: "Kullanıcı bekliyor"
-        case .testsFailing: "Testler başarısız"
+        case .assigned: "Assigned"
+        case .agentStarting: "Agent starting"
+        case .running: "Running"
+        case .waitingForPermission: "Waiting for permission"
+        case .waitingForUser: "Waiting for you"
+        case .testsFailing: "Tests failing"
         case .reviewRequested: "Review istendi"
-        case .blocked: "Bloklandı"
-        case .failed: "Başarısız"
-        case .completed: "Tamamlandı"
+        case .blocked: "Blocked"
+        case .failed: "Failed"
+        case .completed: "Done"
         }
     }
 
@@ -215,8 +215,8 @@ enum TaskAgentRole: String, Equatable, Codable, CaseIterable, Identifiable {
         case .implementer: "Uygulayan"
         case .reviewer: "Review"
         case .tester: "Test"
-        case .observer: "İzleyen"
-        case .orchestrator: "Orkestratör"
+        case .observer: "Observer"
+        case .orchestrator: "Orchestrator"
         }
     }
 
@@ -372,11 +372,11 @@ struct TaskBoardColumnMapping: Identifiable, Equatable, Codable {
     /// The default board: file state on the outside, execution state in between.
     static let defaults: [TaskBoardColumnMapping] = [
         .init(
-            id: "open", title: "Açık",
+            id: "open", title: "On",
             executionStates: [.unassigned, .queued], checkboxMark: .open, sortIndex: 0
         ),
         .init(
-            id: "inProgress", title: "Çalışılıyor",
+            id: "inProgress", title: "Being worked on",
             executionStates: [.assigned, .agentStarting, .running],
             checkboxMark: nil, sortIndex: 1
         ),
@@ -391,7 +391,7 @@ struct TaskBoardColumnMapping: Identifiable, Equatable, Codable {
             checkboxMark: nil, sortIndex: 3
         ),
         .init(
-            id: "done", title: "Tamamlandı",
+            id: "done", title: "Done",
             executionStates: [.completed], checkboxMark: .done, sortIndex: 4
         ),
     ]

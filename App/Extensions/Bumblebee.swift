@@ -14,9 +14,9 @@ enum BumblebeeBinarySource: String, Equatable, Codable, CaseIterable {
 
     var label: String {
         switch self {
-        case .pinned: "Uncoil ile gelen"
-        case .managed: "Uncoil tarafından kurulan"
-        case .path: "PATH üzerinde bulunan"
+        case .pinned: "Shipped with Uncoil"
+        case .managed: "Installed by Uncoil"
+        case .path: "Found on PATH"
         }
     }
 
@@ -108,7 +108,7 @@ struct BumblebeeSelfTest: Equatable, Codable {
         }
         return BumblebeeSelfTest(
             passed: exitCode == 0,
-            detail: trimmed.isEmpty ? "çıkış kodu \(exitCode)" : trimmed,
+            detail: trimmed.isEmpty ? "exit code \(exitCode)" : trimmed,
             ranAt: now
         )
     }
@@ -131,13 +131,13 @@ enum BumblebeeScanKind: String, Equatable, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .beforeInstall: "Kurulum öncesi"
-        case .beforeUpdate: "Update öncesi"
-        case .afterUpdate: "Update sonrası"
-        case .launchIfStale: "Açılışta (eski tarama)"
-        case .dailyBaseline: "Günlük baseline"
+        case .beforeInstall: "Before install"
+        case .beforeUpdate: "Before update"
+        case .afterUpdate: "After update"
+        case .launchIfStale: "At launch (previous scan)"
+        case .dailyBaseline: "Daily baseline"
         case .manual: "Manuel"
-        case .project: "Proje taraması"
+        case .project: "Project scan"
         case .deep: "Deep scan"
         }
     }
@@ -243,11 +243,11 @@ struct BumblebeeScanResult: Equatable {
 
     /// Why the result is not usable, for the UI to say out loud.
     var unusableReason: String? {
-        if timedOut { return "Tarama zaman aşımına uğradı; yarım sonuç current state sayılmaz." }
-        if exitCode != 0 { return "Bumblebee \(exitCode) koduyla çıktı." }
-        if summary == nil { return "scan_summary satırı yok; tarama tamamlanmamış." }
+        if timedOut { return "The scan timed out; a partial result does not count as current state." }
+        if exitCode != 0 { return "Bumblebee exited with code \(exitCode)." }
+        if summary == nil { return "no scan_summary line; the scan did not finish." }
         if selfTest?.resultsAreTrustworthy != true {
-            return "Self-test geçmedi; sonuçlar güvenilir kabul edilmiyor."
+            return "The self-test did not pass; the results are not treated as trustworthy."
         }
         return nil
     }
@@ -398,20 +398,20 @@ enum BumblebeeCoverage {
 
     static let looseSkillFolders = Gap(
         id: "coverage.loose-skill-folders",
-        message: "Doğrudan `SKILL.md` klasörleri Bumblebee taramasının kapsamı dışında.",
-        remedy: "Bu klasörler için Uncoil'in kendi taramasına güven."
+        message: "Plain `SKILL.md` folders are outside the Bumblebee scan's reach.",
+        remedy: "Trust Uncoil's own scan for these folders."
     )
 
     static let codexTOML = Gap(
         id: "coverage.codex-toml",
-        message: "Codex TOML MCP config'i Bumblebee tarafından okunmuyor.",
-        remedy: "Codex MCP sunucuları Uncoil taramasıyla değerlendirilir."
+        message: "Bumblebee does not read Codex's TOML MCP config.",
+        remedy: "Codex MCP servers are judged by Uncoil's own scan."
     )
 
     static let remoteMCP = Gap(
         id: "coverage.remote-mcp",
-        message: "Remote MCP sunucularının yerel dosyası yok; taranacak bir şey bulunmuyor.",
-        remedy: "Sunucu tarafı güvenliği sağlayıcının sorumluluğunda."
+        message: "Remote MCP servers have no local file; there is nothing to scan.",
+        remedy: "Server-side security is the provider's responsibility."
     )
 
     static let all: [Gap] = [looseSkillFolders, codexTOML, remoteMCP]
@@ -432,8 +432,8 @@ enum BumblebeeCoverage {
 
     /// What to say about a clean scan. Never "safe".
     static func cleanResultCaption(scanned: Int) -> String {
-        "\(scanned) öğe tarandı, bulgu yok. Bu \"tamamen güvenli\" demek değildir: "
-            + "tarama kapsamı sınırlıdır."
+        "\(scanned) items scanned, no findings. That does not mean “entirely safe”: "
+            + "the scan's reach is limited."
     }
 }
 
@@ -459,14 +459,14 @@ enum BumblebeeFindingKind: String, Equatable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .knownPackageExposure: "Bilinen paket açığı"
-        case .knownMaliciousVersion: "Bilinen zararlı sürüm"
-        case .suspiciousEditorExtension: "Şüpheli editör eklentisi"
+        case .knownPackageExposure: "Known package exposure"
+        case .knownMaliciousVersion: "Known malicious version"
+        case .suspiciousEditorExtension: "Suspicious editor extension"
         case .mcpInventory: "MCP envanteri"
         case .agentSkillInventory: "Agent skill envanteri"
-        case .parserDiagnostic: "Parser uyarısı"
-        case .unsupportedConfiguration: "Desteklenmeyen yapılandırma"
-        case .other: "Sınıflandırılmamış bulgu"
+        case .parserDiagnostic: "Parser warning"
+        case .unsupportedConfiguration: "Unsupported configuration"
+        case .other: "Unclassified finding"
         }
     }
 
@@ -512,19 +512,19 @@ enum BumblebeeFindingKind: String, Equatable, CaseIterable, Identifiable {
     var remedy: String {
         switch self {
         case .knownPackageExposure:
-            "Paketi güncelle; güncel sürüm yoksa extension'ı karantinaya al."
+            "Update the package; if there is no current release, quarantine the extension."
         case .knownMaliciousVersion:
-            "Bu sürümü çalıştırma: karantinaya al ve kaynağı doğrula."
+            "Do not run this version: quarantine it and verify its source."
         case .suspiciousEditorExtension:
-            "Editör eklentisini gözden geçir; Uncoil onu yönetmiyor."
+            "Review the editor extension; Uncoil does not manage it."
         case .mcpInventory, .agentSkillInventory:
-            "Bilgi amaçlı: listede beklemediğin bir şey varsa ona bak."
+            "For information: if something on the list is unexpected, look at that."
         case .parserDiagnostic:
-            "Bumblebee bu dosyayı okuyamadı; o dosya için temiz sonuç kanıt değildir."
+            "Bumblebee could not read this file; a clean result is no evidence for it."
         case .unsupportedConfiguration:
-            "Bu yapılandırma tarama kapsamı dışında; Uncoil'in kendi taramasına güven."
+            "This configuration is outside the scan's reach; trust Uncoil's own scan."
         case .other:
-            "Bumblebee bu kuralı bildirdi ama Uncoil sınıflandırmadı; kuralın adına bak."
+            "Bumblebee reported this rule but Uncoil did not classify it; look at the rule's name."
         }
     }
 
@@ -607,12 +607,12 @@ struct BumblebeeFindingSummary: Equatable {
     /// never described as clean.
     func caption(scanned: Int) -> String {
         if hasParserDiagnostics {
-            return "\(scanned) öğe tarandı ama bazı dosyalar okunamadı; "
-                + "bulgu olmaması onların temiz olduğunu göstermez."
+            return "\(scanned) items scanned, but some files could not be read; "
+                + "the absence of findings does not show they are clean."
         }
         if actionableCount == 0 {
             return BumblebeeCoverage.cleanResultCaption(scanned: scanned)
         }
-        return "\(scanned) öğe tarandı, \(actionableCount) bulgu ilgilenilmeyi bekliyor."
+        return "\(scanned) items scanned, \(actionableCount) findings waiting to be dealt with."
     }
 }

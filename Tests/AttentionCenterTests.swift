@@ -209,7 +209,7 @@ final class AttentionStoreTests: XCTestCase {
         let store = store()
         let record = session()
         store.report(
-            kind: .testFailure, title: "uncoil › iş", detail: "3 test başarısız",
+            kind: .testFailure, title: "uncoil › iş", detail: "3 tests failing",
             projectID: projectID, sessionID: record.id, id: "test:x"
         )
         XCTAssertEqual(store.count(of: .testFailure), 1)

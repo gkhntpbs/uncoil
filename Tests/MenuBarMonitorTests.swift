@@ -46,7 +46,7 @@ final class MenuBarMonitorTests: XCTestCase {
     func testIdleSummaryHasEmptyLabelAndRestingIcon() {
         let summary = MenuBarMonitorEngine.summary(statuses: [UUID(): .idle])
         XCTAssertEqual(MenuBarPrefs().label(for: summary), "")
-        XCTAssertEqual(summary.headline, "Bekleyen iş yok")
+        XCTAssertEqual(summary.headline, "Nothing pending")
         XCTAssertEqual(summary.icon, .idle)
         XCTAssertFalse(summary.hasProblem)
         XCTAssertFalse(summary.needsUser)

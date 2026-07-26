@@ -26,16 +26,16 @@ enum NotificationSuppression: String, Equatable, Sendable {
 
     var label: String {
         switch self {
-        case .masterOff: "Bildirimler kapalı"
-        case .eventOff: "Bu olay için bildirim kapalı"
-        case .projectOff: "Proje için bildirim kapalı"
+        case .masterOff: "Notifications off"
+        case .eventOff: "Notifications off for this event"
+        case .projectOff: "Notifications off for the project"
         case .quietHours: "Sessiz saatler"
-        case .appActive: "Uncoil ön planda"
-        case .visibleSession: "Oturum zaten ekranda"
-        case .alreadySent: "Bu durum için zaten bildirildi"
-        case .reminderOff: "Hatırlatma kapalı"
-        case .reminderNotDue: "Hatırlatma zamanı gelmedi"
-        case .reminderLimit: "Hatırlatma sınırına ulaşıldı"
+        case .appActive: "Uncoil in the foreground"
+        case .visibleSession: "The session is already on screen"
+        case .alreadySent: "Already announced for this state"
+        case .reminderOff: "Reminders off"
+        case .reminderNotDue: "Not time to remind yet"
+        case .reminderLimit: "Reminder limit reached"
         }
     }
 }

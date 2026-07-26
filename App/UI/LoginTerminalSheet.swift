@@ -19,7 +19,7 @@ struct LoginTerminalSheet: View {
                     Text("\(profile.provider.displayName) · \(profile.name)")
                         .font(.headline)
                         .foregroundStyle(Theme.text)
-                    Text("Akış tarayıcıyı açar; bitince bu pencereyi kapat.")
+                    Text("The flow opens your browser; close this window when it is done.")
                         .font(.caption)
                         .foregroundStyle(Theme.textDim)
                 }
@@ -37,7 +37,7 @@ struct LoginTerminalSheet: View {
 
             HStack {
                 Spacer()
-                Button("Kapat") {
+                Button("Close") {
                     onFinished()
                     dismiss()
                 }

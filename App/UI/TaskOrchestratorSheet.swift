@@ -3,7 +3,7 @@ import SwiftUI
 /// Starting agents on several tasks at once.
 ///
 /// Replaces the old plan *alert*: the plan is shown as a searchable, selectable
-/// list, the agent is chosen here, and "Başlat" is what actually dispatches —
+/// list, the agent is chosen here, and "Start" is what actually dispatches —
 /// nothing runs before it.
 struct TaskOrchestratorSheet: View {
     let plan: OrchestratorPlan
@@ -47,7 +47,7 @@ struct TaskOrchestratorSheet: View {
             Divider().overlay(Theme.border)
 
             if tasks.isEmpty {
-                Text("Başlatılacak açık görev yok.")
+                Text("No open task to start.")
                     .font(Theme.mono(11))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -96,10 +96,10 @@ struct TaskOrchestratorSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Görevleri agent'lara ver")
+            Text("Hand tasks to agents")
                 .font(Theme.mono(14, .bold))
                 .foregroundStyle(Theme.text)
-            Text("Seçtiğin her görev için bir oturum açılır ve görev prompt olarak gönderilir.")
+            Text("A session is opened for every task you pick, and the task is sent as its prompt.")
                 .font(Theme.mono(10.5))
                 .foregroundStyle(Theme.textDim)
         }
@@ -110,13 +110,13 @@ struct TaskOrchestratorSheet: View {
     private var searchRow: some View {
         HStack(spacing: 9) {
             TablerIcon(name: "search", size: 12, color: Theme.textFaint)
-            TextField("Görev ara…", text: $query)
+            TextField("Search tasks…", text: $query)
                 .textFieldStyle(.plain)
                 .font(Theme.mono(11.5))
                 .foregroundStyle(Theme.text)
                 .accessibilityIdentifier("tasks.orchestrator.search")
             Spacer()
-            Button(selectedIDs.count == tasks.count ? "Hiçbirini seçme" : "Tümünü seç") {
+            Button(selectedIDs.count == tasks.count ? "Select none" : "Select all") {
                 selectedIDs = selectedIDs.count == tasks.count ? [] : Set(tasks.map(\.id))
             }
             .buttonStyle(GhostButtonStyle())
@@ -186,7 +186,7 @@ struct TaskOrchestratorSheet: View {
                     Picker("", selection: Binding(
                         get: { launch.model }, set: { launch.model = $0 }
                     )) {
-                        Text("Model: varsayılan").tag(String?.none)
+                        Text("Model: default").tag(String?.none)
                         ForEach(capabilities.models) { option in
                             Text(option.label).tag(String?.some(option.id))
                         }
@@ -200,7 +200,7 @@ struct TaskOrchestratorSheet: View {
                     Picker("", selection: Binding(
                         get: { launch.effort }, set: { launch.effort = $0 }
                     )) {
-                        Text("Effort: varsayılan").tag(String?.none)
+                        Text("Effort: default").tag(String?.none)
                         ForEach(capabilities.efforts) { option in
                             Text(option.label).tag(String?.some(option.id))
                         }
@@ -213,7 +213,7 @@ struct TaskOrchestratorSheet: View {
                 Picker("", selection: Binding(
                     get: { launch.workingMode }, set: { launch.workingMode = $0 }
                 )) {
-                    Text("Mod: varsayılan").tag(AgentWorkingMode?.none)
+                    Text("Mode: default").tag(AgentWorkingMode?.none)
                     ForEach(capabilities.workingModes) { mode in
                         Text(mode.label(for: provider)).tag(AgentWorkingMode?.some(mode))
                     }
@@ -223,7 +223,7 @@ struct TaskOrchestratorSheet: View {
                 .accessibilityIdentifier("tasks.orchestrator.mode")
 
                 Toggle(isOn: $autoStart) {
-                    Text("Otomatik başlat")
+                    Text("Start automatically")
                         .font(Theme.mono(10.5))
                         .foregroundStyle(Theme.textDim)
                 }
@@ -234,18 +234,18 @@ struct TaskOrchestratorSheet: View {
             HStack(spacing: 9) {
                 Text(
                     autoStart
-                        ? "\(selectedIDs.count) görev seçili"
-                        : "\(selectedIDs.count) görev seçili · prompt yazılır, Enter'a sen basarsın"
+                        ? "\(selectedIDs.count) tasks selected"
+                        : "\(selectedIDs.count) tasks selected · the prompt is typed in, you press Enter"
                 )
                 .font(Theme.mono(10))
                 .foregroundStyle(Theme.textFaint)
 
                 Spacer()
 
-                Button("Vazgeç", action: onCancel)
+                Button("Cancel", action: onCancel)
                     .buttonStyle(GhostButtonStyle())
                     .keyboardShortcut(.escape, modifiers: [])
-                Button("\(provider.displayName) ile başlat (\(selectedIDs.count))") {
+                Button("Start with \(provider.displayName) (\(selectedIDs.count))") {
                     onStart(
                         tasks.filter { selectedIDs.contains($0.id) },
                         provider, launch, autoStart

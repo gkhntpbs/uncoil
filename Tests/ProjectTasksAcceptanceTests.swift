@@ -296,7 +296,7 @@ final class ProjectTasksAcceptanceTests: XCTestCase {
         let id = try await mcpTaskID("ilk görev")
         _ = await call("assign_session", ["task_id": .string(id)])
         _ = await call("report_task_progress", [
-            "task_id": .string(id), "detail": .string("çalışıyor"),
+            "task_id": .string(id), "detail": .string("running"),
         ])
         _ = await call("add_task_note", [
             "task_id": .string(id), "note": .string("kullanıcı notu"),
@@ -469,7 +469,7 @@ final class ProjectTasksAcceptanceTests: XCTestCase {
 
         _ = await call("report_test_result", [
             "task_id": .string(id), "command": .string("xcodebuild test"),
-            "passed": .bool(true), "summary": .string("geçti"),
+            "passed": .bool(true), "summary": .string("passed"),
         ])
         let allowed = await call("complete_task", ["task_id": .string(id)])
         XCTAssertTrue(allowed.ok)

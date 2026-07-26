@@ -131,7 +131,7 @@ enum RelativeClock {
     static func short(since date: Date, now: Date = .now) -> String {
         let seconds = max(0, now.timeIntervalSince(date))
         switch seconds {
-        case ..<60: return "şimdi"
+        case ..<60: return "now"
         case ..<3600: return "\(Int(seconds / 60))dk"
         case ..<86_400: return "\(Int(seconds / 3600))sa"
         default: return "\(Int(seconds / 86_400))g"
@@ -141,7 +141,7 @@ enum RelativeClock {
 
 /// A short status word on its own surface.
 ///
-/// One place decides how a status looks, so "test başarısız" in the Tasks screen
+/// One place decides how a status looks, so "tests failing" in the Tasks screen
 /// and in the Extensions screen cannot drift apart.
 struct StatusBadge: View {
     enum Level {

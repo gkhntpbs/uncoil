@@ -20,16 +20,16 @@ enum BackupContent: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .settings: "Uncoil ayarları"
-        case .projects: "Proje listesi"
+        case .settings: "Uncoil settings"
+        case .projects: "Project list"
         case .sessions: "Session metadata"
-        case .sessionGroups: "Session grupları"
+        case .sessionGroups: "Session groups"
         case .presets: "Preset'ler"
-        case .agentAssignments: "Agent atamaları"
+        case .agentAssignments: "Agent assignments"
         case .extensionRegistry: "Extension registry"
-        case .extensionSources: "Skill/MCP kaynak kayıtları"
-        case .permissionDecisions: "Permission kararları"
-        case .extensionLocks: "Extension lock dosyaları"
+        case .extensionSources: "Skill/MCP source records"
+        case .permissionDecisions: "Permission decisions"
+        case .extensionLocks: "Extension lock files"
         case .transcripts: "Transcript'ler"
         }
     }
@@ -123,19 +123,19 @@ struct BackupService {
 
         var message: String {
             switch self {
-            case .unreadableBackup(let detail): "Yedek okunamadı: \(detail)"
+            case .unreadableBackup(let detail): "The backup could not be read: \(detail)"
             case .unsupportedBackupVersion(let version):
-                "Yedek sürümü \(version) bu Uncoil sürümünden yeni; geri yükleme yapılmadı."
+                "The backup's version \(version) is newer than this build of Uncoil; nothing was restored."
             case .unknownSchema(let name, let version):
-                "\(name) şeması sürüm \(version) okunamıyor."
+                "\(name)'s schema version \(version) cannot be read."
             case .missingExtensionSource(let name, let detail):
-                "\(name) kaynağı eksik: \(detail)"
+                "\(name)'s source is missing: \(detail)"
             case .reinstallableFromCommit(let name, let repository, let commit):
-                "\(name) \(repository) deposundan \(String(commit.prefix(12))) commit'i ile yeniden kurulabilir."
+                "\(name) can be reinstalled from \(repository) at commit \(String(commit.prefix(12)))."
             case .manualExtensionFilesMissing(let name, let path):
-                "\(name) elle eklenmişti ve dosyaları yok: \(path)"
+                "\(name) was added by hand and its files are gone: \(path)"
             case .agentConfigWouldChange(let agent, let detail):
-                "\(agent) config'i değişecek: \(detail)"
+                "\(agent)'s config will change: \(detail)"
             }
         }
     }
@@ -309,7 +309,7 @@ struct BackupService {
                     )
                 } else {
                     problems.append(.missingExtensionSource(
-                        name: package.name, detail: "\(repository) için commit kaydı yok"
+                        name: package.name, detail: "No commit recorded for \(repository)"
                     ))
                 }
             case .local(let path), .adopted(let path), .detectedExternal(let path):
@@ -365,7 +365,7 @@ struct BackupService {
         let preview = preview(backup)
         guard preview.isRestorable else {
             throw AgentAdapterError.unsupportedChange(
-                preview.fatalProblems.first?.message ?? "Yedek geri yüklenemez."
+                preview.fatalProblems.first?.message ?? "The backup cannot be restored."
             )
         }
         let staging = dataDirectory
@@ -444,7 +444,7 @@ struct BackupService {
 
     func read(_ url: URL) -> Result<UncoilBackup, RestoreProblem> {
         guard let data = FileManager.default.contents(atPath: url.path) else {
-            return .failure(.unreadableBackup("dosya yok"))
+            return .failure(.unreadableBackup("no file"))
         }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

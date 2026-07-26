@@ -93,7 +93,7 @@ struct OrchestratorPlan: Equatable {
             }
         }
         for entry in skipped {
-            lines.append("Atlandı: \(entry.taskID) — \(entry.reason)")
+            lines.append("Skipped: \(entry.taskID) — \(entry.reason)")
         }
         return lines.joined(separator: "\n")
     }
@@ -124,17 +124,17 @@ enum TaskOrchestrator {
                 continue
             }
             if let state = input.claimStates[task.id], !state.isTakeable {
-                skipped.append((task.id, "\(state.label): başka bir agent üzerinde"))
+                skipped.append((task.id, "\(state.label): on another agent"))
                 continue
             }
             if (input.assignments[task.id] ?? []).contains(where: { $0.state.isActive }) {
-                skipped.append((task.id, "hâlihazırda çalışılıyor"))
+                skipped.append((task.id, "already being worked on"))
                 continue
             }
             if task.hasChildren {
                 // A parent is finished by its children; dispatching it too would
                 // put two agents on the same work.
-                skipped.append((task.id, "alt görevleri var; onlar planlanıyor"))
+                skipped.append((task.id, "it has subtasks; those are being planned"))
                 continue
             }
             candidates.append(task)
@@ -158,7 +158,7 @@ enum TaskOrchestrator {
             // Two tasks touching the same file are not run side by side.
             while !paths.isEmpty, !(claimedPaths[wave] ?? []).isDisjoint(with: paths) {
                 wave += 1
-                serialReason = "aynı dosyalara dokunuyor"
+                serialReason = "touches the same files"
             }
             // Respect the parallelism ceiling by pushing overflow to later waves.
             while dispatches.filter({ $0.wave == wave }).count >= input.settings.effectiveParallelism {
@@ -219,7 +219,7 @@ enum TaskOrchestrator {
     }
 
     /// Which tasks wait for which. Two signals: a task that names another
-    /// task's wording, and an explicit "önce/after" phrase.
+    /// task's wording, and an explicit "before/after" phrase.
     static func dependencyMap(
         _ tasks: [ProjectTask],
         all: [ProjectTask]
@@ -354,7 +354,7 @@ enum TaskOrchestrator {
                         taskID: assignment.taskID, reason: "heartbeat kayboldu"
                     ))
                     actions.append(.markFailed(
-                        taskID: assignment.taskID, reason: "agent yanıt vermiyor"
+                        taskID: assignment.taskID, reason: "the agent is not responding"
                     ))
                 }
             case .unassigned, .queued, .waitingForPermission, .waitingForUser,

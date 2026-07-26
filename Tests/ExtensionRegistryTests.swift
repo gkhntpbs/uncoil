@@ -68,7 +68,7 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testAuditLogIsAppendOnlyAndSurvivesReload() {
         registry.record(AuditEvent(kind: .skillInstalled, extensionID: "a", detail: "kuruldu", at: now))
-        registry.record(AuditEvent(kind: .updateApplied, extensionID: "a", detail: "güncellendi", at: now))
+        registry.record(AuditEvent(kind: .updateApplied, extensionID: "a", detail: "updated", at: now))
         XCTAssertEqual(registry.auditEvents.count, 2)
 
         let reloaded = ExtensionRegistry(layout: layout, store: store)

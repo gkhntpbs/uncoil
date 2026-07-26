@@ -130,7 +130,7 @@ final class CodexUnixWebSocket {
 
     private func sendFrame(opcode: UInt8, payload: Data) throws {
         guard !closed else {
-            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket kapalı.")
+            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket is closed.")
         }
         var frame = Data([0x80 | opcode])
         let count = payload.count
@@ -173,7 +173,7 @@ final class CodexUnixWebSocket {
         let bytes = Array(path.utf8)
         guard bytes.count < MemoryLayout.size(ofValue: address.sun_path) else {
             Darwin.close(descriptor)
-            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket yolu çok uzun.")
+            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket path is too long.")
         }
         withUnsafeMutableBytes(of: &address.sun_path) { target in
             target.initializeMemory(as: UInt8.self, repeating: 0)
@@ -227,7 +227,7 @@ final class CodexUnixWebSocket {
             let count = Darwin.read(descriptor, &chunk, chunk.count)
             guard count > 0 else {
                 Darwin.close(descriptor)
-                throw CodexAppServerProtocolError.processLaunch("Codex app-server WebSocket handshake başarısız.")
+                throw CodexAppServerProtocolError.processLaunch("Codex app-server WebSocket handshake failed.")
             }
             response.append(contentsOf: chunk.prefix(count))
         }
@@ -242,7 +242,7 @@ final class CodexUnixWebSocket {
         ).base64EncodedString()
         guard header.lowercased().contains("sec-websocket-accept: \(expected.lowercased())") else {
             Darwin.close(descriptor)
-            throw CodexAppServerProtocolError.processLaunch("Codex app-server WebSocket imzası geçersiz.")
+            throw CodexAppServerProtocolError.processLaunch("Codex app-server WebSocket signature is invalid.")
         }
         timeout = timeval(tv_sec: 0, tv_usec: 0)
         setsockopt(

@@ -26,23 +26,23 @@ struct TaskGitActions {
         var errorDescription: String? {
             switch self {
             case .noFilesSelected:
-                "Commit için en az bir dosya seçilmeli."
+                "Pick at least one file to commit."
             case .mergeInProgress:
-                "Devam eden bir merge var — önce onu çöz."
+                "A merge is in progress — resolve that first."
             case .rebaseInProgress:
-                "Devam eden bir rebase var — önce onu çöz."
+                "A rebase is in progress — resolve that first."
             case .commitFailed(let detail):
-                "Commit başarısız: \(detail)"
+                "Commit failed: \(detail)"
             case .ghNotInstalled:
-                "GitHub CLI (gh) kurulu değil."
+                "GitHub CLI (gh) is not installed."
             case .ghNotAuthenticated:
-                "GitHub CLI'a giriş yapılmamış — `gh auth login` çalıştır."
+                "Not signed in to the GitHub CLI — run `gh auth login`."
             case .pushFailed(let detail):
-                "Push başarısız: \(detail)"
+                "Push failed: \(detail)"
             case .pullRequestFailed(let detail):
-                "Pull request oluşturulamadı: \(detail)"
+                "The pull request could not be created: \(detail)"
             case .malformedPullRequestURL:
-                "gh beklenmedik bir yanıt döndürdü."
+                "gh returned an unexpected response."
             }
         }
     }

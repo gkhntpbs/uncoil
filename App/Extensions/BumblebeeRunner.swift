@@ -96,11 +96,11 @@ struct BumblebeeRunner {
         var errorDescription: String? {
             switch self {
             case .notInstalled:
-                "Bumblebee kurulu değil. Kurulumu kullanıcı onayı gerektirir."
+                "Bumblebee is not installed. Installing it needs your approval."
             case .alreadyRunning(let kind):
-                "Zaten bir tarama çalışıyor (\(kind.label)); ikincisi başlatılmadı."
+                "A scan is already running (\(kind.label)); a second one was not started."
             case .selfTestFailed(let detail):
-                "Bumblebee self-test başarısız: \(detail)"
+                "Bumblebee self-test failed: \(detail)"
             }
         }
     }
@@ -150,7 +150,7 @@ struct BumblebeeRunner {
         let output = try await run(Invocation(arguments: ["version"], timeout: 15))
         guard let version = BumblebeeVersion.parse(output.stdout)
             ?? BumblebeeVersion.parse(output.stderr) else {
-            throw RunError.selfTestFailed("version okunamadı")
+            throw RunError.selfTestFailed("the version could not be read")
         }
         return version
     }

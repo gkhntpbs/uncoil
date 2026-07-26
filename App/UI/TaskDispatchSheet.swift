@@ -101,7 +101,7 @@ struct TaskDispatchSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Agent'a gönder")
+            Text("Send to agent")
                 .font(Theme.mono(14, .bold))
                 .foregroundStyle(Theme.text)
             Text(task.text)
@@ -115,7 +115,7 @@ struct TaskDispatchSheet: View {
 
     private var targetSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Hedef")
+            Text("Target")
                 .font(Theme.mono(11.5, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
@@ -123,8 +123,8 @@ struct TaskDispatchSheet: View {
                     request.existingSessionID = nil
                 } label: {
                     row(
-                        title: "Yeni oturum oluştur",
-                        detail: "Görev için taze bir agent başlat.",
+                        title: "Create a new session",
+                        detail: "Start a fresh agent for the task.",
                         isSelected: !request.isExistingSession
                     )
                 }
@@ -153,7 +153,7 @@ struct TaskDispatchSheet: View {
                     } label: {
                         row(
                             title: record.displayTitle,
-                            detail: "başka proje · \(record.provider.displayName)",
+                            detail: "another project · \(record.provider.displayName)",
                             isSelected: request.existingSessionID == record.id,
                             tint: Theme.warn
                         )
@@ -202,7 +202,7 @@ struct TaskDispatchSheet: View {
 
     private var newSessionSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Yeni oturum")
+            Text("New session")
                 .font(Theme.mono(11.5, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
@@ -230,7 +230,7 @@ struct TaskDispatchSheet: View {
                         get: { request.accountID },
                         set: { request.accountID = $0 }
                     )) {
-                        Text("Varsayılan").tag(UUID?.none)
+                        Text("Default").tag(UUID?.none)
                         ForEach(settings.accounts(for: request.provider)) { account in
                             Text(account.name).tag(UUID?.some(account.id))
                         }
@@ -263,7 +263,7 @@ struct TaskDispatchSheet: View {
                             get: { request.effort },
                             set: { request.effort = $0 }
                         )) {
-                            Text("Varsayılan").tag(String?.none)
+                            Text("Default").tag(String?.none)
                             ForEach(capabilities.efforts) { option in
                                 Text(option.label).tag(String?.some(option.id))
                             }
@@ -274,7 +274,7 @@ struct TaskDispatchSheet: View {
                     }
                     Divider().overlay(Theme.border)
                 }
-                pickerRow("Çalışma modu") {
+                pickerRow("Working mode") {
                     Picker("", selection: Binding(
                         get: { request.workingMode ?? settings.workingMode(for: request.provider) },
                         set: { request.workingMode = $0 }
@@ -296,7 +296,7 @@ struct TaskDispatchSheet: View {
                             applyPreset(id)
                         }
                     )) {
-                        Text("Preset yok").tag(String?.none)
+                        Text("No preset").tag(String?.none)
                         ForEach(settings.presets) { preset in
                             Text(preset.name).tag(String?.some(preset.id))
                         }
@@ -306,11 +306,11 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.preset")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("İzin profili") {
+                pickerRow("Permission profile") {
                     Text(
                         request.permissionProfile.isEmpty
-                            ? "oturum varsayılanı"
-                            : "\(request.permissionProfile.count) yetki"
+                            ? "session default"
+                            : "\(request.permissionProfile.count) grants"
                     )
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
@@ -322,7 +322,7 @@ struct TaskDispatchSheet: View {
 
     private var roleAndWorktreeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Rol ve worktree")
+            Text("Role and worktree")
                 .font(Theme.mono(11.5, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
@@ -337,7 +337,7 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.role")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Worktree oluştur") {
+                pickerRow("Create a worktree") {
                     Toggle("", isOn: $request.createsWorktree)
                         .toggleStyle(.switch)
                         .controlSize(.mini)
@@ -346,7 +346,7 @@ struct TaskDispatchSheet: View {
                 }
                 if request.createsWorktree {
                     Divider().overlay(Theme.border)
-                    pickerRow("Worktree adı") {
+                    pickerRow("Worktree name") {
                         TextField(
                             TaskPromptBuilder.worktreeName(for: task),
                             text: Binding(
@@ -376,10 +376,10 @@ struct TaskDispatchSheet: View {
                         .font(.system(size: 8, weight: .semibold))
                         .rotationEffect(.degrees(showsPreview ? 0 : -90))
                         .foregroundStyle(Theme.textFaint)
-                    Text("Prompt önizlemesi")
+                    Text("Prompt preview")
                         .font(Theme.mono(11.5, .semibold))
                         .foregroundStyle(Theme.text)
-                    Text("\(previewPrompt.count) karakter")
+                    Text("\(previewPrompt.count) characters")
                         .font(Theme.mono(10))
                         .foregroundStyle(Theme.textFaint)
                     Spacer()
@@ -422,21 +422,21 @@ struct TaskDispatchSheet: View {
             // Sending the prompt and *starting* the turn are different acts:
             // sometimes the user wants to read and edit before Enter.
             Toggle(isOn: $request.autoStart) {
-                Text("Otomatik başlat")
+                Text("Start automatically")
                     .font(Theme.mono(10.5))
                     .foregroundStyle(Theme.textDim)
             }
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("taskDispatch.autoStart")
             if !request.autoStart {
-                Text("Prompt yazılır, Enter'a sen basarsın.")
+                Text("The prompt is typed in; you press Enter.")
                     .font(Theme.mono(9.5))
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
-            Button("Vazgeç", action: onCancel)
+            Button("Cancel", action: onCancel)
                 .buttonStyle(GhostButtonStyle())
-            Button(request.autoStart ? "Gönder ve başlat" : "Gönder (bekle)") {
+            Button(request.autoStart ? "Send and start" : "Send (hold)") {
                 var finished = request
                 if finished.createsWorktree, finished.worktreeName == nil {
                     finished.worktreeName = TaskPromptBuilder.worktreeName(for: task)
@@ -449,9 +449,9 @@ struct TaskDispatchSheet: View {
         .padding(16)
     }
 
-    /// What "Varsayılan" resolves to, when the CLI's own config says.
+    /// What "Default" resolves to, when the CLI's own config says.
     private var defaultModelLabel: String {
-        capabilities.defaultModelDetail.map { "Varsayılan (\($0))" } ?? "Varsayılan"
+        capabilities.defaultModelDetail.map { "Default (\($0))" } ?? "Default"
     }
 
     /// A preset decides the role's capabilities and arguments, so selecting one

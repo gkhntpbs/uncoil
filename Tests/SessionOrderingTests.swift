@@ -135,7 +135,7 @@ final class SessionOrderingTests: XCTestCase {
     /// An empty group is a valid drop target, which is the point of being able
     /// to create one from the project's context menu.
     func testAGroupCanBeCreatedEmptyAndFilledAfterwards() throws {
-        let group = try XCTUnwrap(store.createGroup(projectID: projectID, name: "boş"))
+        let group = try XCTUnwrap(store.createGroup(projectID: projectID, name: "empty"))
         XCTAssertTrue(store.sessions(in: group.id).isEmpty)
         store.moveSessions(titles(["two"]), toGroup: group.id, inProject: projectID, at: 0)
         XCTAssertEqual(store.sessions(in: group.id).map(\.title), ["two"])

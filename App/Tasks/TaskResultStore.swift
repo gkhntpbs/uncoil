@@ -14,7 +14,7 @@ struct TaskMergeRecord: Identifiable, Equatable, Codable {
             switch self {
             case .merged: "Merge edildi"
             case .refused: "Reddedildi"
-            case .failed: "Başarısız"
+            case .failed: "Failed"
             }
         }
 

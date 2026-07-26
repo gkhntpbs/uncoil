@@ -28,7 +28,7 @@ struct JSONMCPConfigLayout: Equatable {
         skillsRelativePath: nil,
         serversKeyPath: ["mcpServers"],
         binaryName: "gemini",
-        reload: "Gemini CLI config'i başlangıçta okur; açık oturumlar yeniden başlatılmalı."
+        reload: "Gemini CLI reads its config at startup; open sessions must be restarted."
     )
 
     static let cursor = JSONMCPConfigLayout(
@@ -38,7 +38,7 @@ struct JSONMCPConfigLayout: Equatable {
         skillsRelativePath: ".cursor/rules",
         serversKeyPath: ["mcpServers"],
         binaryName: "cursor",
-        reload: "Cursor MCP listesini kendi arayüzünden yeniler; değişiklik uygulamada görünür."
+        reload: "Cursor reloads its MCP list from its own interface; the change shows up there."
     )
 
     static let amp = JSONMCPConfigLayout(
@@ -48,7 +48,7 @@ struct JSONMCPConfigLayout: Equatable {
         skillsRelativePath: nil,
         serversKeyPath: ["amp.mcpServers"],
         binaryName: "amp",
-        reload: "Amp ayarları başlangıçta okunur; açık oturumlar yeniden başlatılmalı."
+        reload: "Amp settings are read at startup; open sessions must be restarted."
     )
 
     static let all: [JSONMCPConfigLayout] = [.geminiCLI, .cursor, .amp]
@@ -141,8 +141,8 @@ struct JSONMCPAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "\(agent.rawValue).json.invalid",
                 severity: .error,
-                message: "\(configuration.path) geçerli JSON değil.",
-                remedy: "Dosyayı elle düzelt; Uncoil bozuk JSON'a yazmaz."
+                message: "\(configuration.path) is not valid JSON.",
+                remedy: "Repair the file by hand; Uncoil does not write to broken JSON."
             ))
         }
         for server in configuration.mcpServers {
@@ -151,15 +151,15 @@ struct JSONMCPAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "\(agent.rawValue).mcp.\(server.name).command",
                     severity: .error,
-                    message: "\(server.name) STDIO sunucusunun komutu yok.",
-                    remedy: "Komutu ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) STDIO server has no command.",
+                    remedy: "Add the command, or remove the server."
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "\(agent.rawValue).mcp.\(server.name).url",
                     severity: .error,
-                    message: "\(server.name) HTTP sunucusunun adresi yok.",
-                    remedy: "URL ekle veya sunucuyu kaldır."
+                    message: "The \(server.name) HTTP server has no address.",
+                    remedy: "Add a URL, or remove the server."
                 ))
             default:
                 break
@@ -170,7 +170,7 @@ struct JSONMCPAdapter: AgentAdapter {
                     severity: .warning,
                     message: "\(name) config'inde \(server.name) secret tutuyor: "
                         + server.environmentKeys.joined(separator: ", ") + ".",
-                    remedy: "Uncoil launcher'a taşıyarak değeri Keychain'de tut."
+                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
                 ))
             }
         }
@@ -202,7 +202,7 @@ struct JSONMCPAdapter: AgentAdapter {
         }
         guard let pendingContent = transaction.pendingContent else {
             result.status = .failed
-            result.failureReason = "Plan içeriği yok; değişiklik yeniden planlanmalı."
+            result.failureReason = "There is no plan content; the change has to be replanned."
             return result
         }
         let current = (try? String(contentsOfFile: transaction.configPath, encoding: .utf8)) ?? ""
@@ -235,7 +235,7 @@ struct JSONMCPAdapter: AgentAdapter {
         var result = transaction
         guard let backupPath = transaction.backupPath,
               let data = FileManager.default.contents(atPath: backupPath) else {
-            result.failureReason = "Geri alınacak yedek yok; eski durum korunuyor."
+            result.failureReason = "No backup to roll back to; the previous state is kept."
             return result
         }
         do {
@@ -320,7 +320,7 @@ struct JSONMCPAdapter: AgentAdapter {
                 case .stdio:
                     guard let command = definition.command, !command.isEmpty else {
                         throw AgentAdapterError
-                            .unsupportedChange("\(definition.name): komut gerekli")
+                            .unsupportedChange("\(definition.name): a command is required")
                     }
                     entry["command"] = command
                     if !definition.arguments.isEmpty { entry["args"] = definition.arguments }
@@ -345,7 +345,7 @@ struct JSONMCPAdapter: AgentAdapter {
 
             case .setMCPServerEnabled(let name, let isEnabled):
                 guard var entry = servers[name] as? [String: Any] else {
-                    throw AgentAdapterError.unsupportedChange("\(name) config'de yok")
+                    throw AgentAdapterError.unsupportedChange("\(name) is not in the config")
                 }
                 if isEnabled {
                     entry.removeValue(forKey: "disabled")

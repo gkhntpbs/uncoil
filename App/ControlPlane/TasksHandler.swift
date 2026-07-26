@@ -511,7 +511,7 @@ extension CapabilityRouter {
             case .conflict(let detail):
                 return .failure(
                     request, code: .invalidArgument,
-                    message: "\(detail) Görevi yeniden oku ve tekrar dene.",
+                    message: "\(detail) Re-read the task and try again.",
                     retryable: true
                 )
             }
@@ -549,9 +549,9 @@ extension CapabilityRouter {
             if !blockers.isEmpty {
                 return .failure(
                     request, code: .invalidArgument,
-                    message: "görev tamamlanamaz: "
+                    message: "the task cannot be completed: "
                         + blockers.map(\.message).joined(separator: " ")
-                        + " Düzeltip test sonucunu tekrar bildir.",
+                        + " Fix it and report the test result again.",
                     retryable: true
                 )
             }
@@ -562,7 +562,7 @@ extension CapabilityRouter {
             [TodoEditor.togglePatch(for: found.task)],
             task: found.task, document: found.document, request: request,
             caller: caller, project: project,
-            summary: done ? "tamamlandı" : "yeniden açıldı",
+            summary: done ? "done" : "reopened",
             extra: ["done": .bool(done)]
         )
     }
@@ -586,7 +586,7 @@ extension CapabilityRouter {
         }
         return applyPatches(
             patches, task: found.task, document: found.document, request: request,
-            caller: caller, project: project, summary: "güncellendi"
+            caller: caller, project: project, summary: "updated"
         )
     }
 
@@ -634,7 +634,7 @@ extension CapabilityRouter {
             )
             return applyPatches(
                 patches, task: found.task, document: found.document, request: request,
-                caller: caller, project: project, summary: "taşındı: \(heading)"
+                caller: caller, project: project, summary: "moved: \(heading)"
             )
         } catch {
             return .failure(request, code: .invalidArgument, message: error.localizedDescription)
@@ -677,11 +677,11 @@ extension CapabilityRouter {
                     startColumn: 1
                 ),
                 replacement: line,
-                summary: "alt görev eklendi: \(text)"
+                summary: "subtask added: \(text)"
             )
             return applyPatches(
                 [patch], task: found.task, document: found.document, request: request,
-                caller: caller, project: project, summary: "alt görev eklendi"
+                caller: caller, project: project, summary: "subtask added"
             )
         }
 
@@ -713,11 +713,11 @@ extension CapabilityRouter {
                 startLine: 1, endLine: 1, startColumn: 1
             ),
             replacement: line,
-            summary: "görev eklendi: \(text)"
+            summary: "task added: \(text)"
         )
         return applyPatches(
             [patch], task: nil, document: document, request: request,
-            caller: caller, project: project, summary: "görev eklendi"
+            caller: caller, project: project, summary: "task added"
         )
     }
 
@@ -733,11 +733,11 @@ extension CapabilityRouter {
         let block = TodoEditor.blockWithDescendants(of: found.task, in: found.document)
         let patch = TodoEditor.Patch(
             range: block.range, replacement: "",
-            summary: "görev silindi: \(found.task.text)"
+            summary: "task deleted: \(found.task.text)"
         )
         return applyPatches(
             [patch], task: found.task, document: found.document, request: request,
-            caller: caller, project: project, summary: "görev silindi"
+            caller: caller, project: project, summary: "task deleted"
         )
     }
 
@@ -1042,7 +1042,7 @@ extension CapabilityRouter {
             sessionID: caller.id,
             command: command,
             passed: passed,
-            summary: request.args["summary"]?.stringValue ?? (passed ? "geçti" : "başarısız"),
+            summary: request.args["summary"]?.stringValue ?? (passed ? "passed" : "failed"),
             artifacts: request.args["artifacts"]?.arrayValue?.compactMap(\.stringValue) ?? []
         )
         results(for: project).record(test: result)
@@ -1093,7 +1093,7 @@ extension CapabilityRouter {
         results(for: project).record(review: review)
         if verdict == .changesRequested {
             metadata(for: project).setState(
-                .blocked, taskID: taskID, detail: "review değişiklik istedi"
+                .blocked, taskID: taskID, detail: "the review requested changes"
             )
         }
         // The findings are handed back as the prompt the implementer reads, so
@@ -1180,7 +1180,7 @@ extension CapabilityRouter {
         // agent's word is the user's call, so the branch and its state are
         // returned and the task is put up for review.
         let snapshot = GitService.snapshot(repoPath: worktree)
-        store.setState(.reviewRequested, taskID: taskID, detail: "merge için gönderildi")
+        store.setState(.reviewRequested, taskID: taskID, detail: "sent to merge")
         // `userApproved: false` on purpose: an agent asking is not the user
         // approving, so `approvalRequired` always stands in this answer.
         let preview = results(for: project).mergePreview(
@@ -1198,7 +1198,7 @@ extension CapabilityRouter {
             worktreePath: worktree,
             outcome: .refused(
                 reason: preview.hardBlockers.isEmpty
-                    ? "kullanıcı onayı bekleniyor"
+                    ? "waiting for the user's approval"
                     : preview.hardBlockers.map(\.message).joined(separator: " ")
             ),
             approvedByUser: false
@@ -1219,8 +1219,8 @@ extension CapabilityRouter {
             project_id: project.id.uuidString,
             warnings: snapshot.changedFiles.isEmpty
                 ? []
-                : ["worktree'de commit edilmemiş değişiklik var"],
-            next_actions: ["kullanıcı onayı ile merge"]
+                : ["the worktree has uncommitted changes"],
+            next_actions: ["merge with the user's approval"]
         )
     }
 

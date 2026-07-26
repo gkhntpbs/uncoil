@@ -93,10 +93,10 @@ final class CodexAppServerSession {
 
     func submit(_ text: String) {
         guard ready, let threadID else {
-            feed("\r\n\u{001B}[31mCodex structured oturumu henüz hazır değil.\u{001B}[0m\r\n")
+            feed("\r\n\u{001B}[31mThe structured Codex session is not ready yet.\u{001B}[0m\r\n")
             return
         }
-        sessionStore?.setStatus(.thinking, detail: "Codex düşünüyor", for: recordID)
+        sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
         Task {
             do {
                 let result = try await request(
@@ -149,7 +149,7 @@ final class CodexAppServerSession {
         do {
             try write(CodexAppServerJSON.response(id: request.requestID, result: result))
             sessionStore?.setCodexApproval(nil, for: recordID)
-            sessionStore?.setStatus(.running, detail: "Onay yanıtlandı", for: recordID)
+            sessionStore?.setStatus(.running, detail: "Approval answered", for: recordID)
         } catch {
             display(error)
         }
@@ -164,7 +164,7 @@ final class CodexAppServerSession {
             terminatePersistentServer()
         }
         continuations.values.forEach {
-            $0.resume(throwing: CodexAppServerProtocolError.server("Codex app-server kapatıldı."))
+            $0.resume(throwing: CodexAppServerProtocolError.server("Codex app-server shut down."))
         }
         continuations.removeAll()
     }
@@ -236,7 +236,7 @@ final class CodexAppServerSession {
             }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
-        failToFallback(CodexAppServerProtocolError.processLaunch("Codex app-server socket oluşturmadı."))
+        failToFallback(CodexAppServerProtocolError.processLaunch("Codex app-server created no socket."))
     }
 
     private func connectSocket() async {
@@ -286,8 +286,8 @@ final class CodexAppServerSession {
             try await openThread()
             await account
             ready = true
-            feed("\u{001B}[2mStructured Codex hazır.\u{001B}[0m\r\n")
-            sessionStore?.setStatus(.idle, detail: "Structured Codex hazır", for: recordID)
+            feed("\u{001B}[2mStructured Codex ready.\u{001B}[0m\r\n")
+            sessionStore?.setStatus(.idle, detail: "Structured Codex ready", for: recordID)
         } catch {
             failToFallback(error)
         }
@@ -353,7 +353,7 @@ final class CodexAppServerSession {
 
     private func write(_ data: Data) throws {
         guard let transport else {
-            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket kullanılamıyor.")
+            throw CodexAppServerProtocolError.processLaunch("Codex app-server socket is unavailable.")
         }
         var payload = data
         if payload.last == 0x0A {
@@ -402,15 +402,15 @@ final class CodexAppServerSession {
             applyThreadStatus(params)
         case "turn/started":
             activeTurnID = params.objectValue?["turn"]?.objectValue?["id"]?.stringValue
-            sessionStore?.setStatus(.thinking, detail: "Codex düşünüyor", for: recordID)
+            sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
         case "turn/completed":
             activeTurnID = nil
             let status = params.objectValue?["turn"]?.objectValue?["status"]?.stringValue
             if status == "failed" {
-                sessionStore?.setStatus(.completed, detail: "Codex turn başarısız", for: recordID)
-                feed("\r\n\u{001B}[31mTurn başarısız.\u{001B}[0m\r\n")
+                sessionStore?.setStatus(.completed, detail: "Codex turn failed", for: recordID)
+                feed("\r\n\u{001B}[31mTurn failed.\u{001B}[0m\r\n")
             } else {
-                sessionStore?.setStatus(.completed, detail: "Codex tamamladı", for: recordID)
+                sessionStore?.setStatus(.completed, detail: "Codex finished", for: recordID)
             }
         case "item/started":
             handleItemStarted(params)
@@ -422,7 +422,7 @@ final class CodexAppServerSession {
                     streamedAgentItems.insert(itemID)
                 }
                 feed(delta)
-                sessionStore?.setStatus(.running, detail: "Yanıt yazıyor", for: recordID)
+                sessionStore?.setStatus(.running, detail: "Writing a reply", for: recordID)
             }
         case "item/commandExecution/outputDelta":
             if let delta = params.objectValue?["delta"]?.stringValue {
@@ -444,13 +444,13 @@ final class CodexAppServerSession {
         switch method {
         case "item/commandExecution/requestApproval":
             kind = .command
-            title = params.objectValue?["command"]?.stringValue ?? "Komut çalıştırma isteği"
+            title = params.objectValue?["command"]?.stringValue ?? "Command run request"
         case "item/fileChange/requestApproval":
             kind = .fileChange
-            title = "Dosya değişikliği isteği"
+            title = "File change request"
         case "item/permissions/requestApproval":
             kind = .permissions
-            title = "Ek izin isteği"
+            title = "Additional permission request"
         default:
             do {
                 try write(CodexAppServerJSON.response(id: id, result: .object(["decision": .string("decline")])))
@@ -491,18 +491,18 @@ final class CodexAppServerSession {
         let detail: String
         switch type {
         case "commandExecution":
-            detail = "Komut çalıştırıyor"
+            detail = "Running a command"
         case "fileChange":
-            detail = "Dosyaları değiştiriyor"
+            detail = "Changing files"
         case "mcpToolCall":
-            detail = "MCP aracı çalıştırıyor"
+            detail = "Running an MCP tool"
         case "dynamicToolCall", "collabAgentToolCall":
-            detail = "Araç çalıştırıyor"
+            detail = "Running a tool"
         case "reasoning":
-            sessionStore?.setStatus(.thinking, detail: "Codex düşünüyor", for: recordID)
+            sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
             return
         default:
-            detail = "Codex çalışıyor"
+            detail = "Codex running"
         }
         sessionStore?.setStatus(.running, detail: detail, for: recordID)
     }
@@ -533,11 +533,11 @@ final class CodexAppServerSession {
             ?? params.objectValue?["thread"]?.objectValue?["status"]?.stringValue
         switch status {
         case "active":
-            sessionStore?.setStatus(.running, detail: "Codex çalışıyor", for: recordID)
+            sessionStore?.setStatus(.running, detail: "Codex running", for: recordID)
         case "idle":
-            sessionStore?.setStatus(.idle, detail: "Structured Codex hazır", for: recordID)
+            sessionStore?.setStatus(.idle, detail: "Structured Codex ready", for: recordID)
         case "systemError":
-            sessionStore?.setStatus(.completed, detail: "Codex sistem hatası", for: recordID)
+            sessionStore?.setStatus(.completed, detail: "Codex system error", for: recordID)
         default:
             break
         }
@@ -552,7 +552,7 @@ final class CodexAppServerSession {
         }
         if object["requiresOpenaiAuth"]?.boolValue == true {
             sessionStore?.setCodexAuthentication(.required, for: recordID)
-            sessionStore?.setStatus(.waitingForInput, detail: "Codex girişi gerekli", for: recordID)
+            sessionStore?.setStatus(.waitingForInput, detail: "Codex login required", for: recordID)
         } else {
             sessionStore?.setCodexAuthentication(.authenticated(nil), for: recordID)
         }
@@ -561,11 +561,11 @@ final class CodexAppServerSession {
     private func transportClosed() {
         guard !stopped else { return }
         if ready {
-            sessionStore?.setStatus(.terminated, detail: "Codex app-server bağlantısı kapandı", for: recordID)
+            sessionStore?.setStatus(.terminated, detail: "Codex app-server connection closed", for: recordID)
             projectStore?.markSessionEnded(recordID, exitCode: nil)
             TerminalRegistry.shared.markDead(recordID)
         } else {
-            failToFallback(CodexAppServerProtocolError.processLaunch("Codex app-server bağlantısı kapandı."))
+            failToFallback(CodexAppServerProtocolError.processLaunch("The Codex app-server connection closed."))
         }
     }
 
@@ -575,7 +575,7 @@ final class CodexAppServerSession {
         transport?.close()
         transport = nil
         failToFallback(
-            CodexAppServerProtocolError.processLaunch("Codex app-server \(code) koduyla kapandı.")
+            CodexAppServerProtocolError.processLaunch("Codex app-server closed with code \(code).")
         )
     }
 
@@ -589,7 +589,7 @@ final class CodexAppServerSession {
         continuations.values.forEach { $0.resume(throwing: error) }
         continuations.removeAll()
         let message = error.localizedDescription
-        feed("\r\n\u{001B}[33m\(message) PTY fallback başlatılıyor.\u{001B}[0m\r\n")
+        feed("\r\n\u{001B}[33m\(message) Starting the PTY fallback.\u{001B}[0m\r\n")
         fallback(message)
     }
 
@@ -617,7 +617,7 @@ final class CodexAppServerSession {
     private func serverError(_ value: JSONValue) -> String {
         value.objectValue?["message"]?.stringValue
             ?? value.displayString
-            ?? "Codex app-server hatası"
+            ?? "Codex app-server error"
     }
 
     private func terminatePersistentServer() {

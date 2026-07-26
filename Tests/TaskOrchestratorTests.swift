@@ -51,7 +51,7 @@ final class TaskOrchestratorPlanningTests: XCTestCase {
         )
         let plan = TaskOrchestrator.plan(input(list, assignments: [list[0].id: [assignment]]))
         XCTAssertTrue(plan.isEmpty)
-        XCTAssertEqual(plan.skipped.first?.reason, "hâlihazırda çalışılıyor")
+        XCTAssertEqual(plan.skipped.first?.reason, "already being worked on")
     }
 
     func testAParentWithSubtasksIsLeftToItsChildren() {
@@ -121,7 +121,7 @@ final class TaskOrchestratorPlanningTests: XCTestCase {
             models[0].wave, models[1].wave,
             "two tasks on one file must not run side by side"
         )
-        XCTAssertEqual(models[1].serialReason, "aynı dosyalara dokunuyor")
+        XCTAssertEqual(models[1].serialReason, "touches the same files")
         XCTAssertTrue(models.allSatisfy(\.needsWorktree))
     }
 
@@ -293,7 +293,7 @@ final class TaskOrchestratorRecoveryTests: XCTestCase {
             leases: [:], lastHeartbeats: [:],
             settings: .default, now: now
         )
-        XCTAssertTrue(actions.contains(.markFailed(taskID: "t1", reason: "Başarısız")))
+        XCTAssertTrue(actions.contains(.markFailed(taskID: "t1", reason: "Failed")))
         XCTAssertTrue(actions.contains { action in
             if case .reportToAttention = action { return true }
             return false
@@ -352,7 +352,7 @@ final class TaskOrchestratorRecoveryTests: XCTestCase {
             now: now.addingTimeInterval(600)
         )
         XCTAssertTrue(actions.contains(.releaseClaim(taskID: "t1", reason: "heartbeat kayboldu")))
-        XCTAssertTrue(actions.contains(.markFailed(taskID: "t1", reason: "agent yanıt vermiyor")))
+        XCTAssertTrue(actions.contains(.markFailed(taskID: "t1", reason: "the agent is not responding")))
     }
 
     func testALiveAgentIsLeftAlone() {

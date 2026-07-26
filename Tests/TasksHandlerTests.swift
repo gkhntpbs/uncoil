@@ -465,7 +465,7 @@ final class TasksHandlerTests: XCTestCase {
         let log = dataDir.appendingPathComponent("task-patches.jsonl")
         let contents = try XCTUnwrap(try? String(contentsOf: log, encoding: .utf8))
         XCTAssertTrue(contents.contains("\"diff\""))
-        XCTAssertTrue(contents.contains("tamamlandı"))
+        XCTAssertTrue(contents.contains("done"))
 
         let diff = await call("get_task_diff", ["task_id": .string(id)])
         XCTAssertTrue(diff.ok)
