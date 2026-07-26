@@ -579,7 +579,7 @@ struct AgentLauncherStrip: View {
             accountID: provider == .terminal ? nil : account?.id,
             title: provider == .terminal
                 ? (worktreeName.map { "terminal @ \($0)" } ?? "terminal")
-                : "\(provider.rawValue): new session",
+                : String(localized: "\(provider.rawValue): new session"),
             worktreePath: worktreePath
         )
         selection = .session(record.id)

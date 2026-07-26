@@ -58,7 +58,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
 
         let allowOnce = UNNotificationAction(
             identifier: PermissionNotificationPolicy.allowOnceAction,
-            title: "Bir kez izin ver",
+            title: String(localized: "Allow Once"),
             options: []
         )
         let deny = UNNotificationAction(
@@ -68,7 +68,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         )
         let open = UNNotificationAction(
             identifier: PermissionNotificationPolicy.openAction,
-            title: "Open in Uncoil",
+            title: String(localized: "Open in Uncoil"),
             options: [.foreground]
         )
         center.setNotificationCategories([
@@ -91,7 +91,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         guard prefs.enabled, prefs.notifyPermission else { return }
         let sensitive = PermissionNotificationPolicy.isSensitive(grantKey: request.grantKey)
         post(
-            title: sensitive ? "Permission request (sensitive)" : "Permission request",
+            title: sensitive ? String(localized: "Permission request (sensitive)") : String(localized: "Permission request"),
             body: PermissionNotificationPolicy.body(
                 grantKey: request.grantKey,
                 from: request.fromSessionID,
@@ -113,7 +113,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         let prefs = notificationPrefs()
         guard prefs.enabled, prefs.notifyPermission else { return }
         post(
-            title: "Codex is waiting for approval",
+            title: String(localized: "Codex is waiting for approval"),
             body: approval.title,
             category: PermissionNotificationPolicy.sensitiveCategory,
             userInfo: ["session_id": approval.sessionID.uuidString],

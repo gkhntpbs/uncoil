@@ -186,13 +186,13 @@ enum GitService {
             .lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
-        guard !slug.isEmpty else { return .failure(GitFailure(message: "A valid name is required.")) }
+        guard !slug.isEmpty else { return .failure(GitFailure(message: String(localized: "A valid name is required."))) }
 
         let container = URL(fileURLWithPath: repoPath)
             .appendingPathComponent(".uncoil-worktrees", isDirectory: true)
         let destination = container.appendingPathComponent(slug, isDirectory: true)
         guard !FileManager.default.fileExists(atPath: destination.path) else {
-            return .failure(GitFailure(message: "\(slug) already exists."))
+            return .failure(GitFailure(message: String(localized: "\(slug) already exists.")))
         }
 
         let branch = "uncoil/\(slug)"
@@ -212,7 +212,7 @@ enum GitService {
         guard process.terminationStatus == 0 else {
             let message = String(data: errData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            return .failure(GitFailure(message: message?.isEmpty == false ? message! : "git worktree add failed"))
+            return .failure(GitFailure(message: message?.isEmpty == false ? message! : String(localized: "git worktree add failed")))
         }
         return .success(Worktree(path: destination.path, branch: branch, isMain: false))
     }
@@ -242,7 +242,7 @@ enum GitService {
         message: String
     ) -> Result<String?, GitFailure> {
         guard isRepository(repoPath) else {
-            return .failure(GitFailure(message: "\(repoPath) is not a git repository."))
+            return .failure(GitFailure(message: String(localized: "\(repoPath) is not a git repository.")))
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -251,7 +251,7 @@ enum GitService {
         process.standardOutput = Pipe()
         process.standardError = errorPipe
         guard (try? process.run()) != nil else {
-            return .failure(GitFailure(message: "git could not be run."))
+            return .failure(GitFailure(message: String(localized: "git could not be run.")))
         }
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
@@ -261,7 +261,7 @@ enum GitService {
             let detail = String(data: errorData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return .failure(GitFailure(
-                message: detail?.isEmpty == false ? detail! : "git merge failed."
+                message: detail?.isEmpty == false ? detail! : String(localized: "git merge failed.")
             ))
         }
         return .success(run(["-C", repoPath, "rev-parse", "--short", "HEAD"]))

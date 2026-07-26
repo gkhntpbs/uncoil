@@ -130,7 +130,7 @@ struct SkillAuthoringService {
             id: "created:\(name)",
             kind: .skill,
             name: name,
-            summary: trimmedSummary?.isEmpty == false ? trimmedSummary : "Created inside Uncoil",
+            summary: trimmedSummary?.isEmpty == false ? trimmedSummary : String(localized: "Created inside Uncoil"),
             source: .local(path: revision.path),
             state: .active,
             activeRevision: revision,

@@ -71,7 +71,7 @@ struct AgentBrowserSetupSection: View {
     private var statusTitle: String {
         guard let status else { return "Agent Browser denetleniyor" }
         guard status.path != nil else { return "Agent Browser CLI not installed" }
-        guard status.installed else { return "Chromium runtime gerekli" }
+        guard status.installed else { return "Chromium runtime required" }
         return status.version ?? "Agent Browser ready"
     }
 
@@ -127,7 +127,7 @@ struct AgentBrowserSetupSection: View {
                 switch opened {
                 case .success:
                     _ = adapter.perform(.stop, session: "uncoil-setup", profileDir: nil)
-                    message = "Agent Browser is ready; Example Domain opened successfully."
+                    message = String(localized: "Agent Browser is ready; Example Domain opened successfully.")
                 case .failure(let error):
                     message = error.remedy.map { "\(error.message)\n\($0)" } ?? error.message
                 }
@@ -165,7 +165,7 @@ struct CuaDriverSetupSection: View {
         AdaptiveRow {
             SettingsLabel(
                 title: statusTitle,
-                detail: status?.detail ?? "Installing the Cua Driver sets up the daemon and the macOS permissions.",
+                detail: status?.detail ?? String(localized: "Installing the Cua Driver sets up the daemon and the macOS permissions."),
                 symbol: "display"
             )
         } control: {
@@ -201,7 +201,7 @@ struct CuaDriverSetupSection: View {
         if let version = status.version, !version.isEmpty {
             return version
         }
-        return "Cua Driver kurulu"
+        return "Cua Driver installed"
     }
 
     private func refresh() {
@@ -219,7 +219,7 @@ struct CuaDriverSetupSection: View {
                 let message: String
                 switch outcome {
                 case .success:
-                    message = "Cua Driver is ready and the tool call succeeded."
+                    message = String(localized: "Cua Driver is ready and the tool call succeeded.")
                 case .failure(let error):
                     message = error.remedy.map { "\(error.message)\n\($0)" } ?? error.message
                 }

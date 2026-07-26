@@ -120,6 +120,7 @@ struct SessionGroupView: View {
                 .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
                 .scrollContentBackground(.hidden)
+                .uncoilScrollers()
                 .frame(minHeight: 64, maxHeight: 110)
                 .padding(8)
                 .background(Theme.bg, in: RoundedRectangle(cornerRadius: 8))

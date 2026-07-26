@@ -93,8 +93,8 @@ final class TerminalRegistry {
                         sessionID: recordID,
                         requestID: .string("fixture-approval"),
                         kind: .command,
-                        title: "git status",
-                        detail: "Asks for permission to read the project's state.",
+                        title: String(localized: "git status"),
+                        detail: String(localized: "Asks for permission to read the project's state."),
                         permissions: nil,
                         availableDecisions: ["accept", "acceptForSession", "decline"]
                     ),
@@ -102,7 +102,7 @@ final class TerminalRegistry {
                 )
                 sessionStore?.setStatus(
                     .waitingForPermission,
-                    detail: "git status",
+                    detail: String(localized: "git status"),
                     for: recordID
                 )
             }
@@ -375,7 +375,7 @@ final class TerminalRegistry {
                     sessionStore: sessionStore,
                     projectStore: projectStore
                 )
-                sessionStore.setStatus(.idle, detail: "PTY fallback: \(reason)", for: recordID)
+                sessionStore.setStatus(.idle, detail: String(localized: "PTY fallback: \(reason)"), for: recordID)
             }
         )
         let delegate = CodexStructuredTerminalDelegate(session: session, terminal: view)

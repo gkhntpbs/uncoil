@@ -63,7 +63,7 @@ struct GitHubLoginView: View {
 
     private var loggedInRow: some View {
         AdaptiveRow {
-            SettingsStatusLine(level: .ok, text: username.map { "@\($0)" } ?? "Signed in")
+            SettingsStatusLine(level: .ok, text: username.map { "@\($0)" } ?? String(localized: "Signed in"))
         } control: {
             Button("Sign Out", role: .destructive) {
                 KeychainStore.delete(key: "github-token")

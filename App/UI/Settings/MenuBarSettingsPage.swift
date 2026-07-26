@@ -102,8 +102,8 @@ struct MenuBarSettingsPage: View {
                         SettingsLabel(
                             title: counter.title,
                             detail: counter.marker.isEmpty
-                                ? "Shown as a number next to the icon."
-                                : "Shown next to the icon, marked “\(counter.marker)”."
+                                ? String(localized: "Shown as a number next to the icon.")
+                                : String(localized: "Shown next to the icon, marked “\(counter.marker)”.")
                         )
                     }
                     .settingsID("menuBar.counter.\(counter.rawValue)")

@@ -225,7 +225,7 @@ final class RunRegistry: ObservableObject {
     var reportFailure: ((_ project: Project, _ config: RunConfiguration, _ issue: RunIssue) -> Void)? = { project, config, issue in
         AttentionStore.shared.report(
             kind: .runtime,
-            title: "Run '\(config.name)' failed",
+            title: String(localized: "Run '\(config.name)' failed"),
             detail: issue.hint,
             projectID: project.id,
             sessionID: nil,
@@ -289,8 +289,8 @@ final class RunRegistry: ObservableObject {
                 code: contents.configurations.contains(where: { $0.id == configID })
                     ? "dependency_cycle" : "unknown_configuration",
                 hint: contents.configurations.contains(where: { $0.id == configID })
-                    ? "The depends_on chain of '\(configID)' contains a cycle or an unknown id; fix .uncoil/run.json."
-                    : "No configuration '\(configID)' in .uncoil/run.json. Use detect/list first."
+                    ? String(localized: "The depends_on chain of '\(configID)' contains a cycle or an unknown id; fix .uncoil/run.json.")
+                    : String(localized: "No configuration '\(configID)' in .uncoil/run.json. Use detect/list first.")
             )
             return [StartOutcome(configID: configID, ok: false, status: .failed, issue: issue)]
         }
@@ -308,7 +308,7 @@ final class RunRegistry: ObservableObject {
                 if config.id != configID {
                     let issue = RunIssue(
                         code: "dependency_failed",
-                        hint: "Prerequisite '\(config.id)' failed (\(outcome.issue?.code ?? "unknown")): "
+                        hint: String(localized: "Prerequisite '\(config.id)' failed (\(outcome.issue?.code ?? "unknown")): ")
                             + (outcome.issue?.hint ?? "see its log")
                     )
                     outcomes.append(StartOutcome(configID: configID, ok: false, status: .failed, issue: issue))
@@ -327,8 +327,7 @@ final class RunRegistry: ObservableObject {
         for port in config.ports where Self.isPortOpen(port) {
             let issue = RunIssue(
                 code: "port_in_use",
-                hint: "Port \(port) is already serving before start. Stop whatever owns "
-                    + "it (`lsof -ti :\(port)`), or change the configured port."
+                hint: String(localized: "Port \(port) is already serving before start. Stop whatever owns it (`lsof -ti :\(port)`), or change the configured port.")
             )
             finishFailure(key: key, project: project, config: config, issue: issue, exitCode: nil)
             return StartOutcome(configID: config.id, ok: false, status: .failed, issue: issue)
@@ -339,8 +338,7 @@ final class RunRegistry: ObservableObject {
         guard FileManager.default.fileExists(atPath: cwd.path) else {
             let issue = RunIssue(
                 code: "invalid_cwd",
-                hint: "Working directory '\(config.cwd)' doesn't exist under the project "
-                    + "root; fix 'cwd' in .uncoil/run.json."
+                hint: String(localized: "Working directory '\(config.cwd)' doesn't exist under the project root; fix 'cwd' in .uncoil/run.json.")
             )
             finishFailure(key: key, project: project, config: config, issue: issue, exitCode: nil)
             return StartOutcome(configID: config.id, ok: false, status: .failed, issue: issue)
@@ -367,7 +365,7 @@ final class RunRegistry: ObservableObject {
         } catch {
             let issue = RunIssue(
                 code: "launch_failed",
-                hint: "Could not launch the shell: \(error.localizedDescription)"
+                hint: String(localized: "Could not launch the shell: \(error.localizedDescription)")
             )
             finishFailure(key: key, project: project, config: config, issue: issue, exitCode: nil)
             return StartOutcome(configID: config.id, ok: false, status: .failed, issue: issue)

@@ -123,8 +123,8 @@ struct TaskDispatchSheet: View {
                     request.existingSessionID = nil
                 } label: {
                     row(
-                        title: "Create a new session",
-                        detail: "Start a fresh agent for the task.",
+                        title: String(localized: "Create a new session"),
+                        detail: String(localized: "Start a fresh agent for the task."),
                         isSelected: !request.isExistingSession
                     )
                 }
@@ -138,7 +138,7 @@ struct TaskDispatchSheet: View {
                     } label: {
                         row(
                             title: record.displayTitle,
-                            detail: "\(record.provider.displayName) · \(sessionStore.status(of: record.id).label)",
+                            detail: String(localized: "\(record.provider.displayName) · \(sessionStore.status(of: record.id).label)"),
                             isSelected: request.existingSessionID == record.id
                         )
                     }
@@ -153,7 +153,7 @@ struct TaskDispatchSheet: View {
                     } label: {
                         row(
                             title: record.displayTitle,
-                            detail: "another project · \(record.provider.displayName)",
+                            detail: String(localized: "another project · \(record.provider.displayName)"),
                             isSelected: request.existingSessionID == record.id,
                             tint: Theme.warn
                         )

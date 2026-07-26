@@ -312,7 +312,7 @@ struct MainWindow: View {
             projectID: projectID,
             provider: provider,
             accountID: provider == .terminal ? nil : account?.id,
-            title: provider == .terminal ? "terminal" : "\(provider.rawValue): new session"
+            title: provider == .terminal ? "terminal" : String(localized: "\(provider.rawValue): new session")
         )
         selection = .session(record.id)
         return record
@@ -327,7 +327,7 @@ struct MainWindow: View {
         let record = live ?? projectStore.createSession(
             projectID: projectID, provider: .claude,
             accountID: settings.defaultAccount(for: .claude)?.id,
-            title: "claude: new session")
+            title: String(localized: "claude: new session"))
         selection = .session(record.id)
 
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
@@ -434,7 +434,7 @@ struct MainWindow: View {
             projectID: projectID,
             provider: .claude,
             accountID: settings.defaultAccount(for: .claude)?.id,
-            title: "claude: organise sessions"
+            title: String(localized: "claude: organise sessions")
         )
         selection = .session(record.id)
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
@@ -588,7 +588,7 @@ struct MainWindow: View {
                 sessions.notify(
                     event,
                     title: projects.projects.first { $0.id == projectID }?.name ?? "Uncoil",
-                    body: "\(item.kind.label) · \(item.title)",
+                    body: String(localized: "\(item.kind.label) · \(item.title)"),
                     projectID: projectID,
                     sessionID: sessionID,
                     prefs: prefs

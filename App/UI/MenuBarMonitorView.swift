@@ -187,7 +187,7 @@ struct MenuBarMonitorMenu: View {
             projectID: project.id,
             provider: provider,
             accountID: provider == .terminal ? nil : account?.id,
-            title: provider == .terminal ? "terminal" : "\(provider.rawValue): new session"
+            title: provider == .terminal ? "terminal" : String(localized: "\(provider.rawValue): new session")
         )
         MainRoute.shared.request(.session(record.id))
         activateMainWindow()

@@ -165,7 +165,7 @@ enum PaletteEngine {
         if !isEmpty {
             let panes = ctx.settingsPanes.map { pane in
                 PaletteItem(
-                    id: "settings.\(pane.id)", title: "Settings: \(pane.title)",
+                    id: "settings.\(pane.id)", title: String(localized: "Settings: \(pane.title)"),
                     iconName: "settings", kind: .settings,
                     action: .openSettings(pane.id))
             }
@@ -179,11 +179,11 @@ enum PaletteEngine {
 
     private static func commandItems(ctx: PaletteContext) -> [PaletteItem] {
         var items: [PaletteItem] = [
-            PaletteItem(id: "cmd.addProject", title: "Add a New Project",
+            PaletteItem(id: "cmd.addProject", title: String(localized: "Add a New Project"),
                         iconName: "folder-plus", kind: .command, action: .addProject),
-            PaletteItem(id: "cmd.testWorkspace", title: "Create a Test Workspace",
+            PaletteItem(id: "cmd.testWorkspace", title: String(localized: "Create a Test Workspace"),
                         iconName: "flask", kind: .command, action: .createTestWorkspace),
-            PaletteItem(id: "cmd.debugBundle", title: "Create Debug Bundle",
+            PaletteItem(id: "cmd.debugBundle", title: String(localized: "Create Debug Bundle"),
                         iconName: "package-export", kind: .command, action: .createDebugBundle),
             PaletteItem(id: "cmd.extensions", title: "Extensions",
                         iconName: "puzzle", kind: .command, action: .openExtensions),
@@ -195,25 +195,25 @@ enum PaletteEngine {
             for provider in [AgentProvider.claude, .codex, .terminal] {
                 items.append(PaletteItem(
                     id: "cmd.new.\(provider.rawValue).\(project.id)",
-                    title: "New Session: \(provider.displayName) [\(project.name)]",
+                    title: String(localized: "New Session: \(provider.displayName) [\(project.name)]"),
                     iconName: "plus", provider: provider,
                     kind: .command, action: .newSession(project.id, provider)))
             }
             items.append(PaletteItem(
                 id: "cmd.worktree.\(project.id)",
-                title: "Create Worktree… [\(project.name)]",
+                title: String(localized: "Create Worktree… [\(project.name)]"),
                 iconName: "git-branch", kind: .command,
                 action: .createWorktree(project.id)))
         }
 
         if let sid = ctx.currentSessionID {
-            items.append(PaletteItem(id: "cmd.restart", title: "Restart the Session",
+            items.append(PaletteItem(id: "cmd.restart", title: String(localized: "Restart the Session"),
                                      iconName: "refresh", kind: .command,
                                      action: .restartSession(sid)))
-            items.append(PaletteItem(id: "cmd.close", title: "Close the Session",
+            items.append(PaletteItem(id: "cmd.close", title: String(localized: "Close the Session"),
                                      iconName: "x", kind: .command,
                                      action: .closeSession(sid)))
-            items.append(PaletteItem(id: "cmd.popout", title: "Open in a Popout Window",
+            items.append(PaletteItem(id: "cmd.popout", title: String(localized: "Open in a Popout Window"),
                                      iconName: "external-link", kind: .command,
                                      action: .popoutSession(sid)))
         }
@@ -231,8 +231,8 @@ enum PaletteEngine {
         }
         guard let prompt, !prompt.isEmpty else { return nil }
         return PaletteItem(
-            id: "ask.claude", title: "Claude'a sor: \(prompt)",
-            subtitle: "Bu projede Claude oturumunda sorulur",
+            id: "ask.claude", title: String(localized: "Ask Claude: \(prompt)"),
+            subtitle: String(localized: "Asked in a Claude session in this project"),
             iconName: "sparkles", provider: .claude,
             kind: .ask, action: .askClaude(prompt, pid))
     }

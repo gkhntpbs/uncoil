@@ -185,8 +185,7 @@ struct ExtensionsView: View {
             let failures = results.filter { $0.outcome == .failure }
             let warnings = results.filter { $0.outcome == .warning }
             isCheckingHealth = false
-            let summary = "Health check: \(results.count) kontrol · "
-                + "\(results.filter { $0.outcome == .ok }.count) healthy"
+            let summary = String(localized: "Health check: \(results.count) checks · \(results.filter { $0.outcome == .ok }.count) healthy")
                 + (warnings.isEmpty ? "" : ", \(warnings.count) warnings")
                 + (failures.isEmpty ? "" : ", \(failures.count) errors")
             notices.post(
@@ -616,49 +615,49 @@ private struct OverviewScreen: View {
                 spacing: 12
             ) {
                 StatTile(
-                    label: "Kurulu agent",
+                    label: String(localized: "Installed agents"),
                     value: "\(overview.agents.count)",
-                    detail: overview.agents.isEmpty ? "Not found" : overview.agents.joined(separator: ", ")
+                    detail: overview.agents.isEmpty ? String(localized: "Not found") : overview.agents.joined(separator: ", ")
                 )
-                StatTile(label: "Managed skill", value: "\(overview.managedSkills)")
+                StatTile(label: String(localized: "Managed skill"), value: "\(overview.managedSkills)")
                 StatTile(
-                    label: "Unmanaged skill",
+                    label: String(localized: "Unmanaged skill"),
                     value: "\(overview.unmanagedSkills)",
-                    detail: "Installed outside Uncoil"
+                    detail: String(localized: "Installed outside Uncoil")
                 )
-                StatTile(label: "MCP server", value: "\(overview.mcpServers)")
+                StatTile(label: String(localized: "MCP server"), value: "\(overview.mcpServers)")
                 StatTile(
-                    label: "Update pending",
+                    label: String(localized: "Update pending"),
                     value: "\(overview.pendingUpdates)",
                     tint: overview.pendingUpdates > 0 ? Theme.highlight : nil
                 )
                 StatTile(
-                    label: "Bozuk extension",
+                    label: String(localized: "Broken extensions"),
                     value: "\(overview.brokenExtensions)",
                     tint: overview.brokenExtensions > 0 ? Theme.danger : nil
                 )
                 StatTile(
-                    label: "Security finding",
+                    label: String(localized: "Security finding"),
                     value: "\(overview.openFindings)",
                     tint: overview.openFindings > 0 ? Theme.danger : nil
                 )
                 StatTile(
-                    label: "Config drift",
+                    label: String(localized: "Config drift"),
                     value: "\(overview.configDrift)",
                     tint: overview.configDrift > 0 ? Theme.warn : nil
                 )
                 StatTile(
-                    label: "Son Bumblebee scan",
+                    label: String(localized: "Last Bumblebee scan"),
                     value: overview.lastBumblebeeScan
                         .map { RelativeClock.short(since: $0) } ?? "—",
-                    detail: overview.bumblebeeSummary ?? "Never run"
+                    detail: overview.bumblebeeSummary ?? String(localized: "Never run")
                 )
             }
             .accessibilityIdentifier("extensions.overview.tiles")
 
-            SectionCard(title: "Health check") {
+            SectionCard(title: String(localized: "Health check")) {
                 if registry.health.isEmpty {
-                    EmptyRow(text: "Has not run yet.")
+                    EmptyRow(text: String(localized: "Has not run yet."))
                 } else {
                     ForEach(Array(registry.health.enumerated()), id: \.element.id) { index, result in
                         HealthRow(result: result)
@@ -671,8 +670,8 @@ private struct OverviewScreen: View {
 
             if !registry.configurationIssues.isEmpty {
                 SectionCard(
-                    title: "Agent config warnings",
-                    detail: "Uncoil changes these files only through plan → apply."
+                    title: String(localized: "Agent config warnings"),
+                    detail: String(localized: "Uncoil changes these files only through plan → apply.")
                 ) {
                     ForEach(registry.configurationIssues) { issue in
                         HStack(alignment: .top, spacing: 9) {
@@ -723,8 +722,8 @@ private struct AgentsScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if registry.installations.isEmpty {
-                SectionCard(title: "Agent not found") {
-                    EmptyRow(text: "Neither Claude Code nor Codex is installed.")
+                SectionCard(title: String(localized: "Agent not found")) {
+                    EmptyRow(text: String(localized: "Neither Claude Code nor Codex is installed."))
                 }
             }
 
@@ -851,8 +850,8 @@ private struct AgentsScreen: View {
                                         )],
                                         installation: installation,
                                         summary: server.isEnabled
-                                            ? "Stopping \(server.name)"
-                                            : "Starting \(server.name)"
+                                            ? String(localized: "Stopping \(server.name)")
+                                            : String(localized: "Starting \(server.name)")
                                     )
                                 }
                                 .buttonStyle(GhostButtonStyle())
@@ -864,7 +863,7 @@ private struct AgentsScreen: View {
                                     planChange(
                                         [.removeMCPServer(name: server.name)],
                                         installation: installation,
-                                        summary: "Removing \(server.name)"
+                                        summary: String(localized: "Removing \(server.name)")
                                     )
                                 }
                                 .buttonStyle(GhostButtonStyle())
@@ -905,8 +904,8 @@ private struct AgentsScreen: View {
 
             if !AgentAdapterRegistry().unmanagedAgents.isEmpty {
                 SectionCard(
-                    title: "Agents not managed yet",
-                    detail: "They will show up here once an adapter exists."
+                    title: String(localized: "Agents not managed yet"),
+                    detail: String(localized: "They will show up here once an adapter exists.")
                 ) {
                     ForEach(AgentAdapterRegistry().unmanagedAgents) { agent in
                         KeyValueRow(key: agent.displayName, value: "no adapter")
@@ -982,11 +981,11 @@ private struct AgentsScreen: View {
         guard picker.runModal() == .OK, let url = picker.url,
               let data = FileManager.default.contents(atPath: url.path),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            message = "The setup file could not be read."
+            message = String(localized: "The setup file could not be read.")
             return
         }
         guard let servers = root["mcp_servers"] as? [[String: String]], !servers.isEmpty else {
-            message = "The setup file has no MCP server."
+            message = String(localized: "The setup file has no MCP server.")
             return
         }
         let changes: [ConfigurationChange] = servers.compactMap { entry in
@@ -1008,12 +1007,12 @@ private struct AgentsScreen: View {
             ))
         }
         guard !changes.isEmpty else {
-            message = "The servers in the setup file could not be read."
+            message = String(localized: "The servers in the setup file could not be read.")
             return
         }
         planChange(
             changes, installation: installation,
-            summary: "Importing \(changes.count) MCP servers"
+            summary: String(localized: "Importing \(changes.count) MCP servers")
         )
     }
 
@@ -1066,7 +1065,7 @@ private struct AgentsScreen: View {
                     pending.summary + " (config changed on disk, replanned)",
                     outcome.issues
                 )
-                message = "The config changed on disk; the plan was recalculated."
+                message = String(localized: "The config changed on disk; the plan was recalculated.")
                 return
             }
             message = outcome.didApply
@@ -1216,11 +1215,11 @@ private struct PackagesScreen: View {
             }
 
             if packages.isEmpty {
-                SectionCard(title: "No \(kind.label) found") {
+                SectionCard(title: String(localized: "No \(kind.label) found")) {
                     EmptyRow(
                         text: kind == .skill
-                            ? "Nothing shows up in the agents' skill directories."
-                            : "No MCP server is defined in the agent configs."
+                            ? String(localized: "Nothing shows up in the agents' skill directories.")
+                            : String(localized: "No MCP server is defined in the agent configs.")
                     )
                 }
             }
@@ -1310,7 +1309,7 @@ private struct PackagesScreen: View {
                 registry.record(AuditEvent(
                     kind: package.kind == .skill ? .skillInstalled : .mcpEnabled,
                     extensionID: result.id,
-                    detail: "toplu sahiplenme: \(plan.summary), yedek \(plan.backupPath ?? "-")"
+                    detail: String(localized: "bulk adoption: \(plan.summary), backup \(plan.backupPath ?? "-")")
                 ))
                 adopted.append(package.name)
             } catch {
@@ -1357,7 +1356,7 @@ private struct PackagesScreen: View {
     /// Takes in a skill folder the user picks. The folder itself is only read.
     private func importFolder() {
         let picker = NSOpenPanel()
-        picker.title = "Choose the skill folder"
+        picker.title = String(localized: "Choose the skill folder")
         picker.canChooseFiles = false
         picker.canChooseDirectories = true
         picker.allowsMultipleSelection = false
@@ -1367,9 +1366,9 @@ private struct PackagesScreen: View {
             registry.upsert(package)
             registry.record(AuditEvent(
                 kind: .skillInstalled, extensionID: package.id,
-                detail: "added from a folder: \(url.path)"
+                detail: String(localized: "added from a folder: \(url.path)")
             ))
-            message = "\(package.name) added; its source folder was left alone."
+            message = String(localized: "\(package.name) added; its source folder was left alone.")
         } catch {
             message = error.localizedDescription
         }
@@ -1456,7 +1455,7 @@ private struct PackageCard: View {
         do {
             if package.kind == .mcpServer {
                 guard let definition = registry.definition(named: package.name) else {
-                    message = "\(package.name) is not declared in any agent config."
+                    message = String(localized: "\(package.name) is not declared in any agent config.")
                     return
                 }
                 adoption = try service.planDefinition(
@@ -1496,7 +1495,7 @@ private struct PackageCard: View {
             registry.record(AuditEvent(
                 kind: package.kind == .skill ? .skillInstalled : .mcpEnabled,
                 extensionID: adopted.id,
-                detail: "sahiplenildi: \(plan.summary), yedek \(plan.backupPath ?? "-")"
+                detail: String(localized: "adopted: \(plan.summary), backup \(plan.backupPath ?? "-")")
             ))
             registry.discover()
             message = plan.agentCopies.isEmpty
@@ -1511,7 +1510,7 @@ private struct PackageCard: View {
     private func linkToRepository(_ repository: String, tracking: ExtensionSource.TrackingMode) {
         linkingRepository = nil
         guard let source = package.source.linkedToRepository(repository, tracking: tracking) else {
-            message = "\(package.name) cannot be linked to a repo."
+            message = String(localized: "\(package.name) cannot be linked to a repo.")
             return
         }
         var updated = package
@@ -1519,9 +1518,9 @@ private struct PackageCard: View {
         registry.upsert(updated)
         registry.record(AuditEvent(
             kind: .configChanged, extensionID: package.id,
-            detail: "source linked: \(repository) · \(tracking.label)"
+            detail: String(localized: "source linked: \(repository) · \(tracking.label)")
         ))
-        message = "\(package.name) is now managed from \(repository)."
+        message = String(localized: "\(package.name) is now managed from \(repository).")
     }
 
     private var header: some View {
@@ -1545,7 +1544,7 @@ private struct PackageCard: View {
                             )
                         }
                         if package.hasLocalModification {
-                            StatusBadge(text: "Modified Locally", level: .warning)
+                            StatusBadge(text: String(localized: "Modified Locally"), level: .warning)
                         }
                         if let coverage = BumblebeeCoverage.label(for: package) {
                             StatusBadge(text: coverage, level: .neutral)
@@ -1707,7 +1706,7 @@ private struct PackageCard: View {
             registry.upsert(updated)
             registry.record(AuditEvent(
                 kind: .updateApplied, extensionID: package.id,
-                detail: "Updated to \(candidate.availableCommitSHA.prefix(12))"
+                detail: String(localized: "Updated to \(candidate.availableCommitSHA.prefix(12))")
             ))
             if let activePath = updated.activeRevision?.path {
                 Task { _ = await coordinator.scanAfterUpdate(activePath: activePath) }
@@ -1728,7 +1727,7 @@ private struct PackageCard: View {
             let restored = try engine.rollback(package, skillName: package.name).package
             registry.upsert(restored)
             registry.record(AuditEvent(
-                kind: .rolledBack, extensionID: package.id, detail: "went back to the previous revision"
+                kind: .rolledBack, extensionID: package.id, detail: String(localized: "went back to the previous revision")
             ))
             registry.discover()
             return "\(package.name) went back to its previous revision."
@@ -1762,7 +1761,7 @@ private struct PackageCard: View {
             .flatMap(\.mcpServers)
             .first(where: { $0.name == package.name }) else { return "—" }
         if !server.environmentKeys.isEmpty {
-            return "Secret gerekiyor: \(server.environmentKeys.joined(separator: ", "))"
+            return "Secret required: \(server.environmentKeys.joined(separator: ", "))"
         }
         if case .remoteMCP = package.source {
             return "Managed server-side"
@@ -1821,10 +1820,10 @@ private struct PackageCard: View {
                 Button("Quarantine") {
                     let outcome = registry.quarantine(
                         packageID: package.id,
-                        reason: findings.first?.rule ?? "you asked for it",
+                        reason: findings.first?.rule ?? String(localized: "you asked for it"),
                         findingID: findings.first?.id
                     )
-                    message = "\(package.name): \(outcome.summary)"
+                    message = String(localized: "\(package.name): \(outcome.summary)")
                 }
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.package.quarantine.\(package.id)")
@@ -1871,7 +1870,7 @@ private struct PackageCard: View {
                         kind: package.kind == .skill ? .skillRemoved : .mcpDisabled,
                         extensionID: package.id, detail: "removed"
                     ))
-                    message = "\(package.name) removed."
+                    message = String(localized: "\(package.name) removed.")
                 }
                 .buttonStyle(GhostButtonStyle())
                 .accessibilityIdentifier("extensions.package.uninstall.\(package.id)")
@@ -1893,8 +1892,8 @@ private struct TriggerTesterCard: View {
 
     var body: some View {
         SectionCard(
-            title: "Trigger Tester",
-            detail: "Guesses which skill a prompt could trigger, from the descriptions the agent sees."
+            title: String(localized: "Trigger Tester"),
+            detail: String(localized: "Guesses which skill a prompt could trigger, from the descriptions the agent sees.")
         ) {
             HStack(spacing: 9) {
                 TextField("Write an example prompt…", text: $prompt)
@@ -2031,8 +2030,8 @@ private struct AssignmentsScreen: View {
             let conflicts = SkillAssignment.conflicts(registry.projectBindings)
             if !conflicts.isEmpty {
                 SectionCard(
-                    title: "Clashing assignments",
-                    detail: "Both an allow and a deny record exist for the same scope."
+                    title: String(localized: "Clashing assignments"),
+                    detail: String(localized: "Both an allow and a deny record exist for the same scope.")
                 ) {
                     ForEach(conflicts) { binding in
                         KeyValueRow(
@@ -2045,18 +2044,18 @@ private struct AssignmentsScreen: View {
             }
 
             SectionCard(
-                title: "Extension → agent",
-                detail: "Which agents an extension is enabled for."
+                title: String(localized: "Extension → agent"),
+                detail: String(localized: "Which agents an extension is enabled for.")
             ) {
                 if agents.isEmpty {
                     EmptyRow(
-                        text: "No installed agent found; there is nothing to assign to."
+                        text: String(localized: "No installed agent found; there is nothing to assign to.")
                     )
                 } else if packages.isEmpty {
                     EmptyRow(
                         text: registry.packages.isEmpty
-                            ? "No extensions yet."
-                            : "No extension matches “\(query)”."
+                            ? String(localized: "No extensions yet.")
+                            : String(localized: "No extension matches “\(query)”.")
                     )
                 } else {
                     // A Grid rather than fixed widths: the name column takes what
@@ -2131,13 +2130,13 @@ private struct AssignmentsScreen: View {
             }
 
             SectionCard(
-                title: "Extension → project",
-                detail: "With no record an extension is global; the project record, being the most specific, wins."
+                title: String(localized: "Extension → project"),
+                detail: String(localized: "With no record an extension is global; the project record, being the most specific, wins.")
             ) {
                 if projectStore.projects.isEmpty {
-                    EmptyRow(text: "No projects yet.")
+                    EmptyRow(text: String(localized: "No projects yet."))
                 } else if packages.isEmpty {
-                    EmptyRow(text: "No matching extension.")
+                    EmptyRow(text: String(localized: "No matching extension."))
                 } else {
                     ForEach(packages) { package in
                         VStack(alignment: .leading, spacing: 5) {
@@ -2294,8 +2293,8 @@ private struct SourcesScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             SectionCard(
-                title: "GitHub sources",
-                detail: "Several extensions from the same repo share a single bare mirror."
+                title: String(localized: "GitHub sources"),
+                detail: String(localized: "Several extensions from the same repo share a single bare mirror.")
             ) {
                 HStack(spacing: 9) {
                     TextField("owner/repo", text: $newSource)
@@ -2313,7 +2312,7 @@ private struct SourcesScreen: View {
 
                 if registry.effectiveSources.isEmpty {
                     Divider().overlay(Theme.border)
-                    EmptyRow(text: "No source.")
+                    EmptyRow(text: String(localized: "No source."))
                 } else {
                     ForEach(registry.effectiveSources, id: \.self) { repository in
                         Divider().overlay(Theme.border)
@@ -2330,8 +2329,8 @@ private struct SourcesScreen: View {
             }
             if !remote.isEmpty {
                 SectionCard(
-                    title: "Remote MCP",
-                    detail: "No local git: the version comes from the server and is not kept in step with the repo's."
+                    title: String(localized: "Remote MCP"),
+                    detail: String(localized: "No local git: the version comes from the server and is not kept in step with the repo's.")
                 ) {
                     ForEach(remote) { package in
                         KeyValueRow(
@@ -2349,7 +2348,7 @@ private struct SourcesScreen: View {
         guard !value.isEmpty else { return }
         registry.addSource(value)
         newSource = ""
-        message = "\(value) was added as a source. Adding an extension needs discovery."
+        message = String(localized: "\(value) was added as a source. Adding an extension needs discovery.")
     }
 }
 
@@ -2415,7 +2414,7 @@ private struct SourceRow: View {
                 }
                 Button("Remove Source") {
                     registry.removeSource(repository)
-                    message = "\(repository) removed; installed extensions were left alone."
+                    message = String(localized: "\(repository) removed; installed extensions were left alone.")
                 }
                 .buttonStyle(GhostButtonStyle())
                 Spacer()
@@ -2499,7 +2498,7 @@ private struct SourceRow: View {
         }
         do {
             try mirror.fetch(repository: repository)
-            return "\(repository) fetch edildi."
+            return "\(repository) fetched."
         } catch {
             return error.localizedDescription
         }
@@ -2529,8 +2528,8 @@ private struct SecurityScreen: View {
             SectionCard(
                 title: "Tarama",
                 detail: scans.isInstalled
-                    ? "Bumblebee found; scans are run from here."
-                    : "Bumblebee is not installed. Installing it happens with your approval; Uncoil keeps running its own scan."
+                    ? String(localized: "Bumblebee found; scans are run from here.")
+                    : String(localized: "Bumblebee is not installed. Installing it happens with your approval; Uncoil keeps running its own scan.")
             ) {
                 KeyValueRow(
                     key: "Last Bumblebee scan",
@@ -2584,7 +2583,7 @@ private struct SecurityScreen: View {
 
             SectionCard(
                 title: "Kapsam",
-                detail: "A clean result does not mean the extension is entirely safe."
+                detail: String(localized: "A clean result does not mean the extension is entirely safe.")
             ) {
                 KeyValueRow(
                     key: "Uncoil scan",
@@ -2612,14 +2611,14 @@ private struct SecurityScreen: View {
             ForEach([SecurityFinding.Origin.uncoil, .bumblebee], id: \.rawValue) { origin in
                 let originFindings = registry.findings.filter { $0.origin == origin }
                 SectionCard(
-                    title: "\(origin.label) findings",
-                    detail: "Sources are shown separately; they are not merged."
+                    title: String(localized: "\(origin.label) findings"),
+                    detail: String(localized: "Sources are shown separately; they are not merged.")
                 ) {
                     if originFindings.isEmpty {
                         EmptyRow(
                             text: origin == .bumblebee
-                                ? "Bumblebee did not run."
-                                : "No open findings."
+                                ? String(localized: "Bumblebee did not run.")
+                                : String(localized: "No open findings.")
                         )
                     } else if origin == .bumblebee {
                         // Grouped by kind: an inventory line and a malicious
@@ -2666,7 +2665,7 @@ private struct SecurityScreen: View {
             if !quarantined.isEmpty {
                 SectionCard(
                     title: "Karantina",
-                    detail: "No file was deleted; the launcher refuses to start."
+                    detail: String(localized: "No file was deleted; the launcher refuses to start.")
                 ) {
                     ForEach(quarantined) { package in
                         HStack {
@@ -2676,7 +2675,7 @@ private struct SecurityScreen: View {
                             Spacer()
                             Button("Restore") {
                                 registry.setState(.active, packageID: package.id)
-                                message = "\(package.name) restored."
+                                message = String(localized: "\(package.name) restored.")
                             }
                             .buttonStyle(GhostButtonStyle())
                         }
@@ -2754,11 +2753,11 @@ private struct UpdatesScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             if registry.updateCandidates.isEmpty {
-                SectionCard(title: "No update") {
+                SectionCard(title: String(localized: "No update")) {
                     EmptyRow(
                         text: registry.managedPackages.isEmpty
-                            ? "No managed extension; unmanaged packages are not checked for updates."
-                            : "No new commit since the last scan."
+                            ? String(localized: "No managed extension; unmanaged packages are not checked for updates.")
+                            : String(localized: "No new commit since the last scan.")
                     )
                 }
             }
@@ -2878,12 +2877,12 @@ private struct UpdatesScreen: View {
             }
 
             SectionCard(
-                title: "Rollback history",
-                detail: "The previous revision is kept; rollback returns to it with one click."
+                title: String(localized: "Rollback history"),
+                detail: String(localized: "The previous revision is kept; rollback returns to it with one click.")
             ) {
                 let withPrevious = registry.packages.filter { $0.previousRevision != nil }
                 if withPrevious.isEmpty {
-                    EmptyRow(text: "No update applied yet.")
+                    EmptyRow(text: String(localized: "No update applied yet."))
                 } else {
                     ForEach(withPrevious) { package in
                         KeyValueRow(
@@ -2899,7 +2898,7 @@ private struct UpdatesScreen: View {
     /// Computes what the update would change. Nothing is applied.
     private func makeReview(_ candidate: UpdateCandidate, package: ExtensionPackage?) {
         guard let package, let active = package.activeRevision else {
-            message = "No revision of this package is installed; install it first."
+            message = String(localized: "No revision of this package is installed; install it first.")
             return
         }
         let staging = registry.layout.revisions
@@ -2926,7 +2925,7 @@ private struct UpdatesScreen: View {
             registry.upsert(updated)
             registry.record(AuditEvent(
                 kind: .updateApplied, extensionID: package.id,
-                detail: "Updated to \(candidate.availableCommitSHA.prefix(12))"
+                detail: String(localized: "Updated to \(candidate.availableCommitSHA.prefix(12))")
             ))
             registry.discover()
             return "\(package.name) updated."
@@ -2945,7 +2944,7 @@ private struct UpdatesScreen: View {
             registry.upsert(restored)
             registry.record(AuditEvent(
                 kind: .rolledBack, extensionID: package.id,
-                detail: "went back to the previous revision"
+                detail: String(localized: "went back to the previous revision")
             ))
             registry.discover()
             return "\(package.name) went back to its previous revision."
@@ -3008,10 +3007,10 @@ private struct ActivityScreen: View {
     var body: some View {
         SectionCard(
             title: "Etkinlik",
-            detail: "Append-only record; survives even if the registry is corrupted."
+            detail: String(localized: "Append-only record; survives even if the registry is corrupted.")
         ) {
             if registry.auditEvents.isEmpty {
-                EmptyRow(text: "No records yet.")
+                EmptyRow(text: String(localized: "No records yet."))
             } else {
                 ForEach(Array(registry.auditEvents.prefix(100).enumerated()), id: \.element.id) { index, event in
                     HStack(alignment: .top, spacing: 10) {

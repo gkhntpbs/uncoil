@@ -79,15 +79,15 @@ struct CodexAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).command",
                     severity: .error,
-                    message: "The \(server.name) STDIO server has no command.",
-                    remedy: "Add the command, or remove the server."
+                    message: String(localized: "The \(server.name) STDIO server has no command."),
+                    remedy: String(localized: "Add the command, or remove the server.")
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).url",
                     severity: .error,
-                    message: "The \(server.name) HTTP server has no address.",
-                    remedy: "Add a URL, or remove the server."
+                    message: String(localized: "The \(server.name) HTTP server has no address."),
+                    remedy: String(localized: "Add a URL, or remove the server.")
                 ))
             default:
                 break
@@ -96,8 +96,8 @@ struct CodexAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "codex.mcp.\(server.name).secrets",
                     severity: .warning,
-                    message: "\(server.name) keeps a secret in config.toml: \(server.environmentKeys.joined(separator: ", ")).",
-                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
+                    message: String(localized: "\(server.name) keeps a secret in config.toml: \(server.environmentKeys.joined(separator: ", "))."),
+                    remedy: String(localized: "Move it to the Uncoil launcher to keep the value in the Keychain.")
                 ))
             }
         }
@@ -107,8 +107,8 @@ struct CodexAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "codex.mcp.coverage",
                 severity: .warning,
-                message: "Codex's TOML MCP config is outside the Bumblebee scan's reach.",
-                remedy: "Trust Uncoil's own scan for these servers."
+                message: String(localized: "Codex's TOML MCP config is outside the Bumblebee scan's reach."),
+                remedy: String(localized: "Trust Uncoil's own scan for these servers.")
             ))
         }
         return issues
@@ -213,7 +213,7 @@ struct CodexAdapter: AgentAdapter {
                 case .stdio where (definition.command ?? "").isEmpty:
                     throw AgentAdapterError.unsupportedChange("\(definition.name): a command is required")
                 case .http where (definition.url ?? "").isEmpty:
-                    throw AgentAdapterError.unsupportedChange("\(definition.name): URL gerekli")
+                    throw AgentAdapterError.unsupportedChange("\(definition.name): a URL is required")
                 default:
                     break
                 }

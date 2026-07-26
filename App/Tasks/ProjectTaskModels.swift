@@ -376,12 +376,12 @@ struct TaskBoardColumnMapping: Identifiable, Equatable, Codable {
             executionStates: [.unassigned, .queued], checkboxMark: .open, sortIndex: 0
         ),
         .init(
-            id: "inProgress", title: "Being worked on",
+            id: "inProgress", title: String(localized: "Being worked on"),
             executionStates: [.assigned, .agentStarting, .running],
             checkboxMark: nil, sortIndex: 1
         ),
         .init(
-            id: "needsUser", title: "Bekliyor",
+            id: "needsUser", title: "Waiting",
             executionStates: [.waitingForPermission, .waitingForUser, .reviewRequested],
             checkboxMark: nil, sortIndex: 2
         ),

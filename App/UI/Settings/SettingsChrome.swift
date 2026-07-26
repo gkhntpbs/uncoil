@@ -30,7 +30,12 @@ struct SettingsPage<Content: View>: View {
         // sits on the app's background, and the row background paints the
         // grouped boxes in the panel colour.
         .scrollContentBackground(.hidden)
+        // The settings pages wear macOS's furniture on purpose, but the scroller
+        // is the one piece shared with every other window: a page that scrolled
+        // with the system bar while the sidebar beside it used ours read as two
+        // different apps.
         .background(Theme.bg)
+        .uncoilScrollers()
         .listRowBackground(Theme.panel)
         .navigationTitle(title)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

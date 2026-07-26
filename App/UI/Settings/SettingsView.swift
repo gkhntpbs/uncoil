@@ -209,7 +209,7 @@ struct SettingsView: View {
         }
         .navigationTitle(pane.title)
         .navigationSubtitle(pane.category.title)
-        .searchable(text: $search, placement: .sidebar, prompt: "Search settings")
+        .searchable(text: $search, placement: .sidebar, prompt: String(localized: "Search settings"))
         .frame(minWidth: 700, idealWidth: 840, minHeight: 460, idealHeight: 620)
         .tint(Theme.highlight)
         .foregroundStyle(Theme.text)
@@ -245,6 +245,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .uncoilScrollers()
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(Theme.panel)

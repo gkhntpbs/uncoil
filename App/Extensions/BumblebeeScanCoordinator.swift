@@ -19,7 +19,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
             case .notInstalled:
                 "Bumblebee is not installed; no scan ran. Installing it happens with your approval."
             case .skipped(let reason): "Scan skipped: \(reason)"
-            case .ran(let findings, true): "Tarama bitti: \(findings) bulgu."
+            case .ran(let findings, true): "Scan finished: \(findings) findings."
             case .ran(let findings, false):
                 "The scan did not finish; \(findings) findings were not counted as current state."
             case .failed(let detail): "Scan failed: \(detail)"
@@ -93,7 +93,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
         guard let kind = BumblebeeSchedule.atLaunch(
             lastScanAt: registry.lastBumblebeeScanAt, now: now
         ) else {
-            return finish(.skipped(reason: "the last scan is recent enough"))
+            return finish(.skipped(reason: String(localized: "the last scan is recent enough")))
         }
         return await run(kind: kind, paths: managedPaths(), now: now)
     }
@@ -123,7 +123,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
             after: registry.lastBumblebeeScanAt, now: now
         )
         guard now >= due else {
-            return finish(.skipped(reason: "not time for the daily baseline"))
+            return finish(.skipped(reason: String(localized: "not time for the daily baseline")))
         }
         return await run(kind: .dailyBaseline, paths: managedPaths(), now: now)
     }
@@ -138,7 +138,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
     @discardableResult
     func scanProjects(roots: [String], now: Date = .now) async -> Outcome {
         guard !roots.isEmpty else {
-            return finish(.skipped(reason: "no project to scan"))
+            return finish(.skipped(reason: String(localized: "no project to scan")))
         }
         return await run(kind: .project, paths: roots, now: now)
     }
@@ -159,7 +159,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
         guard let binary = locator.resolve() else { return finish(.notInstalled) }
         let paths = managedPaths()
         guard !paths.isEmpty else {
-            return finish(.skipped(reason: "No file within Bumblebee's reach"))
+            return finish(.skipped(reason: String(localized: "No file within Bumblebee's reach")))
         }
         client.scheduleScan(
             binaryPath: binary.path,
@@ -169,7 +169,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
             outputPath: registry.layout.scans
                 .appendingPathComponent("daemon-baseline.ndjson").path
         )
-        return finish(.skipped(reason: "the daily baseline was left to the daemon"))
+        return finish(.skipped(reason: String(localized: "the daily baseline was left to the daemon")))
     }
 
     /// Reads what the daemon's scan left behind, so a scan that ran while the app
@@ -179,7 +179,7 @@ final class BumblebeeScanCoordinator: ObservableObject {
         let url = registry.layout.scans.appendingPathComponent("daemon-baseline.ndjson")
         guard let data = FileManager.default.contents(atPath: url.path),
               let text = String(data: data, encoding: .utf8), !text.isEmpty else {
-            return finish(.skipped(reason: "no result from the daemon scan"))
+            return finish(.skipped(reason: String(localized: "no result from the daemon scan")))
         }
         var findings: [SecurityFinding] = []
         var diagnostics: [String] = []
@@ -242,10 +242,10 @@ final class BumblebeeScanCoordinator: ObservableObject {
     ) async -> Outcome {
         guard let binary = locator.resolve() else { return finish(.notInstalled) }
         guard !paths.isEmpty else {
-            return finish(.skipped(reason: "No file within Bumblebee's reach"))
+            return finish(.skipped(reason: String(localized: "No file within Bumblebee's reach")))
         }
         if let running = lock.current {
-            return finish(.skipped(reason: "\(running.label) scan in progress"))
+            return finish(.skipped(reason: String(localized: "\(running.label) scan in progress")))
         }
         isScanning = true
         defer { isScanning = false }

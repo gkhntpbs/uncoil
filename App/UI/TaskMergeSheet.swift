@@ -213,6 +213,7 @@ struct TaskMergeSheet: View {
                         .foregroundStyle(Theme.textDim)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .uncoilScrollers()
                 }
                 .frame(maxHeight: 180)
                 .accessibilityIdentifier("taskMerge.diff")
@@ -240,7 +241,7 @@ struct TaskMergeSheet: View {
                 .foregroundStyle(Theme.textFaint)
             Spacer()
             Button("Cancel") {
-                record(outcome: .refused(reason: "you cancelled"), approved: false)
+                record(outcome: .refused(reason: String(localized: "you cancelled")), approved: false)
                 onCancel()
             }
             .buttonStyle(GhostButtonStyle())
@@ -285,7 +286,7 @@ struct TaskMergeSheet: View {
             let result = await Task.detached(priority: .userInitiated) {
                 GitService.merge(
                     repoPath: root, branch: branch,
-                    message: "Merge task: \(text)"
+                    message: String(localized: "Merge task: \(text)")
                 )
             }.value
             merging = false
@@ -293,7 +294,7 @@ struct TaskMergeSheet: View {
             case .success(let commit):
                 record(outcome: .merged(commit: commit), approved: true)
                 onFinished(
-                    "\(branch) → \(project.name) merge edildi"
+                    "\(branch) merged into \(project.name)"
                         + (commit.map { " (\($0))" } ?? "")
                 )
             case .failure(let error):

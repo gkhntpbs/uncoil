@@ -108,7 +108,7 @@ struct BumblebeeSelfTest: Equatable, Codable {
         }
         return BumblebeeSelfTest(
             passed: exitCode == 0,
-            detail: trimmed.isEmpty ? "exit code \(exitCode)" : trimmed,
+            detail: trimmed.isEmpty ? String(localized: "exit code \(exitCode)") : trimmed,
             ranAt: now
         )
     }
@@ -398,20 +398,20 @@ enum BumblebeeCoverage {
 
     static let looseSkillFolders = Gap(
         id: "coverage.loose-skill-folders",
-        message: "Plain `SKILL.md` folders are outside the Bumblebee scan's reach.",
-        remedy: "Trust Uncoil's own scan for these folders."
+        message: String(localized: "Plain `SKILL.md` folders are outside the Bumblebee scan's reach."),
+        remedy: String(localized: "Trust Uncoil's own scan for these folders.")
     )
 
     static let codexTOML = Gap(
         id: "coverage.codex-toml",
-        message: "Bumblebee does not read Codex's TOML MCP config.",
-        remedy: "Codex MCP servers are judged by Uncoil's own scan."
+        message: String(localized: "Bumblebee does not read Codex's TOML MCP config."),
+        remedy: String(localized: "Codex MCP servers are judged by Uncoil's own scan.")
     )
 
     static let remoteMCP = Gap(
         id: "coverage.remote-mcp",
-        message: "Remote MCP servers have no local file; there is nothing to scan.",
-        remedy: "Server-side security is the provider's responsibility."
+        message: String(localized: "Remote MCP servers have no local file; there is nothing to scan."),
+        remedy: String(localized: "Server-side security is the provider's responsibility.")
     )
 
     static let all: [Gap] = [looseSkillFolders, codexTOML, remoteMCP]

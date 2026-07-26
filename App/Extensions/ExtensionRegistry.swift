@@ -222,7 +222,7 @@ final class ExtensionRegistry: ObservableObject {
                 }
             }(),
             extensionID: packageID,
-            detail: "\(previous.label) → \(state.label)"
+            detail: String(localized: "\(previous.label) → \(state.label)")
         ))
     }
 
@@ -274,9 +274,9 @@ final class ExtensionRegistry: ObservableObject {
         save()
         record(AuditEvent(
             kind: .quarantined, extensionID: packageID,
-            detail: "quarantined: \(reason)"
+            detail: String(localized: "quarantined: \(reason)")
                 + (findingID.map { " (bulgu \($0))" } ?? "")
-                + "; dosyalar silinmedi"
+                + String(localized: "; no file was deleted")
         ))
         let filesKept = package.activeRevision
             .map { FileManager.default.fileExists(atPath: $0.path) } ?? true
@@ -341,7 +341,7 @@ final class ExtensionRegistry: ObservableObject {
         record(AuditEvent(
             kind: .assignmentChanged, extensionID: binding.extensionID,
             agent: binding.agent,
-            detail: binding.isGlobal ? "global atama" : "project assignment"
+            detail: binding.isGlobal ? String(localized: "global assignment") : String(localized: "project assignment")
         ))
     }
 
@@ -512,7 +512,7 @@ final class ExtensionRegistry: ObservableObject {
         guard scan.isUsableAsCurrentState else {
             record(AuditEvent(
                 kind: .scanCompleted,
-                detail: "Bumblebee's scan was not used: \(scan.unusableReason ?? "unknown")"
+                detail: String(localized: "Bumblebee's scan was not used: \(scan.unusableReason ?? "unknown")")
             ))
             save()
             return false
@@ -523,7 +523,7 @@ final class ExtensionRegistry: ObservableObject {
         lastBumblebeeScanAt = scan.finishedAt
         record(AuditEvent(
             kind: .scanCompleted,
-            detail: "Bumblebee \(scan.kind.label): \(scan.bumblebeeFindings.count) bulgu"
+            detail: String(localized: "Bumblebee \(scan.kind.label): \(scan.bumblebeeFindings.count) findings")
                 + (scan.version.map { ", \($0.label)" } ?? "")
         ))
         save()
@@ -641,7 +641,7 @@ final class ExtensionRegistry: ObservableObject {
         let stopped = MCPProcessSupervisor().shutdown(health)
         record(AuditEvent(
             kind: .mcpEnabled, extensionID: package.id,
-            detail: "\(stopped.count) processes stopped; the agent will restart them"
+            detail: String(localized: "\(stopped.count) processes stopped; the agent will restart them")
         ))
         return stopped.count
     }
@@ -663,7 +663,7 @@ final class ExtensionRegistry: ObservableObject {
         )
         record(AuditEvent(
             kind: .configChanged, extensionID: packageID,
-            detail: "tracking changed: \(previous.label) → \(tracking.label)"
+            detail: String(localized: "tracking changed: \(previous.label) → \(tracking.label)")
         ))
         save()
         return true
@@ -802,9 +802,9 @@ final class ExtensionRegistry: ObservableObject {
             name: "Agent installations",
             outcome: installations.isEmpty ? .failure : .ok,
             detail: installations.isEmpty
-                ? "No manageable agent found."
+                ? String(localized: "No manageable agent found.")
                 : installations.map { $0.agent.displayName }.joined(separator: ", "),
-            remedy: installations.isEmpty ? "Install Claude Code or Codex." : nil,
+            remedy: installations.isEmpty ? String(localized: "Install Claude Code or Codex.") : nil,
             checkedAt: now
         ))
 
@@ -814,9 +814,9 @@ final class ExtensionRegistry: ObservableObject {
             name: "Symlink health",
             outcome: broken.isEmpty ? .ok : .failure,
             detail: broken.isEmpty
-                ? "Every link is in place."
-                : "\(broken.count) extensions have a broken link.",
-            remedy: broken.isEmpty ? nil : "Fix it with Repair.",
+                ? String(localized: "Every link is in place.")
+                : String(localized: "\(broken.count) extensions have a broken link."),
+            remedy: broken.isEmpty ? nil : String(localized: "Fix it with Repair."),
             checkedAt: now
         ))
 
@@ -825,8 +825,8 @@ final class ExtensionRegistry: ObservableObject {
             id: "health.drift",
             name: "Config drift",
             outcome: drift == 0 ? .ok : .warning,
-            detail: drift == 0 ? "Matches the record." : "\(drift) sapma.",
-            remedy: drift == 0 ? nil : "Diff'i incele; gerekirse rollback yap.",
+            detail: drift == 0 ? String(localized: "Matches the record.") : String(localized: "\(drift) drifted."),
+            remedy: drift == 0 ? nil : String(localized: "Review the diff; roll back if you need to."),
             checkedAt: now
         ))
 
@@ -836,9 +836,9 @@ final class ExtensionRegistry: ObservableObject {
             name: "Security findings",
             outcome: blocking.isEmpty ? .ok : (blocking.contains { $0.severity == .blocked } ? .failure : .warning),
             detail: openFindings.isEmpty
-                ? "No open findings."
-                : "\(openFindings.count) open findings, \(blocking.count) of them high.",
-            remedy: blocking.isEmpty ? nil : "Review it on the Security screen.",
+                ? String(localized: "No open findings.")
+                : String(localized: "\(openFindings.count) open findings, \(blocking.count) of them high."),
+            remedy: blocking.isEmpty ? nil : String(localized: "Review it on the Security screen."),
             checkedAt: now
         ))
 
@@ -853,7 +853,7 @@ final class ExtensionRegistry: ObservableObject {
                 id: "health.remote",
                 name: "Remote MCP",
                 outcome: .notApplicable,
-                detail: "\(remote.count) remote servers; the version comes from the server.",
+                detail: String(localized: "\(remote.count) remote servers; the version comes from the server."),
                 remedy: nil,
                 checkedAt: now
             ))

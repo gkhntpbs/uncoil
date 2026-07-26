@@ -218,7 +218,7 @@ enum AttentionEngine {
             case .required:
                 items.append(AttentionItem(
                     id: authenticationID(session.id), kind: .authentication, title: where_,
-                    detail: "You need to sign in to your Codex account.",
+                    detail: String(localized: "You need to sign in to your Codex account."),
                     projectID: session.projectID, sessionID: session.id,
                     createdAt: session.lastActivityAt
                 ))
@@ -248,13 +248,13 @@ enum AttentionEngine {
         switch snapshot.runtimePhase {
         case .failed:
             items.append(AttentionItem(
-                id: runtimeID, kind: .runtime, title: "Runtime daemon",
-                detail: "uncoil-runtimed is unreachable; sessions run on the in-app PTY.",
+                id: runtimeID, kind: .runtime, title: String(localized: "Runtime daemon"),
+                detail: String(localized: "uncoil-runtimed is unreachable; sessions run on the in-app PTY."),
                 projectID: nil, sessionID: nil, createdAt: now, signature: "failed"
             ))
         case .incompatible(let message):
             items.append(AttentionItem(
-                id: runtimeID, kind: .runtime, title: "Runtime mismatch",
+                id: runtimeID, kind: .runtime, title: String(localized: "Runtime mismatch"),
                 detail: message, projectID: nil, sessionID: nil, createdAt: now,
                 signature: "incompatible:\(message)"
             ))

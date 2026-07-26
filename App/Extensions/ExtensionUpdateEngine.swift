@@ -296,7 +296,7 @@ struct ExtensionUpdateEngine {
                 name: "Link after rollback",
                 outcome: status == .linked ? .ok : .failure,
                 detail: status.label,
-                remedy: status == .linked ? nil : "Repair the connection with Repair.",
+                remedy: status == .linked ? nil : String(localized: "Repair the connection with Repair."),
                 checkedAt: .now
             )
         )

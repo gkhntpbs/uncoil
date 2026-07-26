@@ -56,9 +56,9 @@ struct TaskMergeRecord: Identifiable, Equatable, Codable {
         let stamp = ISO8601DateFormatter().string(from: at)
         let detail: String
         switch outcome {
-        case .merged(let commit): detail = "merged \(commit ?? "-")"
-        case .refused(let reason): detail = "refused: \(reason)"
-        case .failed(let message): detail = "failed: \(message)"
+        case .merged(let commit): detail = String(localized: "merged \(commit ?? "-")")
+        case .refused(let reason): detail = String(localized: "refused: \(reason)")
+        case .failed(let message): detail = String(localized: "failed: \(message)")
         }
         return "\(stamp)\t\(taskID)\t\(branch ?? "-")\t"
             + "\(approvedByUser ? "approved" : "unapproved")\t\(detail)"

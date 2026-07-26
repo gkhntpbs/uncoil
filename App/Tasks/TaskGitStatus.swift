@@ -255,7 +255,7 @@ enum TaskDiffAudit {
                 kind: .unexpectedLineCountChange(
                     before: beforeLines.count, after: afterLines.count
                 ),
-                message: "The \(expectation.label) edit changed the number of lines."
+                message: String(localized: "The \(expectation.label) edit changed the number of lines.")
             ))
         }
 
@@ -284,8 +284,7 @@ enum TaskDiffAudit {
                 kind: .wholeFileRewritten(
                     changedLines: unexpectedlyVanished.count, totalLines: beforeLines.count
                 ),
-                message: "Most of the file was rewritten: outside the block "
-                    + "\(unexpectedlyVanished.count) of \(outsideBefore.count) lines disappeared."
+                message: String(localized: "Most of the file was rewritten: outside the block \(unexpectedlyVanished.count) of \(outsideBefore.count) lines disappeared.")
             ))
         }
 
@@ -295,7 +294,7 @@ enum TaskDiffAudit {
             if !unexpectedlyVanished.isEmpty {
                 findings.append(Finding(
                     kind: .changedOutsideBlock(lines: []),
-                    message: "\(unexpectedlyVanished.count) lines changed outside the task block."
+                    message: String(localized: "\(unexpectedlyVanished.count) lines changed outside the task block.")
                 ))
             }
             return findings
@@ -310,7 +309,7 @@ enum TaskDiffAudit {
         if !outside.isEmpty {
             findings.append(Finding(
                 kind: .changedOutsideBlock(lines: outside),
-                message: "Lines changed outside the task block: "
+                message: String(localized: "Lines changed outside the task block: ")
                     + outside.prefix(5).map(String.init).joined(separator: ", ")
             ))
         }

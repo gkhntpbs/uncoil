@@ -54,7 +54,7 @@ enum McpLinkState: Equatable {
     var label: String {
         switch self {
         case .off: "MCP off"
-        case .waiting: "MCP bekliyor"
+        case .waiting: "MCP waiting"
         case .connected: "MCP connected"
         }
     }

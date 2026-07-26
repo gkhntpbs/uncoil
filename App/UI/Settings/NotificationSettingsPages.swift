@@ -217,8 +217,8 @@ struct NotificationEventsPage: View {
                                 SettingsLabel(
                                     title: String(localized: "Remind"),
                                     detail: prefs.reminders.enabled
-                                        ? "Repeated every \(prefs.reminders.intervalMinutes) minutes."
-                                        : "Inactive until it is turned on from the Reminders page."
+                                        ? String(localized: "Repeated every \(prefs.reminders.intervalMinutes) minutes.")
+                                        : String(localized: "Inactive until it is turned on from the Reminders page.")
                                 )
                             }
                             .settingsID("notifications.event.remind.\(event.rawValue)")
@@ -311,8 +311,7 @@ struct NotificationRemindersPage: View {
                 Text("Which events")
             } footer: {
                 SettingsNote(
-                    String(localized: "Momentary events such as a finished turn are not on the list: there is no state ")
-                    + "behind. A session that stops waiting drops its reminder too."
+                    String(localized: "Momentary events such as a finished turn are not on the list: there is no state behind. A session that stops waiting drops its reminder too.")
                 )
             }
             .disabled(!reminders.enabled)

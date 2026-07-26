@@ -407,7 +407,7 @@ struct ProjectTasksView: View {
             .foregroundStyle(Theme.warn)
             Button("Open in Editor") {
                 settings.preferredEditor.open(URL(fileURLWithPath: source.path))
-                message = "\(source.displayPath):\(regions.first?.startLine ?? 1)"
+                message = String(localized: "\(source.displayPath):\(regions.first?.startLine ?? 1)")
             }
             .buttonStyle(.plain)
             .font(Theme.mono(.micro, .semibold))
@@ -1087,7 +1087,7 @@ struct ProjectTasksView: View {
             reviewOrTest(task, role: .tester, state: .testsFailing)
         }
         Button("Mark Blocked") {
-            metadata.setState(.blocked, taskID: task.id, detail: "You marked it blocked")
+            metadata.setState(.blocked, taskID: task.id, detail: String(localized: "You marked it blocked"))
         }
         if task.isDone {
             Button("Reopen") {
@@ -1148,7 +1148,7 @@ struct ProjectTasksView: View {
                 case .success(let worktree):
                     worktreePath = worktree.path
                 case .failure(let error):
-                    message = "The worktree could not be created: \(error.message)"
+                    message = String(localized: "The worktree could not be created: \(error.message)")
                     return
                 }
             }
@@ -1171,7 +1171,7 @@ struct ProjectTasksView: View {
                 projectID: project.id,
                 provider: request.provider,
                 accountID: request.accountID,
-                title: "\(request.provider.rawValue): \(task.text)",
+                title: String(localized: "\(request.provider.rawValue): \(task.text)"),
                 worktreePath: worktreePath,
                 launchSelection: AgentLaunchSelection(
                     model: request.model,
@@ -1195,8 +1195,8 @@ struct ProjectTasksView: View {
         // behalf, and the Attention Center is where that belongs.
         AttentionStore.shared.report(
             kind: .input,
-            title: "\(project.name) › \(task.text)",
-            detail: "Assigned to the \(record.displayTitle) session as \(request.role.label)",
+            title: String(localized: "\(project.name) › \(task.text)"),
+            detail: String(localized: "Assigned to the \(record.displayTitle) session as \(request.role.label)"),
             projectID: project.id,
             sessionID: record.id,
             id: "task-assigned:\(assignment.id.uuidString)"
@@ -1214,7 +1214,7 @@ struct ProjectTasksView: View {
         ))
         deliver(prompt: prompt, to: record, autoStart: request.autoStart)
         if !request.autoStart {
-            message = "The prompt is typed in; press Enter in the session to start it."
+            message = String(localized: "The prompt is typed in; press Enter in the session to start it.")
         }
     }
 
@@ -1266,7 +1266,7 @@ struct ProjectTasksView: View {
             projectID: project.id,
             provider: provider,
             accountID: settings.defaultAccount(for: provider)?.id,
-            title: "\(provider.rawValue): \(task.text)",
+            title: String(localized: "\(provider.rawValue): \(task.text)"),
             launchSelection: launch
         )
         metadata.assign(
@@ -1281,7 +1281,7 @@ struct ProjectTasksView: View {
         // Which agent took the task is the first thing the user asks; say it
         // instead of leaving a silent screen switch.
         let launchNote = launch.summary.map { " · \($0)" } ?? ""
-        message = "\(task.text.prefix(60)) → \(provider.displayName) (\(record.displayTitle))\(launchNote)"
+        message = String(localized: "\(task.text.prefix(60)) → \(provider.displayName) (\(record.displayTitle))\(launchNote)")
         deliver(prompt: prompt(for: task, role: role), to: record, autoStart: autoStart)
     }
 
@@ -1454,8 +1454,7 @@ struct ProjectTasksView: View {
         for transition in transitions {
             switch transition {
             case .becameConflicted(let path):
-                message = "\(URL(fileURLWithPath: path).lastPathComponent) contains a conflict; "
-                    + "editing is off. It is re-read automatically once you resolve and save it."
+                message = String(localized: "\(URL(fileURLWithPath: path).lastPathComponent) contains a conflict; editing is off. It is re-read automatically once you resolve and save it.")
             case .resolved(let path):
                 resolved.append(path)
             }
@@ -1463,7 +1462,7 @@ struct ProjectTasksView: View {
         guard !resolved.isEmpty else { return }
         refresh()
         let names = resolved.map { URL(fileURLWithPath: $0).lastPathComponent }
-        message = "Conflict resolved: \(names.joined(separator: ", ")) re-read."
+        message = String(localized: "Conflict resolved: \(names.joined(separator: ", ")) re-read.")
     }
 
     /// Whether a source may be written. Refused while a conflict is unresolved.
@@ -1525,7 +1524,7 @@ struct ProjectTasksView: View {
     /// against the current content instead of clobbering it.
     private func createTask(_ text: String, under headingPath: [String], in document: TaskDocument) {
         guard isEditable(document.path) else {
-            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) contains a conflict; resolve it first."
+            message = String(localized: "\(URL(fileURLWithPath: document.path).lastPathComponent) contains a conflict; resolve it first.")
             return
         }
         do {
@@ -1546,11 +1545,11 @@ struct ProjectTasksView: View {
             )
             switch outcome {
             case .written:
-                message = "Task added: \(text.prefix(60))"
+                message = String(localized: "Task added: \(text.prefix(60))")
             case .recomputed:
-                message = "The file had changed on disk; the task was added to the current content."
+                message = String(localized: "The file had changed on disk; the task was added to the current content.")
             case .conflict(let detail):
-                message = "The task could not be added: \(detail)"
+                message = String(localized: "The task could not be added: \(detail)")
             }
         } catch {
             message = error.localizedDescription
@@ -1568,8 +1567,7 @@ struct ProjectTasksView: View {
     ) {
         guard isEditable(document.path) else {
             let regions = gitStatuses[document.path]?.conflicts.count ?? 0
-            message = "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict "
-                + "contains (\(regions) regions); resolve it first."
+            message = String(localized: "\(URL(fileURLWithPath: document.path).lastPathComponent) conflict contains (\(regions) regions); resolve it first.")
             return
         }
         writtenDiffs[task.id] = TodoEditor.diff(patches, in: document.raw)
@@ -1587,7 +1585,7 @@ struct ProjectTasksView: View {
                 conflictTaskIDs.remove(task.id)
             case .recomputed:
                 conflictTaskIDs.remove(task.id)
-                message = "The file had changed on disk; the edit was applied to the current content."
+                message = String(localized: "The file had changed on disk; the edit was applied to the current content.")
             case .conflict(let detail):
                 conflictTaskIDs.insert(task.id)
                 staleEdit = (
@@ -1609,7 +1607,7 @@ struct ProjectTasksView: View {
         case .reload:
             conflictTaskIDs.remove(stale.task.id)
             refresh()
-            message = "The file was reloaded; the edit was not applied."
+            message = String(localized: "The file was reloaded; the edit was not applied.")
         case .compare:
             let onDisk = sources.document(for: stale.task.sourcePath)?
                 .task(id: stale.task.id)?.rawBlock
@@ -1622,7 +1620,7 @@ struct ProjectTasksView: View {
                 )
             )
         case .cancel:
-            message = "The edit was not applied; the file is unchanged."
+            message = String(localized: "The edit was not applied; the file is unchanged.")
         }
     }
 
@@ -1660,7 +1658,7 @@ struct ProjectTasksView: View {
     private func complete(_ task: ProjectTask, in document: TaskDocument) {
         let blockers = results.failingTestBlockers(taskID: task.id)
         guard blockers.isEmpty else {
-            message = "The task cannot be completed — " + blockers.map(\.message).joined(separator: " ")
+            message = String(localized: "The task cannot be completed — ") + blockers.map(\.message).joined(separator: " ")
             return
         }
         metadata.setState(.completed, taskID: task.id)
@@ -1678,21 +1676,21 @@ struct ProjectTasksView: View {
             }),
             let record = projectStore.sessions.first(where: { $0.id == target.sessionID })
         else {
-            message = "There is no implementation session to hand the findings to."
+            message = String(localized: "There is no implementation session to hand the findings to.")
             return
         }
         deliver(
             prompt: review.feedbackPrompt(
                 taskText: task.text, language: settings.language.resolvedAgent()),
             to: record)
-        message = "Review findings were sent to the \(record.displayTitle) session."
+        message = String(localized: "Review findings were sent to the \(record.displayTitle) session.")
     }
 
     private func revealSource(_ task: ProjectTask) {
         // The editor is opened at the file; the line is shown so the user can
         // jump there even when the editor does not accept a line argument.
         settings.preferredEditor.open(URL(fileURLWithPath: task.sourcePath))
-        message = "\(URL(fileURLWithPath: task.sourcePath).lastPathComponent):\(task.lineRange.startLine)"
+        message = String(localized: "\(URL(fileURLWithPath: task.sourcePath).lastPathComponent):\(task.lineRange.startLine)")
     }
 }
 

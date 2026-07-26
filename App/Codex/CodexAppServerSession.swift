@@ -96,7 +96,7 @@ final class CodexAppServerSession {
             feed("\r\n\u{001B}[31mThe structured Codex session is not ready yet.\u{001B}[0m\r\n")
             return
         }
-        sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
+        sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
         Task {
             do {
                 let result = try await request(
@@ -149,7 +149,7 @@ final class CodexAppServerSession {
         do {
             try write(CodexAppServerJSON.response(id: request.requestID, result: result))
             sessionStore?.setCodexApproval(nil, for: recordID)
-            sessionStore?.setStatus(.running, detail: "Approval answered", for: recordID)
+            sessionStore?.setStatus(.running, detail: String(localized: "Approval answered"), for: recordID)
         } catch {
             display(error)
         }
@@ -287,7 +287,7 @@ final class CodexAppServerSession {
             await account
             ready = true
             feed("\u{001B}[2mStructured Codex ready.\u{001B}[0m\r\n")
-            sessionStore?.setStatus(.idle, detail: "Structured Codex ready", for: recordID)
+            sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), for: recordID)
         } catch {
             failToFallback(error)
         }
@@ -402,15 +402,15 @@ final class CodexAppServerSession {
             applyThreadStatus(params)
         case "turn/started":
             activeTurnID = params.objectValue?["turn"]?.objectValue?["id"]?.stringValue
-            sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
+            sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
         case "turn/completed":
             activeTurnID = nil
             let status = params.objectValue?["turn"]?.objectValue?["status"]?.stringValue
             if status == "failed" {
-                sessionStore?.setStatus(.completed, detail: "Codex turn failed", for: recordID)
+                sessionStore?.setStatus(.completed, detail: String(localized: "Codex turn failed"), for: recordID)
                 feed("\r\n\u{001B}[31mTurn failed.\u{001B}[0m\r\n")
             } else {
-                sessionStore?.setStatus(.completed, detail: "Codex finished", for: recordID)
+                sessionStore?.setStatus(.completed, detail: String(localized: "Codex finished"), for: recordID)
             }
         case "item/started":
             handleItemStarted(params)
@@ -422,7 +422,7 @@ final class CodexAppServerSession {
                     streamedAgentItems.insert(itemID)
                 }
                 feed(delta)
-                sessionStore?.setStatus(.running, detail: "Writing a reply", for: recordID)
+                sessionStore?.setStatus(.running, detail: String(localized: "Writing a reply"), for: recordID)
             }
         case "item/commandExecution/outputDelta":
             if let delta = params.objectValue?["delta"]?.stringValue {
@@ -447,10 +447,10 @@ final class CodexAppServerSession {
             title = params.objectValue?["command"]?.stringValue ?? "Command run request"
         case "item/fileChange/requestApproval":
             kind = .fileChange
-            title = "File change request"
+            title = String(localized: "File change request")
         case "item/permissions/requestApproval":
             kind = .permissions
-            title = "Additional permission request"
+            title = String(localized: "Additional permission request")
         default:
             do {
                 try write(CodexAppServerJSON.response(id: id, result: .object(["decision": .string("decline")])))
@@ -491,18 +491,18 @@ final class CodexAppServerSession {
         let detail: String
         switch type {
         case "commandExecution":
-            detail = "Running a command"
+            detail = String(localized: "Running a command")
         case "fileChange":
-            detail = "Changing files"
+            detail = String(localized: "Changing files")
         case "mcpToolCall":
-            detail = "Running an MCP tool"
+            detail = String(localized: "Running an MCP tool")
         case "dynamicToolCall", "collabAgentToolCall":
-            detail = "Running a tool"
+            detail = String(localized: "Running a tool")
         case "reasoning":
-            sessionStore?.setStatus(.thinking, detail: "Codex thinking", for: recordID)
+            sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
             return
         default:
-            detail = "Codex running"
+            detail = String(localized: "Codex running")
         }
         sessionStore?.setStatus(.running, detail: detail, for: recordID)
     }
@@ -533,11 +533,11 @@ final class CodexAppServerSession {
             ?? params.objectValue?["thread"]?.objectValue?["status"]?.stringValue
         switch status {
         case "active":
-            sessionStore?.setStatus(.running, detail: "Codex running", for: recordID)
+            sessionStore?.setStatus(.running, detail: String(localized: "Codex running"), for: recordID)
         case "idle":
-            sessionStore?.setStatus(.idle, detail: "Structured Codex ready", for: recordID)
+            sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), for: recordID)
         case "systemError":
-            sessionStore?.setStatus(.completed, detail: "Codex system error", for: recordID)
+            sessionStore?.setStatus(.completed, detail: String(localized: "Codex system error"), for: recordID)
         default:
             break
         }
@@ -552,7 +552,7 @@ final class CodexAppServerSession {
         }
         if object["requiresOpenaiAuth"]?.boolValue == true {
             sessionStore?.setCodexAuthentication(.required, for: recordID)
-            sessionStore?.setStatus(.waitingForInput, detail: "Codex login required", for: recordID)
+            sessionStore?.setStatus(.waitingForInput, detail: String(localized: "Codex login required"), for: recordID)
         } else {
             sessionStore?.setCodexAuthentication(.authenticated(nil), for: recordID)
         }
@@ -561,7 +561,7 @@ final class CodexAppServerSession {
     private func transportClosed() {
         guard !stopped else { return }
         if ready {
-            sessionStore?.setStatus(.terminated, detail: "Codex app-server connection closed", for: recordID)
+            sessionStore?.setStatus(.terminated, detail: String(localized: "Codex app-server connection closed"), for: recordID)
             projectStore?.markSessionEnded(recordID, exitCode: nil)
             TerminalRegistry.shared.markDead(recordID)
         } else {

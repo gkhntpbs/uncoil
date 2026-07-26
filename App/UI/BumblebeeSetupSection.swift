@@ -199,12 +199,12 @@ struct BumblebeeSetupSection: View {
                 let installed = try await installer.install { step in
                     Task { @MainActor in phase = step }
                 }
-                detail = "\(installed.releaseTag) kuruldu: \(installed.path)"
+                detail = String(localized: "\(installed.releaseTag) installed: \(installed.path)")
                 refresh()
                 onChange()
             } catch {
                 phase = nil
-                detail = "Could not install: \(error.localizedDescription)"
+                detail = String(localized: "Could not install: \(error.localizedDescription)")
             }
             isInstalling = false
             // The finished bar stays for a moment, then the state row speaks.
@@ -217,13 +217,13 @@ struct BumblebeeSetupSection: View {
     /// downloaded and nothing is executed here.
     private func chooseBinary() {
         let picker = NSOpenPanel()
-        picker.title = "Choose the Bumblebee binary"
+        picker.title = String(localized: "Choose the Bumblebee binary")
         picker.canChooseFiles = true
         picker.canChooseDirectories = false
         picker.allowsMultipleSelection = false
         guard picker.runModal() == .OK, let url = picker.url else { return }
         guard FileManager.default.isExecutableFile(atPath: url.path) else {
-            detail = "The chosen file is not executable: \(url.lastPathComponent)"
+            detail = String(localized: "The chosen file is not executable: \(url.lastPathComponent)")
             return
         }
         let destination = URL(fileURLWithPath: locator.managedPath)
@@ -238,11 +238,11 @@ struct BumblebeeSetupSection: View {
             try FileManager.default.setAttributes(
                 [.posixPermissions: 0o755], ofItemAtPath: destination.path
             )
-            detail = "Copied: \(destination.path)"
+            detail = String(localized: "Copied: \(destination.path)")
             refresh()
             onChange()
         } catch {
-            detail = "Could not be copied: \(error.localizedDescription)"
+            detail = String(localized: "Could not be copied: \(error.localizedDescription)")
         }
     }
 

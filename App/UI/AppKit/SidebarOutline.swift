@@ -682,28 +682,28 @@ struct SidebarOutline: NSViewRepresentable {
                     to: menu,
                     title: project.isPinned == true ? "Unpin" : "Pin"
                 ) { environment.projectStore.toggleProjectPin(id) }
-                add(to: menu, title: "Move Up") {
+                add(to: menu, title: String(localized: "Move Up")) {
                     environment.projectStore.nudgeProject(id, by: -1)
                 }
-                add(to: menu, title: "Move Down") {
+                add(to: menu, title: String(localized: "Move Down")) {
                     environment.projectStore.nudgeProject(id, by: 1)
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "New Group…") {
+                add(to: menu, title: String(localized: "New Group…")) {
                     environment.actions.createGroup(project)
                 }
-                add(to: menu, title: "Customise…") {
+                add(to: menu, title: String(localized: "Customise…")) {
                     environment.actions.customizeProject(project)
                 }
                 let collapsed = CollapsedProjects.shared.contains(id)
-                add(to: menu, title: collapsed ? "Show Sessions" : "Hide Sessions") {
+                add(to: menu, title: collapsed ? String(localized: "Show Sessions") : String(localized: "Hide Sessions")) {
                     CollapsedProjects.shared.set(id, collapsed: !collapsed)
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Show in Finder") {
+                add(to: menu, title: String(localized: "Show in Finder")) {
                     NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
                 }
-                add(to: menu, title: "Remove from List") {
+                add(to: menu, title: String(localized: "Remove from List")) {
                     environment.projectStore.removeProject(project)
                 }
             case .group(let id):
@@ -712,7 +712,7 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: "Rename") {
                     environment.actions.renameGroup(group)
                 }
-                add(to: menu, title: "Delete Group") {
+                add(to: menu, title: String(localized: "Delete Group")) {
                     environment.projectStore.removeGroup(id)
                     environment.selection.wrappedValue = .project(group.projectID)
                 }
@@ -725,37 +725,37 @@ struct SidebarOutline: NSViewRepresentable {
                 ) { environment.projectStore.togglePin(id) }
                 // Ordering a session should not require a steady hand: the same
                 // nudges projects have, applied among its siblings.
-                add(to: menu, title: "Move Up") {
+                add(to: menu, title: String(localized: "Move Up")) {
                     environment.projectStore.nudgeSession(id, by: -1)
                 }
-                add(to: menu, title: "Move Down") {
+                add(to: menu, title: String(localized: "Move Down")) {
                     environment.projectStore.nudgeSession(id, by: 1)
                 }
                 if record.groupID != nil {
-                    add(to: menu, title: "Remove from Group") {
+                    add(to: menu, title: String(localized: "Remove from Group")) {
                         environment.projectStore.moveSessions(
                             [id], toGroup: nil, inProject: record.projectID, at: -1
                         )
                     }
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Open in a New Window") {
+                add(to: menu, title: String(localized: "Open in a New Window")) {
                     environment.actions.openSessionWindow(id)
                 }
                 menu.addItem(.separator())
                 // The session ID is what the control plane and the MCP tools
                 // address a session by, so copying it is the fastest way to
                 // hand one to an agent.
-                add(to: menu, title: "Copy the Session ID") {
+                add(to: menu, title: String(localized: "Copy the Session ID")) {
                     copyToPasteboard(id.uuidString)
                 }
                 if let providerID = record.providerSessionID, !providerID.isEmpty {
-                    add(to: menu, title: "Copy the Provider Session ID") {
+                    add(to: menu, title: String(localized: "Copy the Provider Session ID")) {
                         copyToPasteboard(providerID)
                     }
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: "Delete the Session") {
+                add(to: menu, title: String(localized: "Delete the Session")) {
                     environment.actions.confirmDeleteSession(record)
                 }
             }

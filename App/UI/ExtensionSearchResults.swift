@@ -64,7 +64,7 @@ struct ExtensionSearchResults: View {
             .map { repository in
                 Row(
                     id: "source:\(repository)", icon: "brand-github", title: repository,
-                    detail: "Source repo", section: .sources, packageID: nil
+                    detail: String(localized: "Source repo"), section: .sources, packageID: nil
                 )
             }
 
@@ -73,7 +73,7 @@ struct ExtensionSearchResults: View {
             .map { finding in
                 Row(
                     id: "finding:\(finding.id)", icon: "shield-lock",
-                    title: "\(finding.severity.label) · \(finding.rule)",
+                    title: String(localized: "\(finding.severity.label) · \(finding.rule)"),
                     detail: finding.message,
                     section: .security, packageID: nil,
                     tint: finding.severity >= .high ? Theme.danger : Theme.warn
@@ -90,7 +90,7 @@ struct ExtensionSearchResults: View {
                     id: "update:\(candidate.extensionID)", icon: "refresh",
                     title: registry.package(id: candidate.extensionID)?.name
                         ?? candidate.extensionID,
-                    detail: "\(candidate.commitCount) commit · "
+                    detail: String(localized: "\(candidate.commitCount) commit · ")
                         + candidate.availableCommitSHA.prefix(12),
                     section: .updates, packageID: candidate.extensionID,
                     tint: Theme.highlight
@@ -105,7 +105,7 @@ struct ExtensionSearchResults: View {
                 Row(
                     id: "event:\(event.id.uuidString)", icon: "activity",
                     title: event.kind.label,
-                    detail: "\(event.detail) · \(RelativeClock.short(since: event.at))",
+                    detail: String(localized: "\(event.detail) · \(RelativeClock.short(since: event.at))"),
                     section: .activity, packageID: nil
                 )
             }

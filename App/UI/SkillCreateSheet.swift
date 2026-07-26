@@ -56,6 +56,7 @@ struct SkillCreateSheet: View {
                         .font(Theme.mono(.body))
                         .frame(height: 150)
                         .scrollContentBackground(.hidden)
+                        .uncoilScrollers()
                         .padding(6)
                         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
                         .overlay(
@@ -132,7 +133,7 @@ struct SkillCreateSheet: View {
             registry.upsert(package)
             registry.record(AuditEvent(
                 kind: .skillInstalled, extensionID: package.id,
-                detail: "Created inside Uncoil"
+                detail: String(localized: "Created inside Uncoil")
             ))
             var linked: [String] = []
             for installation in registry.installations

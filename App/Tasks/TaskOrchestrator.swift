@@ -331,7 +331,7 @@ enum TaskOrchestrator {
                 ))
                 actions.append(.reportToAttention(
                     taskID: assignment.taskID,
-                    detail: "\(assignment.role.label): \(assignment.state.label)"
+                    detail: String(localized: "\(assignment.role.label): \(assignment.state.label)")
                 ))
                 if let worktree = assignment.worktreePath {
                     actions.append(.showDiffBeforeHandover(
@@ -351,10 +351,10 @@ enum TaskOrchestrator {
                     now: now
                    ) {
                     actions.append(.releaseClaim(
-                        taskID: assignment.taskID, reason: "heartbeat kayboldu"
+                        taskID: assignment.taskID, reason: String(localized: "the heartbeat disappeared")
                     ))
                     actions.append(.markFailed(
-                        taskID: assignment.taskID, reason: "the agent is not responding"
+                        taskID: assignment.taskID, reason: String(localized: "the agent is not responding")
                     ))
                 }
             case .unassigned, .queued, .waitingForPermission, .waitingForUser,

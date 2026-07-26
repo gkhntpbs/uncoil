@@ -309,7 +309,7 @@ struct BackupService {
                     )
                 } else {
                     problems.append(.missingExtensionSource(
-                        name: package.name, detail: "No commit recorded for \(repository)"
+                        name: package.name, detail: String(localized: "No commit recorded for \(repository)")
                     ))
                 }
             case .local(let path), .adopted(let path), .detectedExternal(let path):
@@ -352,7 +352,7 @@ struct BackupService {
             guard !missing.isEmpty else { continue }
             problems.append(.agentConfigWouldChange(
                 agent: configuration.installation.agent.displayName,
-                detail: "eklenecek MCP: \(missing.joined(separator: ", "))"
+                detail: String(localized: "MCP to add: \(missing.joined(separator: ", "))")
             ))
         }
         return problems

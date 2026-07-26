@@ -27,7 +27,7 @@ struct AccountsSettingsPage: View {
                         SettingsTextField(
                             title: String(localized: "New account"),
                             detail: String(localized: "A separate profile is created, with its own config folder."),
-                            prompt: "e.g. Work, Personal",
+                            prompt: String(localized: "e.g. Work, Personal"),
                             text: $newAccountName,
                             onSubmit: { commit(provider) }
                         )
@@ -232,9 +232,9 @@ private struct CLIToolRow: View {
                             .disabled(path == nil)
                     }
                 } else if path != nil {
-                    SettingsStatusLine(level: .ok, text: "up to date")
+                    SettingsStatusLine(level: .ok, text: String(localized: "up to date"))
                 } else {
-                    SettingsStatusLine(level: .error, text: "not installed")
+                    SettingsStatusLine(level: .error, text: String(localized: "not installed"))
                 }
             }
 
@@ -264,7 +264,7 @@ struct LaunchArgumentsSettingsPage: View {
                 ForEach(providers) { provider in
                     SettingsTextField(
                         title: provider.displayName,
-                        prompt: provider == .claude ? "e.g. --model opus" : "e.g. --full-auto",
+                        prompt: provider == .claude ? String(localized: "e.g. --model opus") : String(localized: "e.g. --full-auto"),
                         text: Binding(
                             get: { settings.extraArguments[provider.rawValue] ?? "" },
                             set: { settings.extraArguments[provider.rawValue] = $0 }
@@ -329,8 +329,7 @@ struct AgentBehaviorSettingsPage: View {
                 Text("Keyboard behaviour")
             } footer: {
                 SettingsNote(
-                    String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent ")
-                    + "sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately."
+                    String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately.")
                 )
             }
         }
@@ -446,14 +445,14 @@ private struct SessionPresetEditorSheet: View {
                     SettingsTextField(
                         title: String(localized: "Identity"),
                         detail: String(localized: "Cannot be changed; child agents ask for the preset by this name."),
-                        prompt: "e.g. reviewer",
+                        prompt: String(localized: "e.g. reviewer"),
                         text: $id,
                         monospaced: true
                     )
                     .disabled(preset != nil)
                     .settingsID("presets.editor.id")
 
-                    SettingsTextField(title: String(localized: "Name"), prompt: "e.g. Code Reviewer", text: $name)
+                    SettingsTextField(title: String(localized: "Name"), prompt: String(localized: "e.g. Code Reviewer"), text: $name)
                         .settingsID("presets.editor.name")
 
                     Picker("Provider", selection: $provider) {
@@ -474,7 +473,7 @@ private struct SessionPresetEditorSheet: View {
                     SettingsTextField(
                         title: String(localized: "CLI arguments"),
                         detail: String(localized: "One argument per line."),
-                        prompt: "--model opus",
+                        prompt: String(localized: "--model opus"),
                         text: $argumentsText,
                         monospaced: true,
                         lineLimit: 2...5

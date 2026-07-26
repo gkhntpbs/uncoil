@@ -40,7 +40,7 @@ struct NotificationPermissionRow: View {
 
         SettingsActionRow(
             isWorking: isWorking,
-            note: authorization.lastTestSentAt != nil ? "Test notification sent." : nil,
+            note: authorization.lastTestSentAt != nil ? String(localized: "Test notification sent.") : nil,
             noteLevel: .ok
         ) {
             if authorization.status.canRequest {

@@ -186,7 +186,7 @@ struct TaskGitActions {
             throw GitActionError.pushFailed(push.stderr.trimmed.isEmpty ? push.stdout.trimmed : push.stderr.trimmed)
         }
 
-        let title = "task: \(task.text.trimmingCharacters(in: .whitespacesAndNewlines))"
+        let title = String(localized: "task: \(task.text.trimmingCharacters(in: .whitespacesAndNewlines))")
         let prResult = runner("/usr/bin/gh", [
             "pr", "create",
             "-C", repoRoot,

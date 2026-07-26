@@ -113,7 +113,7 @@ struct ConfigurationTransactionService {
                 kind: .configChanged,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath): \(changed) lines changed",
+                detail: String(localized: "\(transaction.configPath): \(changed) lines changed"),
                 undoToken: transaction.backupPath
             )
         case .rolledBack:
@@ -121,14 +121,14 @@ struct ConfigurationTransactionService {
                 kind: .rolledBack,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath) was restored from the backup"
+                detail: String(localized: "\(transaction.configPath) was restored from the backup")
             )
         case .staleConfig:
             return AuditEvent(
                 kind: .configChanged,
                 extensionID: extensionID,
                 agent: transaction.agent,
-                detail: "\(transaction.configPath) changed on disk; the plan was refreshed"
+                detail: String(localized: "\(transaction.configPath) changed on disk; the plan was refreshed")
             )
         case .planned, .failed:
             return AuditEvent(
@@ -136,7 +136,7 @@ struct ConfigurationTransactionService {
                 extensionID: extensionID,
                 agent: transaction.agent,
                 detail: transaction.failureReason
-                    ?? "The plan for \(transaction.configPath) is ready"
+                    ?? String(localized: "The plan for \(transaction.configPath) is ready")
             )
         }
     }

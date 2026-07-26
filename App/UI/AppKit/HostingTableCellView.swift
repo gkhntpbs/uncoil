@@ -95,8 +95,9 @@ func makeUncoilScrollView(documentView: NSView) -> NSScrollView {
     scrollView.autohidesScrollers = true
     scrollView.verticalScrollElasticity = .allowed
     scrollView.automaticallyAdjustsContentInsets = false
-    scrollView.verticalScroller = UncoilScroller()
-    scrollView.scrollerStyle = .overlay
+    // Same scroller the SwiftUI surfaces get, at the same control size, so the
+    // AppKit-backed lists and the rest of the app cannot drift apart.
+    ScrollerStyler.style(scrollView)
     scrollView.documentView = documentView
     return scrollView
 }

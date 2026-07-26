@@ -67,8 +67,8 @@ enum TodoEditor {
             range: task.checkbox.markerRange,
             replacement: "[\(character)]",
             summary: task.isDone
-                ? "\(task.text): clearing the done marker"
-                : "\(task.text): marking it done"
+                ? String(localized: "\(task.text): clearing the done marker")
+                : String(localized: "\(task.text): marking it done")
         )
     }
 
@@ -89,7 +89,7 @@ enum TodoEditor {
                 startColumn: task.checkbox.markerRange.startColumn + 4
             ),
             replacement: trimmed,
-            summary: "\(task.text) → \(trimmed)"
+            summary: String(localized: "\(task.text) → \(trimmed)")
         )
     }
 
@@ -109,7 +109,7 @@ enum TodoEditor {
                     startColumn: 1
                 ),
                 replacement: body,
-                summary: "\(task.text): adding a description"
+                summary: String(localized: "\(task.text): adding a description")
             )
         }
         let body = normalizedBody(newBody, indent: task.checkbox.indent)
@@ -122,7 +122,7 @@ enum TodoEditor {
                 startColumn: 1
             ),
             replacement: body,
-            summary: "\(task.text): updating the description"
+            summary: String(localized: "\(task.text): updating the description")
         )
     }
 
@@ -151,12 +151,12 @@ enum TodoEditor {
         let cut = Patch(
             range: block.range,
             replacement: "",
-            summary: "\(task.text): removing it from its old position"
+            summary: String(localized: "\(task.text): removing it from its old position")
         )
         let paste = Patch(
             range: insertion.range,
             replacement: separator(before: insertion.range.startByte, in: document.raw) + moved,
-            summary: "\(task.text) → \(headingPath.joined(separator: " › "))"
+            summary: String(localized: "\(task.text) → \(headingPath.joined(separator: " › "))")
         )
         return [cut, paste]
     }
@@ -195,7 +195,7 @@ enum TodoEditor {
         return Patch(
             range: insertion.range,
             replacement: separator(before: insertion.range.startByte, in: document.raw) + line,
-            summary: "new task: \(title)"
+            summary: String(localized: "new task: \(title)")
         )
     }
 
@@ -296,7 +296,7 @@ enum TodoEditor {
                 throw EditError.staleFile(path: path)
             }
             guard !rebuilt.isEmpty else {
-                return .conflict(detail: "The edited task block changed in the file.")
+                return .conflict(detail: String(localized: "The edited task block changed in the file."))
             }
             effectivePatches = rebuilt
             recomputed = true

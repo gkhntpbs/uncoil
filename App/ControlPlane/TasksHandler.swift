@@ -612,7 +612,7 @@ extension CapabilityRouter {
         }
         return applyPatches(
             [patch], task: found.task, document: found.document, request: request,
-            caller: caller, project: project, summary: "not eklendi"
+            caller: caller, project: project, summary: "note added"
         )
     }
 

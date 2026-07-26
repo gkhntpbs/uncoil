@@ -113,46 +113,46 @@ enum ExtensionSecurityScanner {
 
     static let commandRules: [CommandRule] = [
         .init(rule: "risky-command.sudo", severity: .high,
-              message: "Asks for elevated privileges with sudo.",
+              message: String(localized: "Asks for elevated privileges with sudo."),
               needles: ["sudo "]),
         .init(rule: "risky-command.rm-rf", severity: .high,
-              message: "Irreversible deletion with rm -rf.",
+              message: String(localized: "Irreversible deletion with rm -rf."),
               needles: ["rm -rf", "rm -fr"]),
         // `curl … | sh` is matched per line rather than by substring, because the
         // URL and flags in between make a literal needle useless.
         .init(rule: "risky-command.curl-pipe-shell", severity: .blocked,
-              message: "Pipes something downloaded from the internet straight into the shell.",
+              message: String(localized: "Pipes something downloaded from the internet straight into the shell."),
               needles: []),
         .init(rule: "risky-command.eval", severity: .needsReview,
-              message: "Runs dynamic code through eval.",
+              message: String(localized: "Runs dynamic code through eval."),
               needles: ["eval ", "eval(", "exec("]),
         // The subcommand names alone, because a script may pass them as separate
         // argv entries rather than in one command string.
         .init(rule: "credential.keychain", severity: .high,
-              message: "Reaches into the Keychain.",
+              message: String(localized: "Reaches into the Keychain."),
               needles: ["find-generic-password", "find-internet-password",
                         "/Library/Keychains", "SecItemCopyMatching"]),
         .init(rule: "credential.ssh", severity: .high,
-              message: "Reaches for SSH keys.",
+              message: String(localized: "Reaches for SSH keys."),
               needles: [".ssh/id_", ".ssh/config", "~/.ssh"]),
         .init(rule: "credential.git", severity: .high,
-              message: "Reaches for git credentials.",
+              message: String(localized: "Reaches for git credentials."),
               needles: [".git-credentials", "credential.helper", ".netrc"]),
         .init(rule: "credential.cloud", severity: .high,
-              message: "Reaches for cloud credential paths.",
+              message: String(localized: "Reaches for cloud credential paths."),
               needles: [".aws/credentials", ".config/gcloud", ".azure",
                         ".kube/config", ".docker/config.json"]),
         .init(rule: "filesystem.home-write", severity: .needsReview,
-              message: "Writes broadly into the home directory.",
+              message: String(localized: "Writes broadly into the home directory."),
               needles: ["> ~/", ">> ~/", "cp -r ~/", "mv ~/"]),
         .init(rule: "filesystem.outside-project", severity: .needsReview,
-              message: "Writes outside the project.",
+              message: String(localized: "Writes outside the project."),
               needles: ["> /etc/", "> /usr/", "> /Library/", "/LaunchAgents/"]),
         .init(rule: "process.child", severity: .low,
-              message: "Starting a child process.",
+              message: String(localized: "Starting a child process."),
               needles: ["subprocess.", "child_process", "spawn(", "Popen(", "system("]),
         .init(rule: "network.connection", severity: .low,
-              message: "Opening a network connection.",
+              message: String(localized: "Opening a network connection."),
               needles: ["curl ", "wget ", "http://", "https://", "requests.get",
                         "urllib", "fetch(", "nc -"]),
     ]
@@ -161,24 +161,24 @@ enum ExtensionSecurityScanner {
     /// tells an agent to bypass its own safeguards.
     static let instructionRules: [CommandRule] = [
         .init(rule: "instruction.disable-safety", severity: .blocked,
-              message: "Tells the agent to turn security checks off.",
+              message: String(localized: "Tells the agent to turn security checks off."),
               needles: ["ignore previous instructions", "ignore all previous",
                         "disregard the system prompt", "disable safety",
                         "turn security checks off", "bypass approval",
                         "skip permission", "--dangerously-skip-permissions"]),
         .init(rule: "instruction.destructive-without-approval", severity: .high,
-              message: "Tells the agent to do destructive work without asking.",
+              message: String(localized: "Tells the agent to do destructive work without asking."),
               needles: ["without asking the user", "do not ask for confirmation",
                         "without asking you", "delete without asking"]),
         .init(rule: "instruction.secret-exfiltration", severity: .blocked,
-              message: "Steers toward asking for secrets or sending them out.",
+              message: String(localized: "Steers toward asking for secrets or sending them out."),
               needles: ["print the api key", "send the token", "cat ~/.env",
                         "read the credentials", "send the token", "api key'i yaz"]),
         .init(rule: "instruction.hidden-files", severity: .needsReview,
-              message: "Steers toward reading hidden files.",
+              message: String(localized: "Steers toward reading hidden files."),
               needles: ["read ~/.", "cat ~/.", "ls -la ~/", ".env file"]),
         .init(rule: "instruction.policy-bypass", severity: .high,
-              message: "Tells the agent to bypass policy.",
+              message: String(localized: "Tells the agent to bypass policy."),
               needles: ["you are allowed to ignore", "override the policy",
                         "ignore the policy", "act as if you had permission"]),
     ]
@@ -237,22 +237,22 @@ enum ExtensionSecurityScanner {
                 findings.append(finding(
                     rule: "file.binary", severity: byteCount > 5 * 1_024 * 1_024 ? .high : .needsReview,
                     message: byteCount > 5 * 1_024 * 1_024
-                        ? "Unexpectedly large binary (\(byteCount / 1_048_576) MB)."
-                        : "The package contains binary files.",
+                        ? String(localized: "Unexpectedly large binary (\(byteCount / 1_048_576) MB).")
+                        : String(localized: "The package contains binary files."),
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
             if isExecutable, kind != .binary {
                 findings.append(finding(
                     rule: "file.executable", severity: .low,
-                    message: "A script with execute permission.",
+                    message: String(localized: "A script with execute permission."),
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
             if obfuscated {
                 findings.append(finding(
                     rule: "file.obfuscated", severity: .needsReview,
-                    message: "Minified or obfuscated content.",
+                    message: String(localized: "Minified or obfuscated content."),
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
@@ -261,7 +261,7 @@ enum ExtensionSecurityScanner {
             if pipesDownloadIntoShell(text) {
                 findings.append(finding(
                     rule: "risky-command.curl-pipe-shell", severity: .blocked,
-                    message: "Pipes something downloaded from the internet straight into the shell.",
+                    message: String(localized: "Pipes something downloaded from the internet straight into the shell."),
                     extensionID: extensionID, path: relative, now: now
                 ))
             }
@@ -281,7 +281,7 @@ enum ExtensionSecurityScanner {
             for escape in escapes {
                 findings.append(finding(
                     rule: "symlink.escape", severity: .blocked,
-                    message: "The symlink points outside the package.",
+                    message: String(localized: "The symlink points outside the package."),
                     extensionID: extensionID, path: escape, now: now
                 ))
             }
@@ -344,7 +344,7 @@ enum ExtensionSecurityScanner {
             .map { file in
                 finding(
                     rule: "binary.unsigned", severity: .high,
-                    message: "Unsigned binary: \(file.path)",
+                    message: String(localized: "Unsigned binary: \(file.path)"),
                     extensionID: report.extensionID, path: file.path, now: now
                 )
             }
@@ -385,7 +385,7 @@ enum ExtensionSecurityScanner {
         for path in newExecutables.sorted() {
             findings.append(finding(
                 rule: "diff.new-executable", severity: .needsReview,
-                message: "The update added a new executable file.",
+                message: String(localized: "The update added a new executable file."),
                 extensionID: extensionID, path: path, now: now
             ))
         }
@@ -396,7 +396,7 @@ enum ExtensionSecurityScanner {
         where scriptKinds.contains(file.kind) && !previousScripts.contains(file.path) {
             findings.append(finding(
                 rule: "diff.new-script", severity: .needsReview,
-                message: "The update added a new script.",
+                message: String(localized: "The update added a new script."),
                 extensionID: extensionID, path: file.path, now: now
             ))
         }
@@ -406,7 +406,7 @@ enum ExtensionSecurityScanner {
         for domain in newDomains.sorted() {
             findings.append(finding(
                 rule: "diff.new-domain", severity: .needsReview,
-                message: "The update added a new network address: \(domain)",
+                message: String(localized: "The update added a new network address: \(domain)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -415,7 +415,7 @@ enum ExtensionSecurityScanner {
         for rule in Set(current.findings.map(\.rule)).subtracting(previousRules).sorted() {
             findings.append(finding(
                 rule: "diff.permission-widened", severity: .needsReview,
-                message: "The update added new risky behaviour: \(rule)",
+                message: String(localized: "The update added new risky behaviour: \(rule)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -429,15 +429,15 @@ enum ExtensionSecurityScanner {
                 rule: writes ? "diff.new-write-tool" : "diff.new-tool",
                 severity: writes ? .high : .needsReview,
                 message: writes
-                    ? "Update yazma/silme yetkili tool ekledi: \(tool)"
-                    : "The update added a new tool: \(tool)",
+                    ? String(localized: "The update added a tool that can write or delete: \(tool)")
+                    : String(localized: "The update added a new tool: \(tool)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }
         for tool in removed.sorted() {
             findings.append(finding(
                 rule: "diff.removed-tool", severity: .info,
-                message: "The update removed a tool: \(tool)",
+                message: String(localized: "The update removed a tool: \(tool)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -445,7 +445,7 @@ enum ExtensionSecurityScanner {
         if let previousEntrypoint, let currentEntrypoint, previousEntrypoint != currentEntrypoint {
             findings.append(finding(
                 rule: "diff.entrypoint-changed", severity: .high,
-                message: "Entrypoint changed: \(previousEntrypoint) → \(currentEntrypoint)",
+                message: String(localized: "Entrypoint changed: \(previousEntrypoint) → \(currentEntrypoint)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }
@@ -455,7 +455,7 @@ enum ExtensionSecurityScanner {
         for change in shellCommandChanges(from: previous, to: current) {
             findings.append(finding(
                 rule: "diff.shell-command-changed", severity: .needsReview,
-                message: "The shell command changed: \(change.detail)",
+                message: String(localized: "The shell command changed: \(change.detail)"),
                 extensionID: extensionID, path: change.path, now: now
             ))
         }
@@ -464,7 +464,7 @@ enum ExtensionSecurityScanner {
            sourceIdentity(previousSource) != sourceIdentity(currentSource) {
             findings.append(finding(
                 rule: "diff.source-changed", severity: .blocked,
-                message: "The source or repo owner changed: \(previousSource.label) → \(currentSource.label)",
+                message: String(localized: "The source or repo owner changed: \(previousSource.label) → \(currentSource.label)"),
                 extensionID: extensionID, path: nil, now: now
             ))
         }

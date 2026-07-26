@@ -42,7 +42,7 @@ struct SessionDetailView: View {
                                 sessionStore.setCodexApproval(nil, for: record.id)
                                 sessionStore.setStatus(
                                     .idle,
-                                    detail: "Fixture approval: \(decision)",
+                                    detail: String(localized: "Fixture approval: \(decision)"),
                                     for: record.id
                                 )
                                 return

@@ -86,7 +86,7 @@ extension SessionStore {
                 notify(
                     .permission,
                     title: project.name,
-                    body: "Waiting for permission · \(sessionTitle)",
+                    body: String(localized: "Waiting for permission · \(sessionTitle)"),
                     projectID: project.id,
                     sessionID: sessionID,
                     prefs: prefs
@@ -96,7 +96,7 @@ extension SessionStore {
                 notify(
                     .input,
                     title: project.name,
-                    body: "Girdi bekliyor · \(sessionTitle)",
+                    body: String(localized: "Waiting for input · \(sessionTitle)"),
                     projectID: project.id,
                     sessionID: sessionID,
                     prefs: prefs
@@ -110,7 +110,7 @@ extension SessionStore {
             notify(
                 .turnCompleted,
                 title: project.name,
-                body: "Turn done · \(sessionTitle)",
+                body: String(localized: "Turn done · \(sessionTitle)"),
                 projectID: project.id,
                 sessionID: sessionID,
                 prefs: prefs
@@ -231,7 +231,7 @@ extension SessionStore {
             notify(
                 entry.event,
                 title: projectName(entry.sessionID) ?? "Uncoil",
-                body: "\(entry.event.title) · \(sessionTitle(entry.sessionID) ?? "session")",
+                body: String(localized: "\(entry.event.title) · \(sessionTitle(entry.sessionID) ?? "session")"),
                 projectID: project,
                 sessionID: entry.sessionID,
                 prefs: prefs,

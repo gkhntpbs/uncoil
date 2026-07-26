@@ -157,7 +157,7 @@ struct MCPProcessSupervisor {
                 }(),
                 detail: health.state.label,
                 remedy: health.state == .crashLoop
-                    ? "Look at the logs; do not restart until it is fixed."
+                    ? String(localized: "Look at the logs; do not restart until it is fixed.")
                     : nil,
                 checkedAt: now
             ),
@@ -167,8 +167,8 @@ struct MCPProcessSupervisor {
                 id: "process.\(health.id).stale",
                 name: "Old revision",
                 outcome: .warning,
-                detail: "\(health.stalePIDs.count) processes are running an old revision.",
-                remedy: "Move to the new revision with Restart now.",
+                detail: String(localized: "\(health.stalePIDs.count) processes are running an old revision."),
+                remedy: String(localized: "Move to the new revision with Restart now."),
                 checkedAt: now
             ))
         }

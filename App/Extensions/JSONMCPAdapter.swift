@@ -141,8 +141,8 @@ struct JSONMCPAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "\(agent.rawValue).json.invalid",
                 severity: .error,
-                message: "\(configuration.path) is not valid JSON.",
-                remedy: "Repair the file by hand; Uncoil does not write to broken JSON."
+                message: String(localized: "\(configuration.path) is not valid JSON."),
+                remedy: String(localized: "Repair the file by hand; Uncoil does not write to broken JSON.")
             ))
         }
         for server in configuration.mcpServers {
@@ -151,15 +151,15 @@ struct JSONMCPAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "\(agent.rawValue).mcp.\(server.name).command",
                     severity: .error,
-                    message: "The \(server.name) STDIO server has no command.",
-                    remedy: "Add the command, or remove the server."
+                    message: String(localized: "The \(server.name) STDIO server has no command."),
+                    remedy: String(localized: "Add the command, or remove the server.")
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "\(agent.rawValue).mcp.\(server.name).url",
                     severity: .error,
-                    message: "The \(server.name) HTTP server has no address.",
-                    remedy: "Add a URL, or remove the server."
+                    message: String(localized: "The \(server.name) HTTP server has no address."),
+                    remedy: String(localized: "Add a URL, or remove the server.")
                 ))
             default:
                 break
@@ -168,9 +168,9 @@ struct JSONMCPAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "\(agent.rawValue).mcp.\(server.name).secrets",
                     severity: .warning,
-                    message: "\(name) config'inde \(server.name) secret tutuyor: "
+                    message: String(localized: "\(server.name) keeps a secret in \(name)'s config: ")
                         + server.environmentKeys.joined(separator: ", ") + ".",
-                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
+                    remedy: String(localized: "Move it to the Uncoil launcher to keep the value in the Keychain.")
                 ))
             }
         }
@@ -327,7 +327,7 @@ struct JSONMCPAdapter: AgentAdapter {
                 case .http:
                     guard let url = definition.url, !url.isEmpty else {
                         throw AgentAdapterError
-                            .unsupportedChange("\(definition.name): URL gerekli")
+                            .unsupportedChange("\(definition.name): a URL is required")
                     }
                     entry["url"] = url
                 }

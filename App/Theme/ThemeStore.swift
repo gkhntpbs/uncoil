@@ -6,7 +6,7 @@ struct ThemePalette: Codable, Equatable, Hashable {
     /// Bumped when the shipped palettes change. A stored palette from an older
     /// version is replaced by the current preset rather than kept: the tokens
     /// below are a set, and half of an old one mixed with half of a new one is
-    /// not a theme anyone chose.
+    /// not a theme anyone chose. 
     /// 3: the agent brand colours became each product's own (Claude 0xD97757,
     /// Codex 0x3B82F6). Without the bump a palette saved before the change
     /// keeps the old marks, and changing the shipped default does nothing at

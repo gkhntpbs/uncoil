@@ -474,6 +474,7 @@ private struct RunConfigurationRow: View {
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .uncoilScrollers()
                     .padding(8)
             }
             .frame(height: 220)
@@ -634,7 +635,7 @@ private struct RunConfigurationEditor: View {
     private func save() {
         let slug = id.trimmingCharacters(in: .whitespaces)
         guard !slug.isEmpty, !command.trimmingCharacters(in: .whitespaces).isEmpty else {
-            error = "id and command are required."
+            error = String(localized: "id and command are required.")
             return
         }
         var env: [String: String] = [:]
@@ -669,7 +670,7 @@ private struct RunConfigurationEditor: View {
             onSaved()
             dismiss()
         } catch {
-            self.error = "Kaydedilemedi: \(error.localizedDescription)"
+            self.error = String(localized: "Could not be saved: \(error.localizedDescription)")
         }
     }
 

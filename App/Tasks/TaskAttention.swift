@@ -42,14 +42,14 @@ enum TaskAttentionEngine {
         var items: [AttentionItem] = []
 
         for task in snapshot.tasks {
-            let title = "\(task.projectName) › \(task.taskText)"
+            let title = String(localized: "\(task.projectName) › \(task.taskText)")
 
             // A lost link is reported per task, not per assignment: the question
             // the user answers is "which task was this?", asked once.
             if task.assignments.contains(where: \.needsRelinking) {
                 items.append(item(
                     .relinkNeeded, task: task, title: title,
-                    detail: "The task's wording changed; which task the session belongs to must be confirmed.",
+                    detail: String(localized: "The task's wording changed; which task the session belongs to must be confirmed."),
                     now: now
                 ))
             }
@@ -68,7 +68,7 @@ enum TaskAttentionEngine {
                 case .waitingForPermission:
                     items.append(item(
                         .permission, task: task, title: who,
-                        detail: "Waiting for permission for the task.",
+                        detail: String(localized: "Waiting for permission for the task."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -76,7 +76,7 @@ enum TaskAttentionEngine {
                 case .waitingForUser:
                     items.append(item(
                         .input, task: task, title: who,
-                        detail: "Waiting for your answer on the task.",
+                        detail: String(localized: "Waiting for your answer on the task."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -84,7 +84,7 @@ enum TaskAttentionEngine {
                 case .testsFailing:
                     items.append(item(
                         .testFailure, task: task, title: who,
-                        detail: "The task's tests are failing.",
+                        detail: String(localized: "The task's tests are failing."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -92,7 +92,7 @@ enum TaskAttentionEngine {
                 case .reviewRequested:
                     items.append(item(
                         .reviewRequested, task: task, title: who,
-                        detail: "Review bekleniyor.",
+                        detail: String(localized: "Awaiting review."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -100,7 +100,7 @@ enum TaskAttentionEngine {
                 case .blocked:
                     items.append(item(
                         .taskBlocked, task: task, title: who,
-                        detail: "The task is blocked.",
+                        detail: String(localized: "The task is blocked."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -108,7 +108,7 @@ enum TaskAttentionEngine {
                 case .failed:
                     items.append(item(
                         .taskFailed, task: task, title: who,
-                        detail: "The task run failed.",
+                        detail: String(localized: "The task run failed."),
                         sessionID: assignment.sessionID,
                         idSuffix: assignment.sessionID.uuidString, now: now,
                         createdAt: assignment.updatedAt
@@ -121,14 +121,14 @@ enum TaskAttentionEngine {
             if task.latestReview == .changesRequested {
                 items.append(item(
                     .changesRequested, task: task, title: title,
-                    detail: "The review requested changes.", now: now
+                    detail: String(localized: "The review requested changes."), now: now
                 ))
             }
 
             if task.isDone {
                 items.append(item(
                     .taskCompleted, task: task, title: title,
-                    detail: "The task was marked as done.", now: now
+                    detail: String(localized: "The task was marked as done."), now: now
                 ))
             }
 
@@ -138,7 +138,7 @@ enum TaskAttentionEngine {
             if let blockers = task.mergeBlockers, blockers.isEmpty, !task.assignments.isEmpty {
                 items.append(item(
                     .mergeReady, task: task, title: title,
-                    detail: "Tests, review and worktree are ready; waiting for your word.",
+                    detail: String(localized: "Tests, review and worktree are ready; waiting for your word."),
                     now: now
                 ))
             }
@@ -150,8 +150,8 @@ enum TaskAttentionEngine {
                 items.append(AttentionItem(
                     id: sourceConflictID(path),
                     kind: .mergeConflict,
-                    title: "\(name) › \(URL(fileURLWithPath: path).lastPathComponent)",
-                    detail: "The task's source contains a conflict; editing is off.",
+                    title: String(localized: "\(name) › \(URL(fileURLWithPath: path).lastPathComponent)"),
+                    detail: String(localized: "The task's source contains a conflict; editing is off."),
                     projectID: projectID, sessionID: nil, createdAt: now,
                     // Stamped `now` per scan; the path is what makes this the
                     // same conflict rather than a new one.

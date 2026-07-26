@@ -58,7 +58,7 @@ enum CapabilityCatalog {
               detail: "Sees the project list and its metadata.", risky: false),
 
         .init(key: "worktrees.read", domain: .worktrees,
-              label: "Worktree'leri oku",
+              label: "Read worktrees",
               detail: "Mevcut worktree'leri listeler.", risky: false),
         .init(key: "worktrees.create", domain: .worktrees,
               label: "Create a worktree",

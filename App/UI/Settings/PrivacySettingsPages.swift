@@ -164,7 +164,7 @@ struct PermissionsSettingsPage: View {
                             )) {
                                 SettingsLabel(
                                     title: group.requiresApproval
-                                        ? "\(group.title) — onay gerekir"
+                                        ? String(localized: "\(group.title) — needs approval")
                                         : group.title,
                                     detail: group.detail,
                                     symbol: group.symbol
@@ -380,10 +380,10 @@ struct HooksSettingsPage: View {
         do {
             if install {
                 try HookInstaller.install()
-                message = "settings.json updated; its backup is under config-backups/. Restart open Claude sessions."
+                message = String(localized: "settings.json updated; its backup is under config-backups/. Restart open Claude sessions.")
             } else {
                 try HookInstaller.uninstall()
-                message = "Uncoil's entries were removed; other hooks were left alone."
+                message = String(localized: "Uncoil's entries were removed; other hooks were left alone.")
             }
         } catch {
             message = error.localizedDescription

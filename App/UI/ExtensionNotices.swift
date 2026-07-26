@@ -68,21 +68,38 @@ final class ExtensionNoticeCenter: ObservableObject {
         post(message, level: Self.level(of: message))
     }
 
+    /// Reads the severity out of the message's wording.
+    ///
+    /// The messages are localized, so the words to look for are too — a Turkish
+    /// failure classified as `.info` would auto-dismiss after five seconds and
+    /// the user would never see it. Both languages are listed rather than
+    /// resolved through the catalog, because the catalog maps whole sentences,
+    /// not the fragments this matches on.
+    ///
+    /// This is the cost of deriving severity from text; a third language means
+    /// extending these lists. The screens that pass a level explicitly — the
+    /// preferred path — never come through here.
     static func level(of message: String) -> Level {
         let lowered = message.lowercased()
         let failures = [
             "failed", "could not be done", "could not be read", "error", "blocks",
             "could not be removed", "not found", "invalid", "not done", "dropped",
             "could not be installed", "could not be restored",
+            "başarısız", "hata", "yapılamadı", "okunamadı", "engelliyor",
+            "kaldırılamadı", "bulunamadı", "geçersiz", "atıldı", "kurulamadı",
+            "geri yüklenemedi",
         ]
         if failures.contains(where: lowered.contains) { return .failure }
         let warnings = [
             "warning", "skipped", "unchanged", "changed on disk", "requires", "needs",
+            "uyarı", "atlandı", "değişmedi", "dışarıda değişti", "gerekiyor", "gerekli",
         ]
         if warnings.contains(where: lowered.contains) { return .warning }
         let successes = [
-            "applied", "sahiplenildi", "created", "updated", "eklendi",
-            "kuruldu", "restored", "removed", "repaired", "bitti",
+            "applied", "adopted", "created", "updated", "added",
+            "installed", "restored", "removed", "repaired", "finished",
+            "uygulandı", "sahiplenildi", "oluşturuldu", "güncellendi", "eklendi",
+            "kuruldu", "geri yüklendi", "kaldırıldı", "onarıldı", "bitti",
         ]
         if successes.contains(where: lowered.contains) { return .success }
         return .info

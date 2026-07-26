@@ -54,14 +54,14 @@ struct UninstallService {
             let url = dataDirectory.appendingPathComponent(name)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             items.append(.init(
-                path: url.path, detail: "Uncoil verisi", disposition: .removed
+                path: url.path, detail: String(localized: "Uncoil data"), disposition: .removed
             ))
         }
         for directory in ["projects", "transcripts", "todo-backups"] {
             let url = dataDirectory.appendingPathComponent(directory, isDirectory: true)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             items.append(.init(
-                path: url.path, detail: "Uncoil dizini", disposition: .removed
+                path: url.path, detail: String(localized: "Uncoil directory"), disposition: .removed
             ))
         }
 
@@ -71,7 +71,7 @@ struct UninstallService {
                     extensionLayout.locks, extensionLayout.scans]
         where FileManager.default.fileExists(atPath: url.path) {
             items.append(.init(
-                path: url.path, detail: "Extension store", disposition: .removed
+                path: url.path, detail: String(localized: "Extension store"), disposition: .removed
             ))
         }
 
@@ -85,13 +85,13 @@ struct UninstallService {
                     .destinationOfSymbolicLink(atPath: url.path)) != nil
                 if isLink, managedSkillNames.contains(name) {
                     items.append(.init(
-                        path: url.path, detail: "Uncoil symlink'i", disposition: .removed
+                        path: url.path, detail: String(localized: "an Uncoil symlink"), disposition: .removed
                     ))
                 } else {
                     items.append(.init(
                         path: url.path,
-                        detail: isLink ? "Someone else's symlink" : "Your own file",
-                        disposition: .kept(reason: "Not created by Uncoil")
+                        detail: isLink ? String(localized: "Someone else's symlink") : String(localized: "Your own file"),
+                        disposition: .kept(reason: String(localized: "Not created by Uncoil"))
                     ))
                 }
             }
@@ -102,7 +102,7 @@ struct UninstallService {
         let skillLock = ExtensionLockFiles.defaultSkillLockURL(home: homeDirectory)
         if FileManager.default.fileExists(atPath: skillLock.path) {
             items.append(.init(
-                path: skillLock.path, detail: "Uncoil lock file", disposition: .removed
+                path: skillLock.path, detail: String(localized: "Uncoil lock file"), disposition: .removed
             ))
         }
 
@@ -115,8 +115,8 @@ struct UninstallService {
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             items.append(.init(
                 path: url.path,
-                detail: "Agent config",
-                disposition: .kept(reason: "The agent's own file; Uncoil never deletes it")
+                detail: String(localized: "Agent config"),
+                disposition: .kept(reason: String(localized: "The agent's own file; Uncoil never deletes it"))
             ))
         }
 

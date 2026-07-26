@@ -75,8 +75,8 @@ struct ClaudeCodeAdapter: AgentAdapter {
             issues.append(ConfigurationIssue(
                 id: "claude.json.invalid",
                 severity: .error,
-                message: "~/.claude.json is not valid JSON.",
-                remedy: "Repair the file by hand; Uncoil does not write to broken JSON."
+                message: String(localized: "~/.claude.json is not valid JSON."),
+                remedy: String(localized: "Repair the file by hand; Uncoil does not write to broken JSON.")
             ))
         }
         for server in configuration.mcpServers {
@@ -85,15 +85,15 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).command",
                     severity: .error,
-                    message: "The \(server.name) STDIO server has no command.",
-                    remedy: "Add the command, or remove the server."
+                    message: String(localized: "The \(server.name) STDIO server has no command."),
+                    remedy: String(localized: "Add the command, or remove the server.")
                 ))
             case .http where (server.url ?? "").isEmpty:
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).url",
                     severity: .error,
-                    message: "The \(server.name) HTTP server has no address.",
-                    remedy: "Add a URL, or remove the server."
+                    message: String(localized: "The \(server.name) HTTP server has no address."),
+                    remedy: String(localized: "Add a URL, or remove the server.")
                 ))
             default:
                 break
@@ -102,8 +102,8 @@ struct ClaudeCodeAdapter: AgentAdapter {
                 issues.append(ConfigurationIssue(
                     id: "claude.mcp.\(server.name).secrets",
                     severity: .warning,
-                    message: "\(server.name) keeps a secret in its config: \(server.environmentKeys.joined(separator: ", ")).",
-                    remedy: "Move it to the Uncoil launcher to keep the value in the Keychain."
+                    message: String(localized: "\(server.name) keeps a secret in its config: \(server.environmentKeys.joined(separator: ", "))."),
+                    remedy: String(localized: "Move it to the Uncoil launcher to keep the value in the Keychain.")
                 ))
             }
         }
@@ -249,7 +249,7 @@ struct ClaudeCodeAdapter: AgentAdapter {
                     if !definition.arguments.isEmpty { entry["args"] = definition.arguments }
                 case .http:
                     guard let url = definition.url, !url.isEmpty else {
-                        throw AgentAdapterError.unsupportedChange("\(definition.name): URL gerekli")
+                        throw AgentAdapterError.unsupportedChange("\(definition.name): a URL is required")
                     }
                     entry["url"] = url
                 }

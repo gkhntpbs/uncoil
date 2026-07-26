@@ -34,30 +34,41 @@ final class UncoilScroller: NSScroller {
     override func drawKnobSlot(in slotRect: NSRect, highlight flag: Bool) {}
 }
 
-/// Drop into a ScrollView's content (`.background(ScrollerStyler())`) to
-/// restyle the enclosing NSScrollView with Uncoil scrollers.
+/// Drop into a scrolling surface's content (`.uncoilScrollers()`) to restyle the
+/// enclosing NSScrollView.
+///
+/// The probe re-applies on every update, not only at creation: SwiftUI rebuilds
+/// `Form`, `List` and `ScrollView` bodies freely, and a scroll view that was
+/// styled once can come back with AppKit's own scrollers after a rebuild. The
+/// work is a couple of identity checks when nothing changed.
 struct ScrollerStyler: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let probe = NSView()
-        DispatchQueue.main.async {
-            guard let scrollView = probe.enclosingScrollView else { return }
-            scrollView.scrollerStyle = .overlay
-            scrollView.autohidesScrollers = true
-            if !(scrollView.verticalScroller is UncoilScroller) {
-                let scroller = UncoilScroller()
-                scroller.controlSize = .small
-                scrollView.verticalScroller = scroller
-            }
-            if !(scrollView.horizontalScroller is UncoilScroller) {
-                let scroller = UncoilScroller()
-                scroller.controlSize = .small
-                scrollView.horizontalScroller = scroller
-            }
-        }
+        DispatchQueue.main.async { Self.style(probe.enclosingScrollView) }
         return probe
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { Self.style(nsView.enclosingScrollView) }
+    }
+
+    static func style(_ scrollView: NSScrollView?) {
+        guard let scrollView else { return }
+        scrollView.scrollerStyle = .overlay
+        scrollView.autohidesScrollers = true
+        if !(scrollView.verticalScroller is UncoilScroller) {
+            scrollView.verticalScroller = makeScroller()
+        }
+        if scrollView.hasHorizontalScroller, !(scrollView.horizontalScroller is UncoilScroller) {
+            scrollView.horizontalScroller = makeScroller()
+        }
+    }
+
+    private static func makeScroller() -> UncoilScroller {
+        let scroller = UncoilScroller()
+        scroller.controlSize = .small
+        return scroller
+    }
 }
 
 extension View {

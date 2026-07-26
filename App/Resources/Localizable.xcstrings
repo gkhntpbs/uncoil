@@ -12,6 +12,138 @@
         }
       }
     },
+    "%@ added; its source folder was left alone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ eklendi; kaynak klasöre dokunulmadı."
+          }
+        }
+      }
+    },
+    "%@ already exists.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ zaten var."
+          }
+        }
+      }
+    },
+    "%@ cannot be linked to a repo.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bir depoya bağlanamaz."
+          }
+        }
+      }
+    },
+    "%@ changed on disk; the plan was refreshed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dışarıdan değişti; plan yenilendi"
+          }
+        }
+      }
+    },
+    "%@ contains a conflict; resolve it first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ conflict içeriyor; önce çözülmeli."
+          }
+        }
+      }
+    },
+    "%@ could not be resolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ çözümlenemedi"
+          }
+        }
+      }
+    },
+    "%@ findings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bulguları"
+          }
+        }
+      }
+    },
+    "%@ is not a git repository.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bir git deposu değil."
+          }
+        }
+      }
+    },
+    "%@ is not declared in any agent config.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hiçbir agent config'inde tanımlı değil."
+          }
+        }
+      }
+    },
+    "%@ is not in this commit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bu commit'te yok"
+          }
+        }
+      }
+    },
+    "%@ is not valid JSON.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ geçerli JSON değil."
+          }
+        }
+      }
+    },
+    "%@ is now managed from %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ artık %@ kaynağından yönetiliyor."
+          }
+        }
+      }
+    },
     "%@ is unmanaged for now. Link it to a repo and it becomes updatable.": {
       "extractionState": "manual",
       "localizations": {
@@ -19,6 +151,83 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ şu an unmanaged. Bir depoya bağlanınca güncellenebilir olur."
+          }
+        }
+      }
+    },
+    "%@ keeps a secret in %@'s config: ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ config'inde %@ secret tutuyor: "
+          }
+        }
+      }
+    },
+    "%@ keeps a secret in config.toml: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ config.toml içinde secret tutuyor: %@."
+          }
+        }
+      }
+    },
+    "%@ keeps a secret in its config: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ config içinde secret tutuyor: %@."
+          }
+        }
+      }
+    },
+    "%@ removed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kaldırıldı."
+          }
+        }
+      }
+    },
+    "%@ removed; installed extensions were left alone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kaldırıldı; kurulu extension'lara dokunulmadı."
+          }
+        }
+      }
+    },
+    "%@ restored.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ geri yüklendi."
+          }
+        }
+      }
+    },
+    "%@ scan in progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ taraması sürüyor"
           }
         }
       }
@@ -45,6 +254,28 @@
         }
       }
     },
+    "%@ was added as a source. Adding an extension needs discovery.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kaynak olarak eklendi. Extension eklemek için discovery gerekiyor."
+          }
+        }
+      }
+    },
+    "%@ was restored from the backup": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ yedekten geri yüklendi"
+          }
+        }
+      }
+    },
     "%@ · %@ · %lld grants": {
       "extractionState": "manual",
       "localizations": {
@@ -63,6 +294,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — %lld extension etkilenecek."
+          }
+        }
+      }
+    },
+    "%@: %lld lines changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %lld satır değişti"
+          }
+        }
+      }
+    },
+    "%@: adding a description": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: açıklama ekleniyor"
+          }
+        }
+      }
+    },
+    "%@: clearing the done marker": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: tamamlandı işareti kaldırılıyor"
+          }
+        }
+      }
+    },
+    "%@: marking it done": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: tamamlandı olarak işaretleniyor"
+          }
+        }
+      }
+    },
+    "%@: new session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: yeni oturum"
           }
         }
       }
@@ -89,6 +375,28 @@
         }
       }
     },
+    "%@: removing it from its old position": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: eski konumundan kaldırılıyor"
+          }
+        }
+      }
+    },
+    "%@: updating the description": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: açıklama güncelleniyor"
+          }
+        }
+      }
+    },
     "%lld changed": {
       "extractionState": "manual",
       "localizations": {
@@ -107,6 +415,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld karakter"
+          }
+        }
+      }
+    },
+    "%lld drifted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sapma."
+          }
+        }
+      }
+    },
+    "%lld extensions have a broken link.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld extension bozuk bağlantıya sahip."
           }
         }
       }
@@ -140,6 +470,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld öğe silinecek, %lld öğe korunacak"
+          }
+        }
+      }
+    },
+    "%lld lines changed outside the task block.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev bloğu dışında %lld satır değişti."
           }
         }
       }
@@ -188,6 +529,17 @@
         }
       }
     },
+    "%lld open findings, %lld of them high.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld açık bulgu, %lld yüksek."
+          }
+        }
+      }
+    },
     "%lld pending notifications": {
       "extractionState": "manual",
       "localizations": {
@@ -199,6 +551,28 @@
         }
       }
     },
+    "%lld processes are running an old revision.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld process eski revision ile çalışıyor."
+          }
+        }
+      }
+    },
+    "%lld processes stopped; the agent will restart them": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld süreç durduruldu; agent yeniden başlatacak"
+          }
+        }
+      }
+    },
     "%lld records": {
       "extractionState": "manual",
       "localizations": {
@@ -206,6 +580,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld kayıt"
+          }
+        }
+      }
+    },
+    "%lld remote servers; the version comes from the server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld uzak sunucu; sürüm sunucudan gelir."
           }
         }
       }
@@ -419,6 +804,17 @@
         }
       }
     },
+    "; no file was deleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "; dosyalar silinmedi"
+          }
+        }
+      }
+    },
     "A backup is taken before it is applied; one click takes you back.": {
       "extractionState": "manual",
       "localizations": {
@@ -441,6 +837,17 @@
         }
       }
     },
+    "A clean result does not mean the extension is entirely safe.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temiz sonuç, extension'ın tümüyle güvenli olduğu anlamına gelmez."
+          }
+        }
+      }
+    },
     "A project's notifications stack into one group in Notification Center.": {
       "extractionState": "manual",
       "localizations": {
@@ -459,6 +866,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çalışma hatası, başarısız test veya kopan bağlantı."
+          }
+        }
+      }
+    },
+    "A script with execute permission.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıştırma izni olan script."
           }
         }
       }
@@ -514,6 +932,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bir görev tamamlandı."
+          }
+        }
+      }
+    },
+    "A valid name is required.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli bir isim gerekli."
           }
         }
       }
@@ -650,6 +1079,17 @@
         }
       }
     },
+    "Add a New Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Proje Ekle"
+          }
+        }
+      }
+    },
     "Add a Project": {
       "extractionState": "manual",
       "localizations": {
@@ -668,6 +1108,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kök veya alt klasörlere TODO.md ekleyince burada görünür."
+          }
+        }
+      }
+    },
+    "Add a URL, or remove the server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL ekle veya sunucuyu kaldır."
           }
         }
       }
@@ -705,6 +1156,17 @@
         }
       }
     },
+    "Add the command, or remove the server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komutu ekle veya sunucuyu kaldır."
+          }
+        }
+      }
+    },
     "Added to the file as a single line, under the heading you pick.": {
       "extractionState": "manual",
       "localizations": {
@@ -712,6 +1174,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosyaya, seçtiğin başlığın altına tek satır olarak eklenir."
+          }
+        }
+      }
+    },
+    "Additional permission request": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ek izin isteği"
           }
         }
       }
@@ -793,6 +1266,17 @@
         }
       }
     },
+    "Agent Browser is ready; Example Domain opened successfully.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent Browser hazır; Example Domain başarıyla açıldı."
+          }
+        }
+      }
+    },
     "Agent assignments": {
       "extractionState": "manual",
       "localizations": {
@@ -804,6 +1288,17 @@
         }
       }
     },
+    "Agent config warnings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent config uyarıları"
+          }
+        }
+      }
+    },
     "Agent folders to move to the shared copy": {
       "extractionState": "manual",
       "localizations": {
@@ -811,6 +1306,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ortak kopyaya alınacak agent klasörleri"
+          }
+        }
+      }
+    },
+    "Agent not found": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent bulunamadı"
           }
         }
       }
@@ -855,6 +1361,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uncoil kapansa da agent’lar runtime daemon içinde çalışmaya devam eder."
+          }
+        }
+      }
+    },
+    "Agents not managed yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz yönetilmeyen agent'lar"
           }
         }
       }
@@ -991,6 +1508,17 @@
         }
       }
     },
+    "Append-only record; survives even if the registry is corrupted.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Append-only kayıt; registry bozulsa bile korunur."
+          }
+        }
+      }
+    },
     "Appended to the launch command; applies from the next session on.": {
       "extractionState": "manual",
       "localizations": {
@@ -1020,6 +1548,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uygula"
+          }
+        }
+      }
+    },
+    "Approval answered": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay yanıtlandı"
           }
         }
       }
@@ -1068,6 +1607,39 @@
         }
       }
     },
+    "Ask Claude: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude'a sor: %@"
+          }
+        }
+      }
+    },
+    "Asks for elevated privileges with sudo.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sudo ile yükseltilmiş yetki isteniyor."
+          }
+        }
+      }
+    },
+    "Asks for permission to read the project's state.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje durumunu okumak için izin istiyor."
+          }
+        }
+      }
+    },
     "Assign All to %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1086,6 +1658,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Atanmış"
+          }
+        }
+      }
+    },
+    "Assigned to the %@ session as %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ olarak %@ oturumuna atandı"
           }
         }
       }
@@ -1200,6 +1783,17 @@
         }
       }
     },
+    "Awaiting review.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review bekleniyor."
+          }
+        }
+      }
+    },
     "BULK MANAGEMENT": {
       "extractionState": "manual",
       "localizations": {
@@ -1277,6 +1871,17 @@
         }
       }
     },
+    "Being worked on": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışılıyor"
+          }
+        }
+      }
+    },
     "Blocked": {
       "extractionState": "manual",
       "localizations": {
@@ -1306,6 +1911,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Board, görev oturumu, orchestrator."
+          }
+        }
+      }
+    },
+    "Both an allow and a deny record exist for the same scope.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı kapsam için hem açık hem kapalı kayıt var."
           }
         }
       }
@@ -1343,6 +1959,17 @@
         }
       }
     },
+    "Broken extensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bozuk extension"
+          }
+        }
+      }
+    },
     "Broken link": {
       "extractionState": "manual",
       "localizations": {
@@ -1376,6 +2003,39 @@
         }
       }
     },
+    "Bumblebee did not run.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee çalıştırılmadı."
+          }
+        }
+      }
+    },
+    "Bumblebee does not read Codex's TOML MCP config.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex TOML MCP config'i Bumblebee tarafından okunmuyor."
+          }
+        }
+      }
+    },
+    "Bumblebee found; scans are run from here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee bulundu; taramalar buradan çalıştırılır."
+          }
+        }
+      }
+    },
     "Bumblebee install": {
       "extractionState": "manual",
       "localizations": {
@@ -1383,6 +2043,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bumblebee kurulumu"
+          }
+        }
+      }
+    },
+    "Bumblebee is not installed. Installing it happens with your approval; Uncoil keeps running its own scan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee kurulu değil. Kurulumu senin onayınla olur; Uncoil kendi taramasını yapmaya devam eder."
+          }
+        }
+      }
+    },
+    "Bumblebee's scan was not used: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee taraması kullanılmadı: %@"
           }
         }
       }
@@ -1475,6 +2157,17 @@
         }
       }
     },
+    "Changing files": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyaları değiştiriyor"
+          }
+        }
+      }
+    },
     "Check for Updates": {
       "extractionState": "manual",
       "localizations": {
@@ -1530,6 +2223,28 @@
         }
       }
     },
+    "Choose the Bumblebee binary": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee binary'sini seç"
+          }
+        }
+      }
+    },
+    "Choose the skill folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill klasörünü seç"
+          }
+        }
+      }
+    },
     "Claimed": {
       "extractionState": "manual",
       "localizations": {
@@ -1537,6 +2252,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alındı"
+          }
+        }
+      }
+    },
+    "Clashing assignments": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çakışan atamalar"
           }
         }
       }
@@ -1607,6 +2333,17 @@
         }
       }
     },
+    "Close the Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu Kapat"
+          }
+        }
+      }
+    },
     "Closed": {
       "extractionState": "manual",
       "localizations": {
@@ -1614,6 +2351,127 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kapandı"
+          }
+        }
+      }
+    },
+    "Closed Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapanmış Oturumlar"
+          }
+        }
+      }
+    },
+    "Codex MCP servers are judged by Uncoil's own scan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex MCP sunucuları Uncoil taramasıyla değerlendirilir."
+          }
+        }
+      }
+    },
+    "Codex app-server connection closed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex app-server bağlantısı kapandı"
+          }
+        }
+      }
+    },
+    "Codex finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex tamamladı"
+          }
+        }
+      }
+    },
+    "Codex is waiting for approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex onay bekliyor"
+          }
+        }
+      }
+    },
+    "Codex login required": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex girişi gerekli"
+          }
+        }
+      }
+    },
+    "Codex running": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex çalışıyor"
+          }
+        }
+      }
+    },
+    "Codex system error": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex sistem hatası"
+          }
+        }
+      }
+    },
+    "Codex thinking": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex düşünüyor"
+          }
+        }
+      }
+    },
+    "Codex turn failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex turn başarısız"
+          }
+        }
+      }
+    },
+    "Codex's TOML MCP config is outside the Bumblebee scan's reach.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex TOML MCP config'i Bumblebee taramasının kapsamı dışında."
           }
         }
       }
@@ -1728,6 +2586,17 @@
         }
       }
     },
+    "Conflict resolved: %@ re-read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflict çözüldü: %@ yeniden okundu."
+          }
+        }
+      }
+    },
     "Connect": {
       "extractionState": "manual",
       "localizations": {
@@ -1794,6 +2663,39 @@
         }
       }
     },
+    "Copied: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopyalandı: %@"
+          }
+        }
+      }
+    },
+    "Copy the Provider Session ID": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sağlayıcı Oturum ID'sini Kopyala"
+          }
+        }
+      }
+    },
+    "Copy the Session ID": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum ID'sini Kopyala"
+          }
+        }
+      }
+    },
     "Copy the code": {
       "extractionState": "manual",
       "localizations": {
@@ -1823,6 +2725,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yerine kopyalanıyor…"
+          }
+        }
+      }
+    },
+    "Could not be copied: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopyalanamadı: %@"
+          }
+        }
+      }
+    },
+    "Could not be saved: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "Could not install: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulamadı: %@"
           }
         }
       }
@@ -1882,6 +2817,50 @@
         }
       }
     },
+    "Create Debug Bundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Debug Bundle Oluştur"
+          }
+        }
+      }
+    },
+    "Create Worktree… [%@]": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Worktree Oluştur… [%@]"
+          }
+        }
+      }
+    },
+    "Create a Test Workspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test Workspace Oluştur"
+          }
+        }
+      }
+    },
+    "Create a new session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni oturum oluştur"
+          }
+        }
+      }
+    },
     "Created in Uncoil's own store; attached to the agents you pick.": {
       "extractionState": "manual",
       "localizations": {
@@ -1893,6 +2872,17 @@
         }
       }
     },
+    "Created inside Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil içinde oluşturuldu"
+          }
+        }
+      }
+    },
     "Creating…": {
       "extractionState": "manual",
       "localizations": {
@@ -1900,6 +2890,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oluşturuluyor…"
+          }
+        }
+      }
+    },
+    "Cua Driver is ready and the tool call succeeded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cua Driver hazır ve araç çağrısı başarılı."
           }
         }
       }
@@ -1922,6 +2923,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu oturum için özelleştirildi"
+          }
+        }
+      }
+    },
+    "Customise…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özelleştir…"
           }
         }
       }
@@ -2142,6 +3154,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "'%@' yapılandırması silinsin mi?"
+          }
+        }
+      }
+    },
+    "Delete the Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu Sil"
           }
         }
       }
@@ -2388,6 +3411,17 @@
         }
       }
     },
+    "Entrypoint changed: %@ → %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrypoint değişti: %@ → %@"
+          }
+        }
+      }
+    },
     "Errors and problems": {
       "extractionState": "manual",
       "localizations": {
@@ -2465,6 +3499,17 @@
         }
       }
     },
+    "Every link is in place.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm bağlantılar yerinde."
+          }
+        }
+      }
+    },
     "Every running agent and terminal process is closed when you quit Uncoil.": {
       "extractionState": "manual",
       "localizations": {
@@ -2509,6 +3554,17 @@
         }
       }
     },
+    "Extension → project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extension → proje"
+          }
+        }
+      }
+    },
     "Failed": {
       "extractionState": "manual",
       "localizations": {
@@ -2516,6 +3572,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başarısız"
+          }
+        }
+      }
+    },
+    "File change request": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya değişikliği isteği"
           }
         }
       }
@@ -2542,6 +3609,17 @@
         }
       }
     },
+    "Fix it with Repair.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair ile onar."
+          }
+        }
+      }
+    },
     "Fix with agent": {
       "extractionState": "manual",
       "localizations": {
@@ -2549,6 +3627,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agent'la düzelt"
+          }
+        }
+      }
+    },
+    "Fixture approval: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixture onayı: %@"
           }
         }
       }
@@ -2619,6 +3708,17 @@
         }
       }
     },
+    "GitHub sources": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub kaynakları"
+          }
+        }
+      }
+    },
     "Grants": {
       "extractionState": "manual",
       "localizations": {
@@ -2663,6 +3763,17 @@
         }
       }
     },
+    "Guesses which skill a prompt could trigger, from the descriptions the agent sees.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir prompt'un hangi skill'i tetikleyebileceğini, agent'ın gördüğü açıklamalardan tahmin eder."
+          }
+        }
+      }
+    },
     "Hand tasks to agents": {
       "extractionState": "manual",
       "localizations": {
@@ -2670,6 +3781,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Görevleri agent'lara ver"
+          }
+        }
+      }
+    },
+    "Has not run yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz çalıştırılmadı."
           }
         }
       }
@@ -2692,6 +3814,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gizle"
+          }
+        }
+      }
+    },
+    "Hide Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumları Gizle"
           }
         }
       }
@@ -2817,6 +3950,17 @@
         }
       }
     },
+    "Importing %lld MCP servers": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld MCP server içe alınıyor"
+          }
+        }
+      }
+    },
     "In Progress": {
       "extractionState": "manual",
       "localizations": {
@@ -2824,6 +3968,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "sürüyor"
+          }
+        }
+      }
+    },
+    "Inactive until it is turned on from the Reminders page.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatmalar sayfasından açılana kadar etkisiz."
           }
         }
       }
@@ -2872,6 +4027,17 @@
         }
       }
     },
+    "Install Claude Code or Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code veya Codex kur."
+          }
+        }
+      }
+    },
     "Installed": {
       "extractionState": "manual",
       "localizations": {
@@ -2894,6 +4060,17 @@
         }
       }
     },
+    "Installed outside Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil dışında kurulmuş"
+          }
+        }
+      }
+    },
     "Installed: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2901,6 +4078,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kuruldu: %@"
+          }
+        }
+      }
+    },
+    "Installing the Cua Driver sets up the daemon and the macOS permissions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cua Driver kurulumu, daemon ve macOS izinlerini hazırlar."
           }
         }
       }
@@ -2945,6 +4133,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tümünü Kes"
+          }
+        }
+      }
+    },
+    "Irreversible deletion with rm -rf.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rm -rf ile geri dönüşsüz silme."
           }
         }
       }
@@ -3026,6 +4225,17 @@
         }
       }
     },
+    "Last Bumblebee scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son Bumblebee scan"
+          }
+        }
+      }
+    },
     "Last scan %@": {
       "extractionState": "manual",
       "localizations": {
@@ -3055,6 +4265,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosyaya yazılacak satır"
+          }
+        }
+      }
+    },
+    "Lines changed outside the task block: ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev bloğu dışında değişen satırlar: "
           }
         }
       }
@@ -3125,6 +4346,17 @@
         }
       }
     },
+    "Look at the logs; do not restart until it is fixed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logları incele; düzelene kadar yeniden başlatma."
+          }
+        }
+      }
+    },
     "Looked in: the app bundle, %@, PATH": {
       "extractionState": "manual",
       "localizations": {
@@ -3176,6 +4408,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "MCP envanteri"
+          }
+        }
+      }
+    },
+    "MCP to add: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eklenecek MCP: %@"
           }
         }
       }
@@ -3257,6 +4500,17 @@
         }
       }
     },
+    "Matches the record.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıtla eşleşiyor."
+          }
+        }
+      }
+    },
     "Menu Bar": {
       "extractionState": "manual",
       "localizations": {
@@ -3312,6 +4566,17 @@
         }
       }
     },
+    "Minified or obfuscated content.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minified veya obfuscated içerik."
+          }
+        }
+      }
+    },
     "Mode and Keyboard": {
       "extractionState": "manual",
       "localizations": {
@@ -3345,13 +4610,46 @@
         }
       }
     },
-    "Momentary events such as a finished turn are not on the list: there is no state ": {
+    "Move Down": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tur tamamlandı gibi anlık olaylar listede yok: tekrarlanacak bir durum "
+            "value": "Aşağı Taşı"
+          }
+        }
+      }
+    },
+    "Move Up": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yukarı Taşı"
+          }
+        }
+      }
+    },
+    "Move it to the Uncoil launcher to keep the value in the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil launcher'a taşıyarak değeri Keychain'de tut."
+          }
+        }
+      }
+    },
+    "Move to the new revision with Restart now.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart now ile yeni revision'a geç."
           }
         }
       }
@@ -3363,6 +4661,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ad"
+          }
+        }
+      }
+    },
+    "Neither Claude Code nor Codex is installed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code veya Codex kurulu değil."
+          }
+        }
+      }
+    },
+    "Never run": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiç çalıştırılmadı"
           }
         }
       }
@@ -3400,6 +4720,17 @@
         }
       }
     },
+    "New Group…": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Grup…"
+          }
+        }
+      }
+    },
     "New Session": {
       "extractionState": "manual",
       "localizations": {
@@ -3407,6 +4738,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeni Oturum"
+          }
+        }
+      }
+    },
+    "New Session: %@ [%@]": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Oturum: %@ [%@]"
           }
         }
       }
@@ -3532,6 +4874,28 @@
         }
       }
     },
+    "No %@ found": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bulunamadı"
+          }
+        }
+      }
+    },
+    "No MCP server is defined in the agent configs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent config'lerinde MCP server tanımlı değil."
+          }
+        }
+      }
+    },
     "No TODO.md found in this project": {
       "extractionState": "manual",
       "localizations": {
@@ -3576,6 +4940,17 @@
         }
       }
     },
+    "No commit recorded for %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ için commit kaydı yok"
+          }
+        }
+      }
+    },
     "No connection": {
       "extractionState": "manual",
       "localizations": {
@@ -3609,6 +4984,28 @@
         }
       }
     },
+    "No extension matches “%@”.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"%@\" ile eşleşen extension yok."
+          }
+        }
+      }
+    },
+    "No extensions yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz extension yok."
+          }
+        }
+      }
+    },
     "No file difference": {
       "extractionState": "manual",
       "localizations": {
@@ -3627,6 +5024,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosya farkı yok; devralma yalnızca yönetimi devreder."
+          }
+        }
+      }
+    },
+    "No file was deleted; the launcher refuses to start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyalar silinmedi; launcher başlatmayı reddediyor."
+          }
+        }
+      }
+    },
+    "No file within Bumblebee's reach": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee kapsamında dosya yok"
           }
         }
       }
@@ -3653,6 +5072,50 @@
         }
       }
     },
+    "No installed agent found; there is nothing to assign to.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu agent bulunamadı; atanacak bir hedef yok."
+          }
+        }
+      }
+    },
+    "No local git: the version comes from the server and is not kept in step with the repo's.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel git yok: sürüm sunucudan gelir, repo sürümüyle eşitlenmez."
+          }
+        }
+      }
+    },
+    "No manageable agent found.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilebilir agent bulunamadı."
+          }
+        }
+      }
+    },
+    "No managed extension; unmanaged packages are not checked for updates.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilen extension yok; unmanaged paketler için update kontrolü yapılmaz."
+          }
+        }
+      }
+    },
     "No match": {
       "extractionState": "manual",
       "localizations": {
@@ -3664,6 +5127,17 @@
         }
       }
     },
+    "No matching extension.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşen extension yok."
+          }
+        }
+      }
+    },
     "No matching setting": {
       "extractionState": "manual",
       "localizations": {
@@ -3671,6 +5145,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eşleşen ayar yok"
+          }
+        }
+      }
+    },
+    "No new commit since the last scan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son taramada yeni commit bulunmadı."
+          }
+        }
+      }
+    },
+    "No open findings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık bulgu yok."
           }
         }
       }
@@ -3774,6 +5270,17 @@
         }
       }
     },
+    "No revision of this package is installed; install it first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu paketin kurulu bir revizyonu yok; önce kurulmalı."
+          }
+        }
+      }
+    },
     "No rule change": {
       "extractionState": "manual",
       "localizations": {
@@ -3840,6 +5347,17 @@
         }
       }
     },
+    "No source.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynak yok."
+          }
+        }
+      }
+    },
     "No subfolders": {
       "extractionState": "manual",
       "localizations": {
@@ -3880,6 +5398,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commit edilmemiş değişiklik yok."
+          }
+        }
+      }
+    },
+    "No update": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleme yok"
+          }
+        }
+      }
+    },
+    "No update applied yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz update uygulanmadı."
           }
         }
       }
@@ -3939,6 +5479,17 @@
         }
       }
     },
+    "Not created by Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil oluşturmadı"
+          }
+        }
+      }
+    },
     "Not found": {
       "extractionState": "manual",
       "localizations": {
@@ -3968,6 +5519,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hatırlatma zamanı gelmedi"
+          }
+        }
+      }
+    },
+    "Nothing shows up in the agents' skill directories.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'ların skill dizinlerinde bir şey görünmüyor."
           }
         }
       }
@@ -4280,6 +5842,39 @@
         }
       }
     },
+    "Open in Uncoil": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil’de aç"
+          }
+        }
+      }
+    },
+    "Open in a New Window": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Pencerede Aç"
+          }
+        }
+      }
+    },
+    "Open in a Popout Window": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popout Pencerede Aç"
+          }
+        }
+      }
+    },
     "Open in the Default": {
       "extractionState": "manual",
       "localizations": {
@@ -4386,6 +5981,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ile aç"
+          }
+        }
+      }
+    },
+    "Opening a network connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağ bağlantısı kuruyor."
           }
         }
       }
@@ -4555,6 +6161,28 @@
         }
       }
     },
+    "Permission request": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin isteği"
+          }
+        }
+      }
+    },
+    "Permission request (sensitive)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin isteği (hassas)"
+          }
+        }
+      }
+    },
     "Permissions": {
       "extractionState": "manual",
       "localizations": {
@@ -4595,6 +6223,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sabitlenmiş"
+          }
+        }
+      }
+    },
+    "Pipes something downloaded from the internet straight into the shell.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İnternetten indirileni doğrudan shell'e veriyor."
+          }
+        }
+      }
+    },
+    "Plain `SKILL.md` folders are outside the Bumblebee scan's reach.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doğrudan `SKILL.md` klasörleri Bumblebee taramasının kapsamı dışında."
           }
         }
       }
@@ -4786,6 +6436,17 @@
         }
       }
     },
+    "Pull Requests": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pull Request'ler"
+          }
+        }
+      }
+    },
     "Quarantined": {
       "extractionState": "manual",
       "localizations": {
@@ -4881,6 +6542,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Erişilebilir"
+          }
+        }
+      }
+    },
+    "Reaches for SSH keys.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH anahtarlarına erişiyor."
+          }
+        }
+      }
+    },
+    "Reaches for cloud credential paths.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bulut kimlik bilgisi yollarına erişiyor."
+          }
+        }
+      }
+    },
+    "Reaches for git credentials.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Git kimlik bilgilerine erişiyor."
+          }
+        }
+      }
+    },
+    "Reaches into the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keychain'e erişiyor."
           }
         }
       }
@@ -5072,6 +6777,17 @@
         }
       }
     },
+    "Remote MCP servers have no local file; there is nothing to scan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remote MCP sunucularının yerel dosyası yok; taranacak bir şey bulunmuyor."
+          }
+        }
+      }
+    },
     "Remove": {
       "extractionState": "manual",
       "localizations": {
@@ -5079,6 +6795,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Remove from Group": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruptan Çıkar"
+          }
+        }
+      }
+    },
+    "Remove from List": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listeden Kaldır"
           }
         }
       }
@@ -5105,6 +6843,17 @@
         }
       }
     },
+    "Removing %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kaldırılıyor"
+          }
+        }
+      }
+    },
     "Rename Group": {
       "extractionState": "manual",
       "localizations": {
@@ -5116,6 +6865,28 @@
         }
       }
     },
+    "Repair the connection with Repair.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantıyı Repair ile onar."
+          }
+        }
+      }
+    },
+    "Repair the file by hand; Uncoil does not write to broken JSON.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyayı elle düzelt; Uncoil bozuk JSON'a yazmaz."
+          }
+        }
+      }
+    },
     "Repeat interval": {
       "extractionState": "manual",
       "localizations": {
@@ -5123,6 +6894,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tekrar aralığı"
+          }
+        }
+      }
+    },
+    "Repeated every %lld minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dakikada bir tekrarlanır."
           }
         }
       }
@@ -5193,6 +6975,17 @@
         }
       }
     },
+    "Restart the Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu Yeniden Başlat"
+          }
+        }
+      }
+    },
     "Restored": {
       "extractionState": "manual",
       "localizations": {
@@ -5237,6 +7030,28 @@
         }
       }
     },
+    "Review findings were sent to the %@ session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review bulguları %@ oturumuna gönderildi."
+          }
+        }
+      }
+    },
+    "Review it on the Security screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security ekranından incele."
+          }
+        }
+      }
+    },
     "Review requested": {
       "extractionState": "manual",
       "localizations": {
@@ -5244,6 +7059,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Review istendi"
+          }
+        }
+      }
+    },
+    "Review the diff; roll back if you need to.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff'i incele; gerekirse rollback yap."
           }
         }
       }
@@ -5271,6 +7097,17 @@
       }
     },
     "Rollback History": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rollback geçmişi"
+          }
+        }
+      }
+    },
+    "Rollback history": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
@@ -5347,6 +7184,39 @@
         }
       }
     },
+    "Running a command": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut çalıştırıyor"
+          }
+        }
+      }
+    },
+    "Running a tool": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Araç çalıştırıyor"
+          }
+        }
+      }
+    },
+    "Running an MCP tool": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP aracı çalıştırıyor"
+          }
+        }
+      }
+    },
     "Running processes are closed and the recordings cannot be recovered.": {
       "extractionState": "manual",
       "localizations": {
@@ -5380,6 +7250,17 @@
         }
       }
     },
+    "Runs dynamic code through eval.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eval ile dinamik kod çalıştırıyor."
+          }
+        }
+      }
+    },
     "Runtime Mismatch": {
       "extractionState": "manual",
       "localizations": {
@@ -5387,6 +7268,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Runtime Uyumsuzluğu"
+          }
+        }
+      }
+    },
+    "Runtime mismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runtime uyumsuzluğu"
           }
         }
       }
@@ -5721,6 +7613,17 @@
         }
       }
     },
+    "Server-side security is the provider's responsibility.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunucu tarafı güvenliği sağlayıcının sorumluluğunda."
+          }
+        }
+      }
+    },
     "Session": {
       "extractionState": "manual",
       "localizations": {
@@ -5864,13 +7767,24 @@
         }
       }
     },
-    "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent ": {
+    "Settings: %@": {
       "extractionState": "manual",
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shift+Enter (ve Option+Enter) prompt içinde satır atlar; agent'a gönderim "
+            "value": "Ayarlar: %@"
+          }
+        }
+      }
+    },
+    "Several extensions from the same repo share a single bare mirror.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı repodaki birden fazla extension tek bare mirror kullanır."
           }
         }
       }
@@ -5919,6 +7833,17 @@
         }
       }
     },
+    "Show Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumları Göster"
+          }
+        }
+      }
+    },
     "Show Sidebar": {
       "extractionState": "manual",
       "localizations": {
@@ -5948,6 +7873,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finder’da Göster"
+          }
+        }
+      }
+    },
+    "Shown as a number next to the icon.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simgenin yanında sayı olarak görünür."
+          }
+        }
+      }
+    },
+    "Shown next to the icon, marked “%@”.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simgenin yanında “%@” işaretiyle görünür."
           }
         }
       }
@@ -5992,6 +7939,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tarayıcıdan giriş yap; token yalnızca Keychain'de saklanır."
+          }
+        }
+      }
+    },
+    "Signed in": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş yapılmış"
           }
         }
       }
@@ -6062,6 +8020,17 @@
         }
       }
     },
+    "Someone else's symlink": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başkasının symlink'i"
+          }
+        }
+      }
+    },
     "Sound": {
       "extractionState": "manual",
       "localizations": {
@@ -6069,6 +8038,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ses"
+          }
+        }
+      }
+    },
+    "Source repo": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynak deposu"
+          }
+        }
+      }
+    },
+    "Sources are shown separately; they are not merged.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynaklar ayrı gösterilir; birleştirilmez."
           }
         }
       }
@@ -6113,6 +8104,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ile başlat (%lld)"
+          }
+        }
+      }
+    },
+    "Start a fresh agent for the task.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev için taze bir agent başlat."
           }
         }
       }
@@ -6172,6 +8174,28 @@
         }
       }
     },
+    "Starting %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ açılıyor"
+          }
+        }
+      }
+    },
+    "Starting a child process.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt process başlatıyor."
+          }
+        }
+      }
+    },
     "Startup": {
       "extractionState": "manual",
       "localizations": {
@@ -6205,6 +8229,28 @@
         }
       }
     },
+    "Steers toward asking for secrets or sending them out.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secret istemeye veya dışarı göndermeye yönlendiriyor."
+          }
+        }
+      }
+    },
+    "Steers toward reading hidden files.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizli dosyaları okumaya yönlendiriyor."
+          }
+        }
+      }
+    },
     "Stop the Orchestrator": {
       "extractionState": "manual",
       "localizations": {
@@ -6223,6 +8269,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Durdu"
+          }
+        }
+      }
+    },
+    "Stopping %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kapatılıyor"
+          }
+        }
+      }
+    },
+    "Structured Codex ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Structured Codex hazır"
           }
         }
       }
@@ -6315,6 +8383,17 @@
         }
       }
     },
+    "Task added: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev eklendi: %@"
+          }
+        }
+      }
+    },
     "Task blocked": {
       "extractionState": "manual",
       "localizations": {
@@ -6381,6 +8460,39 @@
         }
       }
     },
+    "Tells the agent to bypass policy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'a politika atlatmayı söylüyor."
+          }
+        }
+      }
+    },
+    "Tells the agent to do destructive work without asking.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onay almadan yıkıcı işlem yapmayı söylüyor."
+          }
+        }
+      }
+    },
+    "Tells the agent to turn security checks off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik kontrollerini kapatmayı söylüyor."
+          }
+        }
+      }
+    },
     "Terminal colours apply to newly opened sessions.": {
       "extractionState": "manual",
       "localizations": {
@@ -6425,6 +8537,17 @@
         }
       }
     },
+    "Test notification sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test bildirimi gönderildi."
+          }
+        }
+      }
+    },
     "Tests failing": {
       "extractionState": "manual",
       "localizations": {
@@ -6432,6 +8555,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Testler başarısız"
+          }
+        }
+      }
+    },
+    "Tests, review and worktree are ready; waiting for your word.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testler, review ve çalışma ağacı hazır; onayını bekliyor."
+          }
+        }
+      }
+    },
+    "The %@ HTTP server has no address.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ HTTP sunucusunun adresi yok."
+          }
+        }
+      }
+    },
+    "The %@ STDIO server has no command.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ STDIO sunucusunun komutu yok."
+          }
+        }
+      }
+    },
+    "The %@ edit changed the number of lines.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ düzenlemesi satır sayısını değiştirdi."
           }
         }
       }
@@ -6480,6 +8647,28 @@
         }
       }
     },
+    "The agent's own file; Uncoil never deletes it": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent'ın kendi dosyası; Uncoil silmez"
+          }
+        }
+      }
+    },
+    "The chosen file is not executable: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilen dosya çalıştırılabilir değil: %@"
+          }
+        }
+      }
+    },
     "The code is on your clipboard — pick a browser below and paste it into the page; approving connects it automatically.": {
       "extractionState": "manual",
       "localizations": {
@@ -6487,6 +8676,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kod panoya kopyalandı — aşağıdan bir tarayıcı seçip sayfaya yapıştır; onaylayınca otomatik bağlanır."
+          }
+        }
+      }
+    },
+    "The config changed on disk; the plan was recalculated.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Config dışarıdan değişmiş; plan yeniden hesaplandı."
           }
         }
       }
@@ -6502,6 +8702,28 @@
         }
       }
     },
+    "The edit was not applied; the file is unchanged.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenleme uygulanmadı; dosya olduğu gibi kaldı."
+          }
+        }
+      }
+    },
+    "The edited task block changed in the file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenlenen görev bloğu dosyada değişti."
+          }
+        }
+      }
+    },
     "The file changed inside this task's block. It is your call what happens next.": {
       "extractionState": "manual",
       "localizations": {
@@ -6509,6 +8731,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosya bu görevin bloğunda değişti. Ne yapılacağına sen karar ver."
+          }
+        }
+      }
+    },
+    "The file had changed on disk; the edit was applied to the current content.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya dışarıdan değişmişti; düzenleme güncel içerik üzerinde uygulandı."
+          }
+        }
+      }
+    },
+    "The file had changed on disk; the task was added to the current content.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya dışarıdan değişmişti; görev güncel içeriğe eklendi."
+          }
+        }
+      }
+    },
+    "The file was reloaded; the edit was not applied.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya yeniden yüklendi; düzenleme uygulanmadı."
           }
         }
       }
@@ -6535,6 +8790,50 @@
         }
       }
     },
+    "The package contains binary files.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paket binary dosya içeriyor."
+          }
+        }
+      }
+    },
+    "The plan for %@ is ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ için plan hazır"
+          }
+        }
+      }
+    },
+    "The previous revision is kept; rollback returns to it with one click.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki revision saklanır; rollback tek tıkla oraya döner."
+          }
+        }
+      }
+    },
+    "The prompt is typed in; press Enter in the session to start it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt yazıldı; başlatmak için oturumda Enter'a bas."
+          }
+        }
+      }
+    },
     "The prompt is typed in; you press Enter.": {
       "extractionState": "manual",
       "localizations": {
@@ -6557,6 +8856,17 @@
         }
       }
     },
+    "The review requested changes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review değişiklik istedi."
+          }
+        }
+      }
+    },
     "The running process is closed; the recording cannot be recovered.": {
       "extractionState": "manual",
       "localizations": {
@@ -6564,6 +8874,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çalışan süreç kapatılır; kayıt geri alınamaz."
+          }
+        }
+      }
+    },
+    "The servers in the setup file could not be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup dosyasındaki sunucular okunamadı."
           }
         }
       }
@@ -6579,6 +8900,237 @@
         }
       }
     },
+    "The setup file could not be read.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup dosyası okunamadı."
+          }
+        }
+      }
+    },
+    "The setup file has no MCP server.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup dosyasında MCP server yok."
+          }
+        }
+      }
+    },
+    "The shell command changed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shell komutu değişti: %@"
+          }
+        }
+      }
+    },
+    "The source or repo owner changed: %@ → %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynak veya repo sahibi değişti: %@ → %@"
+          }
+        }
+      }
+    },
+    "The symlink points outside the package.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symlink paket dışına çıkıyor."
+          }
+        }
+      }
+    },
+    "The task cannot be completed — ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev tamamlanamaz — "
+          }
+        }
+      }
+    },
+    "The task could not be added: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev eklenemedi: %@"
+          }
+        }
+      }
+    },
+    "The task is blocked.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev bloklandı."
+          }
+        }
+      }
+    },
+    "The task run failed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev yürütmesi başarısız oldu."
+          }
+        }
+      }
+    },
+    "The task was marked as done.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev tamamlandı olarak işaretlendi."
+          }
+        }
+      }
+    },
+    "The task's source contains a conflict; editing is off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev kaynağı conflict içeriyor; düzenleme kapalı."
+          }
+        }
+      }
+    },
+    "The task's tests are failing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevin testleri başarısız."
+          }
+        }
+      }
+    },
+    "The task's wording changed; which task the session belongs to must be confirmed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev metni değişti; oturumun hangi göreve ait olduğu doğrulanmalı."
+          }
+        }
+      }
+    },
+    "The update added a new executable file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yeni çalıştırılabilir dosya ekledi."
+          }
+        }
+      }
+    },
+    "The update added a new network address: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yeni ağ adresi ekledi: %@"
+          }
+        }
+      }
+    },
+    "The update added a new script.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yeni script ekledi."
+          }
+        }
+      }
+    },
+    "The update added a new tool: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yeni tool ekledi: %@"
+          }
+        }
+      }
+    },
+    "The update added a tool that can write or delete: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yazma/silme yetkili tool ekledi: %@"
+          }
+        }
+      }
+    },
+    "The update added new risky behaviour: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update yeni riskli davranış ekledi: %@"
+          }
+        }
+      }
+    },
+    "The update removed a tool: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update tool kaldırdı: %@"
+          }
+        }
+      }
+    },
+    "The worktree could not be created: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Worktree oluşturulamadı: %@"
+          }
+        }
+      }
+    },
     "Theme and Colours": {
       "extractionState": "manual",
       "localizations": {
@@ -6590,6 +9142,17 @@
         }
       }
     },
+    "There is no implementation session to hand the findings to.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bulguları iletecek bir implementation oturumu yok."
+          }
+        }
+      }
+    },
     "There is no session to grant anything to yet.": {
       "extractionState": "manual",
       "localizations": {
@@ -6597,6 +9160,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "İzin verilecek bir oturum henüz yok."
+          }
+        }
+      }
+    },
+    "They will show up here once an adapter exists.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adapter geldiğinde bu ekranda görünecekler."
           }
         }
       }
@@ -6667,6 +9241,28 @@
         }
       }
     },
+    "Trust Uncoil's own scan for these folders.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu klasörler için Uncoil'in kendi taramasına güven."
+          }
+        }
+      }
+    },
+    "Trust Uncoil's own scan for these servers.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sunucular için Uncoil'in kendi taramasına güven."
+          }
+        }
+      }
+    },
     "Turn done": {
       "extractionState": "manual",
       "localizations": {
@@ -6674,6 +9270,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tur tamamlandı"
+          }
+        }
+      }
+    },
+    "Turn done · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur tamamlandı · %@"
           }
         }
       }
@@ -6722,6 +9329,39 @@
         }
       }
     },
+    "Uncoil changes these files only through plan → apply.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil bu dosyaları yalnızca plan → apply ile değiştirir."
+          }
+        }
+      }
+    },
+    "Uncoil data": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil verisi"
+          }
+        }
+      }
+    },
+    "Uncoil directory": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil dizini"
+          }
+        }
+      }
+    },
     "Uncoil in the foreground": {
       "extractionState": "manual",
       "localizations": {
@@ -6729,6 +9369,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uncoil ön planda"
+          }
+        }
+      }
+    },
+    "Uncoil lock file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil lock dosyası"
           }
         }
       }
@@ -6766,6 +9417,17 @@
         }
       }
     },
+    "Uncoil's entries were removed; other hooks were left alone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil girdileri kaldırıldı; diğer hook'lara dokunulmadı."
+          }
+        }
+      }
+    },
     "Undone": {
       "extractionState": "manual",
       "localizations": {
@@ -6773,6 +9435,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geri alındı"
+          }
+        }
+      }
+    },
+    "Unexpectedly large binary (%lld MB).": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beklenmeyen büyük binary (%lld MB)."
           }
         }
       }
@@ -6854,6 +9527,17 @@
         }
       }
     },
+    "Unsigned binary: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İmzasız binary: %@"
+          }
+        }
+      }
+    },
     "Unsupported configuration": {
       "extractionState": "manual",
       "localizations": {
@@ -6876,6 +9560,17 @@
         }
       }
     },
+    "Update pending": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleme bekleyen"
+          }
+        }
+      }
+    },
     "Updated": {
       "extractionState": "manual",
       "localizations": {
@@ -6883,6 +9578,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Update yapıldı"
+          }
+        }
+      }
+    },
+    "Updated to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sürümüne güncellendi"
           }
         }
       }
@@ -6997,6 +9703,28 @@
         }
       }
     },
+    "Waiting for permission for the task.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev için izin bekleniyor."
+          }
+        }
+      }
+    },
+    "Waiting for permission · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin bekliyor · %@"
+          }
+        }
+      }
+    },
     "Waiting for you": {
       "extractionState": "manual",
       "localizations": {
@@ -7004,6 +9732,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kullanıcı bekliyor"
+          }
+        }
+      }
+    },
+    "Waiting for your answer on the task.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev için kullanıcı yanıtı bekleniyor."
           }
         }
       }
@@ -7052,6 +9791,17 @@
         }
       }
     },
+    "Which agents an extension is enabled for.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir extension'ın hangi agent'larda etkin olduğu."
+          }
+        }
+      }
+    },
     "Which events": {
       "extractionState": "manual",
       "localizations": {
@@ -7074,6 +9824,17 @@
         }
       }
     },
+    "With no record an extension is global; the project record, being the most specific, wins.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıt yoksa extension globaldir; proje kaydı en özel olanı kazanır."
+          }
+        }
+      }
+    },
     "Worktree clean": {
       "extractionState": "manual",
       "localizations": {
@@ -7081,6 +9842,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çalışma ağacı temiz"
+          }
+        }
+      }
+    },
+    "Worktrees": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Worktree'ler"
           }
         }
       }
@@ -7096,6 +9868,39 @@
         }
       }
     },
+    "Writes broadly into the home directory.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home dizinine geniş yazma yapıyor."
+          }
+        }
+      }
+    },
+    "Writes outside the project.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje dışına yazıyor."
+          }
+        }
+      }
+    },
+    "Writing a reply": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıt yazıyor"
+          }
+        }
+      }
+    },
     "You can silence a project completely, or change only its priority and sound.": {
       "extractionState": "manual",
       "localizations": {
@@ -7107,6 +9912,28 @@
         }
       }
     },
+    "You marked it blocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı bloklandı olarak işaretledi"
+          }
+        }
+      }
+    },
+    "You need to sign in to your Codex account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex hesabında oturum açılmalı."
+          }
+        }
+      }
+    },
     "You need to sign in to your Codex account. You can run `codex login` through the terminal fallback.": {
       "extractionState": "manual",
       "localizations": {
@@ -7114,6 +9941,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex hesabında oturum açılması gerekiyor. Terminal fallback üzerinden `codex login` çalıştırabilirsin."
+          }
+        }
+      }
+    },
+    "Your own file": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcının kendi dosyası"
           }
         }
       }
@@ -7140,6 +9978,50 @@
         }
       }
     },
+    "added from a folder: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "klasörden eklendi: %@"
+          }
+        }
+      }
+    },
+    "adopted: %@, backup %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sahiplenildi: %@, yedek %@"
+          }
+        }
+      }
+    },
+    "an Uncoil symlink": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uncoil symlink'i"
+          }
+        }
+      }
+    },
+    "another project · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başka proje · %@"
+          }
+        }
+      }
+    },
     "built-in updater": {
       "extractionState": "manual",
       "localizations": {
@@ -7151,6 +10033,17 @@
         }
       }
     },
+    "bulk adoption: %@, backup %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "toplu sahiplenme: %@, yedek %@"
+          }
+        }
+      }
+    },
     "changed %@": {
       "extractionState": "manual",
       "localizations": {
@@ -7158,6 +10051,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "değişiklik %@"
+          }
+        }
+      }
+    },
+    "claude: new session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "claude: yeni oturum"
+          }
+        }
+      }
+    },
+    "claude: organise sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "claude: oturumları otomatik düzenle"
           }
         }
       }
@@ -7228,6 +10143,50 @@
         }
       }
     },
+    "e.g. --full-auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. --full-auto"
+          }
+        }
+      }
+    },
+    "e.g. --model opus": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. --model opus"
+          }
+        }
+      }
+    },
+    "e.g. Code Reviewer": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. Kod İnceleyici"
+          }
+        }
+      }
+    },
+    "e.g. Work, Personal": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. İş, Kişisel"
+          }
+        }
+      }
+    },
     "e.g. release-checklist": {
       "extractionState": "manual",
       "localizations": {
@@ -7235,6 +10194,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "örn. release-checklist"
+          }
+        }
+      }
+    },
+    "e.g. reviewer": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ör. reviewer"
           }
         }
       }
@@ -7250,6 +10220,17 @@
         }
       }
     },
+    "exit code %d": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "çıkış kodu %d"
+          }
+        }
+      }
+    },
     "failed": {
       "extractionState": "manual",
       "localizations": {
@@ -7257,6 +10238,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "başarısız"
+          }
+        }
+      }
+    },
+    "failed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başarısız: %@"
           }
         }
       }
@@ -7272,6 +10264,50 @@
         }
       }
     },
+    "git could not be run.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git çalıştırılamadı."
+          }
+        }
+      }
+    },
+    "git merge failed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git merge başarısız."
+          }
+        }
+      }
+    },
+    "git worktree add failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git worktree add başarısız"
+          }
+        }
+      }
+    },
+    "global assignment": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "global atama"
+          }
+        }
+      }
+    },
     "heading": {
       "extractionState": "manual",
       "localizations": {
@@ -7279,6 +10315,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "başlık"
+          }
+        }
+      }
+    },
+    "id and command are required.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "id ve komut zorunlu."
           }
         }
       }
@@ -7327,6 +10374,17 @@
         }
       }
     },
+    "new task: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yeni görev: %@"
+          }
+        }
+      }
+    },
     "new: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -7334,6 +10392,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "yeni: %@"
+          }
+        }
+      }
+    },
+    "no project to scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "taranacak proje yok"
+          }
+        }
+      }
+    },
+    "no result from the daemon scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "daemon taramasından sonuç yok"
+          }
+        }
+      }
+    },
+    "not installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kurulu değil"
+          }
+        }
+      }
+    },
+    "not time for the daily baseline": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "günlük baseline zamanı gelmedi"
           }
         }
       }
@@ -7360,6 +10462,17 @@
         }
       }
     },
+    "project assignment": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "proje ataması"
+          }
+        }
+      }
+    },
     "quarantined": {
       "extractionState": "manual",
       "localizations": {
@@ -7367,6 +10480,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "karantinaya alındı"
+          }
+        }
+      }
+    },
+    "quarantined: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "karantinaya alındı: %@"
           }
         }
       }
@@ -7404,6 +10528,28 @@
         }
       }
     },
+    "settings.json updated; its backup is under config-backups/. Restart open Claude sessions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
+          }
+        }
+      }
+    },
+    "source linked: %@ · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kaynak bağlandı: %@ · %@"
+          }
+        }
+      }
+    },
     "stopped": {
       "extractionState": "manual",
       "localizations": {
@@ -7415,6 +10561,72 @@
         }
       }
     },
+    "the agent is not responding": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agent yanıt vermiyor"
+          }
+        }
+      }
+    },
+    "the daily baseline was left to the daemon": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "günlük baseline daemon'a bırakıldı"
+          }
+        }
+      }
+    },
+    "the heartbeat disappeared": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "heartbeat kayboldu"
+          }
+        }
+      }
+    },
+    "the last scan is recent enough": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "son tarama yeterince yeni"
+          }
+        }
+      }
+    },
+    "tracking changed: %@ → %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "takip değişti: %@ → %@"
+          }
+        }
+      }
+    },
+    "uncoil-runtimed is unreachable; sessions run on the in-app PTY.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "uncoil-runtimed erişilemiyor; oturumlar uygulama içi PTY ile çalışıyor."
+          }
+        }
+      }
+    },
     "unknown": {
       "extractionState": "manual",
       "localizations": {
@@ -7422,6 +10634,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "bilinmiyor"
+          }
+        }
+      }
+    },
+    "up to date": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "güncel"
           }
         }
       }
@@ -7444,6 +10667,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "güncelleniyor…"
+          }
+        }
+      }
+    },
+    "went back to the previous revision": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "önceki revizyona dönüldü"
+          }
+        }
+      }
+    },
+    "you asked for it": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kullanıcı isteği"
+          }
+        }
+      }
+    },
+    "you cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kullanıcı vazgeçti"
+          }
+        }
+      }
+    },
+    "~/.claude.json is not valid JSON.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.claude.json geçerli JSON değil."
           }
         }
       }
@@ -7481,6 +10748,50 @@
         }
       }
     },
+    "%@ conflict contains (%lld regions); resolve it first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ çakışma içeriyor (%lld bölge); önce çözülmeli."
+          }
+        }
+      }
+    },
+    "%@ contains a conflict; editing is off. It is re-read automatically once you resolve and save it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ çakışma içeriyor; düzenleme kapalı. Çözüp kaydedince otomatik yeniden okunur."
+          }
+        }
+      }
+    },
+    "%@ installed: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kuruldu: %@"
+          }
+        }
+      }
+    },
+    "%@ — needs approval": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — onay gerekir"
+          }
+        }
+      }
+    },
     "%lld session": {
       "extractionState": "manual",
       "localizations": {
@@ -7499,6 +10810,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "+%lld izin"
+          }
+        }
+      }
+    },
+    "A port this configuration needs%@ is already taken. Stop the other process, or change the port in the command/env and update 'ports' in .uncoil/run.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu yapılandırmanın ihtiyacı olan bir port%@ zaten kullanımda. Diğer süreci durdur ya da komut/env içindeki portu değiştirip .uncoil/run.json'daki 'ports' alanını güncelle."
           }
         }
       }
@@ -7536,6 +10858,17 @@
         }
       }
     },
+    "Asked in a Claude session in this project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu projede Claude oturumunda sorulur"
+          }
+        }
+      }
+    },
     "Assign Existing Session": {
       "extractionState": "manual",
       "localizations": {
@@ -7554,6 +10887,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Denetim kaydı"
+          }
+        }
+      }
+    },
+    "Bumblebee %@: %lld findings": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bumblebee %@: %lld bulgu"
           }
         }
       }
@@ -7587,6 +10931,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tamamla"
+          }
+        }
+      }
+    },
+    "Could not launch the shell: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kabuk başlatılamadı: %@"
           }
         }
       }
@@ -7679,6 +11034,17 @@
         }
       }
     },
+    "Health check: %lld checks · %lld healthy": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health check: %lld kontrol · %lld sağlıklı"
+          }
+        }
+      }
+    },
     "High Risk": {
       "extractionState": "manual",
       "localizations": {
@@ -7719,6 +11085,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosyaları incele"
+          }
+        }
+      }
+    },
+    "Installed agents": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu agent'lar"
           }
         }
       }
@@ -7844,6 +11221,17 @@
         }
       }
     },
+    "Merge task: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevi merge et: %@"
+          }
+        }
+      }
+    },
     "Modified": {
       "extractionState": "manual",
       "localizations": {
@@ -7866,6 +11254,28 @@
         }
       }
     },
+    "Momentary events such as a finished turn are not on the list: there is no state behind. A session that stops waiting drops its reminder too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tur tamamlandı gibi anlık olaylar listede yok: tekrarlanacak bir durum bırakmazlar. Bir oturum beklemekten çıktığında hatırlatması da düşer."
+          }
+        }
+      }
+    },
+    "Most of the file was rewritten: outside the block %lld of %lld lines disappeared.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyanın büyük bölümü yeniden yazıldı: blok dışındaki %lld satırın %lld tanesi kayboldu."
+          }
+        }
+      }
+    },
     "Needs Review": {
       "extractionState": "manual",
       "localizations": {
@@ -7884,6 +11294,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeniden bağlanmalı"
+          }
+        }
+      }
+    },
+    "No configuration '%@' in .uncoil/run.json. Use detect/list first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".uncoil/run.json içinde '%@' yapılandırması yok. Önce detect/list kullan."
+          }
+        }
+      }
+    },
+    "Node modules or the script are missing. Run the package manager install step in %@ and check the script name in package.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Node modülleri ya da script eksik. %@ içinde paket yöneticisinin kurulum adımını çalıştır ve package.json'daki script adını kontrol et."
           }
         }
       }
@@ -7917,6 +11349,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Commit sabitle…"
+          }
+        }
+      }
+    },
+    "Port %lld is already serving before start. Stop whatever owns it (`lsof -ti :%lld`), or change the configured port.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld portu başlamadan önce zaten hizmet veriyor. Sahibini durdur (`lsof -ti :%lld`) ya da yapılandırılmış portu değiştir."
+          }
+        }
+      }
+    },
+    "Prerequisite '%@' failed (%@): ": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' ön koşulu başarısız (%@): "
           }
         }
       }
@@ -8016,6 +11470,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geri yükle"
+          }
+        }
+      }
+    },
+    "Run '%@' failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' koşusu başarısız"
           }
         }
       }
@@ -8141,6 +11606,72 @@
         }
       }
     },
+    "The Docker daemon isn't running. Start Docker Desktop (or colima) and retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker daemon çalışmıyor. Docker Desktop'ı (ya da colima'yı) başlatıp tekrar dene."
+          }
+        }
+      }
+    },
+    "The Xcode scheme in the command doesn't exist. Run `xcodebuild -list` in %@ and fix the -scheme argument in .uncoil/run.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komuttaki Xcode şeması yok. %@ içinde `xcodebuild -list` çalıştır ve .uncoil/run.json'daki -scheme argümanını düzelt."
+          }
+        }
+      }
+    },
+    "The build failed; read the compiler errors in the log, fix the source, and start again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build başarısız; loglardaki derleyici hatalarını oku, kaynağı düzelt ve yeniden başlat."
+          }
+        }
+      }
+    },
+    "The command hit a permission error — check file modes and whether the script is executable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut bir izin hatasına takıldı — dosya izinlerini ve script'in çalıştırılabilir olup olmadığını kontrol et."
+          }
+        }
+      }
+    },
+    "The command isn't on PATH in a login shell. Install the tool or use an absolute path in .uncoil/run.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut login shell'in PATH'inde değil. Aracı kur ya da .uncoil/run.json içinde mutlak yol kullan."
+          }
+        }
+      }
+    },
+    "The depends_on chain of '%@' contains a cycle or an unknown id; fix .uncoil/run.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' için depends_on zinciri döngü ya da bilinmeyen id içeriyor; .uncoil/run.json'ı düzelt."
+          }
+        }
+      }
+    },
     "The interface language changes when Uncoil starts again.": {
       "extractionState": "manual",
       "localizations": {
@@ -8159,6 +11690,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uncoil bir görevi, onarımı ya da gruplama işini agent'a verirken hangi dilde yazsın. Bir sonraki prompt'tan itibaren geçerli."
+          }
+        }
+      }
+    },
+    "The process exited with code %d before becoming ready. Read the log tail for the real error, then repair the configuration.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süreç hazır olmadan %d koduyla çıktı. Gerçek hatayı log kuyruğundan oku, sonra yapılandırmayı onar."
+          }
+        }
+      }
+    },
+    "The process is alive but never matched ready_pattern or opened its declared port. Fix 'ready_pattern'/'ports' in .uncoil/run.json if the server is actually fine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süreç ayakta ama ne ready_pattern eşleşti ne de bildirdiği portu açtı. Sunucu aslında sorunsuzsa .uncoil/run.json içindeki 'ready_pattern'/'ports' alanlarını düzelt."
           }
         }
       }
@@ -8240,6 +11793,28 @@
         }
       }
     },
+    "Waiting for input · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girdi bekliyor · %@"
+          }
+        }
+      }
+    },
+    "Working directory '%@' doesn't exist under the project root; fix 'cwd' in .uncoil/run.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' çalışma dizini proje kökünde yok; .uncoil/run.json içindeki 'cwd' alanını düzelt."
+          }
+        }
+      }
+    },
     "branch %@": {
       "extractionState": "manual",
       "localizations": {
@@ -8247,6 +11822,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "dal %@"
+          }
+        }
+      }
+    },
+    "exit %d": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "çıkış %d"
           }
         }
       }
@@ -8273,6 +11859,28 @@
         }
       }
     },
+    "merged %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "merge edildi: %@"
+          }
+        }
+      }
+    },
+    "refused: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reddedildi: %@"
+          }
+        }
+      }
+    },
     "starting": {
       "extractionState": "manual",
       "localizations": {
@@ -8280,6 +11888,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "başlıyor"
+          }
+        }
+      }
+    },
+    "task: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "görev: %@"
+          }
+        }
+      }
+    },
+    "xcodebuild couldn't match the destination (simulator/device). Run `xcrun simctl list devices available` and set an available -destination.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "xcodebuild destination'ı (simulator/device) eşleştiremedi. `xcrun simctl list devices available` çalıştırıp kullanılabilir bir -destination ayarla."
           }
         }
       }

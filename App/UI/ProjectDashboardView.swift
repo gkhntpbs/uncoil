@@ -196,7 +196,7 @@ struct ProjectDashboardView: View {
 
     private var pullRequestsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Pull Request'ler", count: pullRequests.count)
+            PanelHeading(title: String(localized: "Pull Requests"), count: pullRequests.count)
 
             if isFirstLoad || (prMessage == nil && pullRequests.isEmpty) {
                 // Pull requests come off the network, so this panel is the last
@@ -224,7 +224,7 @@ struct ProjectDashboardView: View {
 
     private var worktreesPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Worktree'ler", count: max(0, worktrees.count - 1))
+            PanelHeading(title: String(localized: "Worktrees"), count: max(0, worktrees.count - 1))
 
             VStack(spacing: 1) {
                 ForEach(worktrees) { worktree in
@@ -399,7 +399,7 @@ struct ProjectDashboardView: View {
     private var historyPanel: some View {
         let records = projectStore.sessionHistory(for: project.id)
         return VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Closed Sessions", count: records.count)
+            PanelHeading(title: String(localized: "Closed Sessions"), count: records.count)
             VStack(spacing: 1) {
                 ForEach(records) { record in
                     SessionCard(record: record) {
