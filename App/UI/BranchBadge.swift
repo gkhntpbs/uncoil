@@ -210,7 +210,9 @@ struct BranchBadge: View {
     /// worktrees open that is the difference between the project and a copy of
     /// it.
     var worktreeName: String?
-    var onSwitched: (() -> Void)?
+    var onSwitched: ((String) -> Void)?
+    /// Set when something is working in this tree; the switch asks first.
+    var busyWarning: String?
     /// Longest name shown before it is cut; a chip is not the place to read a
     /// forty-character branch.
     var maximumCharacters = 22
@@ -220,7 +222,7 @@ struct BranchBadge: View {
             if let repoPath {
                 BranchMenuButton(
                     repoPath: repoPath, current: branch,
-                    onSwitched: { _ in onSwitched?() }
+                    onSwitched: onSwitched, busyWarning: busyWarning
                 ) {
                     chip
                 }

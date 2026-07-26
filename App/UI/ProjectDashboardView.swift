@@ -337,11 +337,14 @@ struct ProjectDashboardView: View {
                     worktreeName: WorktreeNaming.name(
                         forTreeAt: project.rootPath, projectRoot: project.rootPath),
                     // A switch rewrites the whole working tree, so the page's
-                    // git snapshot, worktrees and file list are all stale.
-                    onSwitched: {
+                    // git snapshot, worktrees and file list are all stale — and
+                    // every session running in the project root moves with it.
+                    onSwitched: { branch in
                         pages.invalidate(project.id)
                         Task { await pages.refresh(project: project) }
-                    }
+                        announceSwitch(to: branch)
+                    },
+                    busyWarning: rootBusyWarning
                 )
             }
 
@@ -436,6 +439,32 @@ struct ProjectDashboardView: View {
     }
 
     // MARK: - Git
+
+    /// Sessions running in the project's own checkout — the ones a switch here
+    /// moves. A session in a worktree has its own tree and is untouched.
+    private var rootSessions: [SessionRecord] {
+        WorkingTree.sessions(
+            at: project.rootPath, in: project, from: projectStore.sessions(for: project.id))
+    }
+
+    private var rootBusyWarning: String? {
+        let busy = rootSessions.filter { sessionStore.status(of: $0.id).isWorking }
+        guard !busy.isEmpty else { return nil }
+        if busy.count == 1 {
+            return String(localized: "\(busy[0].displayTitle) is working in this tree")
+        }
+        return String(localized: "\(busy.count) sessions are working in this tree")
+    }
+
+    private func announceSwitch(to branch: String) {
+        let note = String(localized: "The working tree moved to branch \(branch).")
+        for session in rootSessions where sessionStore.status(of: session.id) != .terminated {
+            Task {
+                await TerminalRegistry.shared.submitText(
+                    note, for: session.id, provider: session.provider)
+            }
+        }
+    }
 
     private var gitPanel: some View {
         VStack(alignment: .leading, spacing: 0) {

@@ -11320,6 +11320,17 @@
         }
       }
     },
+    "%lld sessions are working in this tree": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld oturum bu ağaçta çalışıyor"
+          }
+        }
+      }
+    },
     "+%lld permission": {
       "extractionState": "manual",
       "localizations": {

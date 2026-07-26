@@ -18,6 +18,7 @@ struct SessionHeaderBar<Trailing: View>: View {
     @ViewBuilder var trailing: Trailing
 
     @EnvironmentObject private var sessionStore: SessionStore
+    @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var branch: String?
 
@@ -166,28 +167,36 @@ struct SessionHeaderBar<Trailing: View>: View {
         }
     }
 
-    /// Set while the agent is mid-turn, so a checkout asks before rewriting the
-    /// files it is reasoning about.
-    private var busyWarning: String? {
-        switch status {
-        case .thinking, .running, .waitingForPermission, .waitingForInput:
-            return String(localized: "\(record.displayTitle) is working in this tree")
-        case .idle, .completed, .terminated:
-            return nil
-        }
+    /// Every session sharing this working tree — a tree has one checkout, so a
+    /// switch moves all of them, not only the one whose header was clicked.
+    private var treeSessions: [SessionRecord] {
+        WorkingTree.sessions(
+            at: workingDirectory, in: project, from: projectStore.sessions(for: project.id))
     }
 
-    /// A checkout changes the files under the agent, and nothing else would tell
-    /// it: its own view of the repository is whatever it read before. The note
-    /// is typed into the session rather than sent as a turn, so it lands in the
-    /// conversation without starting one.
+    /// Set while anything in this tree is mid-turn, so a checkout asks before
+    /// rewriting the files those agents are reasoning about.
+    private var busyWarning: String? {
+        let busy = treeSessions.filter { sessionStore.status(of: $0.id).isWorking }
+        guard !busy.isEmpty else { return nil }
+        if busy.count == 1 {
+            return String(localized: "\(busy[0].displayTitle) is working in this tree")
+        }
+        return String(localized: "\(busy.count) sessions are working in this tree")
+    }
+
+    /// A checkout changes the files under every agent in the tree, and nothing
+    /// else would tell them: an agent's view of the repository is whatever it
+    /// read before. The note is typed into each session rather than sent as a
+    /// turn, so it lands in the conversation without starting one.
     private func announceSwitch(to branch: String) {
         refreshBranch()
-        guard status != .terminated else { return }
         let note = String(localized: "The working tree moved to branch \(branch).")
-        Task {
-            await TerminalRegistry.shared.submitText(
-                note, for: record.id, provider: record.provider)
+        for session in treeSessions where sessionStore.status(of: session.id) != .terminated {
+            Task {
+                await TerminalRegistry.shared.submitText(
+                    note, for: session.id, provider: session.provider)
+            }
         }
     }
 
