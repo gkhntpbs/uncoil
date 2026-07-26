@@ -203,8 +203,15 @@ struct MainWindow: View {
         // means the sidebar slides whoever asked for it.
         .animation(uncoilAnimation(.easeOut(duration: 0.2)), value: sidebarVisible)
         .background(
-            TitlebarControls(onOpenPalette: { palette.open() })
-                .frame(width: 0, height: 0)
+            // Setup owns the whole window, so the app's own title-bar controls
+            // are taken out of it: a sidebar toggle and a palette button over a
+            // window with neither behind them are just two dead controls.
+            Group {
+                if !onboarding.isPresenting {
+                    TitlebarControls(onOpenPalette: { palette.open() })
+                }
+            }
+            .frame(width: 0, height: 0)
         )
         .background(Theme.bg)
         .sheet(isPresented: $showFolderPicker) {

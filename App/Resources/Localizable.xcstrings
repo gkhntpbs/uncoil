@@ -471,9 +471,6 @@
         }
       }
     },
-    "%@ opens it: projects, sessions, tasks and settings from the keyboard." : {
-
-    },
     "%@ removed; installed extensions were left alone." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1234,6 +1231,9 @@
         }
       }
     },
+    "A profile gets its own config root (CLAUDE_CONFIG_DIR / CODEX_HOME), so a work login and a personal one never mix — and each session picks the profile it runs under." : {
+
+    },
     "A project's notifications stack into one group in Notification Center." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1465,6 +1465,9 @@
         }
       }
     },
+    "Add a %@ profile" : {
+
+    },
     "Add a New Project" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1486,9 +1489,6 @@
           }
         }
       }
-    },
-    "Add a profile" : {
-
     },
     "Add a project" : {
       "extractionState" : "manual",
@@ -1991,6 +1991,9 @@
         }
       }
     },
+    "An agent that finished, or that is stuck waiting for an answer, is worth knowing about without watching the window." : {
+
+    },
     "An agent was assigned to the task" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2014,6 +2017,9 @@
       }
     },
     "An isolated config directory is created for this profile." : {
+
+    },
+    "An isolated profile managed by Uncoil." : {
 
     },
     "An unanswered request times out after this long." : {
@@ -2338,6 +2344,9 @@
         }
       }
     },
+    "At least one modifier (⌘⌥⌃⇧) is required. It applies immediately — no restart, and you can change it later in Settings › General." : {
+
+    },
     "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2519,6 +2528,9 @@
           }
         }
       }
+    },
+    "Be told when an agent needs you" : {
+
     },
     "Before install" : {
       "extractionState" : "manual",
@@ -3055,7 +3067,13 @@
         }
       }
     },
-    "Claude Code reports through hooks. Without them a session is just a terminal: no working / needs-input state, no notifications, no attention list." : {
+    "Claude Code is not installed" : {
+
+    },
+    "Claude Code reports its state through hooks. Without them a Claude session is just a terminal: no working / needs-input state, no notifications, no attention list." : {
+
+    },
+    "Claude Code status hooks" : {
 
     },
     "Claude Code's hooks are what make session states stream into Uncoil live." : {
@@ -3278,6 +3296,9 @@
         }
       }
     },
+    "Codex has no hook system. Uncoil follows its sessions through the CLI itself — its own output and the rollout files it writes — so its global config is left alone." : {
+
+    },
     "Codex is waiting for approval" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3310,6 +3331,9 @@
           }
         }
       }
+    },
+    "Codex needs nothing installed" : {
+
     },
     "Codex running" : {
       "extractionState" : "manual",
@@ -3387,6 +3411,9 @@
           }
         }
       }
+    },
+    "Command palette" : {
+
     },
     "Command Palette" : {
       "extractionState" : "manual",
@@ -4533,9 +4560,6 @@
         }
       }
     },
-    "Each profile gets its own config root, so a work login and a personal one never mix. Credentials stay with the provider's CLI — Uncoil never sees them." : {
-
-    },
     "Edit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4870,6 +4894,9 @@
           }
         }
       }
+    },
+    "Extensions window · “Connect to a GitHub Source…”" : {
+
     },
     "failed" : {
       "extractionState" : "manual",
@@ -5381,6 +5408,9 @@
         }
       }
     },
+    "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Privacy and Permissions › Status Tracking." : {
+
+    },
     "Hourly" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5605,6 +5635,9 @@
         }
       }
     },
+    "Install a skill from a git repository" : {
+
+    },
     "Install Chromium" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5809,9 +5842,6 @@
         }
       }
     },
-    "Keep your accounts apart" : {
-
-    },
     "Keeps watching the agents while Uncoil's window is closed." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5989,9 +6019,6 @@
         }
       }
     },
-    "Live status" : {
-
-    },
     "Loading" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6124,7 +6151,10 @@
         }
       }
     },
-    "macOS only offers its prompt once. Uncoil notifies when an agent needs input, finishes, or asks for a permission." : {
+    "macOS only offers its prompt once. If it was already denied, the button opens System Settings instead." : {
+
+    },
+    "macOS permission" : {
 
     },
     "main copy" : {
@@ -6137,6 +6167,9 @@
           }
         }
       }
+    },
+    "Make default" : {
+
     },
     "Make Default" : {
       "extractionState" : "manual",
@@ -6614,6 +6647,9 @@
           }
         }
       }
+    },
+    "Needs input · permission request · turn finished · error · task done · merge ready · login needed. Each carries its own switch, priority and sound in Settings › Notifications." : {
+
     },
     "Needs relinking" : {
       "extractionState" : "manual",
@@ -7394,6 +7430,9 @@
         }
       }
     },
+    "No setup" : {
+
+    },
     "No source." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7871,6 +7910,9 @@
         }
       }
     },
+    "One shortcut for everything" : {
+
+    },
     "Only Chromium-based browsers installed on this Mac are listed." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7903,6 +7945,9 @@
           }
         }
       }
+    },
+    "Only while Uncoil is in the background" : {
+
     },
     "Open" : {
       "extractionState" : "manual",
@@ -8057,6 +8102,9 @@
           }
         }
       }
+    },
+    "Open the install page" : {
+
     },
     "Open the log file" : {
       "extractionState" : "manual",
@@ -8497,6 +8545,9 @@
     "Point Uncoil at a folder you work in. You can always add more later." : {
 
     },
+    "Point Uncoil at a GitHub repository — a whole repo or a subfolder — pinned to a tag or tracking a branch. The commit it came from is recorded, and one copy in the store is shared by every agent through symlinks, so a skill is never duplicated per agent." : {
+
+    },
     "Port %lld is already serving before start. Stop whatever owns it (`lsof -ti :%lld`), or change the configured port." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8657,9 +8708,6 @@
     "Profile name" : {
 
     },
-    "Profiles for this provider." : {
-
-    },
     "Project → worktree → session" : {
 
     },
@@ -8750,6 +8798,9 @@
           }
         }
       }
+    },
+    "Projects and sessions by fuzzy name · start an agent on a project · tasks from your TODO.md · every settings page · the Extensions window. Arrow keys move, Return opens, Escape closes." : {
+
     },
     "Projects, worktrees and artifacts" : {
 
@@ -9257,6 +9308,9 @@
           }
         }
       }
+    },
+    "Reminders, quiet hours and per-project rules live in Settings › Notifications." : {
+
     },
     "Remote" : {
       "extractionState" : "manual",
@@ -10766,6 +10820,9 @@
         }
       }
     },
+    "Sign in again" : {
+
+    },
     "Sign in with a Browser" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10798,6 +10855,9 @@
           }
         }
       }
+    },
+    "Sign your agents in" : {
+
     },
     "Signed in" : {
       "extractionState" : "manual",
@@ -11136,7 +11196,7 @@
     "Status and the attention list" : {
 
     },
-    "Status hooks" : {
+    "Status tracking" : {
 
     },
     "Status Tracking" : {
@@ -11149,6 +11209,9 @@
           }
         }
       }
+    },
+    "Stay quiet about the session already on screen" : {
+
     },
     "Stay quiet about the session on screen" : {
       "extractionState" : "manual",
@@ -11790,7 +11853,7 @@
         }
       }
     },
-    "The command palette" : {
+    "The command palette is the fastest way through Uncoil: type a few letters and jump straight to what you meant." : {
 
     },
     "The config changed on disk; the plan was recalculated." : {
@@ -11958,6 +12021,9 @@
         }
       }
     },
+    "The interface language applies after a restart. The agent language is the one Uncoil writes in when it hands a task to an agent." : {
+
+    },
     "The interface language changes when Uncoil starts again." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12078,6 +12144,9 @@
           }
         }
       }
+    },
+    "The provider's own config root — the login you already use in the terminal." : {
+
     },
     "The review requested changes." : {
       "extractionState" : "manual",
@@ -12426,6 +12495,9 @@
         }
       }
     },
+    "These come from the CLIs' own config files. Uncoil never sees the credentials themselves — use them as they are, or add an isolated profile below." : {
+
+    },
     "They will show up here once an adapter exists." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12722,6 +12794,9 @@
         }
       }
     },
+    "Uncoil reads the login each CLI already carries. None are signed in yet — the provider's own flow opens in a small terminal, and the credentials stay with the CLI." : {
+
+    },
     "Uncoil reads the task files already in your project and turns them into a board you can hand out from. The file stays yours — only the line that changed is patched, never the whole file." : {
 
     },
@@ -12750,9 +12825,6 @@
         }
       }
     },
-    "Uncoil shows the new language after a restart." : {
-
-    },
     "Uncoil version" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12764,10 +12836,10 @@
         }
       }
     },
-    "uncoil_browser — an isolated browser profile with no access to your own logins. Installing the driver always asks you first." : {
+    "uncoil_browser — driven by the optional agent-browser driver over a Playwright-managed Chromium, in a blank profile with no access to your own logins. Installing that driver always asks you first." : {
 
     },
-    "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard. Off until you turn it on, and it needs its own driver." : {
+    "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard through the optional cua-driver, which also needs macOS's Screen Recording and Accessibility permissions. Off until you turn it on." : {
 
     },
     "uncoil_projects · uncoil_artifacts — the agent reads your projects, cuts a worktree for itself, and leaves files behind that you can open." : {
@@ -13101,6 +13173,9 @@
         }
       }
     },
+    "Updates are staged, never applied blind: a new revision is fetched into a copy, scanned, structure-checked and smoke-tested first, and the active revision only switches once all of that passes. A failed update changes nothing." : {
+
+    },
     "updating…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13302,6 +13377,9 @@
         }
       }
     },
+    "Want a second account?" : {
+
+    },
     "Warning" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13312,6 +13390,9 @@
           }
         }
       }
+    },
+    "We found these logins" : {
+
     },
     "Welcome" : {
 
@@ -13329,6 +13410,12 @@
           }
         }
       }
+    },
+    "What gets announced" : {
+
+    },
+    "What it can reach" : {
+
     },
     "What should happen?" : {
       "extractionState" : "manual",
@@ -13624,6 +13711,9 @@
           }
         }
       }
+    },
+    "Your shortcut" : {
+
     }
   },
   "version" : "1.0"

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Furniture shared by every onboarding step: the frame around the content, the
@@ -36,13 +37,13 @@ struct OnboardingScaffold<Content: View>: View {
                                     .font(Theme.mono(.large))
                                     .foregroundStyle(Theme.textDim)
                                     .multilineTextAlignment(.center)
-                                    .frame(maxWidth: 520)
+                                    .frame(maxWidth: 560)
                             }
                         }
                         .padding(.top, 12)
                     }
                     content
-                        .frame(maxWidth: 620)
+                        .frame(maxWidth: 680)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 32)
@@ -128,6 +129,62 @@ private struct OnboardingBottomBar: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
+    }
+}
+
+// MARK: - Window sizing
+
+/// Gives setup a window worth reading in — and leaves it that way.
+///
+/// The flow shares the main window, and the size that suits a single centred
+/// column of prose is also the size the two-column app wants afterwards, so the
+/// frame is not handed back when setup ends: finishing lands in a window that
+/// already fits the sidebar plus a session beside it. A window the user already
+/// made bigger is left alone.
+struct OnboardingWindowSizer: NSViewRepresentable {
+    /// Wide rather than square: a landscape frame is what the app underneath is
+    /// laid out for.
+    static let size = NSSize(width: 1180, height: 780)
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        let probe = NSView(frame: .zero)
+        context.coordinator.enlarge(from: probe, retries: 5)
+        return probe
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    @MainActor
+    final class Coordinator {
+        private var resized = false
+
+        /// A UI-test launch is placed exactly by `-window-width/-window-height`;
+        /// resizing under it would make those runs non-deterministic.
+        private var isFixedSizeRun: Bool {
+            LaunchConfig.shared.windowWidth != nil && LaunchConfig.shared.windowHeight != nil
+        }
+
+        func enlarge(from probe: NSView, retries: Int) {
+            guard !isFixedSizeRun, !resized else { return }
+            DispatchQueue.main.async { [weak self, weak probe] in
+                guard let self, !resized else { return }
+                guard let host = probe?.window else {
+                    if retries > 0, let probe { self.enlarge(from: probe, retries: retries - 1) }
+                    return
+                }
+                resized = true
+                guard host.frame.width < OnboardingWindowSizer.size.width
+                    || host.frame.height < OnboardingWindowSizer.size.height else { return }
+                var frame = host.frame
+                frame.size = OnboardingWindowSizer.size
+                host.setFrame(frame, display: true, animate: false)
+                host.center()
+                // Keep it: the autosaved frame is what the next launch restores.
+                host.saveFrame(usingName: MainWindowFrame.autosaveName)
+            }
+        }
     }
 }
 

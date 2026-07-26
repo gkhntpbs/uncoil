@@ -50,6 +50,7 @@ struct OnboardingView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
+        .background(OnboardingWindowSizer().frame(width: 0, height: 0))
         .animation(uncoilAnimation(.easeOut(duration: 0.16)), value: step)
         .onAppear {
             // Resuming lands on the first thing still undone; a first run has

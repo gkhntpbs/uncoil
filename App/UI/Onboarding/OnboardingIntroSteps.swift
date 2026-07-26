@@ -33,7 +33,7 @@ struct OnboardingWelcomeStep: View {
                         .font(Theme.mono(.large))
                         .foregroundStyle(Theme.textDim)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 520)
+                        .frame(maxWidth: 560)
                 }
                 .padding(.top, 8)
 
