@@ -38,6 +38,11 @@ final class CapabilityRouter {
     var taskMetadataStores: [UUID: ProjectTaskMetadataStore] = [:]
     var taskResultStores: [UUID: TaskResultStore] = [:]
 
+    /// Run/dev-preview process registry. Defaults to the app-wide one so the
+    /// MCP surface and the Run UI see the same statuses; tests swap in a fresh
+    /// registry with a fake launcher.
+    var runRegistry: RunRegistry = .shared
+
     /// Launches a freshly-created child session's terminal (and delivers its
     /// initial prompt). Injected by the app; nil in tests, where the child
     /// record is still created but no PTY is spawned.
@@ -62,6 +67,11 @@ final class CapabilityRouter {
     // MARK: - Entry point
 
     func handle(_ request: ControlRequest) async -> ControlEnvelope {
+        // Every request is proof the caller's MCP link is alive — that is what
+        // the session header's indicator reports.
+        if let caller = request.caller_session_id, let id = UUID(uuidString: caller) {
+            await MainActor.run { McpStatusStore.shared.recordContact(sessionID: id) }
+        }
         let envelope = await route(request)
         audit.record(
             requestID: request.request_id,
@@ -102,6 +112,7 @@ final class CapabilityRouter {
         case "uncoil_system": return handleSystem(request)
         case "uncoil_browser": return await handleBrowser(request)
         case "uncoil_computer": return await handleComputer(request)
+        case "uncoil_run": return await handleRun(request)
         default:
             return .failure(request, code: .invalidAction, message: "unhandled capability")
         }

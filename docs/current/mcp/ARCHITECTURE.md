@@ -58,7 +58,7 @@ key and is treated as untrusted (see SECURITY.md).
 
 1. **User ↔ host** — the socket's directory perms + euid check keep the surface to the
    local user only. No network listener exists.
-2. **Agent ↔ Uncoil** — the agent may call only the six capabilities, only the actions
+2. **Agent ↔ Uncoil** — the agent may call only the registered capabilities, only the actions
    in the HelpRegistry, and only within its granted capability set. Safe project,
    session, artifact, worktree, and browser automation is enabled by default;
    Computer Use remains explicitly opt-in (PolicyEngine).

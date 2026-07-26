@@ -97,6 +97,34 @@ Session-scoped text artifacts (path-contained, symlink-safe).
 | `dependencies` | — | agent-browser / cua-driver `{installed,path,version,remedy}` |
 | `request_permission` | `grant_key`, `target_session_id?` | creates a pending directional permission request |
 
+## uncoil_run
+
+Project run / dev preview. Configurations live in the repo-owned `.uncoil/run.json`
+(the app keeps no hidden copy); detection only appends suggestions and never
+overwrites user/agent entries. `id` is optional on get/status/logs/start/stop/
+restart — it falls back to the `default: true` configuration (or the only one). All three grants (`runs.read`, `runs.write`,
+`runs.control`) are default-on; `runs.control` is flagged risky in the catalog.
+
+| action | grant | params | returns |
+|---|---|---|---|
+| `list` | runs.read | `project_id?` | configurations + live `state`, `problems`, `total` |
+| `detect` | runs.write | `replace?` | merged configurations, `added` ids |
+| `get` / `status` | runs.read | `id` | definition + state (pid, issue {code,hint}, log_file), `ports_open`, `preview_url` |
+| `logs` | runs.read | `id`, `lines?` | tail under `external_content` (untrusted), `log_file` |
+| `start` | runs.control | `id` | starts depends_on chain, waits for readiness; failure = `INVALID_STATE_TRANSITION` + `details.issue`/`log_tail` |
+| `stop` / `restart` | runs.control | `id` | lifecycle; SIGTERM→SIGKILL(5s) |
+| `update` | runs.write | `configuration` | upsert (marked source=agent, unknown keys preserved; `default: true` moves the default flag) |
+| `set_default` | runs.write | `id` | make one configuration the project default (exclusive) |
+| `history` | runs.read | `id?`, `limit?` | previous runs `{config_id, started_at, ended_at?, exit_code?, log_file}` (last 10/config kept) |
+| `send_input` | runs.control | `id?`, `text`, `raw?` | write to the running process's stdin (e.g. Flutter's `r`) |
+| `remove` | runs.write | `id` | refused while starting/running |
+
+Stable `issue.code` values: `port_in_use`, `command_not_found`,
+`missing_dependencies`, `invalid_scheme`, `invalid_destination`,
+`docker_unavailable`, `build_failed`, `permission_denied`, `exited`, `not_ready`,
+`invalid_cwd`, `dependency_failed`, `dependency_cycle`, `unknown_configuration`,
+`launch_failed`.
+
 ## uncoil_browser / uncoil_computer
 
 Optional, external-CLI-backed. `uncoil_browser` needs `browser.use`

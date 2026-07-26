@@ -37,6 +37,10 @@ final class UncoilApplicationDelegate: NSObject, NSApplicationDelegate {
         RuntimeClient.shared.prepareForApplicationTermination(
             terminateSessions: terminateSessions
         )
+        // Run/dev-preview processes are plain children of the app: they always
+        // stop on quit (daemon-hosted persistence is a deliberate non-goal for
+        // now, see docs/roadmap/RUN_PREVIEW_PLAN.md).
+        RunRegistry.shared.terminateAllForApplicationQuit()
         return .terminateNow
     }
 

@@ -84,7 +84,11 @@ struct SessionHeaderBar<Trailing: View>: View {
             .background(status.color.opacity(0.10), in: Capsule())
             .fixedSize()
 
+            McpStatusBadge(sessionID: record.id)
+
             HStack(spacing: 2) {
+                RunDefaultControl(project: project)
+
                 EditorOpenControl(directory: workingDirectory)
 
                 Rectangle().fill(Theme.border).frame(width: 1, height: 16)
@@ -124,12 +128,14 @@ struct ControlButton: View {
     let iconName: String
     let help: String
     let identifier: String
+    /// Resting icon colour; nil keeps the neutral dim/hover pair.
+    var tint: Color? = nil
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
-            TablerIcon(name: iconName, size: 13, color: hovering ? Theme.text : Theme.textDim)
+            TablerIcon(name: iconName, size: 13, color: tint ?? (hovering ? Theme.text : Theme.textDim))
                 .frame(width: 26, height: 24)
                 .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
         }

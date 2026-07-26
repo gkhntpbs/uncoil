@@ -615,7 +615,9 @@ struct MainWindow: View {
         do {
             try server.start()
             sessionStore.controlServer = server
+            McpStatusStore.shared.setServing(true)
         } catch {
+            McpStatusStore.shared.setServing(false)
             NSLog("Uncoil control plane could not start: \(error)")
         }
         startExtensionSecretServer()

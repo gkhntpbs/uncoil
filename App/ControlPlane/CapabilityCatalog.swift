@@ -8,7 +8,7 @@ import Foundation
 enum CapabilityCatalog {
     /// Capability domains, in display order.
     enum Domain: String, CaseIterable, Identifiable {
-        case projects, worktrees, sessions, tasks, browser, computer, artifacts
+        case projects, worktrees, sessions, tasks, runs, browser, computer, artifacts
         var id: String { rawValue }
 
         var title: String {
@@ -17,6 +17,7 @@ enum CapabilityCatalog {
             case .worktrees: "Worktree"
             case .sessions: "Oturumlar"
             case .tasks: "Görevler"
+            case .runs: "Çalıştırma"
             case .browser: "Tarayıcı"
             case .computer: "Bilgisayar"
             case .artifacts: "Artifact"
@@ -29,6 +30,7 @@ enum CapabilityCatalog {
             case .worktrees: "git-branch"
             case .sessions: "messages"
             case .tasks: "list-check"
+            case .runs: "player-play"
             case .browser: "world"
             case .computer: "device-desktop"
             case .artifacts: "file-text"
@@ -119,6 +121,16 @@ enum CapabilityCatalog {
         .init(key: "computer.foreground_control", domain: .computer,
               label: "Ön planda kontrol",
               detail: "Fare/klavyeni ele alır — tam kontrol.", risky: true),
+
+        .init(key: "runs.read", domain: .runs,
+              label: "Çalıştırmaları oku",
+              detail: "Run yapılandırmalarını, durumlarını ve loglarını okur.", risky: false),
+        .init(key: "runs.write", domain: .runs,
+              label: "Yapılandırmayı düzenle",
+              detail: ".uncoil/run.json içindeki run yapılandırmalarını tespit eder ve düzenler.", risky: false),
+        .init(key: "runs.control", domain: .runs,
+              label: "Başlat / durdur",
+              detail: "Projenin dev sunucularını ve build süreçlerini başlatır, durdurur.", risky: true),
 
         .init(key: "artifacts.read", domain: .artifacts,
               label: "Artifact oku",

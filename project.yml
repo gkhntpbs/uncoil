@@ -27,6 +27,19 @@ targets:
       base:
         PRODUCT_NAME: uncoil-hook
         SKIP_INSTALL: true
+      configs:
+        Debug:
+          # Xcode's automatic signing gives a command-line tool the
+          # profile-bound `com.apple.application-identifier` entitlement. With
+          # an Apple Development certificate and no embedded provisioning
+          # profile, AMFI kills the helper the moment it execs (SIGKILL, exit
+          # 137) — which reaches the agent as "Failed to reconnect to uncoil".
+          # Debug helpers are ad-hoc signed instead; the Developer ID export
+          # re-signs the whole bundle for release, so distribution is unchanged.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+          PROVISIONING_PROFILE_SPECIFIER: ""
 
   uncoil-runtimed:
     type: tool
@@ -38,6 +51,19 @@ targets:
       base:
         PRODUCT_NAME: uncoil-runtimed
         SKIP_INSTALL: true
+      configs:
+        Debug:
+          # Xcode's automatic signing gives a command-line tool the
+          # profile-bound `com.apple.application-identifier` entitlement. With
+          # an Apple Development certificate and no embedded provisioning
+          # profile, AMFI kills the helper the moment it execs (SIGKILL, exit
+          # 137) — which reaches the agent as "Failed to reconnect to uncoil".
+          # Debug helpers are ad-hoc signed instead; the Developer ID export
+          # re-signs the whole bundle for release, so distribution is unchanged.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+          PROVISIONING_PROFILE_SPECIFIER: ""
 
   uncoil-mcp:
     type: tool
@@ -49,6 +75,19 @@ targets:
       base:
         PRODUCT_NAME: uncoil-mcp
         SKIP_INSTALL: true
+      configs:
+        Debug:
+          # Xcode's automatic signing gives a command-line tool the
+          # profile-bound `com.apple.application-identifier` entitlement. With
+          # an Apple Development certificate and no embedded provisioning
+          # profile, AMFI kills the helper the moment it execs (SIGKILL, exit
+          # 137) — which reaches the agent as "Failed to reconnect to uncoil".
+          # Debug helpers are ad-hoc signed instead; the Developer ID export
+          # re-signs the whole bundle for release, so distribution is unchanged.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+          PROVISIONING_PROFILE_SPECIFIER: ""
 
   uncoil-extension:
     type: tool
@@ -60,6 +99,19 @@ targets:
       base:
         PRODUCT_NAME: uncoil-extension
         SKIP_INSTALL: true
+      configs:
+        Debug:
+          # Xcode's automatic signing gives a command-line tool the
+          # profile-bound `com.apple.application-identifier` entitlement. With
+          # an Apple Development certificate and no embedded provisioning
+          # profile, AMFI kills the helper the moment it execs (SIGKILL, exit
+          # 137) — which reaches the agent as "Failed to reconnect to uncoil".
+          # Debug helpers are ad-hoc signed instead; the Developer ID export
+          # re-signs the whole bundle for release, so distribution is unchanged.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+          PROVISIONING_PROFILE_SPECIFIER: ""
 
   Uncoil:
     type: application
@@ -78,24 +130,32 @@ targets:
       - target: uncoil-extension
         embed: false
     postBuildScripts:
-      - name: Embed uncoil-hook helper
+      # No outputFiles on purpose: with them, Xcode decides the phase is up to
+      # date and a helper that was copied while mis-signed stays in the bundle
+      # build after build. Copying four small binaries every time is cheaper
+      # than an MCP server that silently dies at exec.
+      - name: Embed and ad-hoc sign helpers
         script: |
+          set -e
           HELPERS_DIR="$BUILT_PRODUCTS_DIR/$CONTENTS_FOLDER_PATH/Helpers"
           mkdir -p "$HELPERS_DIR"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-hook" "$HELPERS_DIR/uncoil-hook"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-runtimed" "$HELPERS_DIR/uncoil-runtimed"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-mcp" "$HELPERS_DIR/uncoil-mcp"
-          cp "$BUILT_PRODUCTS_DIR/uncoil-extension" "$HELPERS_DIR/uncoil-extension"
+          for helper in uncoil-hook uncoil-runtimed uncoil-mcp uncoil-extension; do
+            cp "$BUILT_PRODUCTS_DIR/$helper" "$HELPERS_DIR/$helper"
+            # A Debug helper signed with an Apple Development certificate carries
+            # the profile-bound com.apple.application-identifier entitlement and
+            # no provisioning profile, so AMFI SIGKILLs it at exec — the agent
+            # reports that as "Failed to reconnect to uncoil: -32000". Ad-hoc is
+            # what a local helper needs; the Developer ID export re-signs the
+            # whole bundle for release, so distribution is untouched.
+            if [ "$CONFIGURATION" = "Debug" ]; then
+              codesign --force --sign - --timestamp=none "$HELPERS_DIR/$helper"
+            fi
+          done
         inputFiles:
           - $(BUILT_PRODUCTS_DIR)/uncoil-hook
           - $(BUILT_PRODUCTS_DIR)/uncoil-runtimed
           - $(BUILT_PRODUCTS_DIR)/uncoil-mcp
           - $(BUILT_PRODUCTS_DIR)/uncoil-extension
-        outputFiles:
-          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-hook
-          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-runtimed
-          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-mcp
-          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/uncoil-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil

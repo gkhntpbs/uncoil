@@ -143,6 +143,8 @@ enum ControlErrorCode: String, Codable, CaseIterable {
     case invalidStateTransition = "INVALID_STATE_TRANSITION"
     case controlPlaneUnavailable = "CONTROL_PLANE_UNAVAILABLE"
     case invalidArgument = "INVALID_ARGUMENT"
+    case ioError = "IO_ERROR"
+    case internalError = "INTERNAL_ERROR"
 }
 
 struct ControlErrorBody: Codable, Equatable {

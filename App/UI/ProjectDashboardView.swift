@@ -13,6 +13,7 @@ struct ProjectDashboardView: View {
     /// last known page immediately instead of re-running a scan, three git
     /// subprocesses and a GitHub request before showing anything.
     @ObservedObject private var pages = ProjectPageStore.shared
+    @ObservedObject private var runs = RunRegistry.shared
     @State private var newWorktreeName = ""
     @State private var worktreeError: String?
     @State private var creatingWorktree = false
@@ -31,6 +32,7 @@ struct ProjectDashboardView: View {
     private enum Area: String, CaseIterable, Identifiable {
         case overview
         case tasks
+        case run
 
         var id: String { rawValue }
 
@@ -38,6 +40,15 @@ struct ProjectDashboardView: View {
             switch self {
             case .overview: "Genel"
             case .tasks: "Tasks"
+            case .run: "Run"
+            }
+        }
+
+        var iconName: String {
+            switch self {
+            case .overview: "layout-dashboard"
+            case .tasks: "checkbox"
+            case .run: "player-play"
             }
         }
     }
@@ -54,6 +65,8 @@ struct ProjectDashboardView: View {
                 header
                 if area == .tasks, hasTaskSources {
                     ProjectTasksView(project: project, selection: $selection)
+                } else if area == .run {
+                    ProjectRunView(project: project)
                 } else {
                     overviewContent
                 }
@@ -83,20 +96,25 @@ struct ProjectDashboardView: View {
     private var areaTabs: some View {
         HStack(spacing: 2) {
             ForEach(Area.allCases) { candidate in
-                if candidate == .overview || hasTaskSources {
+                if candidate != .tasks || hasTaskSources {
                     let isOn = area == candidate
                     Button {
                         area = candidate
                     } label: {
                         HStack(spacing: 6) {
                             TablerIcon(
-                                name: candidate == .overview ? "layout-dashboard" : "checkbox",
+                                name: candidate.iconName,
                                 size: 12,
                                 color: isOn ? Theme.text : Theme.textFaint
                             )
                             Text(candidate.title)
                                 .font(Theme.mono(11.5, isOn ? .semibold : .regular))
                                 .foregroundStyle(isOn ? Theme.text : Theme.textDim)
+                            if candidate == .run, runs.runningCount(projectID: project.id) > 0 {
+                                Circle()
+                                    .fill(Theme.ok)
+                                    .frame(width: 6, height: 6)
+                            }
                             if candidate == .tasks, openTaskCount > 0 {
                                 Text("\(openTaskCount)")
                                     .font(Theme.mono(9, .semibold))

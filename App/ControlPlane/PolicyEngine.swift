@@ -36,6 +36,10 @@ enum PolicyEngine {
         // Reading and editing the project's own TODO.md is ordinary work; the
         // destructive and orchestrating halves are opt-in below.
         "tasks.read", "tasks.write",
+        // Detecting, editing and driving the project's own run configurations
+        // is the core "verify my change actually launches" loop, so all three
+        // are default-on; runs.control is still flagged risky in the catalog.
+        "runs.read", "runs.write", "runs.control",
     ]
 
     /// Opt-in grants that are OFF by default; a session must explicitly list

@@ -93,15 +93,20 @@ protocol ShiftEnterCapableTerminal: AnyObject {
 /// after the view is in a window; SwiftTerm itself handles later window moves
 /// (pop-out drag) and falls back to CoreGraphics if the pipeline can't init,
 /// so a throw here just means we stay on the CPU path.
+///
+/// Off unless asked for. Enabling it inserts an `MTKView` over the terminal and
+/// hides SwiftTerm's caret view, and a session that renders but does not take
+/// keystrokes is worse than a session drawn on the CPU. A renderer is an
+/// optimisation; typing is the feature. Turn it on with
+/// `defaults write com.gkhntpbs.uncoil TerminalMetalEnabled -bool YES`.
 @MainActor
 enum TerminalMetal {
-    /// Escape hatch: `defaults write com.gkhntpbs.uncoil TerminalMetalDisabled -bool YES`.
-    static var isDisabled: Bool {
-        UserDefaults.standard.bool(forKey: "TerminalMetalDisabled")
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "TerminalMetalEnabled")
     }
 
     static func enableIfPossible(_ view: TerminalView) {
-        guard !isDisabled, !view.isUsingMetalRenderer else { return }
+        guard isEnabled, !view.isUsingMetalRenderer else { return }
         try? view.setUseMetal(true)
     }
 }
