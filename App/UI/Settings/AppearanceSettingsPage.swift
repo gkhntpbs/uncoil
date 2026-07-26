@@ -22,21 +22,21 @@ struct AppearanceSettingsPage: View {
             }
 
             Section("Interface") {
-                colorRow("Arka plan", \.bg)
-                colorRow("Panel", \.panel)
-                colorRow("Border", \.border)
-                colorRow("Text", \.text)
-                colorRow("Dim text", \.textDim)
+                colorRow(String(localized: "Background"), \.bg)
+                colorRow(String(localized: "Panel"), \.panel)
+                colorRow(String(localized: "Border"), \.border)
+                colorRow(String(localized: "Text"), \.text)
+                colorRow(String(localized: "Dim text"), \.textDim)
             }
 
             Section("Providers") {
-                colorRow("Claude rengi", \.claude)
-                colorRow("Codex rengi", \.codex)
+                colorRow(String(localized: "Claude colour"), \.claude)
+                colorRow(String(localized: "Codex colour"), \.codex)
             }
 
             Section {
-                colorRow("Terminal background", \.terminalBg)
-                colorRow("Terminal metni", \.terminalFg)
+                colorRow(String(localized: "Terminal background"), \.terminalBg)
+                colorRow(String(localized: "Terminal text"), \.terminalFg)
             } header: {
                 Text("Terminal")
             } footer: {

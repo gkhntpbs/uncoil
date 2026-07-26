@@ -320,13 +320,13 @@ struct NotificationRemindersPage: View {
     }
 
     private var summary: String {
-        guard reminders.enabled else { return "Reminders are off." }
-        let every = "Every \(reminders.intervalMinutes) minutes"
+        guard reminders.enabled else { return String(localized: "Reminders are off.") }
+        let every = String(localized: "Every \(reminders.intervalMinutes) minutes")
         guard reminders.maxCount > 0 else {
-            return "Repeated every \(every) while the state lasts."
+            return String(localized: "Repeated every \(every) while the state lasts.")
         }
         let total = reminders.maxCount * reminders.intervalMinutes
-        return "\(every), up to \(reminders.maxCount) times — for about \(total) minutes."
+        return String(localized: "\(every), up to \(reminders.maxCount) times — for about \(total) minutes.")
     }
 
     private func bind<Value>(
@@ -393,13 +393,13 @@ struct NotificationQuietHoursPage: View {
     }
 
     private var summary: String {
-        guard quiet.enabled else { return "Quiet hours off." }
+        guard quiet.enabled else { return String(localized: "Quiet hours off.") }
         let start = QuietHours.label(forMinute: quiet.startMinute)
         let end = QuietHours.label(forMinute: quiet.endMinute)
         let exception = quiet.allowHighPriority
-            ? " High-priority events are still announced during this window."
-            : " No notification is delivered during this window."
-        return "Quiet between \(start) and \(end).\(exception)"
+            ? String(localized: " High-priority events are still announced during this window.")
+            : String(localized: " No notification is delivered during this window.")
+        return String(localized: "Quiet between \(start) and \(end).\(exception)")
     }
 
     private func bind<Value>(

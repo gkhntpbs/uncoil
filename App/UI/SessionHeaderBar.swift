@@ -114,7 +114,7 @@ struct SessionHeaderBar<Trailing: View>: View {
 
                 ControlButton(
                     iconName: "refresh",
-                    help: "Restart the session" +
+                    help: String(localized: "Restart the session") +
                         (record.providerSessionID != nil ? " (continues with its history)" : ""),
                     identifier: "session.restartButton",
                     action: onRestart

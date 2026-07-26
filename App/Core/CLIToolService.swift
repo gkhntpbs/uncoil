@@ -10,8 +10,8 @@ enum CLIToolService {
 
         var label: String {
             switch self {
-            case .homebrew: String(localized: "Homebrew")
-            case .npm: String(localized: "npm")
+            case .homebrew: "Homebrew"
+            case .npm: "npm"
             case .nativeInstaller: String(localized: "built-in updater")
             case .unknown: String(localized: "unknown")
             }

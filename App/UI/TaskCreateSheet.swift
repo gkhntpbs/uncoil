@@ -65,7 +65,7 @@ struct TaskCreateSheet: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 if documents.count > 1 {
-                    field("File") {
+                    field(String(localized: "File")) {
                         Picker("", selection: Binding(
                             get: { document?.path },
                             set: { path in
@@ -84,7 +84,7 @@ struct TaskCreateSheet: View {
                     }
                 }
 
-                field("Title") {
+                field(String(localized: "Title")) {
                     Picker("", selection: $headingPath) {
                         Text("End of file (no heading)").tag([String]())
                         ForEach(headingChoices, id: \.self) { chain in
@@ -95,7 +95,7 @@ struct TaskCreateSheet: View {
                     .accessibilityIdentifier("tasks.create.heading")
                 }
 
-                field("Task") {
+                field(String(localized: "Task")) {
                     TextField("What should happen?", text: $text)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(.body))

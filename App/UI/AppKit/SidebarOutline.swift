@@ -680,7 +680,7 @@ struct SidebarOutline: NSViewRepresentable {
                 else { return nil }
                 add(
                     to: menu,
-                    title: project.isPinned == true ? "Unpin" : "Pin"
+                    title: project.isPinned == true ? String(localized: "Unpin") : String(localized: "Pin")
                 ) { environment.projectStore.toggleProjectPin(id) }
                 add(to: menu, title: String(localized: "Move Up")) {
                     environment.projectStore.nudgeProject(id, by: -1)
@@ -709,7 +709,7 @@ struct SidebarOutline: NSViewRepresentable {
             case .group(let id):
                 guard let group = environment.projectStore.sessionGroups
                     .first(where: { $0.id == id }) else { return nil }
-                add(to: menu, title: "Rename") {
+                add(to: menu, title: String(localized: "Rename")) {
                     environment.actions.renameGroup(group)
                 }
                 add(to: menu, title: String(localized: "Delete Group")) {
@@ -721,7 +721,7 @@ struct SidebarOutline: NSViewRepresentable {
                 else { return nil }
                 add(
                     to: menu,
-                    title: record.isPinned == true ? "Unpin" : "Pin"
+                    title: record.isPinned == true ? String(localized: "Unpin") : String(localized: "Pin")
                 ) { environment.projectStore.togglePin(id) }
                 // Ordering a session should not require a steady hand: the same
                 // nudges projects have, applied among its siblings.

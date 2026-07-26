@@ -32,7 +32,7 @@ struct SkillCreateSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                field("Name") {
+                field(String(localized: "Name")) {
                     TextField("e.g. release-checklist", text: $draft.name)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(.body))
@@ -44,14 +44,14 @@ struct SkillCreateSheet: View {
                         .foregroundStyle(slug.isEmpty ? Theme.danger : Theme.textFaint)
                 }
 
-                field("Description") {
+                field(String(localized: "Description")) {
                     TextField("When should the agent use this?", text: $draft.summary)
                         .textFieldStyle(.roundedBorder)
                         .font(Theme.mono(.body))
                         .accessibilityIdentifier("extensions.skills.create.summary")
                 }
 
-                field("Contents") {
+                field(String(localized: "Contents")) {
                     TextEditor(text: $draft.body)
                         .font(Theme.mono(.body))
                         .frame(height: 150)
@@ -71,7 +71,7 @@ struct SkillCreateSheet: View {
                         .font(Theme.mono(.small))
                         .foregroundStyle(Theme.warn)
                 } else {
-                    field("Ata") {
+                    field(String(localized: "Assign")) {
                         HStack(spacing: 10) {
                             ForEach(registry.installedAgents) { agent in
                                 Toggle(agent.displayName, isOn: Binding(

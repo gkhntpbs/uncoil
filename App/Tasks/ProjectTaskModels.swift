@@ -381,17 +381,17 @@ struct TaskBoardColumnMapping: Identifiable, Equatable, Codable {
             checkboxMark: nil, sortIndex: 1
         ),
         .init(
-            id: "needsUser", title: "Waiting",
+            id: "needsUser", title: String(localized: "Waiting"),
             executionStates: [.waitingForPermission, .waitingForUser, .reviewRequested],
             checkboxMark: nil, sortIndex: 2
         ),
         .init(
-            id: "problems", title: "Sorunlu",
+            id: "problems", title: String(localized: "Problem"),
             executionStates: [.testsFailing, .blocked, .failed],
             checkboxMark: nil, sortIndex: 3
         ),
         .init(
-            id: "done", title: "Done",
+            id: "done", title: String(localized: "Done"),
             executionStates: [.completed], checkboxMark: .done, sortIndex: 4
         ),
     ]

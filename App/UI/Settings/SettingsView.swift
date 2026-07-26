@@ -41,14 +41,14 @@ struct SettingsView: View {
 
         var title: String {
             switch self {
-            case .general: "General"
-            case .agents: "Agents"
-            case .notifications: "Notifications"
-            case .menuBar: "Menu Bar"
-            case .appearance: "Appearance"
-            case .privacy: "Privacy and Permissions"
-            case .integrations: "Integrations"
-            case .about: "About"
+            case .general: String(localized: "General")
+            case .agents: String(localized: "Agents")
+            case .notifications: String(localized: "Notifications")
+            case .menuBar: String(localized: "Menu Bar")
+            case .appearance: String(localized: "Appearance")
+            case .privacy: String(localized: "Privacy and Permissions")
+            case .integrations: String(localized: "Integrations")
+            case .about: String(localized: "About")
             }
         }
 
@@ -96,25 +96,25 @@ struct SettingsView: View {
 
         var title: String {
             switch self {
-            case .general: "General"
-            case .accounts: "Accounts"
-            case .cliTools: "CLI Tools"
-            case .launchArgs: "Run Parameters"
-            case .agentBehavior: "Mode and Keyboard"
-            case .presets: "Session Presets"
-            case .notifications: "General"
-            case .notificationEvents: "Events"
-            case .reminders: "Reminders"
-            case .quietHours: "Quiet Hours"
-            case .projectNotifications: "Per Project"
-            case .menuBar: "Menu Bar"
-            case .theme: "Theme and Colours"
-            case .permissions: "Permissions"
-            case .privacyData: "Data and Transcripts"
-            case .hooks: "Status Tracking"
+            case .general: String(localized: "General")
+            case .accounts: String(localized: "Accounts")
+            case .cliTools: String(localized: "CLI Tools")
+            case .launchArgs: String(localized: "Run Parameters")
+            case .agentBehavior: String(localized: "Mode and Keyboard")
+            case .presets: String(localized: "Session Presets")
+            case .notifications: String(localized: "General")
+            case .notificationEvents: String(localized: "Events")
+            case .reminders: String(localized: "Reminders")
+            case .quietHours: String(localized: "Quiet Hours")
+            case .projectNotifications: String(localized: "Per Project")
+            case .menuBar: String(localized: "Menu Bar")
+            case .theme: String(localized: "Theme and Colours")
+            case .permissions: String(localized: "Permissions")
+            case .privacyData: String(localized: "Data and Transcripts")
+            case .hooks: String(localized: "Status Tracking")
             case .github: "GitHub"
-            case .drivers: "Drivers"
-            case .about: "About"
+            case .drivers: String(localized: "Drivers")
+            case .about: String(localized: "About")
             }
         }
 

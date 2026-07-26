@@ -17,15 +17,15 @@ struct ExtensionsView: View {
 
         var title: String {
             switch self {
-            case .overview: "Overview"
-            case .agents: "Agents"
-            case .skills: "Skills"
-            case .mcpServers: "MCP Servers"
-            case .assignments: "Assignments"
-            case .sources: "Sources"
-            case .security: "Security"
-            case .updates: "Updates"
-            case .activity: "Activity"
+            case .overview: String(localized: "Overview")
+            case .agents: String(localized: "Agents")
+            case .skills: String(localized: "Skills")
+            case .mcpServers: String(localized: "MCP Servers")
+            case .assignments: String(localized: "Assignments")
+            case .sources: String(localized: "Sources")
+            case .security: String(localized: "Security")
+            case .updates: String(localized: "Updates")
+            case .activity: String(localized: "Activity")
             }
         }
 
@@ -580,12 +580,12 @@ private struct SourceBadge: View {
     /// would call an adopted extension something it is not.
     private var label: String {
         switch source {
-        case .managedGitHub: "Managed"
-        case .bundled: "Bundled"
-        case .adopted: "Adopted"
-        case .local: "Local"
-        case .detectedExternal: "Unmanaged"
-        case .remoteMCP: "Remote"
+        case .managedGitHub: String(localized: "Managed")
+        case .bundled: String(localized: "Bundled")
+        case .adopted: String(localized: "Adopted")
+        case .local: String(localized: "Local")
+        case .detectedExternal: String(localized: "Unmanaged")
+        case .remoteMCP: String(localized: "Remote")
         }
     }
 
@@ -2363,8 +2363,8 @@ private struct SourceRow: View {
     enum RetrackKind: String, Identifiable {
         case commit, branch
         var id: String { rawValue }
-        var title: String { self == .commit ? "Commit'e sabitle" : "Switch branch or tag" }
-        var placeholder: String { self == .commit ? "commit SHA" : "branch or tag name" }
+        var title: String { self == .commit ? String(localized: "Pin to a commit") : String(localized: "Switch branch or tag") }
+        var placeholder: String { self == .commit ? String(localized: "commit SHA") : String(localized: "branch or tag name") }
     }
 
     private var packages: [ExtensionPackage] {
@@ -2526,7 +2526,7 @@ private struct SecurityScreen: View {
             )
 
             SectionCard(
-                title: "Tarama",
+                title: String(localized: "Scan"),
                 detail: scans.isInstalled
                     ? String(localized: "Bumblebee found; scans are run from here.")
                     : String(localized: "Bumblebee is not installed. Installing it happens with your approval; Uncoil keeps running its own scan.")
@@ -2582,7 +2582,7 @@ private struct SecurityScreen: View {
             }
 
             SectionCard(
-                title: "Kapsam",
+                title: String(localized: "Coverage"),
                 detail: String(localized: "A clean result does not mean the extension is entirely safe.")
             ) {
                 KeyValueRow(
@@ -2664,7 +2664,7 @@ private struct SecurityScreen: View {
             let quarantined = registry.packages.filter { $0.state == .quarantined }
             if !quarantined.isEmpty {
                 SectionCard(
-                    title: "Karantina",
+                    title: String(localized: "Quarantine"),
                     detail: String(localized: "No file was deleted; the launcher refuses to start.")
                 ) {
                     ForEach(quarantined) { package in
@@ -3006,7 +3006,7 @@ private struct ActivityScreen: View {
 
     var body: some View {
         SectionCard(
-            title: "Etkinlik",
+            title: String(localized: "Activity"),
             detail: String(localized: "Append-only record; survives even if the registry is corrupted.")
         ) {
             if registry.auditEvents.isEmpty {

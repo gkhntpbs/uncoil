@@ -133,7 +133,7 @@ enum TaskBoardMapping {
         // Tasks with no heading at all still need somewhere to live.
         if document.tasks.contains(where: { $0.headingPath.isEmpty }) {
             columns.append(Column(
-                heading: "", lane: .custom, title: "Untitled", sortIndex: Lane.custom.sortIndex
+                heading: "", lane: .custom, title: String(localized: "Untitled"), sortIndex: Lane.custom.sortIndex
             ))
         }
         return sort(columns, order: columnOrder)
@@ -218,7 +218,7 @@ struct ProjectTaskViewPreferences: Equatable, Codable {
             switch self {
             case .document: String(localized: "Document")
             case .list: String(localized: "List")
-            case .kanban: String(localized: "Kanban")
+            case .kanban: "Kanban"
             case .sessions: String(localized: "Sessions")
             }
         }

@@ -63,7 +63,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
         )
         let deny = UNNotificationAction(
             identifier: PermissionNotificationPolicy.denyAction,
-            title: "Deny",
+            title: String(localized: "Deny"),
             options: []
         )
         let open = UNNotificationAction(

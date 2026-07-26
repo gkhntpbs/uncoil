@@ -105,7 +105,7 @@ struct SessionDetailView: View {
             record: record,
             project: project,
             leadingIcon: "chevron.left",
-            leadingHelp: "Back to the project dashboard",
+            leadingHelp: String(localized: "Back to the project dashboard"),
             onLeading: { selection = .project(project.id) },
             onRestart: { restart() }
         ) {
@@ -118,8 +118,8 @@ struct SessionDetailView: View {
                     ? "layout-sidebar-right-collapse"
                     : "layout-sidebar-right-expand",
                 help: showChangesPanel
-                    ? "Close the changes panel"
-                    : "Open the changes panel",
+                    ? String(localized: "Close the changes panel")
+                    : String(localized: "Open the changes panel"),
                 identifier: "session.changesButton",
                 tint: showChangesPanel ? Theme.highlight : nil
             ) {
@@ -386,7 +386,7 @@ struct SplitSessionPane: View {
                 record: record,
                 project: project,
                 leadingIcon: "xmark",
-                leadingHelp: "Close the pane",
+                leadingHelp: String(localized: "Close the pane"),
                 onLeading: onClose,
                 onRestart: { restart() },
                 trailing: { EmptyView() }

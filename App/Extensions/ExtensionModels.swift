@@ -191,8 +191,8 @@ enum MCPTransport: String, Codable, Equatable, CaseIterable {
 
     var label: String {
         switch self {
-        case .stdio: String(localized: "STDIO")
-        case .http: String(localized: "HTTP")
+        case .stdio: "STDIO"
+        case .http: "HTTP"
         }
     }
 }

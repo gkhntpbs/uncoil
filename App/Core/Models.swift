@@ -463,7 +463,7 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
         case .zed: "Zed"
         case .cursor: "Cursor"
         case .sublime: "Sublime Text"
-        case .textedit: String(localized: "TextEdit")
+        case .textedit: "TextEdit"
         case .xcode: "Xcode"
         }
     }

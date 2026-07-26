@@ -38,9 +38,9 @@ struct ProjectDashboardView: View {
 
         var title: String {
             switch self {
-            case .overview: "General"
-            case .tasks: "Tasks"
-            case .run: "Run"
+            case .overview: String(localized: "General")
+            case .tasks: String(localized: "Tasks")
+            case .run: String(localized: "Run")
             }
         }
 
@@ -358,7 +358,7 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 PanelHeading(
-                    title: "Sessions",
+                    title: String(localized: "Sessions"),
                     count: projectStore.activeSessions(for: project.id).count
                 )
                 Spacer()
@@ -506,7 +506,7 @@ struct ProjectDashboardView: View {
 
     private var filesPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: "Files", count: nil)
+            PanelHeading(title: String(localized: "Files"), count: nil)
             FileTreeView(rootURL: project.rootURL)
                 .padding(6)
         }

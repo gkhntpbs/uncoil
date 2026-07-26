@@ -110,6 +110,9 @@ struct UncoilApp: App {
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
                 .environmentObject(theme)
+                // Settings sits outside ThemedWindow on purpose, so it needs the
+                // scroller sweep of its own.
+                .sweepScrollers()
                 .preferredColorScheme(theme.palette.isLight ? .light : .dark)
         }
         .windowStyle(.hiddenTitleBar)

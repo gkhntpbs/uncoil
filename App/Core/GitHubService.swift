@@ -222,14 +222,14 @@ enum BrowserApp: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .safari: String(localized: "Safari")
+        case .safari: "Safari"
         case .chrome: "Chrome"
-        case .arc: String(localized: "Arc")
-        case .firefox: String(localized: "Firefox")
-        case .edge: String(localized: "Edge")
-        case .brave: String(localized: "Brave")
-        case .opera: String(localized: "Opera")
-        case .vivaldi: String(localized: "Vivaldi")
+        case .arc: "Arc"
+        case .firefox: "Firefox"
+        case .edge: "Edge"
+        case .brave: "Brave"
+        case .opera: "Opera"
+        case .vivaldi: "Vivaldi"
         case .tor: String(localized: "Tor Browser")
         }
     }

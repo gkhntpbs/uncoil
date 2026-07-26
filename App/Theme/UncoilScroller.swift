@@ -77,3 +77,104 @@ extension View {
         background(ScrollerStyler())
     }
 }
+
+/// Restyles every `NSScrollView` in a window, however it was created.
+///
+/// `ScrollerStyler` only reaches the scroll view it is planted inside, and a
+/// probe placed in a `Form` or a `List` row may never be laid out — which is
+/// how the settings pages and several panels kept AppKit's own scrollers
+/// despite carrying the modifier. Sweeping the window's view tree does not care
+/// where a scroll view came from: SwiftUI, an `NSViewRepresentable`, or a
+/// `TextEditor`'s private hosting view.
+///
+/// AppKit rebuilds scrollers when the scroller-style preference changes and when
+/// SwiftUI recreates a body, so one sweep at launch is not enough; this re-runs
+/// on the window events that follow those rebuilds.
+@MainActor
+enum WindowScrollerSweep {
+    static func apply(in window: NSWindow?) {
+        guard let root = window?.contentView else { return }
+        walk(root)
+    }
+
+    private static func walk(_ view: NSView) {
+        if let scrollView = view as? NSScrollView {
+            ScrollerStyler.style(scrollView)
+        }
+        for subview in view.subviews { walk(subview) }
+    }
+}
+
+private struct ScrollerSweeper: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let probe = NSView()
+        context.coordinator.observe(probe)
+        return probe
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.sweepSoon(nsView.window)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    @MainActor
+    final class Coordinator {
+        private var observers: [NSObjectProtocol] = []
+        private var scheduled = false
+
+        func observe(_ probe: NSView) {
+            // The window is not attached yet at make time, and content arrives
+            // lazily after that, so the first sweeps are staggered rather than
+            // done once.
+            for delay in [0.0, 0.15, 0.5, 1.5] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak probe] in
+                    WindowScrollerSweep.apply(in: probe?.window)
+                }
+            }
+            let center = NotificationCenter.default
+            for name: Notification.Name in [
+                NSWindow.didBecomeKeyNotification,
+                NSWindow.didResizeNotification,
+                NSWindow.didChangeScreenNotification,
+            ] {
+                observers.append(center.addObserver(
+                    forName: name, object: nil, queue: .main
+                ) { [weak probe] _ in
+                    MainActor.assumeIsolated { WindowScrollerSweep.apply(in: probe?.window) }
+                })
+            }
+            // Scroll bars appearing and disappearing is a system-wide setting;
+            // when it flips, AppKit hands every scroll view a fresh scroller.
+            observers.append(center.addObserver(
+                forName: NSScroller.preferredScrollerStyleDidChangeNotification,
+                object: nil, queue: .main
+            ) { [weak probe] _ in
+                MainActor.assumeIsolated { WindowScrollerSweep.apply(in: probe?.window) }
+            })
+        }
+
+        /// Coalesces the sweeps a burst of view updates would otherwise cause.
+        func sweepSoon(_ window: NSWindow?) {
+            guard !scheduled else { return }
+            scheduled = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self, weak window] in
+                self?.scheduled = false
+                WindowScrollerSweep.apply(in: window)
+            }
+        }
+
+        deinit {
+            let center = NotificationCenter.default
+            for observer in observers { center.removeObserver(observer) }
+        }
+    }
+}
+
+extension View {
+    /// Keeps every scroll view in this window on Uncoil's scroller, including
+    /// the ones no call site can reach.
+    func sweepScrollers() -> some View {
+        background(ScrollerSweeper().frame(width: 0, height: 0))
+    }
+}

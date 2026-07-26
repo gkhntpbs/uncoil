@@ -21,5 +21,6 @@ struct ThemedWindow<Content: View>: View {
             .id(theme.palette)
             .preferredColorScheme(theme.palette.isLight ? .light : .dark)
             .environmentObject(theme)
+            .sweepScrollers()
     }
 }

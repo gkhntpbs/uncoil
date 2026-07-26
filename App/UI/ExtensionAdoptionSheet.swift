@@ -164,9 +164,9 @@ struct RepositoryLinkSheet: View {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .branch: "Branch"
-            case .tag: "Tag"
-            case .commit: "Commit"
+            case .branch: String(localized: "Branch")
+            case .tag: String(localized: "Tag")
+            case .commit: String(localized: "Commit")
             }
         }
     }

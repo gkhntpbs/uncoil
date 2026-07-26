@@ -71,11 +71,11 @@ struct SidebarView: View {
             }
 
             HStack(spacing: 2) {
-                RailButton(iconName: "settings", help: "Settings") {
+                RailButton(iconName: "settings", help: String(localized: "Settings")) {
                     openWindow(id: "settings")
                 }
                 .accessibilityIdentifier("sidebar.settingsButton")
-                RailButton(iconName: "plus", help: "Add a project") {
+                RailButton(iconName: "plus", help: String(localized: "Add a project")) {
                     showFolderPicker = true
                 }
                 .accessibilityIdentifier("sidebar.addProjectButton")
@@ -90,7 +90,7 @@ struct SidebarView: View {
                 Spacer()
                 RailButton(
                     iconName: "list-check",
-                    help: isMultiSelecting ? "Turn off multiple selection" : "Select several",
+                    help: isMultiSelecting ? String(localized: "Turn off multiple selection") : String(localized: "Select several"),
                     isOn: isMultiSelecting
                 ) {
                     withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
@@ -379,14 +379,14 @@ struct WindowControlsCluster: View {
         HStack(spacing: 2) {
             RailButton(
                 iconName: "layout-sidebar",
-                help: sidebarVisible ? "Hide the sidebar" : "Show the sidebar"
+                help: sidebarVisible ? String(localized: "Hide the sidebar") : String(localized: "Show the sidebar")
             ) {
                 withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
                     sidebarVisible.toggle()
                 }
             }
             .accessibilityIdentifier("sidebar.toggleButton")
-            RailButton(iconName: "search", help: "Open the command palette (⌘K)") {
+            RailButton(iconName: "search", help: String(localized: "Open the command palette (⌘K)")) {
                 onOpenPalette()
             }
             .accessibilityIdentifier("sidebar.paletteButton")

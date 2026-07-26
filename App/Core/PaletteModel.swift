@@ -185,9 +185,9 @@ enum PaletteEngine {
                         iconName: "flask", kind: .command, action: .createTestWorkspace),
             PaletteItem(id: "cmd.debugBundle", title: String(localized: "Create Debug Bundle"),
                         iconName: "package-export", kind: .command, action: .createDebugBundle),
-            PaletteItem(id: "cmd.extensions", title: "Extensions",
+            PaletteItem(id: "cmd.extensions", title: String(localized: "Extensions"),
                         iconName: "puzzle", kind: .command, action: .openExtensions),
-            PaletteItem(id: "cmd.settings", title: "Settings",
+            PaletteItem(id: "cmd.settings", title: String(localized: "Settings"),
                         iconName: "settings", kind: .command, action: .openSettings(nil)),
         ]
 

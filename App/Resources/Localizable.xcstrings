@@ -1,6 +1,28 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    " High-priority events are still announced during this window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Yüksek öncelikli olaylar bu aralıkta da bildirilir."
+          }
+        }
+      }
+    },
+    " No notification is delivered during this window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Bu aralıkta hiçbir bildirim gönderilmez."
+          }
+        }
+      }
+    },
     "%@ accounts": {
       "extractionState": "manual",
       "localizations": {
@@ -294,6 +316,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ — %lld extension etkilenecek."
+          }
+        }
+      }
+    },
+    "%@, up to %lld times — for about %lld minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, en fazla %lld kez — yaklaşık %lld dakika boyunca."
           }
         }
       }
@@ -1134,6 +1167,17 @@
         }
       }
     },
+    "Add a project": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje ekle"
+          }
+        }
+      }
+    },
     "Add an account": {
       "extractionState": "manual",
       "localizations": {
@@ -1350,6 +1394,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agent başlıyor"
+          }
+        }
+      }
+    },
+    "Agents": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agentlar"
           }
         }
       }
@@ -1838,6 +1893,17 @@
         }
       }
     },
+    "Back to the project dashboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proje panosuna dön"
+          }
+        }
+      }
+    },
     "Backup: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1911,6 +1977,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Board, görev oturumu, orchestrator."
+          }
+        }
+      }
+    },
+    "Border": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenarlık"
           }
         }
       }
@@ -2344,6 +2421,28 @@
         }
       }
     },
+    "Close the changes panel": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler panelini kapat"
+          }
+        }
+      }
+    },
+    "Close the pane": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölmeyi kapat"
+          }
+        }
+      }
+    },
     "Closed": {
       "extractionState": "manual",
       "localizations": {
@@ -2483,6 +2582,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Logları ve yapılandırmayı tek dosyada toplar; hassas içerik ayıklanır."
+          }
+        }
+      }
+    },
+    "Command": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut"
           }
         }
       }
@@ -2648,6 +2758,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bağlı"
+          }
+        }
+      }
+    },
+    "Contents": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İçerik"
           }
         }
       }
@@ -2857,6 +2978,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeni oturum oluştur"
+          }
+        }
+      }
+    },
+    "Create a worktree": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Worktree oluştur"
           }
         }
       }
@@ -3213,6 +3345,28 @@
         }
       }
     },
+    "Dependencies (ids, comma-separated)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağımlılıklar (id, virgülle)"
+          }
+        }
+      }
+    },
+    "Description": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıklama"
+          }
+        }
+      }
+    },
     "Detail": {
       "extractionState": "manual",
       "localizations": {
@@ -3231,6 +3385,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tespit et"
+          }
+        }
+      }
+    },
+    "Dim text": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soluk metin"
           }
         }
       }
@@ -3422,6 +3587,17 @@
         }
       }
     },
+    "Env (KEY=value, one per line)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Env (KEY=değer, satır başına bir)"
+          }
+        }
+      }
+    },
     "Errors and problems": {
       "extractionState": "manual",
       "localizations": {
@@ -3572,6 +3748,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başarısız"
+          }
+        }
+      }
+    },
+    "File": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya"
           }
         }
       }
@@ -3851,6 +4038,17 @@
         }
       }
     },
+    "Hide the sidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar çubuğunu gizle"
+          }
+        }
+      }
+    },
     "Hide while idle": {
       "extractionState": "manual",
       "localizations": {
@@ -3967,7 +4165,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "sürüyor"
+            "value": "Sürüyor"
           }
         }
       }
@@ -4100,6 +4298,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Talimat dosyası"
+          }
+        }
+      }
+    },
+    "Integrations": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entegrasyonlar"
           }
         }
       }
@@ -5941,6 +6150,28 @@
         }
       }
     },
+    "Open the changes panel": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler panelini aç"
+          }
+        }
+      }
+    },
+    "Open the command palette (⌘K)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Komut paletini aç (⌘K)"
+          }
+        }
+      }
+    },
     "Open the log file": {
       "extractionState": "manual",
       "localizations": {
@@ -6161,6 +6392,17 @@
         }
       }
     },
+    "Permission profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin profili"
+          }
+        }
+      }
+    },
     "Permission request": {
       "extractionState": "manual",
       "localizations": {
@@ -6216,6 +6458,17 @@
         }
       }
     },
+    "Pin to a commit": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commit'e sabitle"
+          }
+        }
+      }
+    },
     "Pinned": {
       "extractionState": "manual",
       "localizations": {
@@ -6260,6 +6513,17 @@
         }
       }
     },
+    "Ports (comma-separated)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portlar (virgülle)"
+          }
+        }
+      }
+    },
     "Possible": {
       "extractionState": "manual",
       "localizations": {
@@ -6293,6 +6557,17 @@
         }
       }
     },
+    "Preview URL": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önizleme URL'i"
+          }
+        }
+      }
+    },
     "Previous runs": {
       "extractionState": "manual",
       "localizations": {
@@ -6311,6 +6586,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Öncelik"
+          }
+        }
+      }
+    },
+    "Privacy and Permissions": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik ve İzinler"
           }
         }
       }
@@ -6491,6 +6777,17 @@
         }
       }
     },
+    "Quiet between %@ and %@.%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ – %@ arası sessiz.%@"
+          }
+        }
+      }
+    },
     "Quiet hours": {
       "extractionState": "manual",
       "localizations": {
@@ -6498,6 +6795,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sessiz saatler"
+          }
+        }
+      }
+    },
+    "Quiet hours off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiz saatler kapalı."
           }
         }
       }
@@ -6645,6 +6953,17 @@
         }
       }
     },
+    "Ready pattern (regex)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazır deseni (regex)"
+          }
+        }
+      }
+    },
     "Ready to merge": {
       "extractionState": "manual",
       "localizations": {
@@ -6755,6 +7074,17 @@
         }
       }
     },
+    "Reminders are off.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlatmalar kapalı."
+          }
+        }
+      }
+    },
     "Reminders off": {
       "extractionState": "manual",
       "localizations": {
@@ -6854,6 +7184,17 @@
         }
       }
     },
+    "Rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden Adlandır"
+          }
+        }
+      }
+    },
     "Rename Group": {
       "extractionState": "manual",
       "localizations": {
@@ -6894,6 +7235,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tekrar aralığı"
+          }
+        }
+      }
+    },
+    "Repeated every %@ while the state lasts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durum sürdüğü sürece %@ hatırlatılır."
           }
         }
       }
@@ -6982,6 +7334,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Oturumu Yeniden Başlat"
+          }
+        }
+      }
+    },
+    "Restart the session": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu yeniden başlat"
           }
         }
       }
@@ -7437,6 +7800,17 @@
         }
       }
     },
+    "Security": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik"
+          }
+        }
+      }
+    },
     "Security finding": {
       "extractionState": "manual",
       "localizations": {
@@ -7510,6 +7884,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hiçbirini seçme"
+          }
+        }
+      }
+    },
+    "Select several": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birden fazla seç"
           }
         }
       }
@@ -7873,6 +8258,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finder’da Göster"
+          }
+        }
+      }
+    },
+    "Show the sidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar çubuğunu göster"
           }
         }
       }
@@ -8328,6 +8724,17 @@
         }
       }
     },
+    "Switch branch or tag": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Branch veya tag değiştir"
+          }
+        }
+      }
+    },
     "System sound": {
       "extractionState": "manual",
       "localizations": {
@@ -8357,6 +8764,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hedef"
+          }
+        }
+      }
+    },
+    "Task": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görev"
           }
         }
       }
@@ -8493,6 +8911,17 @@
         }
       }
     },
+    "Terminal background": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal arka planı"
+          }
+        }
+      }
+    },
     "Terminal colours apply to newly opened sessions.": {
       "extractionState": "manual",
       "localizations": {
@@ -8566,6 +8995,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Testler, review ve çalışma ağacı hazır; onayını bekliyor."
+          }
+        }
+      }
+    },
+    "Text": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metin"
           }
         }
       }
@@ -9219,6 +9659,17 @@
         }
       }
     },
+    "Title": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlık"
+          }
+        }
+      }
+    },
     "To do": {
       "extractionState": "manual",
       "localizations": {
@@ -9281,6 +9732,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tur tamamlandı · %@"
+          }
+        }
+      }
+    },
+    "Turn off multiple selection": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çoklu seçimi kapat"
           }
         }
       }
@@ -9545,6 +10007,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desteklenmeyen yapılandırma"
+          }
+        }
+      }
+    },
+    "Untitled": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlıksız"
           }
         }
       }
@@ -9835,6 +10308,28 @@
         }
       }
     },
+    "Working directory (relative to the root)": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma dizini (köke göre)"
+          }
+        }
+      }
+    },
+    "Working mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışma modu"
+          }
+        }
+      }
+    },
     "Worktree clean": {
       "extractionState": "manual",
       "localizations": {
@@ -9842,6 +10337,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Çalışma ağacı temiz"
+          }
+        }
+      }
+    },
+    "Worktree name": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Worktree adı"
           }
         }
       }
@@ -10018,6 +10524,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "başka proje · %@"
+          }
+        }
+      }
+    },
+    "branch or tag name": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "branch veya tag adı"
           }
         }
       }
@@ -10825,6 +11342,17 @@
         }
       }
     },
+    "Activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etkinlik"
+          }
+        }
+      }
+    },
     "Adopt into Uncoil…": {
       "extractionState": "manual",
       "localizations": {
@@ -10832,6 +11360,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Uncoil'e devral…"
+          }
+        }
+      }
+    },
+    "Adopted": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sahiplenilmiş"
           }
         }
       }
@@ -10869,6 +11408,17 @@
         }
       }
     },
+    "Assign": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ata"
+          }
+        }
+      }
+    },
     "Assign Existing Session": {
       "extractionState": "manual",
       "localizations": {
@@ -10880,6 +11430,17 @@
         }
       }
     },
+    "Assignments": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atamalar"
+          }
+        }
+      }
+    },
     "Audit log": {
       "extractionState": "manual",
       "localizations": {
@@ -10887,6 +11448,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Denetim kaydı"
+          }
+        }
+      }
+    },
+    "Background": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arka plan"
+          }
+        }
+      }
+    },
+    "Branch": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dal"
           }
         }
       }
@@ -10913,6 +11496,28 @@
         }
       }
     },
+    "Bundled": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pakete gömülü"
+          }
+        }
+      }
+    },
+    "Claude colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude rengi"
+          }
+        }
+      }
+    },
     "Clean": {
       "extractionState": "manual",
       "localizations": {
@@ -10920,6 +11525,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Temiz"
+          }
+        }
+      }
+    },
+    "Codex colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex rengi"
           }
         }
       }
@@ -10942,6 +11558,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kabuk başlatılamadı: %@"
+          }
+        }
+      }
+    },
+    "Coverage": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapsam"
           }
         }
       }
@@ -11007,7 +11634,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "EXTENSION'LAR"
+            "value": "Extension'lar"
           }
         }
       }
@@ -11155,6 +11782,17 @@
         }
       }
     },
+    "Local": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel"
+          }
+        }
+      }
+    },
     "Logs": {
       "extractionState": "manual",
       "localizations": {
@@ -11173,6 +11811,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Düşük Risk"
+          }
+        }
+      }
+    },
+    "MCP Server": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP Sunucusu"
+          }
+        }
+      }
+    },
+    "MCP Servers": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP Sunucuları"
+          }
+        }
+      }
+    },
+    "MCP server": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP sunucusu"
+          }
+        }
+      }
+    },
+    "Managed": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilen"
+          }
+        }
+      }
+    },
+    "Managed skill": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilen skill"
           }
         }
       }
@@ -11342,6 +12035,17 @@
         }
       }
     },
+    "Overview": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel Bakış"
+          }
+        }
+      }
+    },
     "Pin Commit…": {
       "extractionState": "manual",
       "localizations": {
@@ -11375,6 +12079,28 @@
         }
       }
     },
+    "Problem": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorunlu"
+          }
+        }
+      }
+    },
+    "Profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil"
+          }
+        }
+      }
+    },
     "Python script": {
       "extractionState": "manual",
       "localizations": {
@@ -11393,6 +12119,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Karantina"
+          }
+        }
+      }
+    },
+    "Remote": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak"
+          }
+        }
+      }
+    },
+    "Remote MCP": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzak MCP"
           }
         }
       }
@@ -11474,6 +12222,28 @@
         }
       }
     },
+    "Role": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rol"
+          }
+        }
+      }
+    },
+    "Run": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıştır"
+          }
+        }
+      }
+    },
     "Run '%@' failed": {
       "extractionState": "manual",
       "localizations": {
@@ -11503,6 +12273,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Orchestrator ile Çalıştır"
+          }
+        }
+      }
+    },
+    "Scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarama"
           }
         }
       }
@@ -11573,6 +12354,17 @@
         }
       }
     },
+    "Skills": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill'ler"
+          }
+        }
+      }
+    },
     "Source missing": {
       "extractionState": "manual",
       "localizations": {
@@ -11584,6 +12376,17 @@
         }
       }
     },
+    "Sources": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynaklar"
+          }
+        }
+      }
+    },
     "Task metadata": {
       "extractionState": "manual",
       "localizations": {
@@ -11591,6 +12394,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Görev meta verisi"
+          }
+        }
+      }
+    },
+    "Tasks": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görevler"
+          }
+        }
+      }
+    },
+    "Terminal text": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal metni"
           }
         }
       }
@@ -11749,6 +12574,28 @@
         }
       }
     },
+    "Unmanaged": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilmeyen"
+          }
+        }
+      }
+    },
+    "Unmanaged skill": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yönetilmeyen skill"
+          }
+        }
+      }
+    },
     "Untracked": {
       "extractionState": "manual",
       "localizations": {
@@ -11782,6 +12629,17 @@
         }
       }
     },
+    "Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeler"
+          }
+        }
+      }
+    },
     "Validate": {
       "extractionState": "manual",
       "localizations": {
@@ -11789,6 +12647,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Doğrula"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekliyor"
           }
         }
       }

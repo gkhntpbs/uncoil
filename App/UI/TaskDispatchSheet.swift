@@ -206,7 +206,7 @@ struct TaskDispatchSheet: View {
                 .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
-                pickerRow("Agent") {
+                pickerRow(String(localized: "Agent")) {
                     Picker("", selection: $request.provider) {
                         ForEach([AgentProvider.claude, .codex]) { provider in
                             Text(provider.displayName).tag(provider)
@@ -225,7 +225,7 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.provider")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Profil") {
+                pickerRow(String(localized: "Profile")) {
                     Picker("", selection: Binding(
                         get: { request.accountID },
                         set: { request.accountID = $0 }
@@ -241,7 +241,7 @@ struct TaskDispatchSheet: View {
                 }
                 Divider().overlay(Theme.border)
                 if !capabilities.models.isEmpty {
-                    pickerRow("Model") {
+                    pickerRow(String(localized: "Model")) {
                         Picker("", selection: Binding(
                             get: { request.model },
                             set: { request.model = $0 }
@@ -258,7 +258,7 @@ struct TaskDispatchSheet: View {
                     Divider().overlay(Theme.border)
                 }
                 if !capabilities.efforts.isEmpty {
-                    pickerRow("Effort") {
+                    pickerRow(String(localized: "Effort")) {
                         Picker("", selection: Binding(
                             get: { request.effort },
                             set: { request.effort = $0 }
@@ -274,7 +274,7 @@ struct TaskDispatchSheet: View {
                     }
                     Divider().overlay(Theme.border)
                 }
-                pickerRow("Working mode") {
+                pickerRow(String(localized: "Working mode")) {
                     Picker("", selection: Binding(
                         get: { request.workingMode ?? settings.workingMode(for: request.provider) },
                         set: { request.workingMode = $0 }
@@ -288,7 +288,7 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.workingMode")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Preset") {
+                pickerRow(String(localized: "Preset")) {
                     Picker("", selection: Binding(
                         get: { request.presetID },
                         set: { id in
@@ -306,7 +306,7 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.preset")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Permission profile") {
+                pickerRow(String(localized: "Permission profile")) {
                     Text(
                         request.permissionProfile.isEmpty
                             ? "session default"
@@ -326,7 +326,7 @@ struct TaskDispatchSheet: View {
                 .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(spacing: 0) {
-                pickerRow("Rol") {
+                pickerRow(String(localized: "Role")) {
                     Picker("", selection: $request.role) {
                         ForEach(TaskAgentRole.allCases) { role in
                             Text(role.label).tag(role)
@@ -337,7 +337,7 @@ struct TaskDispatchSheet: View {
                     .accessibilityIdentifier("taskDispatch.role")
                 }
                 Divider().overlay(Theme.border)
-                pickerRow("Create a worktree") {
+                pickerRow(String(localized: "Create a worktree")) {
                     Toggle("", isOn: $request.createsWorktree)
                         .toggleStyle(.switch)
                         .controlSize(.mini)
@@ -346,7 +346,7 @@ struct TaskDispatchSheet: View {
                 }
                 if request.createsWorktree {
                     Divider().overlay(Theme.border)
-                    pickerRow("Worktree name") {
+                    pickerRow(String(localized: "Worktree name")) {
                         TextField(
                             TaskPromptBuilder.worktreeName(for: task),
                             text: Binding(
