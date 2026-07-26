@@ -208,6 +208,7 @@ private struct RunConfigurationRow: View {
     let onEdit: () -> Void
     let onReload: () -> Void
     @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @State private var busy = false
     @State private var inputText = ""
     @State private var showHistory = false
@@ -429,7 +430,8 @@ private struct RunConfigurationRow: View {
                 Button {
                     let handed = RunRepair.dispatch(
                         project: project, config: config, issue: issue,
-                        logTail: state.logTail, projectStore: projectStore
+                        logTail: state.logTail, projectStore: projectStore,
+                        language: settings.language.resolvedAgent()
                     )
                     repairNote = handed
                         ? "Agent'a gönderildi"

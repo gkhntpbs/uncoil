@@ -50,7 +50,8 @@ struct TaskDispatchSheet: View {
             project: project,
             role: request.role,
             worktreePath: effectiveWorktreePath,
-            permissionProfile: request.permissionProfile
+            permissionProfile: request.permissionProfile,
+            language: settings.language.resolvedAgent()
         ))
     }
 

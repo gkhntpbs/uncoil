@@ -1,0 +1,28 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Hide Sidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar Çubuğunu Gizle"
+          }
+        }
+      }
+    },
+    "Show Sidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kenar Çubuğunu Göster"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

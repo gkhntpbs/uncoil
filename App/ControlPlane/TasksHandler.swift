@@ -312,7 +312,8 @@ extension CapabilityRouter {
         let worktree = store.assignments(for: found.task.id).compactMap(\.worktreePath).first
         let context = TaskPromptBuilder.context(
             for: found.task, in: found.document, project: project, role: role,
-            worktreePath: worktree, permissionProfile: Array(PolicyEngine.grants(for: caller)).sorted()
+            worktreePath: worktree, permissionProfile: Array(PolicyEngine.grants(for: caller)).sorted(),
+            language: agentPromptLanguage
         )
         return .success(
             request,
@@ -896,7 +897,8 @@ extension CapabilityRouter {
             "initial_prompt": .string(TaskPromptBuilder.prompt(TaskPromptBuilder.context(
                 for: found.task, in: found.document, project: project, role: role,
                 worktreePath: request.args["worktree_path"]?.stringValue,
-                permissionProfile: []
+                permissionProfile: [],
+                language: agentPromptLanguage
             ))),
         ]
         if let worktree = request.args["worktree_path"] {
@@ -1102,7 +1104,8 @@ extension CapabilityRouter {
                 "task_id": .string(taskID),
                 "verdict": .string(verdict.rawValue),
                 "findings": .array(review.findings.map(JSONValue.string)),
-                "feedback_prompt": .string(review.feedbackPrompt(taskText: found.task.text)),
+                "feedback_prompt": .string(review.feedbackPrompt(
+                    taskText: found.task.text, language: agentPromptLanguage)),
             ]),
             project_id: project.id.uuidString
         )

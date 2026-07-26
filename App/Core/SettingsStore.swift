@@ -50,6 +50,8 @@ final class SettingsStore: ObservableObject {
         var permissionTimeoutMinutes: Int? = nil
         /// Menu-bar monitor appearance and contents; nil ⇒ defaults.
         var menuBar: MenuBarPrefs? = nil
+        /// Interface and agent-prompt language; nil ⇒ follow the system.
+        var language: LanguagePrefs? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -72,6 +74,14 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var permissionTimeoutMinutes = 10
     /// Menu-bar monitor appearance and contents.
     @Published var menuBar = MenuBarPrefs()
+    /// Interface language and the language agent prompts are written in.
+    @Published var language = LanguagePrefs() {
+        didSet {
+            guard language != oldValue else { return }
+            Self.applyInterfaceLanguage(language.interface)
+            save()
+        }
+    }
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -93,6 +103,7 @@ final class SettingsStore: ObservableObject {
         profilesRoot = base.appendingPathComponent("profiles", isDirectory: true)
         transcriptStore = SessionTranscriptStore(dataDirectory: base)
         load()
+        Self.applyInterfaceLanguage(language.interface)
         transcriptStore.prune(policy: transcriptRetentionPolicy)
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
         ensureDefaultAccounts()
@@ -472,7 +483,22 @@ final class SettingsStore: ObservableObject {
             restoredMenuBar.enabled = UserDefaults.standard.bool(forKey: "menuBarMonitorEnabled")
         }
         menuBar = restoredMenuBar
+        language = decoded.language ?? LanguagePrefs()
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
+    }
+
+    /// Mirrors the interface language into `AppleLanguages`.
+    ///
+    /// SwiftUI picks the language up immediately from `\.locale` on the root
+    /// view; AppKit-owned surfaces — the menu bar, standard menu items, open and
+    /// save panels — read `AppleLanguages` once at launch and never again, so
+    /// those follow on the next start. Writing nil restores the system order.
+    static func applyInterfaceLanguage(_ interface: InterfaceLanguage) {
+        if let identifier = interface.localeIdentifier {
+            UserDefaults.standard.set([identifier], forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
     }
 
     func save() {
@@ -494,7 +520,8 @@ final class SettingsStore: ObservableObject {
                 ? nil : transcriptRetentionPolicy,
             permissionTimeoutMinutes: permissionTimeoutMinutes == 10
                 ? nil : permissionTimeoutMinutes,
-            menuBar: menuBar == MenuBarPrefs() ? nil : menuBar
+            menuBar: menuBar == MenuBarPrefs() ? nil : menuBar,
+            language: language == LanguagePrefs() ? nil : language
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

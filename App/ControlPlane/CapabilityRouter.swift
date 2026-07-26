@@ -64,6 +64,15 @@ final class CapabilityRouter {
         self.appVersion = appVersion
     }
 
+    /// The language Uncoil composes agent prompts in.
+    ///
+    /// Only prompts Uncoil *writes* follow this — the protocol surface itself
+    /// (tool help, error messages, field names) stays English in every language,
+    /// because agents parse it.
+    var agentPromptLanguage: PromptLanguage {
+        settings?.language.resolvedAgent() ?? .english
+    }
+
     // MARK: - Entry point
 
     func handle(_ request: ControlRequest) async -> ControlEnvelope {

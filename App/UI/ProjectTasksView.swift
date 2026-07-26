@@ -1209,7 +1209,8 @@ struct ProjectTasksView: View {
             project: project,
             role: request.role,
             worktreePath: worktreePath ?? record.worktreePath,
-            permissionProfile: request.permissionProfile
+            permissionProfile: request.permissionProfile,
+            language: settings.language.resolvedAgent()
         ))
         deliver(prompt: prompt, to: record, autoStart: request.autoStart)
         if !request.autoStart {
@@ -1680,7 +1681,10 @@ struct ProjectTasksView: View {
             message = "Bulguları iletecek bir implementation oturumu yok."
             return
         }
-        deliver(prompt: review.feedbackPrompt(taskText: task.text), to: record)
+        deliver(
+            prompt: review.feedbackPrompt(
+                taskText: task.text, language: settings.language.resolvedAgent()),
+            to: record)
         message = "Review bulguları \(record.displayTitle) oturumuna gönderildi."
     }
 

@@ -7,17 +7,25 @@ import Foundation
 /// clipboard when the project has no live agent to hand the problem to.
 @MainActor
 enum RunRepair {
-    static func prompt(config: RunConfiguration, issue: RunIssue?, logTail: String) -> String {
+    static func prompt(
+        config: RunConfiguration,
+        issue: RunIssue?,
+        logTail: String,
+        language: PromptLanguage = .english
+    ) -> String {
         let tail = logTail.suffix(1200)
         var lines = [
-            "Projenin '\(config.id)' run yapılandırması başarısız oldu; Uncoil MCP'deki uncoil_run aracıyla düzelt.",
-            "Teşhis: \(issue.map { "\($0.code) — \($0.hint)" } ?? "yok")",
-            "Adımlar: {\"action\":\"status\",\"id\":\"\(config.id)\"} ve {\"action\":\"logs\",\"id\":\"\(config.id)\"} ile hatayı inceleyip",
-            "gerekirse {\"action\":\"update\",\"configuration\":{...}} ile .uncoil/run.json'daki yapılandırmayı onar,",
-            "sonra {\"action\":\"start\",\"id\":\"\(config.id)\"} ile yeniden dene; çalışana kadar (en fazla 3 tur) yinele ve sonucu raporla.",
+            "The project's '\(config.id)' run configuration failed; repair it with the uncoil_run tool in the Uncoil MCP.",
+            "Diagnosis: \(issue.map { "\($0.code) — \($0.hint)" } ?? "none")",
+            "Steps: inspect the failure with {\"action\":\"status\",\"id\":\"\(config.id)\"} and {\"action\":\"logs\",\"id\":\"\(config.id)\"},",
+            "repair the configuration in .uncoil/run.json with {\"action\":\"update\",\"configuration\":{...}} if needed,",
+            "then retry with {\"action\":\"start\",\"id\":\"\(config.id)\"}; repeat until it runs (at most 3 rounds) and report the result.",
         ]
         if !tail.isEmpty {
-            lines.append("Son çıktı:\n\(tail)")
+            lines.append("Last output:\n\(tail)")
+        }
+        if let directive = language.directive {
+            lines.append(directive)
         }
         return lines.joined(separator: "\n")
     }
@@ -38,9 +46,10 @@ enum RunRepair {
         config: RunConfiguration,
         issue: RunIssue?,
         logTail: String,
-        projectStore: ProjectStore
+        projectStore: ProjectStore,
+        language: PromptLanguage = .english
     ) -> Bool {
-        let text = prompt(config: config, issue: issue, logTail: logTail)
+        let text = prompt(config: config, issue: issue, logTail: logTail, language: language)
         guard let session = candidateSession(project: project, projectStore: projectStore) else {
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()

@@ -43,6 +43,51 @@ struct GeneralSettingsPage: View {
                 .settingsID("general.editor")
             }
 
+            Section("Language") {
+                Picker(selection: Binding(
+                    get: { settings.language.interface },
+                    set: { settings.language.interface = $0 }
+                )) {
+                    ForEach(InterfaceLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Interface language"),
+                        detail: String(localized: "Applies after Uncoil restarts.")
+                    )
+                }
+                .settingsID("general.interfaceLanguage")
+
+                Picker(selection: Binding(
+                    get: { settings.language.agent },
+                    set: { settings.language.agent = $0 }
+                )) {
+                    ForEach(AgentLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Agent language"),
+                        detail: String(
+                            localized: "The language Uncoil writes in when it hands a task, a repair or a grouping job to an agent. Takes effect on the next prompt."
+                        )
+                    )
+                }
+                .settingsID("general.agentLanguage")
+
+                if settings.language.needsRelaunch() {
+                    AdaptiveRow {
+                        SettingsNote(String(
+                            localized: "The interface language changes when Uncoil starts again."
+                        ))
+                    } control: {
+                        Button(String(localized: "Restart Uncoil")) { AppRelaunch.now() }
+                            .settingsID("general.language.relaunch")
+                    }
+                }
+            }
+
             Section("Uygulama kapanışı") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },

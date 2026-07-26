@@ -4,6 +4,10 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  developmentLanguage: en
+  # Localizable.xcstrings carries both; listing them here keeps the generated
+  # project from dropping `tr` when no .lproj folder exists to infer it from.
+  knownRegions: [en, tr, Base]
 
 packages:
   SwiftTerm:
@@ -168,6 +172,11 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         ENABLE_USER_SCRIPT_SANDBOXING: false
         SWIFT_STRICT_CONCURRENCY: minimal
+        # Extract every localizable literal into Localizable.xcstrings at build
+        # time, so a new `Text("…")` shows up as an untranslated entry instead
+        # of silently shipping English into a Turkish window.
+        SWIFT_EMIT_LOC_STRINGS: true
+        LOCALIZATION_PREFERS_STRING_CATALOGS: true
       # Debug keeps the hardened runtime off so a locally built app can attach a
       # debugger and spawn helpers without an entitlement round-trip; Release
       # needs it on, because notarization refuses a build without it.

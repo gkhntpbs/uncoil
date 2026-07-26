@@ -434,7 +434,7 @@ struct MainWindow: View {
             projectID: projectID,
             provider: .claude,
             accountID: settings.defaultAccount(for: .claude)?.id,
-            title: "claude: oturumları otomatik düzenle"
+            title: "claude: organise sessions"
         )
         selection = .session(record.id)
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
@@ -446,9 +446,18 @@ struct MainWindow: View {
             sessionStore: sessionStore,
             projectStore: projectStore
         )
-        let prompt = """
-        Bu projedeki Uncoil oturumlarını düzenle. Yalnızca Uncoil MCP araçlarını kullan. Önce uncoil_sessions list ve list_groups çağır. Oturum başlıkları, sağlayıcıları ve amaçlarına göre az sayıda, anlaşılır grup belirle. Gereken grupları create_group ile oluştur, sonra assign_group ile oturumları taşı. Bu düzenleyici oturumunu gruplama. Mevcut anlamlı grupları koru, boş veya yinelenen grup oluşturma. Bittiğinde yaptığın düzeni kısa bir tabloyla bildir.
+        var prompt = """
+        Organise the Uncoil sessions in this project. Use only the Uncoil MCP tools. \
+        Start by calling uncoil_sessions list and list_groups. Decide on a small number \
+        of understandable groups based on the sessions' titles, providers and purposes. \
+        Create the groups you need with create_group, then move sessions with assign_group. \
+        Do not group this organiser session. Keep existing meaningful groups, and do not \
+        create empty or duplicate ones. When you are done, report your arrangement as a \
+        short table.
         """
+        if let directive = settings.language.resolvedAgent().directive {
+            prompt += "\n\(directive)"
+        }
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
             while Date() < deadline, sessionStore.status(of: record.id) == .terminated {

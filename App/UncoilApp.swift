@@ -80,7 +80,7 @@ struct UncoilApp: App {
         .commands {
             MainWindowCommands()
             CommandGroup(after: .toolbar) {
-                Button(sidebarVisible ? "Kenar Çubuğunu Gizle" : "Kenar Çubuğunu Göster") {
+                Button(sidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
                     sidebarVisible.toggle()
                 }
                 .keyboardShortcut("b", modifiers: .command)

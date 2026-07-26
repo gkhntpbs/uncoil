@@ -141,15 +141,19 @@ struct TaskReviewResult: Identifiable, Equatable, Codable {
     }
 
     /// The message handed back to the implementation session.
-    func feedbackPrompt(taskText: String) -> String {
-        var lines = ["Review sonucu: \(verdict.label) — \(taskText)"]
+    func feedbackPrompt(taskText: String, language: PromptLanguage = .english) -> String {
+        var lines = ["Review result: \(verdict.label) — \(taskText)"]
         if !findings.isEmpty {
             lines.append("")
             lines.append(contentsOf: findings.map { "- \($0)" })
         }
         if verdict == .changesRequested {
             lines.append("")
-            lines.append("Bu bulguları giderip tekrar bildir. Checkbox'ı şimdi işaretleme.")
+            lines.append("Address these findings and report back. Do not tick the checkbox yet.")
+        }
+        if let directive = language.directive {
+            lines.append("")
+            lines.append(directive)
         }
         return lines.joined(separator: "\n")
     }
