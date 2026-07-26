@@ -54,6 +54,12 @@ struct ProjectDashboardView: View {
     }
 
     @State private var area: Area = .overview
+    /// How wide the header actually is. Drives what the header may drop before
+    /// it would otherwise wrap: the path, the branch, then the tab labels.
+    @State private var headerWidth: CGFloat = 1_000
+    /// Below this the tabs keep their icons and lose their words — the labels
+    /// are what wrapped onto a second line in a narrow window.
+    private var tabsAreIconOnly: Bool { headerWidth < 720 }
     /// Whether the project has any task source on disk; without one the Tasks
     /// tab is not offered at all, instead of opening onto an empty state.
     private var hasTaskSources: Bool { page.hasTaskSources }
@@ -71,7 +77,11 @@ struct ProjectDashboardView: View {
                     overviewContent
                 }
             }
-            .padding(16)
+            // Same 8pt above the header bar as a session's, so switching
+            // between the two screens does not shift the bar up and down.
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            .padding(.top, 8)
             .uncoilScrollers()
         }
         .accessibilityElement(children: .contain)
@@ -107,9 +117,13 @@ struct ProjectDashboardView: View {
                                 size: 12,
                                 color: isOn ? Theme.text : Theme.textFaint
                             )
-                            Text(candidate.title)
-                                .font(Theme.mono(11.5, isOn ? .semibold : .regular))
-                                .foregroundStyle(isOn ? Theme.text : Theme.textDim)
+                            if !tabsAreIconOnly {
+                                Text(candidate.title)
+                                    .font(Theme.mono(11.5, isOn ? .semibold : .regular))
+                                    .foregroundStyle(isOn ? Theme.text : Theme.textDim)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: true)
+                            }
                             if candidate == .run, runs.runningCount(projectID: project.id) > 0 {
                                 Circle()
                                     .fill(Theme.ok)
@@ -127,7 +141,7 @@ struct ProjectDashboardView: View {
                                     )
                             }
                         }
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, tabsAreIconOnly ? 8 : 12)
                         .padding(.vertical, 6)
                         .background(
                             isOn ? Theme.panelActive : Color.clear,
@@ -137,6 +151,9 @@ struct ProjectDashboardView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("dashboard.area.\(candidate.rawValue)")
+                    // Icon-only tabs lose their words, so the name has to be
+                    // reachable some other way.
+                    .help(candidate.title)
                 }
             }
         }
@@ -145,6 +162,9 @@ struct ProjectDashboardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.border, lineWidth: 1)
         )
+        // Never compressed: the row keeps its intrinsic width, and when that no
+        // longer fits it is the labels that go, not the layout.
+        .fixedSize()
         .accessibilityIdentifier("dashboard.areaPicker")
     }
 
@@ -271,43 +291,37 @@ struct ProjectDashboardView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: headerWidth < 620 ? 8 : 12) {
             ProjectIcon(project: project, size: 16)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(project.name)
                     .font(Theme.mono(16, .bold))
                     .foregroundStyle(Theme.text)
-                Text(displayPath)
-                    .font(Theme.mono(11))
-                    .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-
-            Spacer()
-
-            if hasTaskSources {
-                areaTabs
-            }
-
-            if let branch = git.branch {
-                HStack(spacing: 5) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 10, weight: .semibold))
-                    Text(branch)
-                        .font(Theme.mono(11, .medium))
-                    if !git.changedFiles.isEmpty {
-                        Text("\(git.changedFiles.count) değişiklik")
-                            .font(Theme.mono(10))
-                            .foregroundStyle(Theme.warn)
-                    }
+                    .truncationMode(.tail)
+                if headerWidth >= 560 {
+                    Text(displayPath)
+                        .font(Theme.mono(11))
+                        .foregroundStyle(Theme.textFaint)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                .foregroundStyle(Theme.textDim)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Theme.panel, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+            }
+            // The title is the one thing allowed to give way; every control to
+            // its right keeps its intrinsic size instead of being squeezed into
+            // a second line.
+            .layoutPriority(-1)
+
+            Spacer(minLength: 8)
+
+            // Always shown: the row filters Tasks out on its own when the
+            // project has no task source, and hiding the whole row also hid
+            // the Run tab on every project without a TODO.md.
+            areaTabs
+
+            if let branch = git.branch, headerWidth >= 460 {
+                BranchBadge(branch: branch)
             }
 
             // The project's own root, in the same control the session header
@@ -324,8 +338,12 @@ struct ProjectDashboardView: View {
         }
         .padding(14)
         .panel(radius: 12)
+        .measureWidth { headerWidth = $0 }
     }
 
+    /// Branch only. The change count moved out: it is already spelled out in
+    /// the git panel below, and in the header it was the part that pushed the
+    /// row into wrapping.
     private var displayPath: String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         if project.rootPath.hasPrefix(home) {

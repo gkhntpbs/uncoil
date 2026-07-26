@@ -65,3 +65,43 @@ final class ThemeContrastTests: XCTestCase {
         )
     }
 }
+
+/// The agent marks carry each product's own colour. Asserted on the palette
+/// rather than on a rendered pixel: the offscreen bitmap is in the display's
+/// colour space, so what comes back out is never the sRGB value that went in.
+@MainActor
+final class BrandColorTests: XCTestCase {
+    func testShippedBrandColors() {
+        XCTAssertEqual(ThemePalette.dark.claude, 0xD97757)
+        XCTAssertEqual(ThemePalette.dark.codex, 0x3B82F6)
+    }
+
+    func testLightPaletteDarkensThemToStayReadable() {
+        // The shipped pair is too light for a light background; the light
+        // palette's own values must clear the same floor everything else does.
+        for (label, colour) in [
+            ("claude", ThemePalette.light.claude), ("codex", ThemePalette.light.codex),
+        ] {
+            for surface in [
+                ThemePalette.light.bg, ThemePalette.light.panel,
+                ThemePalette.light.panelHover, ThemePalette.light.panelActive,
+            ] {
+                XCTAssertGreaterThanOrEqual(
+                    ThemePalette.contrast(colour, surface),
+                    ThemePalette.minimumSecondaryTextContrast,
+                    "\(label) is unreadable on a light surface"
+                )
+            }
+        }
+    }
+
+    func testAStoredPaletteFromBeforeTheBrandChangeIsMigrated() {
+        // The palette is saved to disk, so a shipped-default change reaches
+        // nobody who has already run the app unless the version moves with it.
+        var stored = ThemePalette.dark
+        stored.version = 2
+        stored.claude = 0xE2572B
+        XCTAssertLessThan(stored.version, ThemePalette.currentVersion)
+        XCTAssertEqual(stored.preset.claude, 0xD97757)
+    }
+}

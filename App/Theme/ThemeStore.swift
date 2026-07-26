@@ -7,7 +7,11 @@ struct ThemePalette: Codable, Equatable, Hashable {
     /// version is replaced by the current preset rather than kept: the tokens
     /// below are a set, and half of an old one mixed with half of a new one is
     /// not a theme anyone chose.
-    static let currentVersion = 2
+    /// 3: the agent brand colours became each product's own (Claude 0xD97757,
+    /// Codex 0x3B82F6). Without the bump a palette saved before the change
+    /// keeps the old marks, and changing the shipped default does nothing at
+    /// all for anyone who has already run the app.
+    static let currentVersion = 3
 
     var version: Int = currentVersion
     var isLight = false
@@ -47,9 +51,9 @@ struct ThemePalette: Codable, Equatable, Hashable {
     var danger: UInt32 = 0xFB7185
     var info: UInt32 = 0x60A5FA
 
-    // Agent brand marks.
-    var claude: UInt32 = 0xE2572B
-    var codex: UInt32 = 0x4A8FD9
+    // Agent brand marks, in each product's own colour.
+    var claude: UInt32 = 0xD97757
+    var codex: UInt32 = 0x3B82F6
 
     var terminalBg: UInt32 = 0x0F0F11
     var terminalFg: UInt32 = 0xE9E9EC
@@ -79,8 +83,11 @@ struct ThemePalette: Codable, Equatable, Hashable {
         warn: 0xB45309,
         danger: 0xBE123C,
         info: 0x2563EB,
-        claude: 0xD24A20,
-        codex: 0x2F6FBE,
+        // The brand colours darkened for a light background: the shipped
+        // 0xD97757 measures 2.39:1 on the pressed panel and 0x3B82F6 2.81:1,
+        // both under the 3:1 floor `ThemeContrastTests` holds them to.
+        claude: 0xB85A38,
+        codex: 0x2563EB,
         terminalBg: 0xFFFFFF,
         terminalFg: 0x1C1C1E
     )

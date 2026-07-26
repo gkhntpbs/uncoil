@@ -115,6 +115,23 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
             false
         }
     }
+
+    /// Which notification setting governs a banner for this row, if any.
+    ///
+    /// Permission and input rows return nil on purpose: the hook reducer already
+    /// notifies about those the moment the status changes, and notifying again
+    /// from here would double every banner.
+    var notificationEvent: NotificationEvent? {
+        switch self {
+        case .authentication: .loginRequired
+        case .taskCompleted: .taskCompleted
+        case .mergeReady: .mergeReady
+        case .runtime, .testFailure, .mergeConflict, .taskFailed, .taskBlocked, .relinkNeeded:
+            .problem
+        case .permission, .input, .completed, .taskAssigned, .reviewRequested, .changesRequested:
+            nil
+        }
+    }
 }
 
 struct AttentionItem: Identifiable, Equatable {
@@ -126,6 +143,14 @@ struct AttentionItem: Identifiable, Equatable {
     let sessionID: UUID?
     let createdAt: Date
     var isRead = false
+
+    /// What makes *this occurrence* of the row distinct from the next one with
+    /// the same id. Read/resolved marks are kept against it, so a row the user
+    /// cleared stays cleared across relaunches while a genuinely new event —
+    /// another permission ask, a different set of conflicted files — comes back
+    /// unread. Empty means "use `createdAt`", which is right for every row whose
+    /// timestamp already moves with the event.
+    var signature: String = ""
 
     /// Derived items mirror live state and disappear on their own; reported
     /// items (test results) stay until the user resolves them.
@@ -210,10 +235,13 @@ enum AttentionEngine {
 
         for (projectID, paths) in snapshot.conflicts where !paths.isEmpty {
             let name = snapshot.projectNames[projectID] ?? "Proje"
+            // Stamped `now` on every scan, so the files themselves — not the
+            // clock — are what says whether this is the same conflict the user
+            // already dealt with.
             items.append(AttentionItem(
                 id: conflictID(projectID), kind: .mergeConflict, title: name,
                 detail: conflictDetail(paths), projectID: projectID, sessionID: nil,
-                createdAt: now
+                createdAt: now, signature: paths.sorted().joined(separator: "|")
             ))
         }
 
@@ -222,12 +250,13 @@ enum AttentionEngine {
             items.append(AttentionItem(
                 id: runtimeID, kind: .runtime, title: "Runtime daemon",
                 detail: "uncoil-runtimed erişilemiyor; oturumlar uygulama içi PTY ile çalışıyor.",
-                projectID: nil, sessionID: nil, createdAt: now
+                projectID: nil, sessionID: nil, createdAt: now, signature: "failed"
             ))
         case .incompatible(let message):
             items.append(AttentionItem(
                 id: runtimeID, kind: .runtime, title: "Runtime uyumsuzluğu",
-                detail: message, projectID: nil, sessionID: nil, createdAt: now
+                detail: message, projectID: nil, sessionID: nil, createdAt: now,
+                signature: "incompatible:\(message)"
             ))
         case .idle, .connecting, .ready:
             break
@@ -264,9 +293,76 @@ final class AttentionStore: ObservableObject {
 
     @Published private(set) var items: [AttentionItem] = []
 
-    private var readIDs: Set<String> = []
-    private var resolvedIDs: Set<String> = []
+    /// A mark records *which occurrence* was read or resolved, not merely that
+    /// the id once was.
+    ///
+    /// Liveness alone cannot carry this across a relaunch. Rows are derived
+    /// from session state, and at launch there is no state yet — pruning marks
+    /// down to what is live would throw every one of them away moments before
+    /// the same rows came back, which is exactly how cleared notifications
+    /// reappeared after a restart. Matching occurrence signatures instead keeps
+    /// a handled row handled while still letting the next occurrence of it
+    /// arrive unread.
+    struct Mark: Codable {
+        var signature: String
+        var at: Date
+    }
+
+    private var readMarks: [String: Mark] = [:]
+    private var resolvedMarks: [String: Mark] = [:]
     private var reported: [AttentionItem] = []
+    /// Row ids this process has actually watched go live. Only those may have
+    /// their marks dropped when the row disappears — which is the old rule that
+    /// makes a cleared condition come back unread when it recurs. Ids that were
+    /// never live here are left alone, so a relaunch (where nothing is live yet)
+    /// does not throw away every mark the user made before quitting.
+    private var seenLive: Set<String> = []
+    private let defaults: UserDefaults
+    private let readKey = "attention.readMarks"
+    private let resolvedKey = "attention.resolvedMarks"
+    /// Marks older than this are dropped, so the store cannot grow forever.
+    private let markLifetime: TimeInterval = 30 * 24 * 60 * 60
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        readMarks = Self.loadMarks(defaults, key: readKey)
+        resolvedMarks = Self.loadMarks(defaults, key: resolvedKey)
+    }
+
+    private static func loadMarks(_ defaults: UserDefaults, key: String) -> [String: Mark] {
+        guard let data = defaults.data(forKey: key),
+              let decoded = try? JSONDecoder().decode([String: Mark].self, from: data)
+        else { return [:] }
+        return decoded
+    }
+
+    private func persistMarks(now: Date = .now) {
+        let cutoff = now.addingTimeInterval(-markLifetime)
+        readMarks = readMarks.filter { $0.value.at > cutoff }
+        resolvedMarks = resolvedMarks.filter { $0.value.at > cutoff }
+        if let data = try? JSONEncoder().encode(readMarks) {
+            defaults.set(data, forKey: readKey)
+        }
+        if let data = try? JSONEncoder().encode(resolvedMarks) {
+            defaults.set(data, forKey: resolvedKey)
+        }
+    }
+
+    /// Whether `item` has already been handled: a mark counts only for the very
+    /// occurrence it was made against.
+    private func isMarked(_ marks: [String: Mark], _ item: AttentionItem) -> Bool {
+        marks[item.id]?.signature == Self.signature(of: item)
+    }
+
+    private static func signature(of item: AttentionItem) -> String {
+        item.signature.isEmpty
+            ? String(Int(item.createdAt.timeIntervalSince1970))
+            : item.signature
+    }
+
+    private func mark(_ item: AttentionItem, now: Date = .now) -> Mark {
+        Mark(signature: Self.signature(of: item), at: now)
+    }
 
     var unreadCount: Int { items.filter { !$0.isRead }.count }
 
@@ -274,22 +370,40 @@ final class AttentionStore: ObservableObject {
         items.filter { $0.kind == kind }.count
     }
 
+    /// Called with rows that have just appeared, so they can be notified about.
+    /// Never fires for the first refresh of a launch — at that point everything
+    /// is "new", and the user does not want a banner per pre-existing row.
+    var onNewItems: (([AttentionItem]) -> Void)?
+    private var hasRefreshedOnce = false
+
     /// Recomputes derived rows and merges them with reported ones.
     func refresh(_ snapshot: AttentionSnapshot, now: Date = .now) {
         let derived = AttentionEngine.items(snapshot, now: now)
-        // A resolved condition that cleared may fire again — forget its marks
-        // so the next occurrence shows up unread.
+        let previouslyLive = seenLive
+
         let liveIDs = Set(derived.map(\.id)).union(reported.map(\.id))
-        resolvedIDs.formIntersection(liveIDs)
-        readIDs.formIntersection(liveIDs)
+        let cleared = seenLive.subtracting(liveIDs)
+        if !cleared.isEmpty {
+            for id in cleared {
+                readMarks.removeValue(forKey: id)
+                resolvedMarks.removeValue(forKey: id)
+            }
+            persistMarks(now: now)
+        }
+        seenLive = liveIDs
 
         items = AttentionEngine.sorted(derived + reported)
-            .filter { !resolvedIDs.contains($0.id) }
+            .filter { !isMarked(resolvedMarks, $0) }
             .map {
                 var item = $0
-                item.isRead = readIDs.contains($0.id)
+                item.isRead = isMarked(readMarks, $0)
                 return item
             }
+
+        defer { hasRefreshedOnce = true }
+        guard hasRefreshedOnce, let onNewItems else { return }
+        let fresh = items.filter { !previouslyLive.contains($0.id) && !$0.isRead }
+        if !fresh.isEmpty { onNewItems(fresh) }
     }
 
     /// Records an item that no live state can re-derive (a failing test run).
@@ -311,34 +425,41 @@ final class AttentionStore: ObservableObject {
         reported.removeAll { $0.id == itemID }
         reported.append(item)
         // Re-reporting is a fresh event: clear both marks.
-        readIDs.remove(itemID)
-        resolvedIDs.remove(itemID)
+        readMarks.removeValue(forKey: itemID)
+        resolvedMarks.removeValue(forKey: itemID)
+        persistMarks(now: now)
         if reported.count > 100 { reported.removeFirst(reported.count - 100) }
         items = AttentionEngine.sorted(items.filter { $0.id != itemID } + [item])
     }
 
     func markRead(_ id: String) {
-        readIDs.insert(id)
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        readMarks[id] = mark(items[index])
         items[index].isRead = true
+        persistMarks()
     }
 
     func markAllRead() {
-        readIDs.formUnion(items.map(\.id))
+        for item in items { readMarks[item.id] = mark(item) }
         for index in items.indices { items[index].isRead = true }
+        persistMarks()
     }
 
     /// Marks a row handled: it leaves the list until the condition recurs.
     func resolve(_ id: String) {
-        resolvedIDs.insert(id)
+        if let item = items.first(where: { $0.id == id }) {
+            resolvedMarks[id] = mark(item)
+        }
         reported.removeAll { $0.id == id }
         items.removeAll { $0.id == id }
+        persistMarks()
     }
 
     func resolveAll() {
-        resolvedIDs.formUnion(items.map(\.id))
+        for item in items { resolvedMarks[item.id] = mark(item) }
         reported.removeAll()
         items.removeAll()
+        persistMarks()
     }
 }
 

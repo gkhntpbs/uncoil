@@ -497,8 +497,11 @@ final class SessionStore: ObservableObject {
     var extensionSecretServer: ExtensionSecretServer?
     /// Directional control-plane permission requests (shared with the UI).
     var permissionService: PermissionService?
-    /// Once-per-state notification dedup keys ("<sessionID>-permission" …).
-    var sentNotificationKeys: Set<String> = []
+    /// Who has been notified about what, and when. Backs both the once-per-state
+    /// dedup and the repeat reminders.
+    var notificationLedger = NotificationLedger()
+    /// Repeats reminders for states nobody has answered yet.
+    var reminderTimer: Timer?
 
     /// Sessions that sent a notification the user has not looked at yet.
     ///
@@ -541,12 +544,47 @@ final class SessionStore: ObservableObject {
         codexApprovals[recordID] = request
     }
 
-    /// The session that should receive hook events for a project: the most
-    /// recently started live (non-terminated) one.
-    func liveSessionID(projectSessions: [SessionRecord]) -> UUID? {
-        projectSessions
-            .filter { (statuses[$0.id] ?? .terminated) != .terminated }
-            .max { $0.createdAt < $1.createdAt }?
-            .id
+    /// The session a hook event belongs to.
+    ///
+    /// The agent tells us who it is — every Claude hook payload carries its own
+    /// `session_id`, which Uncoil already stores on the record as
+    /// `providerSessionID`. Matching on that first is what keeps two agents in
+    /// one project apart; without it every event in a project landed on
+    /// whichever session started last, so one agent's "running / waiting for
+    /// permission" was shown on all of them.
+    ///
+    /// The fallbacks only cover the moment before an agent has identified
+    /// itself: prefer a live session in the event's own directory that is not
+    /// yet bound to any provider session, then any unbound live session, and
+    /// only then the newest live one.
+    func sessionID(
+        forProviderSessionID providerSessionID: String?,
+        cwd: String?,
+        projectSessions: [SessionRecord],
+        project: Project
+    ) -> UUID? {
+        let live = projectSessions.filter { (statuses[$0.id] ?? .terminated) != .terminated }
+
+        if let providerSessionID,
+           let bound = live.first(where: { $0.providerSessionID == providerSessionID }) {
+            return bound.id
+        }
+
+        let unbound = live.filter { $0.providerSessionID == nil }
+        if let cwd {
+            let target = Self.normalizedPath(cwd)
+            let here = unbound.filter {
+                Self.normalizedPath($0.workingDirectory(in: project)) == target
+            }
+            if let match = here.max(by: { $0.createdAt < $1.createdAt }) { return match.id }
+        }
+        if let match = unbound.max(by: { $0.createdAt < $1.createdAt }) { return match.id }
+
+        return live.max(by: { $0.createdAt < $1.createdAt })?.id
+    }
+
+    /// Trailing-slash and symlink differences are not a different directory.
+    static func normalizedPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 }

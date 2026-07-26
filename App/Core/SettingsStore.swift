@@ -48,6 +48,8 @@ final class SettingsStore: ObservableObject {
         /// Minutes a permission request may sit unanswered; 0 = never
         /// expires. Optional for backward compatibility; nil ⇒ 10 minutes.
         var permissionTimeoutMinutes: Int? = nil
+        /// Menu-bar monitor appearance and contents; nil ⇒ defaults.
+        var menuBar: MenuBarPrefs? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -68,6 +70,8 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var transcriptRetentionPolicy: TranscriptRetentionPolicy = .disabled
     /// Minutes before an unanswered permission request expires; 0 = never.
     @Published private(set) var permissionTimeoutMinutes = 10
+    /// Menu-bar monitor appearance and contents.
+    @Published var menuBar = MenuBarPrefs()
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -460,6 +464,14 @@ final class SettingsStore: ObservableObject {
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
         permissionTimeoutMinutes = decoded.permissionTimeoutMinutes ?? 10
+        // The monitor's on/off switch used to live in UserDefaults; carry a
+        // deliberate "off" over so the item does not reappear on upgrade.
+        var restoredMenuBar = decoded.menuBar ?? MenuBarPrefs()
+        if decoded.menuBar == nil,
+           UserDefaults.standard.object(forKey: "menuBarMonitorEnabled") != nil {
+            restoredMenuBar.enabled = UserDefaults.standard.bool(forKey: "menuBarMonitorEnabled")
+        }
+        menuBar = restoredMenuBar
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
 
@@ -481,7 +493,8 @@ final class SettingsStore: ObservableObject {
             transcriptRetentionPolicy: transcriptRetentionPolicy == .disabled
                 ? nil : transcriptRetentionPolicy,
             permissionTimeoutMinutes: permissionTimeoutMinutes == 10
-                ? nil : permissionTimeoutMinutes
+                ? nil : permissionTimeoutMinutes,
+            menuBar: menuBar == MenuBarPrefs() ? nil : menuBar
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

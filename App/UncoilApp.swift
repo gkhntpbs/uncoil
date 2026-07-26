@@ -16,7 +16,6 @@ struct UncoilApp: App {
     @StateObject private var theme = ThemeStore.shared
     @ObservedObject private var attention = AttentionStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
-    @AppStorage("menuBarMonitorEnabled") private var menuBarMonitorEnabled = true
 
     init() {
         LaunchConfig.shared.prepareEnvironment()
@@ -132,14 +131,30 @@ struct UncoilApp: App {
 
         // Menu-bar monitor: counts at a glance plus quick launch/interrupt,
         // so agents can be watched while Uncoil's window is hidden.
-        MenuBarExtra(isInserted: $menuBarMonitorEnabled) {
+        MenuBarExtra(isInserted: menuBarInserted) {
             MenuBarMonitorMenu(summary: menuBarSummary)
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
                 .environmentObject(settings)
         } label: {
-            MenuBarMonitorLabel(summary: menuBarSummary)
+            MenuBarMonitorLabel(summary: menuBarSummary, prefs: settings.menuBar)
         }
+    }
+
+    /// `MenuBarExtra` wants a binding, but visibility here is *derived* — the
+    /// user's switch plus "hide while idle" plus what is happening right now.
+    ///
+    /// So the setter is deliberately empty. `MenuBarExtra` writes back to this
+    /// binding while it reconciles, and against a computed getter that turned
+    /// into a publish-inside-a-view-update loop; worse, the first time "hide
+    /// while idle" hid the item, that write-back latched `enabled` to false and
+    /// the monitor never came back. The switch lives in Settings, which is the
+    /// only thing that should be able to move it.
+    private var menuBarInserted: Binding<Bool> {
+        Binding(
+            get: { settings.menuBar.isVisible(for: menuBarSummary) },
+            set: { _ in }
+        )
     }
 
     private var menuBarSummary: MenuBarSummary {

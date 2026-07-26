@@ -13,18 +13,20 @@ struct LoginTerminalSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                ProviderMark(provider: profile.provider, size: 13)
-                Text("\(profile.provider.displayName) · \(profile.name) — Giriş")
-                    .font(Theme.mono(12, .semibold))
-                    .foregroundStyle(Theme.text)
+            HStack(spacing: 10) {
+                ProviderMark(provider: profile.provider, size: 14)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(profile.provider.displayName) · \(profile.name)")
+                        .font(.headline)
+                        .foregroundStyle(Theme.text)
+                    Text("Akış tarayıcıyı açar; bitince bu pencereyi kapat.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textDim)
+                }
                 Spacer()
-                Text("Akış tarayıcıyı açar; bitince bu pencereyi kapat.")
-                    .font(Theme.mono(10))
-                    .foregroundStyle(Theme.textFaint)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
             Divider().overlay(Theme.border)
 
@@ -39,12 +41,14 @@ struct LoginTerminalSheet: View {
                     onFinished()
                     dismiss()
                 }
-                .buttonStyle(AccentButtonStyle())
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
             }
-            .padding(10)
+            .padding(14)
         }
         .frame(width: 640, height: 460)
         .background(Theme.bg)
+        .tint(Theme.highlight)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("login.sheet")
     }

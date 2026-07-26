@@ -9,6 +9,9 @@ final class MainRoute: ObservableObject {
     /// still reach the window.
     @Published var requestedSelection: MainSelection?
     @Published var requestCounter = 0
+    /// What the main window currently shows. Read by the notification policy so
+    /// "stay quiet about the session I am looking at" has something to compare.
+    @Published var lastSelection: MainSelection?
 
     func request(_ selection: MainSelection) {
         requestedSelection = selection
@@ -21,21 +24,37 @@ final class MainRoute: ObservableObject {
 /// main window.
 struct MenuBarMonitorLabel: View {
     let summary: MenuBarSummary
+    var prefs = MenuBarPrefs()
 
     var body: some View {
-        // The state lives in the logo itself — color while agents work, yellow
-        // while something waits on the user, plain when idle — so no counters
-        // or exclamation marks crowd the menu bar.
-        Image(summary.icon.rawValue)
-            .resizable()
-            .scaledToFit()
-            // The menu bar scales this label to its own height, so the frame is
-            // not what sets the icon's size: the inset baked into the artwork
-            // is (the `menu-bar-inset` group in the assets), which is what keeps
-            // the glyph lighter than the system symbols around it.
-            .frame(height: 18)
-            .accessibilityIdentifier("menuBar.label")
-            .accessibilityValue(summary.headline)
+        // By default the state lives in the logo itself — color while agents
+        // work, yellow while something waits on the user, plain when idle — so
+        // nothing crowds the menu bar. Counters are opt-in from Settings.
+        HStack(spacing: 4) {
+            switch prefs.icon(for: summary) {
+            case .asset(let name):
+                Image(name)
+                    .resizable()
+                    .scaledToFit()
+                    // The menu bar scales this label to its own height, so the
+                    // frame is not what sets the icon's size: the inset baked
+                    // into the artwork is (the `menu-bar-inset` group in the
+                    // assets), which is what keeps the glyph lighter than the
+                    // system symbols around it.
+                    .frame(height: 18)
+            case .symbol(let name):
+                Image(systemName: name)
+            case .none:
+                EmptyView()
+            }
+
+            let label = prefs.label(for: summary)
+            if !label.isEmpty {
+                Text(label).font(.system(size: 11, weight: .medium))
+            }
+        }
+        .accessibilityIdentifier("menuBar.label")
+        .accessibilityValue(summary.headline)
     }
 }
 
@@ -55,9 +74,11 @@ struct MenuBarMonitorMenu: View {
 
         Divider()
 
-        taskSection
+        if settings.menuBar.showTasksSection {
+            taskSection
+        }
 
-        if !attention.items.isEmpty {
+        if settings.menuBar.showSessionsSection, !attention.items.isEmpty {
             ForEach(attention.items.prefix(6)) { item in
                 Button("\(item.kind.label): \(item.title)") {
                     open(item)
@@ -85,7 +106,7 @@ struct MenuBarMonitorMenu: View {
             }
         }
 
-        if !projectStore.projects.isEmpty {
+        if settings.menuBar.showQuickLaunch, !projectStore.projects.isEmpty {
             Menu("Yeni Oturum") {
                 ForEach(projectStore.projects) { project in
                     Menu(project.name) {

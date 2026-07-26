@@ -19,6 +19,7 @@ struct SessionHeaderBar<Trailing: View>: View {
 
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @State private var branch: String?
 
     private var status: AgentSessionStatus { sessionStore.status(of: record.id) }
     private var account: AccountProfile? { settings.account(id: record.accountID) }
@@ -66,6 +67,24 @@ struct SessionHeaderBar<Trailing: View>: View {
                         .foregroundStyle(Theme.textFaint)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                    // Which branch the work is landing on. A session often runs
+                    // in a worktree, so the project's branch is not an answer.
+                    // Inline here rather than chipped: this line is metadata,
+                    // and a bordered box on it would outweigh the title above.
+                    if let branch {
+                        Text("·")
+                            .foregroundStyle(Theme.textFaint)
+                        HStack(spacing: 3) {
+                            TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
+                            Text(branch)
+                                .font(Theme.mono(11, .medium))
+                                .foregroundStyle(Theme.textDim)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .fixedSize()
+                        .help("Aktif dal: \(branch)")
+                    }
                 }
             }
             .layoutPriority(1)
@@ -112,6 +131,18 @@ struct SessionHeaderBar<Trailing: View>: View {
         }
         .padding(14)
         .panel(radius: 12)
+        // Cheap enough to re-ask while the session is open: a branch changes
+        // under the agent's hands, and a stale one is worse than none.
+        .task(id: workingDirectory) {
+            let directory = workingDirectory
+            while !Task.isCancelled {
+                let resolved = await Task.detached(priority: .utility) {
+                    GitService.currentBranch(repoPath: directory)
+                }.value
+                if branch != resolved { branch = resolved }
+                try? await Task.sleep(nanoseconds: 15 * NSEC_PER_SEC)
+            }
+        }
     }
 
     private var displayPath: String {

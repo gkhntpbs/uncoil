@@ -23,12 +23,17 @@ struct SidebarView: View {
     @State private var renameValue = ""
     @State private var deletingSession: SessionRecord?
 
+    /// How far the window's own title bar reaches into the content.
+    static let titlebarClearance: CGFloat = 32
+
     var body: some View {
         VStack(spacing: 0) {
             // The window controls that used to sit here now live in the title
             // bar, in one place regardless of the sidebar. What is left is the
-            // clearance the first row needs from it.
-            Spacer().frame(height: 32)
+            // clearance the first row needs from it — shared with the detail
+            // column, so a project's header bar starts on the same line as the
+            // first project in the list.
+            Spacer().frame(height: Self.titlebarClearance)
 
             SidebarOutline(
                 selection: $selection,

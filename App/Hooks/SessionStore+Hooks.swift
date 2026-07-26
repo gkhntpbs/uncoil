@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import UserNotifications
 
@@ -6,7 +7,7 @@ extension SessionStore {
     /// `applyMeta` persists provider session id / title candidates onto the record.
     func startHookServer(
         projectResolver: @escaping @MainActor (String) -> Project?,
-        sessionResolver: @escaping @MainActor (UUID) -> UUID?,
+        sessionResolver: @escaping @MainActor (Project, HookEvent) -> UUID?,
         touchSession: @escaping @MainActor (UUID) -> Void,
         notificationPrefs: @escaping @MainActor () -> NotificationPrefs = { NotificationPrefs() },
         sessionTitle: @escaping @MainActor (UUID) -> String? = { _ in nil },
@@ -47,7 +48,7 @@ extension SessionStore {
     func reduce(
         _ event: HookEvent,
         projectResolver: @MainActor (String) -> Project?,
-        sessionResolver: @MainActor (UUID) -> UUID?,
+        sessionResolver: @MainActor (Project, HookEvent) -> UUID?,
         touchSession: @MainActor (UUID) -> Void,
         notificationPrefs: @MainActor () -> NotificationPrefs = { NotificationPrefs() },
         sessionTitle: @MainActor (UUID) -> String? = { _ in nil },
@@ -57,7 +58,7 @@ extension SessionStore {
         guard
             let cwd = event.cwd,
             let project = projectResolver(cwd),
-            let sessionID = sessionResolver(project.id)
+            let sessionID = sessionResolver(project, event)
         else { return }
 
         touchSession(sessionID)
@@ -82,44 +83,38 @@ extension SessionStore {
             let message = event.message ?? ""
             if message.localizedCaseInsensitiveContains("permission") {
                 setStatus(.waitingForPermission, detail: message, for: sessionID)
-                if prefs.notifyPermission {
-                    notifyOnce(
-                        key: "\(sessionID)-permission",
-                        title: project.name,
-                        body: "İzin bekliyor · \(sessionTitle)",
-                        projectID: project.id,
-                        sessionID: sessionID,
-                        prefs: prefs
-                    )
-                }
+                notify(
+                    .permission,
+                    title: project.name,
+                    body: "İzin bekliyor · \(sessionTitle)",
+                    projectID: project.id,
+                    sessionID: sessionID,
+                    prefs: prefs
+                )
             } else if message.localizedCaseInsensitiveContains("waiting") {
                 setStatus(.waitingForInput, detail: message, for: sessionID)
-                if prefs.notifyInput {
-                    notifyOnce(
-                        key: "\(sessionID)-input",
-                        title: project.name,
-                        body: "Girdi bekliyor · \(sessionTitle)",
-                        projectID: project.id,
-                        sessionID: sessionID,
-                        prefs: prefs
-                    )
-                }
+                notify(
+                    .input,
+                    title: project.name,
+                    body: "Girdi bekliyor · \(sessionTitle)",
+                    projectID: project.id,
+                    sessionID: sessionID,
+                    prefs: prefs
+                )
             } else {
                 setStatus(.thinking, detail: message.isEmpty ? nil : message, for: sessionID)
             }
         case .stop:
             // Turn finished — the agent now idles waiting for the human.
             setStatus(.idle, for: sessionID)
-            if prefs.notifyTurnCompleted {
-                notifyOnce(
-                    key: "\(sessionID)-completed",
-                    title: project.name,
-                    body: "Tur tamamlandı · \(sessionTitle)",
-                    projectID: project.id,
-                    sessionID: sessionID,
-                    prefs: prefs
-                )
-            }
+            notify(
+                .turnCompleted,
+                title: project.name,
+                body: "Tur tamamlandı · \(sessionTitle)",
+                projectID: project.id,
+                sessionID: sessionID,
+                prefs: prefs
+            )
         case .sessionEnd:
             setStatus(.terminated, for: sessionID)
             endSession(sessionID)
@@ -127,31 +122,135 @@ extension SessionStore {
         }
     }
 
-    // MARK: - Once-per-state notifications
+    // MARK: - Event notifications
 
+    /// Runs one event through `NotificationPolicy` and posts it if the policy
+    /// agrees. The ledger it consults is the same one the reminder sweep walks,
+    /// so a first banner and its repeats stay in step.
     @MainActor
-    private func notifyOnce(
-        key: String,
+    @discardableResult
+    func notify(
+        _ event: NotificationEvent,
         title: String,
         body: String,
         projectID: UUID,
         sessionID: UUID,
-        prefs: NotificationPrefs
-    ) {
-        guard !sentNotificationKeys.contains(key) else { return }
-        sentNotificationKeys.insert(key)
+        prefs: NotificationPrefs,
+        context: NotificationPolicy.Context = .init(now: Date(), appIsActive: NSApp?.isActive ?? false)
+    ) -> NotificationDecision {
+        let decision = NotificationPolicy.decide(
+            event: event,
+            projectID: projectID,
+            sessionID: sessionID,
+            prefs: prefs,
+            attempt: notificationLedger.attempt(sessionID: sessionID, event: event),
+            context: context
+        )
+        guard let dispatch = decision.dispatch else { return decision }
+        notificationLedger.record(sessionID: sessionID, event: event, at: context.now)
         // The banner is easy to miss; the sidebar row keeps saying it until the
         // session is opened.
         markAttention(sessionID)
         AttentionNotifier.post(
-            title: title, body: body, projectID: projectID, prefs: prefs, sessionID: sessionID
+            title: title,
+            body: body,
+            projectID: projectID,
+            prefs: prefs,
+            sessionID: sessionID,
+            dispatch: dispatch
         )
+        return decision
     }
 
     @MainActor
     private func clearNotificationDedup(_ sessionID: UUID) {
-        sentNotificationKeys = sentNotificationKeys.filter {
-            !$0.hasPrefix(sessionID.uuidString)
+        notificationLedger.clear(sessionID: sessionID)
+    }
+
+    // MARK: - Repeat reminders
+
+    /// Starts the sweep that re-announces states nobody has answered.
+    ///
+    /// A timer rather than a per-notification delay: the condition being
+    /// reminded about ("still waiting for input") is a property of the session's
+    /// *current* status, so it has to be re-checked, not scheduled once and
+    /// fired blindly after the user has long since replied.
+    @MainActor
+    func startNotificationReminders(
+        interval: TimeInterval = 30,
+        prefs: @escaping @MainActor () -> NotificationPrefs,
+        projectID: @escaping @MainActor (UUID) -> UUID?,
+        projectName: @escaping @MainActor (UUID) -> String?,
+        sessionTitle: @escaping @MainActor (UUID) -> String?,
+        visibleSessionID: @escaping @MainActor () -> UUID? = { nil }
+    ) {
+        reminderTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.sweepReminders(
+                    prefs: prefs(),
+                    projectID: projectID,
+                    projectName: projectName,
+                    sessionTitle: sessionTitle,
+                    visibleSessionID: visibleSessionID()
+                )
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        reminderTimer = timer
+    }
+
+    @MainActor
+    func stopNotificationReminders() {
+        reminderTimer?.invalidate()
+        reminderTimer = nil
+    }
+
+    /// One pass over the ledger. Public so a test can drive it with a fixed
+    /// clock instead of waiting on a timer.
+    @MainActor
+    func sweepReminders(
+        prefs: NotificationPrefs,
+        projectID: @MainActor (UUID) -> UUID?,
+        projectName: @MainActor (UUID) -> String?,
+        sessionTitle: @MainActor (UUID) -> String?,
+        visibleSessionID: UUID? = nil,
+        now: Date = Date(),
+        appIsActive: Bool = NSApp?.isActive ?? false
+    ) {
+        guard prefs.enabled, prefs.reminders.enabled else { return }
+        for entry in notificationLedger.pending() {
+            guard prefs.remindsAbout(entry.event) else { continue }
+            // The state has to still be true. A session that has moved on gets
+            // its ledger entry dropped instead of a stale reminder.
+            guard Self.status(matching: entry.event) == status(of: entry.sessionID) else {
+                notificationLedger.clear(sessionID: entry.sessionID, event: entry.event)
+                continue
+            }
+            guard let project = projectID(entry.sessionID) else { continue }
+            notify(
+                entry.event,
+                title: projectName(entry.sessionID) ?? "Uncoil",
+                body: "\(entry.event.title) · \(sessionTitle(entry.sessionID) ?? "oturum")",
+                projectID: project,
+                sessionID: entry.sessionID,
+                prefs: prefs,
+                context: .init(
+                    now: now,
+                    appIsActive: appIsActive,
+                    visibleSessionID: visibleSessionID,
+                    isReminderPass: true
+                )
+            )
+        }
+    }
+
+    /// The session status an event describes, for events that persist.
+    static func status(matching event: NotificationEvent) -> AgentSessionStatus? {
+        switch event {
+        case .permission: .waitingForPermission
+        case .input: .waitingForInput
+        default: nil
         }
     }
 

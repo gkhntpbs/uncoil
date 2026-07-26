@@ -50,25 +50,6 @@ struct TablerIcon: View {
     }
 }
 
-/// Provider marks: AI logos in their product colors.
-/// Claude's mark is an asterisk burst; Codex uses the OpenAI brand glyph.
-struct ProviderMark: View {
-    let provider: AgentProvider
-    var size: CGFloat = 13
-
-    private var iconName: String {
-        switch provider {
-        case .claude: "asterisk"
-        case .codex: "brand-openai"
-        case .terminal: "terminal-2"
-        }
-    }
-
-    var body: some View {
-        TablerIcon(name: iconName, size: size, color: provider.color)
-    }
-}
-
 /// Palette offered in the project customize sheet.
 enum ProjectPalette {
     static let colors: [UInt32] = [

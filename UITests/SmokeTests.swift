@@ -120,14 +120,13 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.click()
 
-        let agentBehavior = app.descendants(matching: .any)["settings.pane.agentBehavior"]
-        XCTAssertTrue(agentBehavior.waitForExistence(timeout: 10))
-        agentBehavior.click()
+        // Presets and transcripts live on their own pages now: Agentlar →
+        // Session Presetleri, and Gizlilik ve İzinler → Veri ve Transcript.
+        let presetsPane = app.descendants(matching: .any)["settings.pane.presets"]
+        XCTAssertTrue(presetsPane.waitForExistence(timeout: 10))
+        presetsPane.click()
 
         let addPreset = app.descendants(matching: .any)["settings.presets.add"]
-        for _ in 0..<5 where !addPreset.exists {
-            app.windows["Uncoil Ayarları"].swipeUp()
-        }
         XCTAssertTrue(addPreset.waitForExistence(timeout: 5))
         addPreset.click()
 
@@ -137,10 +136,11 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(savePreset.exists)
         app.typeKey(.escape, modifierFlags: [])
 
+        let dataPane = app.descendants(matching: .any)["settings.pane.privacyData"]
+        XCTAssertTrue(dataPane.waitForExistence(timeout: 5))
+        dataPane.click()
+
         let retention = app.descendants(matching: .any)["settings.transcripts.retention"]
-        for _ in 0..<5 where !retention.exists {
-            app.windows["Uncoil Ayarları"].swipeUp()
-        }
         XCTAssertTrue(retention.waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.descendants(matching: .any)["settings.transcripts.clear"].exists
@@ -152,21 +152,16 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.click()
 
-        let agentBehavior = app.descendants(matching: .any)["settings.pane.agentBehavior"]
-        XCTAssertTrue(agentBehavior.waitForExistence(timeout: 10))
-        agentBehavior.click()
+        // Quit behaviour moved to Genel, as an inline picker rather than two
+        // hand-rolled radio rows.
+        let general = app.descendants(matching: .any)["settings.pane.general"]
+        XCTAssertTrue(general.waitForExistence(timeout: 10))
+        general.click()
 
-        let keepRunning = app.descendants(matching: .any)[
-            "settings.agentBehavior.quit.keepSessionsRunning"
-        ]
-        let terminateAll = app.descendants(matching: .any)[
-            "settings.agentBehavior.quit.terminateAllAgents"
-        ]
-        XCTAssertTrue(keepRunning.waitForExistence(timeout: 5))
-        XCTAssertTrue(terminateAll.waitForExistence(timeout: 5))
-        XCTAssertEqual(keepRunning.value as? String, "selected")
-        terminateAll.click()
-        XCTAssertEqual(terminateAll.value as? String, "selected")
+        let quitPicker = app.descendants(matching: .any)["settings.agentBehavior.quit"]
+        XCTAssertTrue(quitPicker.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.radioButtons["Keep sessions running"].exists)
+        XCTAssertTrue(app.radioButtons["Terminate all agents on quit"].exists)
     }
 
     /// Switching multi-select on has to put a checkbox on every session row.

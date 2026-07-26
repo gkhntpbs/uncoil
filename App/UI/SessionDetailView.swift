@@ -29,7 +29,9 @@ struct SessionDetailView: View {
             VStack(spacing: 0) {
                 header
                     .padding(.horizontal, 16)
-                    .padding(.top, 14)
+                    // Tighter than the sides: the bar sits under the title bar,
+                    // and the window's own chrome already supplies the air.
+                    .padding(.top, 8)
                     .padding(.bottom, 12)
 
                 if let approval = sessionStore.codexApprovals[record.id] {
@@ -109,10 +111,17 @@ struct SessionDetailView: View {
         ) {
             Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 
+            // The button opens the right-hand panel, so it says so: a chevron
+            // only told you a direction, not what was going to happen.
             ControlButton(
-                iconName: showChangesPanel ? "chevron-right" : "chevron-down",
-                help: "Değişiklikler panelini aç/kapat",
-                identifier: "session.changesButton"
+                iconName: showChangesPanel
+                    ? "layout-sidebar-right-collapse"
+                    : "layout-sidebar-right-expand",
+                help: showChangesPanel
+                    ? "Değişiklikler panelini kapat"
+                    : "Değişiklikler panelini aç",
+                identifier: "session.changesButton",
+                tint: showChangesPanel ? Theme.highlight : nil
             ) {
                 toggleChangesPanel(!showChangesPanel)
             }
@@ -383,7 +392,7 @@ struct SplitSessionPane: View {
                 trailing: { EmptyView() }
             )
             .padding(.horizontal, 10)
-            .padding(.top, 14)
+            .padding(.top, 8)
             .padding(.bottom, 10)
 
             TerminalHostView(

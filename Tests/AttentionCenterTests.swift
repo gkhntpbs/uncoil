@@ -248,3 +248,84 @@ final class ArtifactStatusTests: XCTestCase {
         }
     }
 }
+
+/// Read/cleared marks have to outlive the process: a notification the user
+/// dismissed came back every time Uncoil was relaunched, because the marks were
+/// held only in memory and the rows were re-derived from session state at launch.
+@MainActor
+final class AttentionPersistenceTests: XCTestCase {
+    private let projectID = UUID()
+    private var suiteName = ""
+    private var defaults: UserDefaults!
+
+    override func setUp() async throws {
+        suiteName = "uncoil-attention-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+    }
+
+    override func tearDown() async throws {
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    private func snapshot(_ session: SessionRecord, _ status: AgentSessionStatus) -> AttentionSnapshot {
+        var snapshot = AttentionSnapshot()
+        snapshot.sessions = [session]
+        snapshot.statuses = [session.id: status]
+        snapshot.projectNames = [projectID: "uncoil"]
+        snapshot.runtimePhase = .ready
+        return snapshot
+    }
+
+    func testClearedRowStaysClearedAfterRelaunch() {
+        let record = SessionRecord(
+            projectID: projectID, provider: .claude, accountID: nil, title: "iş"
+        )
+
+        let before = AttentionStore(defaults: defaults)
+        before.refresh(snapshot(record, .waitingForPermission))
+        before.resolve(AttentionEngine.permissionID(record.id))
+        XCTAssertTrue(before.items.isEmpty)
+
+        // A relaunch: a fresh store, and the first refresh happens before any
+        // session state exists — which is what used to wipe the marks.
+        let after = AttentionStore(defaults: defaults)
+        after.refresh(AttentionSnapshot())
+        after.refresh(snapshot(record, .waitingForPermission))
+        XCTAssertTrue(after.items.isEmpty, "a cleared row must not return on relaunch")
+    }
+
+    func testReadRowStaysReadAfterRelaunch() {
+        let record = SessionRecord(
+            projectID: projectID, provider: .claude, accountID: nil, title: "iş"
+        )
+
+        let before = AttentionStore(defaults: defaults)
+        before.refresh(snapshot(record, .waitingForPermission))
+        before.markAllRead()
+        XCTAssertEqual(before.unreadCount, 0)
+
+        let after = AttentionStore(defaults: defaults)
+        after.refresh(snapshot(record, .waitingForPermission))
+        XCTAssertEqual(after.items.count, 1)
+        XCTAssertEqual(after.unreadCount, 0, "a read row must not go unread on relaunch")
+    }
+
+    func testANewOccurrenceOfAClearedRowComesBack() {
+        var record = SessionRecord(
+            projectID: projectID, provider: .claude, accountID: nil, title: "iş"
+        )
+
+        let store = AttentionStore(defaults: defaults)
+        store.refresh(snapshot(record, .waitingForPermission))
+        store.resolve(AttentionEngine.permissionID(record.id))
+        XCTAssertTrue(store.items.isEmpty)
+
+        // The agent worked on, then asked again: a later activity stamp is a
+        // different occurrence of the same row.
+        record.lastActivityAt = record.lastActivityAt.addingTimeInterval(60)
+        let relaunched = AttentionStore(defaults: defaults)
+        relaunched.refresh(snapshot(record, .waitingForPermission))
+        XCTAssertEqual(relaunched.items.count, 1)
+        XCTAssertEqual(relaunched.unreadCount, 1)
+    }
+}

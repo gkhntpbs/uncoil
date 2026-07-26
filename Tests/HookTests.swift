@@ -112,8 +112,13 @@ final class HookReducerTests: XCTestCase {
         sessions.reduce(
             event,
             projectResolver: { [projects] path in projects!.project(containing: path) },
-            sessionResolver: { [projects, sessions] projectID in
-                sessions!.liveSessionID(projectSessions: projects!.sessions(for: projectID))
+            sessionResolver: { [projects, sessions] project, event in
+                sessions!.sessionID(
+                    forProviderSessionID: event.sessionID,
+                    cwd: event.cwd,
+                    projectSessions: projects!.sessions(for: project.id),
+                    project: project
+                )
             },
             touchSession: { _ in }
         )
@@ -161,8 +166,13 @@ final class HookReducerTests: XCTestCase {
         sessions.reduce(
             event,
             projectResolver: { [projects] path in projects!.project(containing: path) },
-            sessionResolver: { [projects, sessions] projectID in
-                sessions!.liveSessionID(projectSessions: projects!.sessions(for: projectID))
+            sessionResolver: { [projects, sessions] project, event in
+                sessions!.sessionID(
+                    forProviderSessionID: event.sessionID,
+                    cwd: event.cwd,
+                    projectSessions: projects!.sessions(for: project.id),
+                    project: project
+                )
             },
             touchSession: { _ in },
             applyMeta: { _, sid, title in

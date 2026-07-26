@@ -60,12 +60,20 @@ struct EditorOpenControl: View {
                     )
                 }
             } label: {
+                // A hint, not a control of its own: the editor icon beside it is
+                // what the eye should land on, so this stays as small and as
+                // quiet as it can be while still being hittable.
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(Theme.textDim)
-                    .frame(width: 14, height: 22)
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(Theme.textFaint)
+                    .frame(width: 12, height: 22)
             }
-            .menuStyle(.borderlessButton)
+            // `.borderlessButton` draws the label its own way: it ignored both
+            // the font and the colour set above, which is why the chevron kept
+            // coming back full-size and near-white. `.button` + `.plain` hands
+            // the drawing back to the label.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityIdentifier("editor.menu")

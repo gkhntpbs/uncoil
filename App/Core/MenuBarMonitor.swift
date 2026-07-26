@@ -60,16 +60,6 @@ struct MenuBarSummary: Equatable {
     var hasProblem: Bool { problems > 0 }
     var needsUser: Bool { waitingPermission > 0 || waitingInput > 0 }
 
-    /// Compact menu-bar text. Empty when nothing is happening, so the icon
-    /// stands alone instead of showing a row of zeros.
-    var label: String {
-        var parts: [String] = []
-        if running > 0 { parts.append("\(running)") }
-        if waitingPermission > 0 { parts.append("\(waitingPermission)!") }
-        if problems > 0 { parts.append("\(problems)×") }
-        return parts.joined(separator: " ")
-    }
-
     /// One-line summary for the top of the menu.
     var headline: String {
         var parts: [String] = []
@@ -95,6 +85,16 @@ struct MenuBarSummary: Equatable {
         case idle = "MenuBarIconTemplate"
         case working = "MenuBarIconColor"
         case waiting = "MenuBarIconWaiting"
+
+        /// SF Symbol equivalent, for users who prefer a system glyph to the
+        /// mark. Same three-state reading, drawn in the menu bar's own colour.
+        var symbolName: String {
+            switch self {
+            case .idle: "circle.dotted"
+            case .working: "circle.hexagongrid.circle"
+            case .waiting: "exclamationmark.circle"
+            }
+        }
     }
 
     var icon: Icon {

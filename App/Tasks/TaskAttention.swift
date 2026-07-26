@@ -152,7 +152,10 @@ enum TaskAttentionEngine {
                     kind: .mergeConflict,
                     title: "\(name) › \(URL(fileURLWithPath: path).lastPathComponent)",
                     detail: "Görev kaynağı conflict içeriyor; düzenleme kapalı.",
-                    projectID: projectID, sessionID: nil, createdAt: now
+                    projectID: projectID, sessionID: nil, createdAt: now,
+                    // Stamped `now` per scan; the path is what makes this the
+                    // same conflict rather than a new one.
+                    signature: path
                 ))
             }
         }

@@ -70,8 +70,13 @@
 - **Otomatik düzenleme** — proje panosundaki kısayol Claude oturumu başlatır; ajan Uncoil MCP grup araçlarıyla oturumları amaçlarına göre düzenler
 - Durum orb animasyonları, özel scroll barlar, özel klasör seçici, silme onayı
 
-### Ayarlar (kenar çubuklu + aramalı)
-- Hesaplar / Varsayılanlar (editör seçimi dahil) / **CLI Araçları** (sürüm + kaynak rozeti; otomatik güncelleme kontrolü, sadece gerektiğinde Güncelle) / Parametreler (provider başına ek arg) / **Bildirimler** (durum başına tek bildirim, olay bazlı aç-kapa, öncelik, sistem sesleri, **proje bazlı override**) / **Tema** (koyu-açık preset + tüm renkler özelleştirilebilir, terminal renkleri dahil) / GitHub (**device-flow tarayıcı girişi**, token yalnız Keychain) / Hooks
+### Ayarlar (native macOS, kategorili + aramalı)
+- macOS'un kendi ayar dili: kaynak listesi + `Form(.grouped)` sayfaları, sistem fontu ve kontrolleri, yeniden boyutlanabilir pencere, dar genişlikte kontrolü etiketin altına alan satırlar. Arama sayfa başlıklarını değil **sayfa içindeki ayarları** eşler; eski derin bağlantılar (`defaults`, `transcripts`…) çözülmeye devam eder
+- **Genel** (varsayılan agent, editör, çıkış davranışı, komut paleti kısayolu) · **Agentlar** (Hesaplar / CLI Araçları / Parametreler / Mod ve Klavye / Session Presetleri) · **Bildirimler** (Genel / Olaylar / Hatırlatmalar / Sessiz Saatler / Proje Bazında) · **Menü Çubuğu** · **Görünüm** · **Gizlilik ve İzinler** (İzinler / Veri ve Transcript / Durum Takibi) · **Entegrasyonlar** (GitHub / Sürücüler) · **Hakkında**
+- **Bildirimler olay bazlı** — izin, girdi, tur tamamlandı, hata, görev tamamlandı, merge hazır, giriş gerekiyor: her biri kendi aç-kapa, öncelik ve sesini taşır (olay → proje → genel sırasıyla çözülür). Teslimat filtreleri: yalnız arka plandayken bildir, ekranda açık oturum için bildirme, projeye göre grupla
+- **Hatırlatmalar** — kullanıcı işlem yapana kadar süren durumlar (girdi/izin bekleme, düşen giriş, merge hazır) ayarlanabilir aralık ve sayıda tekrar bildirilir; her tekrardan önce oturumun güncel durumu yeniden okunur, çözülmüş bir durum hatırlatılmaz
+- **Sessiz saatler** — gece yarısını aşan aralıklar dahil; istenirse yüksek öncelikli olaylar bu aralıkta da geçer
+- **Menü çubuğu ayarları** — simge biçimi (Uncoil işareti / SF Symbol / yalnız sayaç), tek renk, hangi sayaçların görüneceği (çalışan, bekleyen, sorun, görev), boştayken gizle, menüdeki bölümler; canlı önizlemeli
 - GitHub token'ı ile özel repo PR'ları; arka plan Keychain okumaları etkileşimsizdir ve parola penceresi açmaz
 - **İzinler** — sık kullanılan izinleri anlaşılır dört grupta gösterir; proje/oturum/browser otomasyonu varsayılan açık, yalnız Computer Use zorunlu olarak kapalı ve onay gerektirir
 - **Agent Browser seçimi** — yalnız makinede kurulu Chromium tabanlı tarayıcılar listelenir; Uncoil Chromium, Chrome, Arc, Edge, Brave, Vivaldi ve Chromium desteklenir

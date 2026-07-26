@@ -348,8 +348,24 @@ struct MainWindow: View {
         }
     }
 
-    @ViewBuilder
+    /// Every route starts below the title bar, from one place.
+    ///
+    /// The window draws under its own title bar, and the sidebar clears it with
+    /// an explicit spacer. The detail column had no such clearance: a session
+    /// happened to get one from the split view it sits in, while the project
+    /// page — a plain scroll view — began at the very top of the window, so the
+    /// two screens' header bars sat about forty points apart.
     private var detail: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: SidebarView.titlebarClearance)
+            routedDetail
+        }
+        // Without this the split view re-applies the inset that is now here.
+        .ignoresSafeArea(edges: .top)
+    }
+
+    @ViewBuilder
+    private var routedDetail: some View {
         switch selection {
         case .project(let id):
             if let project = projectStore.projects.first(where: { $0.id == id }) {
@@ -469,6 +485,7 @@ struct MainWindow: View {
     }
 
     private func persistSelection() {
+        MainRoute.shared.lastSelection = selection
         guard !LaunchConfig.shared.isUITesting else { return }
         switch selection {
         case .project(let id):
@@ -507,8 +524,13 @@ struct MainWindow: View {
             let sessions = sessionStore
             sessionStore.startHookServer(
                 projectResolver: { path in projects.project(containing: path) },
-                sessionResolver: { projectID in
-                    sessions.liveSessionID(projectSessions: projects.sessions(for: projectID))
+                sessionResolver: { project, event in
+                    sessions.sessionID(
+                        forProviderSessionID: event.sessionID,
+                        cwd: event.cwd,
+                        projectSessions: projects.sessions(for: project.id),
+                        project: project
+                    )
                 },
                 touchSession: { id in
                     projects.updateSession(id) { $0.lastActivityAt = .now }
@@ -533,9 +555,52 @@ struct MainWindow: View {
                     projects.markSessionEnded(id, exitCode: nil)
                 }
             )
+            startNotificationBridges()
         }
         startControlPlane()
         Task { await settings.resolveBinaries() }
+    }
+
+    /// Wires the two notification sources that are not the hook reducer:
+    /// attention rows (failing tests, lost logins, finished tasks) and the
+    /// repeat-reminder sweep for states nobody has answered.
+    private func startNotificationBridges() {
+        let projects = projectStore
+        let sessions = sessionStore
+        let store = settings
+
+        AttentionStore.shared.onNewItems = { [weak store] items in
+            guard let prefs = store?.notifications else { return }
+            for item in items {
+                guard let event = item.kind.notificationEvent,
+                      let projectID = item.projectID,
+                      let sessionID = item.sessionID
+                else { continue }
+                sessions.notify(
+                    event,
+                    title: projects.projects.first { $0.id == projectID }?.name ?? "Uncoil",
+                    body: "\(item.kind.label) · \(item.title)",
+                    projectID: projectID,
+                    sessionID: sessionID,
+                    prefs: prefs
+                )
+            }
+        }
+
+        sessionStore.startNotificationReminders(
+            prefs: { [weak store] in store?.notifications ?? NotificationPrefs() },
+            projectID: { id in projects.sessions.first { $0.id == id }?.projectID },
+            projectName: { id in
+                guard let projectID = projects.sessions.first(where: { $0.id == id })?.projectID
+                else { return nil }
+                return projects.projects.first { $0.id == projectID }?.name
+            },
+            sessionTitle: { id in projects.sessions.first { $0.id == id }?.displayTitle },
+            visibleSessionID: {
+                if case .session(let id) = MainRoute.shared.lastSelection { return id }
+                return nil
+            }
+        )
     }
 
     /// Starts the MCP control-plane socket server. Gated off under UI testing

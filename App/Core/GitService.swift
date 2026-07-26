@@ -66,6 +66,16 @@ enum GitService {
     /// Paths with an unresolved merge conflict (`git diff --diff-filter=U`),
     /// which is what the Attention Center reports. Blocking; call from a
     /// background task.
+    /// Just the checked-out branch — one `git` call rather than the four a full
+    /// snapshot costs, for the places that only name where the work is landing.
+    /// Blocking; call from a background task.
+    static func currentBranch(repoPath: String) -> String? {
+        guard let branch = run(["-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"]),
+              !branch.isEmpty
+        else { return nil }
+        return branch
+    }
+
     static func conflictedFiles(repoPath: String) -> [String] {
         guard let output = run([
             "-C", repoPath, "diff", "--name-only", "--diff-filter=U",
