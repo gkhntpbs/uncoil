@@ -18,6 +18,8 @@ struct AboutSettingsPage: View {
             Section {
                 LabeledContent("Uncoil", value: version)
                 LabeledContent("Bundle", value: Bundle.main.bundleIdentifier ?? "—")
+            } footer: {
+                SettingsNote(String(localized: "Developed by Gökhan Topbaş"))
             }
 
             Section {
