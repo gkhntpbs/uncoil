@@ -7,6 +7,8 @@ struct ExtensionsView: View {
         case agents
         case skills
         case mcpServers
+        case mcpCatalog
+        case skillCatalog
         case assignments
         case sources
         case security
@@ -21,6 +23,8 @@ struct ExtensionsView: View {
             case .agents: String(localized: "Agents")
             case .skills: String(localized: "Skills")
             case .mcpServers: String(localized: "MCP Servers")
+            case .mcpCatalog: String(localized: "MCP Catalog")
+            case .skillCatalog: String(localized: "Skill Catalog")
             case .assignments: String(localized: "Assignments")
             case .sources: String(localized: "Sources")
             case .security: String(localized: "Security")
@@ -35,6 +39,8 @@ struct ExtensionsView: View {
             case .agents: "robot"
             case .skills: "sparkles"
             case .mcpServers: "server"
+            case .mcpCatalog: "world-search"
+            case .skillCatalog: "book-download"
             case .assignments: "arrows-exchange"
             case .sources: "database"
             case .security: "shield-lock"
@@ -53,6 +59,14 @@ struct ExtensionsView: View {
             case .agents: ["agent", "claude", "codex", "gemini", "cursor", "amp", "install", "kurulum"]
             case .skills: ["skill", "yetenek", "trigger", "prompt"]
             case .mcpServers: ["mcp", "server", "sunucu", "stdio", "http"]
+            case .mcpCatalog: [
+                "catalog", "katalog", "registry", "discover", "keşfet", "browse",
+                "install", "kur", "mcp", "store", "mağaza",
+            ]
+            case .skillCatalog: [
+                "catalog", "katalog", "skill", "yetenek", "discover", "keşfet",
+                "browse", "install", "kur", "github", "trending", "store", "mağaza",
+            ]
             case .assignments: ["assignment", "atama", "project", "proje", "matrix", "matris"]
             case .sources: ["source", "kaynak", "github", "repo", "mirror"]
             case .security: [
@@ -70,6 +84,8 @@ struct ExtensionsView: View {
             case .agents: "Installed agents and their profiles"
             case .skills: "Available skill packages"
             case .mcpServers: "MCP server definitions and their states"
+            case .mcpCatalog: "Discover and install MCP servers from the official registry"
+            case .skillCatalog: "Discover and install skills from GitHub"
             case .assignments: "Agent and project assignments"
             case .sources: "Extension sources"
             case .security: "Security findings and quarantine"
@@ -96,6 +112,10 @@ struct ExtensionsView: View {
     /// Extensions menu's quick scan have to be the same scan, not two.
     @StateObject private var scans: BumblebeeScanCoordinator
     @ObservedObject private var commands = ExtensionsCommandBus.shared
+    // One store per catalog page, owned by the window: switching sections
+    // keeps what was already loaded instead of refetching.
+    @StateObject private var mcpCatalog = CatalogStore(kind: .mcpServer)
+    @StateObject private var skillCatalog = CatalogStore(kind: .skill)
 
     init() {
         let registry = ExtensionRegistry()
@@ -418,6 +438,16 @@ struct ExtensionsView: View {
             PackagesScreen(
                 registry: registry, kind: .mcpServer,
                 selectedPackageID: $selectedPackageID, message: notices.messageBinding
+            )
+        case .mcpCatalog:
+            CatalogScreen(
+                registry: registry, catalog: mcpCatalog, scans: scans,
+                message: notices.messageBinding
+            )
+        case .skillCatalog:
+            CatalogScreen(
+                registry: registry, catalog: skillCatalog, scans: scans,
+                message: notices.messageBinding
             )
         case .assignments:
             AssignmentsScreen(registry: registry)

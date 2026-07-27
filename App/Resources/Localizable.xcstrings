@@ -63,6 +63,9 @@
         }
       }
     },
+    "… and %lld more" : {
+
+    },
     "·" : {
 
     },
@@ -78,6 +81,9 @@
           }
         }
       }
+    },
+    "“%@” is already installed outside Uncoil. Adopt it on the Skills screen first." : {
+
     },
     "“%@” matched no extension, agent, source, finding or record." : {
       "extractionState" : "manual",
@@ -209,6 +215,9 @@
         }
       }
     },
+    "%@ (repository root)" : {
+
+    },
     "%@ → %@" : {
       "localizations" : {
         "en" : {
@@ -339,6 +348,16 @@
         }
       }
     },
+    "%@ from %@, pinned %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ from %2$@, pinned %3$@"
+          }
+        }
+      }
+    },
     "%@ in %@ — click to switch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -357,6 +376,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ kuruldu: %@"
+          }
+        }
+      }
+    },
+    "%@ installed: %lld agents" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ installed: %2$lld agents"
           }
         }
       }
@@ -695,6 +724,9 @@
     "%lld" : {
 
     },
+    "%lld B" : {
+
+    },
     "%lld changed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1023,6 +1055,9 @@
         }
       }
     },
+    "%lld stars" : {
+
+    },
     "%lld task sources found" : {
 
     },
@@ -1117,6 +1152,9 @@
     "+%@" : {
 
     },
+    "+%lld" : {
+
+    },
     "+%lld more" : {
 
     },
@@ -1191,6 +1229,9 @@
           }
         }
       }
+    },
+    "A backup of each config is taken before it is written; one click rolls it back." : {
+
     },
     "A blocked finding prevents adoption." : {
       "extractionState" : "manual",
@@ -1980,6 +2021,9 @@
         }
       }
     },
+    "Already declares “%@”" : {
+
+    },
     "Ambiguous: %lld candidates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2135,6 +2179,9 @@
         }
       }
     },
+    "Applying…" : {
+
+    },
     "Approval answered" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2167,6 +2214,9 @@
           }
         }
       }
+    },
+    "archived" : {
+
     },
     "Artifacts" : {
       "extractionState" : "manual",
@@ -2233,6 +2283,9 @@
           }
         }
       }
+    },
+    "Asks for" : {
+
     },
     "Asks for elevated privileges with sudo." : {
       "extractionState" : "manual",
@@ -2390,6 +2443,9 @@
           }
         }
       }
+    },
+    "Audit failed" : {
+
     },
     "Audit log" : {
       "extractionState" : "manual",
@@ -3543,6 +3599,9 @@
         }
       }
     },
+    "Config changed on disk; review the new plan" : {
+
+    },
     "Config drift" : {
 
     },
@@ -3581,6 +3640,9 @@
           }
         }
       }
+    },
+    "Connect GitHub for full browsing" : {
+
     },
     "Connect to a GitHub source" : {
       "extractionState" : "manual",
@@ -3934,6 +3996,9 @@
           }
         }
       }
+    },
+    "Curated" : {
+
     },
     "Current" : {
       "extractionState" : "manual",
@@ -4301,6 +4366,9 @@
         }
       }
     },
+    "Deprecated" : {
+
+    },
     "description" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4337,6 +4405,9 @@
         }
       }
     },
+    "Details are on the Activity screen." : {
+
+    },
     "Detect" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4372,6 +4443,12 @@
           }
         }
       }
+    },
+    "Does not support HTTP MCP servers" : {
+
+    },
+    "Does not support STDIO MCP servers" : {
+
     },
     "Done" : {
       "extractionState" : "manual",
@@ -4781,6 +4858,9 @@
         }
       }
     },
+    "Exactly this will change — nothing has been written yet:" : {
+
+    },
     "exit %d" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4931,6 +5011,9 @@
         }
       }
     },
+    "Featured" : {
+
+    },
     "Fetch Now" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4941,6 +5024,9 @@
           }
         }
       }
+    },
+    "Fetching the file list…" : {
+
     },
     "File" : {
       "extractionState" : "manual",
@@ -4974,6 +5060,9 @@
           }
         }
       }
+    },
+    "Files (%lld)" : {
+
     },
     "files kept" : {
       "extractionState" : "manual",
@@ -5094,6 +5183,16 @@
         }
       }
     },
+    "From %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "From %1$@ · %2$@"
+          }
+        }
+      }
+    },
     "General" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5193,6 +5292,9 @@
         }
       }
     },
+    "GitHub stars" : {
+
+    },
     "global assignment" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5272,6 +5374,9 @@
           }
         }
       }
+    },
+    "Has no skills directory" : {
+
     },
     "Has not run yet." : {
       "extractionState" : "manual",
@@ -5591,6 +5696,9 @@
         }
       }
     },
+    "Incompatible" : {
+
+    },
     "Indefinitely" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5663,6 +5771,15 @@
     "Install hooks" : {
 
     },
+    "Install into" : {
+
+    },
+    "Install…" : {
+
+    },
+    "Installation method" : {
+
+    },
     "Installed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5673,6 +5790,9 @@
           }
         }
       }
+    },
+    "Installed · backup taken" : {
+
     },
     "Installed agents" : {
       "extractionState" : "manual",
@@ -5696,6 +5816,16 @@
         }
       }
     },
+    "Installed from %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Installed from %1$@ (%2$@)"
+          }
+        }
+      }
+    },
     "Installed outside Uncoil" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5706,6 +5836,9 @@
           }
         }
       }
+    },
+    "Installed version" : {
+
     },
     "Installed: %@" : {
       "extractionState" : "manual",
@@ -5730,6 +5863,12 @@
       }
     },
     "Installing the optional browser or Computer Use drivers, and running any remote install script, always asks you first." : {
+
+    },
+    "Installing…" : {
+
+    },
+    "Installs" : {
 
     },
     "Instruction file" : {
@@ -5941,6 +6080,9 @@
         }
       }
     },
+    "Latest version" : {
+
+    },
     "Left alone: %@" : {
 
     },
@@ -5964,6 +6106,9 @@
     "Lets an agent hand a task to another agent and cut a worktree for it." : {
 
     },
+    "License" : {
+
+    },
     "Line to write to the file" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5985,6 +6130,9 @@
           }
         }
       }
+    },
+    "Linked" : {
+
     },
     "Linked to the wrong target" : {
       "extractionState" : "manual",
@@ -6019,6 +6167,12 @@
         }
       }
     },
+    "Listing in a catalog is not a safety guarantee; the plan shows every change first." : {
+
+    },
+    "Load more" : {
+
+    },
     "Loading" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6029,6 +6183,9 @@
           }
         }
       }
+    },
+    "Loading…" : {
+
     },
     "Local" : {
       "extractionState" : "manual",
@@ -6325,6 +6482,9 @@
         }
       }
     },
+    "MCP Catalog" : {
+
+    },
     "MCP disabled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6570,6 +6730,9 @@
           }
         }
       }
+    },
+    "More could not be loaded: %@" : {
+
     },
     "Most of the file was rewritten: outside the block %lld of %lld lines disappeared." : {
       "extractionState" : "manual",
@@ -6929,6 +7092,9 @@
         }
       }
     },
+    "No adapter for this agent" : {
+
+    },
     "No banner is sent about the session already on screen." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6952,6 +7118,9 @@
       }
     },
     "No binary on this Mac's PATH. Install it, then rescan." : {
+
+    },
+    "No change." : {
 
     },
     "No changes" : {
@@ -7097,6 +7266,9 @@
         }
       }
     },
+    "No installable package or endpoint" : {
+
+    },
     "No installed agent found; the skill is created but attached to nobody." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7140,6 +7312,9 @@
           }
         }
       }
+    },
+    "No manageable agent was found on this machine." : {
+
     },
     "No managed extension; unmanaged packages are not checked for updates." : {
       "extractionState" : "manual",
@@ -7433,6 +7608,9 @@
     "No setup" : {
 
     },
+    "No SKILL.md was found in this repository — there is nothing to install." : {
+
+    },
     "No source." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7585,6 +7763,9 @@
     "Not a git repository" : {
 
     },
+    "Not applied" : {
+
+    },
     "Not asked yet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7651,6 +7832,9 @@
         }
       }
     },
+    "Not installed on this machine" : {
+
+    },
     "Not signed in" : {
 
     },
@@ -7675,6 +7859,9 @@
           }
         }
       }
+    },
+    "Nothing matches “%@”." : {
+
     },
     "Nothing shows up in the agents' skill directories." : {
       "extractionState" : "manual",
@@ -7711,6 +7898,9 @@
           }
         }
       }
+    },
+    "Nothing was selected." : {
+
     },
     "Notifications" : {
       "extractionState" : "manual",
@@ -7843,6 +8033,15 @@
           }
         }
       }
+    },
+    "Official" : {
+
+    },
+    "Official MCP Registry" : {
+
+    },
+    "Official registry" : {
+
     },
     "OK" : {
       "extractionState" : "manual",
@@ -8509,6 +8708,18 @@
         }
       }
     },
+    "Pinned commit" : {
+
+    },
+    "pinned content hash %@" : {
+
+    },
+    "Pinned to %@ — installs, updates and diffs all compare against exactly this." : {
+
+    },
+    "Pinned version" : {
+
+    },
     "Pipes something downloaded from the internet straight into the shell." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8548,6 +8759,9 @@
     "Point Uncoil at a GitHub repository — a whole repo or a subfolder — pinned to a tag or tracking a branch. The commit it came from is recorded, and one copy in the store is shared by every agent through symlinks, so a skill is never duplicated per agent." : {
 
     },
+    "Popular" : {
+
+    },
     "Port %lld is already serving before start. Stop whatever owns it (`lsof -ti :%lld`), or change the configured port." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8580,6 +8794,9 @@
           }
         }
       }
+    },
+    "Preparing…" : {
+
     },
     "Prerequisite '%@' failed (%@): " : {
       "extractionState" : "manual",
@@ -8841,6 +9058,9 @@
     "PTY fallback: %@" : {
 
     },
+    "Publisher" : {
+
+    },
     "Pull Requests" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8851,6 +9071,9 @@
           }
         }
       }
+    },
+    "pushed %@" : {
+
     },
     "Python script" : {
       "extractionState" : "manual",
@@ -9210,6 +9433,9 @@
     "Registry · %@" : {
 
     },
+    "Reinstall…" : {
+
+    },
     "Release from Quarantine" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9220,6 +9446,9 @@
           }
         }
       }
+    },
+    "Release history" : {
+
     },
     "Released" : {
       "extractionState" : "manual",
@@ -9532,6 +9761,9 @@
         }
       }
     },
+    "Repository" : {
+
+    },
     "Request Permission" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9667,6 +9899,9 @@
         }
       }
     },
+    "Result" : {
+
+    },
     "Results" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9688,6 +9923,9 @@
           }
         }
       }
+    },
+    "Retry" : {
+
     },
     "Review" : {
       "extractionState" : "manual",
@@ -9743,6 +9981,9 @@
           }
         }
       }
+    },
+    "Reviewed" : {
+
     },
     "Reviewed ✓" : {
       "extractionState" : "manual",
@@ -10161,6 +10402,9 @@
         }
       }
     },
+    "Search MCP servers" : {
+
+    },
     "Search settings" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10171,6 +10415,9 @@
           }
         }
       }
+    },
+    "Search skills" : {
+
     },
     "Search tasks…" : {
       "extractionState" : "manual",
@@ -10193,6 +10440,9 @@
           }
         }
       }
+    },
+    "Secret values are never written into config; they are provided per server after install and stored in the Keychain." : {
+
     },
     "Security" : {
       "extractionState" : "manual",
@@ -10906,6 +11156,9 @@
     "Skill" : {
 
     },
+    "Skill Catalog" : {
+
+    },
     "Skill installed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10956,6 +11209,12 @@
     "Skills and MCP servers, with a safety net" : {
 
     },
+    "Skills are discovered on GitHub. Without a connection the catalog still works inside GitHub's small anonymous limit; signing in with the browser removes that ceiling. The token stays in your Keychain." : {
+
+    },
+    "Skills in this repository (%lld)" : {
+
+    },
     "Skip" : {
 
     },
@@ -10980,6 +11239,9 @@
           }
         }
       }
+    },
+    "Source" : {
+
     },
     "source linked: %@ · %@" : {
       "extractionState" : "manual",
@@ -11035,6 +11297,9 @@
           }
         }
       }
+    },
+    "Staged and inspected — nothing has touched an agent yet:" : {
+
     },
     "Start" : {
       "extractionState" : "manual",
@@ -11809,6 +12074,24 @@
         }
       }
     },
+    "The catalog answered with HTTP %lld." : {
+
+    },
+    "The catalog could not be loaded" : {
+
+    },
+    "The catalog could not be reached: %@" : {
+
+    },
+    "The catalog returned nothing." : {
+
+    },
+    "The catalog's answer was not in the expected shape: %@" : {
+
+    },
+    "The catalog's source rejected the sign-in; reconnect and try again." : {
+
+    },
     "The chosen file is not executable: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11976,6 +12259,9 @@
           }
         }
       }
+    },
+    "The files are staged and scanned; nothing has touched an agent yet." : {
+
     },
     "The files change under the agent while it is working." : {
       "extractionState" : "manual",
@@ -12148,6 +12434,12 @@
     "The provider's own config root — the login you already use in the terminal." : {
 
     },
+    "The registry could not be reached; showing the last cached results." : {
+
+    },
+    "The repository is archived; it is listed read-only." : {
+
+    },
     "The review requested changes." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12224,6 +12516,9 @@
           }
         }
       }
+    },
+    "The source is rate-limiting requests right now. Try again in a minute — signing in to GitHub raises the limit considerably." : {
+
     },
     "The source or repo owner changed: %@ → %@" : {
       "extractionState" : "manual",
@@ -12531,6 +12826,9 @@
         }
       }
     },
+    "This entry offers no package or endpoint Uncoil can install." : {
+
+    },
     "This folder is not a git repository." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12552,6 +12850,9 @@
           }
         }
       }
+    },
+    "This skill contains executable files; I approve installing them." : {
+
     },
     "Timed Out" : {
       "extractionState" : "manual",
@@ -12586,6 +12887,9 @@
         }
       }
     },
+    "Topics" : {
+
+    },
     "Tor Browser" : {
 
     },
@@ -12611,6 +12915,9 @@
         }
       }
     },
+    "Trending" : {
+
+    },
     "Trigger Tester" : {
 
     },
@@ -12635,6 +12942,9 @@
           }
         }
       }
+    },
+    "Try again" : {
+
     },
     "Turn done" : {
       "extractionState" : "manual",
@@ -13140,6 +13450,9 @@
         }
       }
     },
+    "Update…" : {
+
+    },
     "Updated" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13208,6 +13521,9 @@
           }
         }
       }
+    },
+    "v%@" : {
+
     },
     "Validate" : {
       "extractionState" : "manual",
@@ -13485,6 +13801,9 @@
           }
         }
       }
+    },
+    "Will run: %@" : {
+
     },
     "With no record an extension is global; the project record, being the most specific, wins." : {
       "extractionState" : "manual",
