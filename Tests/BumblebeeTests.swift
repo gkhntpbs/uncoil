@@ -263,7 +263,7 @@ final class BumblebeeRunnerTests: XCTestCase {
         ])
         let result = try await runner.scan(kind: .beforeUpdate, paths: ["/repo"], now: now)
         XCTAssertFalse(result.isUsableAsCurrentState)
-        XCTAssertTrue(result.unusableReason?.contains("zaman aşımı") ?? false)
+        XCTAssertTrue(result.unusableReason?.contains("timed out") ?? false)
     }
 
     func testAFailedSelfTestStopsTheScanBeforeItRuns() async {
@@ -297,7 +297,7 @@ final class BumblebeeRunnerTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? BumblebeeRunner.RunError, .notInstalled)
             XCTAssertTrue(
-                (error as? BumblebeeRunner.RunError)?.errorDescription?.contains("onayı") ?? false,
+                (error as? BumblebeeRunner.RunError)?.errorDescription?.contains("approval") ?? false,
                 "installing it is the user's decision"
             )
         }
@@ -403,7 +403,7 @@ final class BumblebeeCoverageTests: XCTestCase {
         XCTAssertTrue(
             BumblebeeCoverage.looseSkillFolders.message.contains("SKILL.md")
         )
-        XCTAssertTrue(BumblebeeCoverage.codexTOML.message.contains("Codex TOML"))
+        XCTAssertTrue(BumblebeeCoverage.codexTOML.message.contains("Codex's TOML"))
     }
 
     func testWhatIsOutsideBumblebeesReachIsLabelled() {
@@ -429,10 +429,10 @@ final class BumblebeeCoverageTests: XCTestCase {
         let caption = BumblebeeCoverage.cleanResultCaption(scanned: 12)
         XCTAssertTrue(caption.contains("12"))
         XCTAssertTrue(
-            caption.contains("\"tamamen güvenli\" demek değildir"),
+            caption.contains("does not mean “entirely safe”"),
             "the phrase only ever appears negated: \(caption)"
         )
-        XCTAssertTrue(caption.contains("kapsamı sınırlıdır"), caption)
+        XCTAssertTrue(caption.contains("reach is limited"), caption)
     }
 }
 
@@ -706,7 +706,7 @@ final class ThreatCatalogTests: XCTestCase {
         XCTAssertEqual(update.previousVersion, "2026.06.01")
         XCTAssertEqual(update.addedRules, ["BB-2"])
         XCTAssertEqual(update.changedRules, ["BB-1"], "a severity change is a change")
-        XCTAssertTrue(update.summary.contains("+1 kural"), update.summary)
+        XCTAssertTrue(update.summary.contains("+1 rules"), update.summary)
         XCTAssertEqual(store.current()?.catalogVersion, "2026.07.01")
         XCTAssertEqual(store.previous()?.catalogVersion, "2026.06.01")
     }
@@ -822,7 +822,7 @@ final class BumblebeeRegistryRecordTests: XCTestCase {
         )
         XCTAssertNil(registry.lastBumblebeeScanAt)
         XCTAssertTrue(
-            registry.auditEvents.contains { $0.detail.contains("kullanılmadı") },
+            registry.auditEvents.contains { $0.detail.contains("was not used") },
             "and the attempt is recorded"
         )
         XCTAssertEqual(
@@ -957,7 +957,7 @@ final class BumblebeeScanCoordinatorTests: XCTestCase {
             await coordinator.deepScan(now: now),
         ] {
             XCTAssertEqual(outcome, .notInstalled)
-            XCTAssertTrue(outcome.message.contains("onayınla"), outcome.message)
+            XCTAssertTrue(outcome.message.contains("approval"), outcome.message)
         }
     }
 
@@ -1168,12 +1168,12 @@ final class BumblebeeFindingKindTests: XCTestCase {
         XCTAssertEqual(summary.actionableCount, 0)
         let caption = summary.caption(scanned: 10)
         XCTAssertTrue(caption.contains("could not be read"), caption)
-        XCTAssertFalse(caption.contains("bulgu yok"), caption)
+        XCTAssertFalse(caption.contains("no findings"), caption)
     }
 
     func testACleanScanSaysWhatItDoesNotMean() {
         let caption = BumblebeeFindingSummary(findings: []).caption(scanned: 5)
-        XCTAssertTrue(caption.contains("değildir"), caption)
+        XCTAssertTrue(caption.contains("does not mean"), caption)
     }
 
     func testTheKindsShownAreOnlyTheOnesPresent() {
@@ -1261,7 +1261,7 @@ final class BumblebeeDaemonHandoffTests: XCTestCase {
         guard case .skipped(let reason) = outcome else {
             return XCTFail("expected a skip: \(outcome)")
         }
-        XCTAssertTrue(reason.contains("sonuç yok"), reason)
+        XCTAssertTrue(reason.contains("no result"), reason)
     }
 
     func testSchedulingIsRefusedWithoutABinary() {

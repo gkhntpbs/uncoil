@@ -315,8 +315,17 @@ final class ComputerHandlerTests: XCTestCase {
     private var router: CapabilityRouter!
     private var caller: SessionRecord!
     private var fake: FakeComputerEngine!
+    private var savedCapabilityDefaults: [String]?
 
     override func setUp() async throws {
+        // `ProjectStore.defaultSessionCapabilities` is a process-wide global that
+        // `SettingsStore` fills from the developer's own settings file. A machine
+        // with Computer Use switched on in the real app therefore created test
+        // sessions that already held `computer.inspect`, and the gating tests
+        // below asserted nothing. Pin it: what these tests check is the control
+        // plane's default grant set, not the operator's preferences.
+        savedCapabilityDefaults = ProjectStore.defaultSessionCapabilities
+        ProjectStore.defaultSessionCapabilities = nil
         tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("uncoil-co-\(UUID().uuidString)", isDirectory: true)
         store = ProjectStore(directory: tempDir)
@@ -328,7 +337,10 @@ final class ComputerHandlerTests: XCTestCase {
         fake = FakeComputerEngine()
         router.computerEngine = fake
     }
-    override func tearDown() async throws { try? FileManager.default.removeItem(at: tempDir) }
+    override func tearDown() async throws {
+        ProjectStore.defaultSessionCapabilities = savedCapabilityDefaults
+        try? FileManager.default.removeItem(at: tempDir)
+    }
 
     private func grant(_ caps: [String]) {
         store.updateSession(caller.id) { $0.capabilities = Array(PolicyEngine.defaultGrants) + caps }

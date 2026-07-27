@@ -421,7 +421,7 @@ final class ExtensionsAcceptanceTests: XCTestCase {
                 + "\(issues.map(\.id))"
         )
         XCTAssertTrue(
-            issues.first { $0.id == "codex.mcp.coverage" }?.message.contains("kapsamı dışında")
+            issues.first { $0.id == "codex.mcp.coverage" }?.message.contains("outside the Bumblebee scan's reach")
                 ?? false
         )
     }
@@ -691,12 +691,12 @@ final class UncoilFindingsAndQuarantineTests: XCTestCase {
         )
         XCTAssertTrue(
             registry.auditEvents.contains {
-                $0.kind == .quarantined && $0.detail.contains("dosyalar silinmedi")
+                $0.kind == .quarantined && $0.detail.contains("no file was deleted")
             },
             "\(registry.auditEvents.map(\.detail))"
         )
         XCTAssertTrue(
-            registry.auditEvents.contains { $0.detail.contains("bulgu f1") },
+            registry.auditEvents.contains { $0.detail.contains("finding f1") },
             "the finding behind it is recorded"
         )
     }

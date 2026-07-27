@@ -450,6 +450,11 @@ final class PaletteModel: ObservableObject {
         query = ""
         groups = []
         selectedIndex = 0
+        // The index is thousands of URLs; `open()` rebuilds it anyway, so
+        // holding it between palette uses is pure resident memory.
+        files = []
+        artifacts = []
+        indexedRoot = nil
     }
 
     func move(_ delta: Int) {
@@ -557,10 +562,13 @@ final class PaletteModel: ObservableObject {
                     (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true
                 })
             }
+            // Same cap the file index uses; a project with years of artifacts
+            // should not pin an unbounded URL list.
+            let cappedArts = Array(arts.prefix(FileIndexer.cap))
             await MainActor.run { [weak self] in
                 guard let self, self.isOpen, self.indexedRoot == root else { return }
                 self.files = indexed
-                self.artifacts = arts
+                self.artifacts = cappedArts
                 self.recomputeNow()
             }
         }

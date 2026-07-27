@@ -383,7 +383,7 @@ final class TaskDiffAuditTests: XCTestCase {
             if case .changedOutsideBlock = finding.kind { return true }
             return false
         })
-        XCTAssertTrue(findings[0].message.contains("dışında"))
+        XCTAssertTrue(findings[0].message.contains("outside"))
     }
 
     func testAWholeFileRewriteIsReportedAsAnError() throws {
@@ -575,7 +575,7 @@ final class GitMergeTests: XCTestCase {
     func testTheDiffIsBoundedAndReportsWhatItDropped() throws {
         try write((1...600).map { "satır \($0)" }.joined(separator: "\n"), to: "file.txt")
         let diff = GitService.diff(repoPath: root.path, maxLines: 50)
-        XCTAssertTrue(diff.contains("satır daha"), "a cap is reported, never silent")
+        XCTAssertTrue(diff.contains("more lines"), "a cap is reported, never silent")
         XCTAssertLessThan(diff.split(separator: "\n").count, 60)
     }
 }
@@ -587,10 +587,10 @@ final class StaleEditComparisonTests: XCTestCase {
             attempted: "@@ satır 3 @@ işaretleniyor\n-[ ]\n+[x]",
             onDisk: "- [ ] daemon heartbeat ekle, kullanıcı düzeltti"
         )
-        XCTAssertTrue(text.contains("Senin düzenlemen"))
+        XCTAssertTrue(text.contains("Your edit"))
         XCTAssertTrue(text.contains("daemon heartbeat ekle"))
         XCTAssertTrue(text.contains("+[x]"))
-        XCTAssertTrue(text.contains("Dosyadaki hâli"))
+        XCTAssertTrue(text.contains("On disk"))
         XCTAssertTrue(text.contains("kullanıcı düzeltti"))
     }
 
@@ -599,7 +599,7 @@ final class StaleEditComparisonTests: XCTestCase {
             let text = StaleEditComparison.text(
                 taskText: "görev", attempted: "-a\n+b", onDisk: onDisk
             )
-            XCTAssertTrue(text.contains("dosyada bulunamadı"), text)
+            XCTAssertTrue(text.contains("not in the file"), text)
         }
     }
 }

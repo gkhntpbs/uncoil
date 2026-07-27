@@ -20,6 +20,12 @@ enum RuntimeProtocol {
     static let logFileLimit = 1024 * 1024
     static let logGenerations = 3
     static let sessionIdleThreshold: TimeInterval = 60 * 60
+    /// A session nobody is attached to AND that has produced no output for this
+    /// long is considered abandoned and is terminated by the daemon. Both
+    /// clocks must run out: an unattached agent that is still working keeps
+    /// producing output, so it is never reaped; an attached-but-quiet session
+    /// is the app's business, not the daemon's.
+    static let sessionAbandonedThreshold: TimeInterval = 24 * 60 * 60
 
     enum Compatibility: Equatable {
         case compatible(minor: Int)

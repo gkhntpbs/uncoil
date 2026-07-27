@@ -172,7 +172,7 @@ final class BundledExtensionCatalogTests: XCTestCase {
             return XCTFail("expected a modification, got \(result.failures)")
         }
         XCTAssertEqual(path, "bundled/review.md")
-        XCTAssertTrue(result.failures[0].message.contains("çalıştırılmamalı"))
+        XCTAssertTrue(result.failures[0].message.contains("must not be run"))
     }
 
     func testAMissingBundledFileIsReported() throws {
@@ -264,7 +264,7 @@ final class ExtensionAdoptionTests: XCTestCase {
         XCTAssertTrue(plan.changes.allSatisfy { $0.kind == .added })
         XCTAssertNotNil(plan.backupPath)
         XCTAssertTrue(plan.isAdoptable)
-        XCTAssertTrue(plan.summary.contains("2 yeni"), plan.summary)
+        XCTAssertTrue(plan.summary.contains("2 new"), plan.summary)
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: plan.destinationPath),
             "planning moves no files"

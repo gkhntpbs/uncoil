@@ -13,7 +13,7 @@ enum FuzzyScore {
     /// so tests and runtime agree regardless of the user's system locale.
     static func normalize(_ string: String) -> String {
         var text = string
-        for (from, to) in [("i", "i"), ("I", "i"), ("I", "i")] {
+        for (from, to) in [("İ", "i"), ("ı", "i"), ("I", "i")] {
             text = text.replacingOccurrences(of: from, with: to)
         }
         return text

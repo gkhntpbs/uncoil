@@ -142,7 +142,7 @@ final class ConfigurationTransactionServiceTests: XCTestCase {
         )
         XCTAssertEqual(event.kind, .configChanged)
         XCTAssertEqual(event.agent, .claudeCode)
-        XCTAssertTrue(event.detail.contains("satır değişti"))
+        XCTAssertTrue(event.detail.contains("lines changed"))
         XCTAssertFalse(event.detail.contains("uncoil-mcp"), "no config content in the audit line")
         XCTAssertTrue(event.isUndoable)
     }
@@ -167,7 +167,7 @@ final class ConfigurationTransactionServiceTests: XCTestCase {
             planned.transaction, changes: changes, installation: installation
         )
         let event = ConfigurationTransactionService.auditEvent(for: outcome, extensionID: nil)
-        XCTAssertTrue(event.detail.contains("dışarıdan değişti"))
+        XCTAssertTrue(event.detail.contains("changed on disk"))
     }
 }
 

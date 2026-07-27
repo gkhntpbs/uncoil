@@ -167,8 +167,9 @@ final class ControlPlaneServer: @unchecked Sendable {
             return
         }
         let router = self.router
-        Task { @MainActor in
+        Task { @MainActor [weak self] in
             let envelope = await router.handle(request)
+            guard let self else { return }
             self.queue.async { self.send(envelope, to: fd) }
         }
     }

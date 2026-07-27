@@ -109,7 +109,13 @@ protocol AgentAdapter {
 /// tests drive them directly.
 enum AgentAdapterSupport {
     static func hash(_ text: String) -> String {
-        SHA256.hash(data: Data(text.utf8))
+        hash(Data(text.utf8))
+    }
+
+    /// Hashing bytes directly spares the lossy String round-trip a binary file
+    /// would otherwise take (and the second full copy it allocates).
+    static func hash(_ data: Data) -> String {
+        SHA256.hash(data: data)
             .map { String(format: "%02x", $0) }
             .joined()
     }

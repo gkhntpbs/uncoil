@@ -224,7 +224,22 @@ final class PermissionService: ObservableObject {
             requests[index].decidedAt = Date()
             changed = true
         }
-        if changed { save() }
+        // Terminal records (expired, denied, consumed) reference per-session
+        // UUIDs that will never recur; without retention the file and the
+        // published array grow with every session ever run. Granted records
+        // stay — a persistent grant is durable until revoked.
+        let retention: TimeInterval = 7 * 24 * 3600
+        let stale = Date().addingTimeInterval(-retention)
+        let before = requests.count
+        requests.removeAll { request in
+            switch request.status {
+            case .expired, .denied, .consumed:
+                return (request.decidedAt ?? request.createdAt) < stale
+            default:
+                return false
+            }
+        }
+        if changed || requests.count != before { save() }
     }
 
     // MARK: - Persistence (atomic write-temp-rename)

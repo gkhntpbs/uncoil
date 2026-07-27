@@ -29,11 +29,14 @@ struct AgentAdapterRegistry {
 
     /// Reads each detected installation, returning what could be read plus the
     /// failures — a broken config must never hide the healthy ones.
-    func readAll() -> (configurations: [AgentConfiguration], failures: [ConfigurationIssue]) {
+    func readAll(
+        installations detected: [AgentInstallation]? = nil
+    ) -> (configurations: [AgentConfiguration], failures: [ConfigurationIssue]) {
         var configurations: [AgentConfiguration] = []
         var failures: [ConfigurationIssue] = []
+        let byAgent = detected.map { Dictionary(grouping: $0, by: \.agent) }
         for adapter in adapters {
-            for installation in adapter.detectInstallations() {
+            for installation in byAgent?[adapter.agent] ?? adapter.detectInstallations() {
                 do {
                     configurations.append(try adapter.readConfiguration(installation))
                 } catch {

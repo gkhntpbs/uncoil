@@ -256,11 +256,11 @@ final class TaskOrchestratorPlanningTests: XCTestCase {
             list, claimStates: [list[2].id: .claimed]
         ))
         let summary = plan.summary()
-        XCTAssertTrue(summary.contains("Dalga 1"))
-        XCTAssertTrue(summary.contains("Dalga 2"))
-        XCTAssertTrue(summary.contains("Uygulayan"))
+        XCTAssertTrue(summary.contains("Wave 1"))
+        XCTAssertTrue(summary.contains("Wave 2"))
+        XCTAssertTrue(summary.contains("Implementer"))
         XCTAssertTrue(summary.contains("[worktree]"))
-        XCTAssertTrue(summary.contains("Atlandı"))
+        XCTAssertTrue(summary.contains("Skipped"))
     }
 }
 
@@ -351,7 +351,7 @@ final class TaskOrchestratorRecoveryTests: XCTestCase {
             settings: .default,
             now: now.addingTimeInterval(600)
         )
-        XCTAssertTrue(actions.contains(.releaseClaim(taskID: "t1", reason: "heartbeat kayboldu")))
+        XCTAssertTrue(actions.contains(.releaseClaim(taskID: "t1", reason: "the heartbeat disappeared")))
         XCTAssertTrue(actions.contains(.markFailed(taskID: "t1", reason: "the agent is not responding")))
     }
 

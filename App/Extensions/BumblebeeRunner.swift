@@ -248,8 +248,21 @@ struct BumblebeeRunner {
                 DispatchQueue.global().asyncAfter(
                     deadline: .now() + invocation.timeout, execute: deadline
                 )
-                let stdout = out.fileHandleForReading.readDataToEndOfFile()
-                let stderr = err.fileHandleForReading.readDataToEndOfFile()
+                // Same 4 MB cap `ProcessRunner` applies: the scanner's report
+                // is bounded, only a misbehaving run would exceed it, and an
+                // uncapped drain would buffer whatever it emits in full.
+                let maxOutputBytes = 4 * 1_024 * 1_024
+                func drain(_ handle: FileHandle) -> Data {
+                    var collected = Data()
+                    while let chunk = try? handle.read(upToCount: 65536), !chunk.isEmpty {
+                        if collected.count < maxOutputBytes {
+                            collected.append(chunk.prefix(maxOutputBytes - collected.count))
+                        }
+                    }
+                    return collected
+                }
+                let stdout = drain(out.fileHandleForReading)
+                let stderr = drain(err.fileHandleForReading)
                 process.waitUntilExit()
                 let timedOut = deadline.isCancelled == false && process.terminationReason == .uncaughtSignal
                 deadline.cancel()

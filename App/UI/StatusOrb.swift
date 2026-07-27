@@ -39,7 +39,10 @@ private struct OrbitingDots: View {
     let size: CGFloat
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+        TimelineView(.animation(
+            minimumInterval: 1.0 / 15.0,
+            paused: LaunchConfig.shared.disableAnimations
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             Canvas { canvas, canvasSize in
                 let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
@@ -74,7 +77,10 @@ private struct PulsingOrb: View {
     let size: CGFloat
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+        TimelineView(.animation(
+            minimumInterval: 1.0 / 15.0,
+            paused: LaunchConfig.shared.disableAnimations
+        )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let phase = (sin(t * 3.4) + 1) / 2  // 0…1
             ZStack {

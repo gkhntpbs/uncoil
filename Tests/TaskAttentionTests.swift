@@ -201,8 +201,8 @@ final class MenuBarTaskCountsTests: XCTestCase {
             statuses: [:], attention: [item(.taskBlocked)], queuedTasks: 1
         )
         let headline = try? XCTUnwrap(busy.taskHeadline)
-        XCTAssertTrue(headline?.contains("1 bloklu") ?? false, headline ?? "-")
-        XCTAssertTrue(headline?.contains("1 kuyrukta") ?? false, headline ?? "-")
+        XCTAssertTrue(headline?.contains("1 blocked") ?? false, headline ?? "-")
+        XCTAssertTrue(headline?.contains("1 queued") ?? false, headline ?? "-")
     }
 
     func testTaskProblemsEscalateTheMenuBarIcon() {

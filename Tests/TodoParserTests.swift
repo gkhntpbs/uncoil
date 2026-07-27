@@ -187,7 +187,7 @@ final class TodoParserTests: XCTestCase {
     func testCheckboxesRightUnderAHeadingWithNoBlankLine() {
         let document = parse("## Başlık\n- [ ] hemen altında\n1. [ ] numaralı da\n")
         XCTAssertEqual(document.tasks.count, 2)
-        XCTAssertTrue(document.tasks.allSatisfy { $0.headingPath == ["Title"] })
+        XCTAssertTrue(document.tasks.allSatisfy { $0.headingPath == ["Başlık"] })
     }
 
     func testCRLFFileParsesAndRoundTrips() {

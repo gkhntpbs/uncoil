@@ -60,6 +60,11 @@ final class RuntimeClient: @unchecked Sendable {
     private let configuredDaemonURL: URL?
     private var workspaceObservers: [NSObjectProtocol] = []
 
+    deinit {
+        let center = NSWorkspace.shared.notificationCenter
+        for observer in workspaceObservers { center.removeObserver(observer) }
+    }
+
     /// True once the daemon handshake completed and sessions are known.
     var isReady: Bool { phase == .ready }
 
@@ -307,6 +312,10 @@ final class RuntimeClient: @unchecked Sendable {
                 if let handler = exitHandlers[sid] {
                     DispatchQueue.main.async { handler(code) }
                 }
+                // The session is gone; keeping its handlers would pin the
+                // captured view state for the rest of the app's lifetime.
+                dataHandlers.removeValue(forKey: sid)
+                exitHandlers.removeValue(forKey: sid)
             }
         default:
             break

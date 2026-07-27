@@ -118,7 +118,7 @@ final class TodoEditorTests: XCTestCase {
 
     func testRenameToTheSameTextOrEmptyIsANoOp() throws {
         let (_, document) = try file("- [ ] aynı\n")
-        XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "same"))
+        XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "aynı"))
         XCTAssertNil(TodoEditor.renamePatch(for: document.tasks[0], to: "   "))
     }
 
@@ -313,10 +313,10 @@ final class TodoEditorTests: XCTestCase {
         let raw = "- [ ] görev\n"
         let (_, document) = try file(raw)
         let diff = TodoEditor.diff([TodoEditor.togglePatch(for: document.tasks[0])], in: raw)
-        XCTAssertTrue(diff.contains("satır 1"))
+        XCTAssertTrue(diff.contains("line 1"))
         XCTAssertTrue(diff.contains("-[ ]"))
         XCTAssertTrue(diff.contains("+[x]"))
-        XCTAssertTrue(diff.contains("işaretleniyor"))
+        XCTAssertTrue(diff.contains("marking it done"))
     }
 
     func testEveryEditKindProducesAReadableDiff() throws {

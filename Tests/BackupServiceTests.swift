@@ -221,7 +221,7 @@ final class BackupServiceTests: XCTestCase {
         backup.entries[index].schemaVersion = 99
         let preview = service.preview(backup)
         XCTAssertFalse(preview.isRestorable)
-        XCTAssertTrue(preview.fatalProblems.contains { $0.message.contains("okunamıyor") })
+        XCTAssertTrue(preview.fatalProblems.contains { $0.message.contains("cannot be read") })
         XCTAssertThrowsError(try service.restore(backup))
     }
 
@@ -320,7 +320,7 @@ final class BackupServiceTests: XCTestCase {
         ])
         let preview = service.preview(service.build())
         XCTAssertTrue(
-            preview.warnings.contains { $0.message.contains("dosyaları yok") },
+            preview.warnings.contains { $0.message.contains("files are gone") },
             "\(preview.warnings)"
         )
     }
@@ -389,7 +389,7 @@ final class BackupServiceTests: XCTestCase {
         ) else {
             return XCTFail("expected a failure")
         }
-        XCTAssertTrue(missing.message.contains("dosya yok"))
+        XCTAssertTrue(missing.message.contains("no file"))
 
         let broken = base.appendingPathComponent("broken.json")
         try Data("bu JSON değil".utf8).write(to: broken)

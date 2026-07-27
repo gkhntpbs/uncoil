@@ -220,6 +220,10 @@ schemes:
       config: Debug
     test:
       config: Debug
+      # The suite asserts on user-facing strings; pinning the language keeps
+      # it green on machines whose system language is not English.
+      language: en
+      region: US
       targets:
         - UncoilTests
 

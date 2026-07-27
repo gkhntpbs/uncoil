@@ -262,7 +262,7 @@ final class TaskReviewResultTests: XCTestCase {
         XCTAssertTrue(prompt.contains("hata yolu ele alınmamış"))
         XCTAssertTrue(prompt.contains("test yok"))
         XCTAssertTrue(
-            prompt.contains("Checkbox'ı şimdi işaretleme"),
+            prompt.contains("Do not tick the checkbox yet"),
             "an implementer told to fix things must not tick the box"
         )
     }
@@ -271,7 +271,7 @@ final class TaskReviewResultTests: XCTestCase {
         let prompt = TaskReviewResult(taskID: "t1", verdict: .approved)
             .feedbackPrompt(taskText: "iş")
         XCTAssertTrue(prompt.contains("Approved"))
-        XCTAssertFalse(prompt.contains("Checkbox'ı şimdi işaretleme"))
+        XCTAssertFalse(prompt.contains("Do not tick the checkbox yet"))
     }
 
     func testEveryVerdictHasALabel() {

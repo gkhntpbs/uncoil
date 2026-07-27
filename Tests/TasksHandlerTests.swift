@@ -111,8 +111,8 @@ final class TasksHandlerTests: XCTestCase {
 
         let context = await call("get_task_context", ["task_id": .string(id), "role": .string("reviewer")])
         let prompt = try XCTUnwrap(context.data?.objectValue?["prompt"]?.stringValue)
-        XCTAssertTrue(prompt.contains("biçimini koru"))
-        XCTAssertTrue(prompt.contains("yalnızca incele"))
+        XCTAssertTrue(prompt.contains("Preserve `TODO.md`'s formatting"))
+        XCTAssertTrue(prompt.contains("review only"))
         XCTAssertEqual(context.data?.objectValue?["role"]?.stringValue, "reviewer")
     }
 
@@ -401,7 +401,7 @@ final class TasksHandlerTests: XCTestCase {
         let prompt = try XCTUnwrap(envelope.data?.objectValue?["feedback_prompt"]?.stringValue)
         XCTAssertTrue(prompt.contains("hata yolu ele alınmamış"))
         XCTAssertTrue(
-            prompt.contains("Checkbox'ı şimdi işaretleme"),
+            prompt.contains("Do not tick the checkbox yet"),
             "an implementer told to fix things must not tick the box"
         )
 
@@ -442,7 +442,7 @@ final class TasksHandlerTests: XCTestCase {
         XCTAssertEqual(envelope.data?.objectValue?["merged"]?.boolValue, false)
         let blockers = try XCTUnwrap(envelope.data?.objectValue?["blockers"]?.arrayValue)
         XCTAssertTrue(
-            blockers.contains { $0.stringValue?.contains("onay") == true },
+            blockers.contains { $0.stringValue?.contains("approval") == true },
             "an agent asking is never the user approving: \(blockers)"
         )
 

@@ -80,7 +80,7 @@ final class UninstallServiceTests: XCTestCase {
         XCTAssertTrue(removed.contains(".skill-lock.json"))
         XCTAssertTrue(kept.contains("mine"), "the user's own skill")
         XCTAssertTrue(kept.contains(".claude.json"), "the agent's own config")
-        XCTAssertTrue(plan.summary.contains("silinecek"))
+        XCTAssertTrue(plan.summary.contains("will be deleted"))
     }
 
     func testTheUsersOwnFilesSurviveTheUninstall() throws {
@@ -142,13 +142,13 @@ final class CrashReportingPolicyTests: XCTestCase {
 
     func testTheNetworkPromiseIsUnconditional() {
         XCTAssertTrue(
-            CrashReportingPolicy.networkStatement.contains("göndermez"),
+            CrashReportingPolicy.networkStatement.contains("sends no telemetry"),
             CrashReportingPolicy.networkStatement
         )
         var enabled = CrashReportingPolicy.default
         enabled.isEnabled = true
         XCTAssertTrue(
-            enabled.summary.contains("yerel"),
+            enabled.summary.contains("local"),
             "even when on, it is local: \(enabled.summary)"
         )
     }

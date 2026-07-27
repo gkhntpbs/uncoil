@@ -83,7 +83,7 @@ final class TaskBoardMappingTests: XCTestCase {
         let columns = TaskBoardMapping.columns(for: board)
         XCTAssertEqual(columns.map(\.heading), ["Todo", "In Progress", "Done"])
         XCTAssertEqual(columns.map(\.lane), [.todo, .inProgress, .done])
-        XCTAssertEqual(columns.map(\.title), ["To do", "Devam Eden", "Done"])
+        XCTAssertEqual(columns.map(\.title), ["To do", "In Progress", "Done"])
         XCTAssertFalse(columns.contains(where: \.isCustom))
     }
 
@@ -262,7 +262,7 @@ final class TaskFilterTests: XCTestCase {
 
     func testHeadingAndSourceFilters() {
         var filter = TaskFilter()
-        filter.heading = "Interface"
+        filter.heading = "Arayüz"
         XCTAssertEqual(filter.apply(to: document.tasks).count, 2)
         filter.heading = nil
         filter.sourcePath = "/other/TODO.md"

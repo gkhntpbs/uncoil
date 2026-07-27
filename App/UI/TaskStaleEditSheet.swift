@@ -73,10 +73,10 @@ enum StaleEditComparison {
     ) -> String {
         var sections = ["# Your edit — \(taskText)", attempted]
         if let onDisk, !onDisk.isEmpty {
-            sections.append("# Dosyadaki hâli")
+            sections.append("# On disk")
             sections.append(onDisk)
         } else {
-            sections.append("# Dosyadaki hâli")
+            sections.append("# On disk")
             sections.append("This task is not in the file; someone may have deleted or moved it.")
         }
         return sections.joined(separator: "\n\n")

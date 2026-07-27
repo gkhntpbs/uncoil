@@ -171,14 +171,14 @@ struct ExtensionUpdateEngine {
         switch kind {
         case .skill:
             if !manager.fileExists(atPath: path.appendingPathComponent("SKILL.md").path) {
-                issues.append("Eksik entrypoint: SKILL.md")
+                issues.append("Missing entrypoint: SKILL.md")
             }
         case .mcpServer:
             let hasManifest = ["package.json", "pyproject.toml", "mcp.json"].contains {
                 manager.fileExists(atPath: path.appendingPathComponent($0).path)
             }
             if !hasManifest {
-                issues.append("Eksik entrypoint: package.json / pyproject.toml / mcp.json")
+                issues.append("Missing entrypoint: package.json / pyproject.toml / mcp.json")
             }
         }
         if let escapes = symlinkEscapes(at: path), !escapes.isEmpty {

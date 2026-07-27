@@ -213,8 +213,13 @@ enum ExtensionSecurityScanner {
             guard manager.fileExists(atPath: path, isDirectory: &isDirectory),
                   !isDirectory.boolValue else { continue }
 
-            let data = manager.contents(atPath: path)
-            let byteCount = data?.count ?? 0
+            // Very large files are recorded by size alone: loading a 200 MB
+            // binary just to hash it would spike memory for no verdict the
+            // size finding does not already give.
+            let reportedSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let maxLoadedBytes = 16 * 1_024 * 1_024
+            let data = reportedSize > maxLoadedBytes ? nil : manager.contents(atPath: path)
+            let byteCount = data?.count ?? reportedSize
             // NUL bytes decode as valid UTF-8, so "did it decode?" is not a
             // binary test — look for them explicitly.
             let text = data.flatMap { data -> String? in
@@ -228,9 +233,7 @@ enum ExtensionSecurityScanner {
             files.append(ScannedFile(
                 path: relative, kind: kind, isExecutable: isExecutable,
                 byteCount: byteCount, looksObfuscated: obfuscated,
-                contentHash: data.map { AgentAdapterSupport.hash(
-                    String(decoding: $0, as: UTF8.self)
-                ) } ?? ""
+                contentHash: data.map { AgentAdapterSupport.hash($0) } ?? ""
             ))
 
             if kind == .binary {

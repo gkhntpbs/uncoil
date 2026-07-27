@@ -78,7 +78,7 @@ final class RuntimeProtocolTests: XCTestCase {
         ) else {
             return XCTFail("Eksik sürüm reddedilmeliydi.")
         }
-        XCTAssertTrue(missing.contains("sürüm bilgisi"))
+        XCTAssertTrue(missing.contains("no version information"))
 
         guard case .incompatible(let mismatch) = RuntimeProtocol.negotiate(
             peerVersion: RuntimeProtocol.version + 1,
@@ -86,6 +86,6 @@ final class RuntimeProtocolTests: XCTestCase {
         ) else {
             return XCTFail("Major sürüm uyuşmazlığı reddedilmeliydi.")
         }
-        XCTAssertTrue(mismatch.contains("uyumsuz"))
+        XCTAssertTrue(mismatch.contains("mismatch"))
     }
 }

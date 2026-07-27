@@ -124,10 +124,10 @@ final class AttentionEngineTests: XCTestCase {
 
     func testConflictDetailSummarizesLongLists() {
         XCTAssertTrue(
-            AttentionEngine.conflictDetail(["a", "b", "c", "d"]).contains("4 dosyada")
+            AttentionEngine.conflictDetail(["a", "b", "c", "d"]).contains("4 files")
         )
         XCTAssertFalse(
-            AttentionEngine.conflictDetail(["a"]).contains("dosyada")
+            AttentionEngine.conflictDetail(["a"]).contains("files")
         )
     }
 

@@ -67,11 +67,11 @@ final class TaskClaimPolicyTests: XCTestCase {
         )
         XCTAssertTrue(
             TaskClaimPolicy.refusal(role: .observer, heldBy: .implementer)
-                .contains("claim almaz")
+                .contains("takes no claim")
         )
         XCTAssertTrue(
             TaskClaimPolicy.refusal(role: .implementer, heldBy: .implementer)
-                .contains("tutuluyor")
+                .contains("held by")
         )
     }
 

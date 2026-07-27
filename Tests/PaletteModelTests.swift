@@ -29,9 +29,9 @@ final class PaletteModelTests: XCTestCase {
 
     func testCommandsBuiltFromProjects() {
         let project = makeProject("uncoil", path: "/tmp/uncoil")
-        let groups = PaletteEngine.compute(baseContext(query: "yeni oturum claude", projects: [project]))
+        let groups = PaletteEngine.compute(baseContext(query: "new session claude", projects: [project]))
         let titles = items(groups).map(\.title)
-        XCTAssertTrue(titles.contains { $0.contains("Yeni Oturum: Claude") && $0.contains("uncoil") })
+        XCTAssertTrue(titles.contains { $0.contains("New Session: Claude") && $0.contains("uncoil") })
     }
 
     func testGlobalCommandsAlwaysPresent() {
@@ -179,7 +179,7 @@ final class PaletteModelTests: XCTestCase {
                         settingsPanes: [("theme", "Tema")])
         model.currentProjectID = store.projects.first?.id
         model.open()
-        model.query = "yeni"
+        model.query = "new"
         model.recomputeNow()
 
         let count = model.flatItems.count
@@ -203,14 +203,14 @@ final class PaletteModelTests: XCTestCase {
         model.open()
 
         // Broad query → several results; select a late row.
-        model.query = "yeni"
+        model.query = "new"
         model.recomputeNow()
         let broadCount = model.flatItems.count
         XCTAssertGreaterThan(broadCount, 1)
         model.selectedIndex = broadCount - 1
 
         // Narrow query → fewer results; selection must clamp into range.
-        model.query = "yeni proje ekle"
+        model.query = "add a new project"
         model.recomputeNow()
         let narrowCount = model.flatItems.count
         XCTAssertGreaterThan(narrowCount, 0)
@@ -228,7 +228,7 @@ final class PaletteModelTests: XCTestCase {
         model.configure(projectStore: store, sessionStore: sessions, settingsPanes: [])
         model.currentProjectID = store.projects.first?.id
         model.open()
-        model.query = "yeni"
+        model.query = "new"
         model.recomputeNow()
         model.selectedIndex = max(0, model.flatItems.count - 1)
 
@@ -252,16 +252,16 @@ final class PaletteModelTests: XCTestCase {
         model.currentProjectID = store.projects.first?.id
         model.open()
 
-        model.query = "proje"
+        model.query = "add a new project"
         model.recomputeNow()
         let projeTitles = Set(model.flatItems.map(\.title))
-        XCTAssertTrue(projeTitles.contains { $0.contains("Yeni Proje Ekle") })
+        XCTAssertTrue(projeTitles.contains { $0.contains("Add a New Project") })
 
         model.query = "worktree"
         model.recomputeNow()
         let worktreeTitles = model.flatItems.map(\.title)
-        // No stale "proje"-only rows survive.
-        XCTAssertFalse(worktreeTitles.contains { $0.contains("Yeni Proje Ekle") })
+        // No stale "add project"-only rows survive.
+        XCTAssertFalse(worktreeTitles.contains { $0.contains("Add a New Project") })
         XCTAssertTrue(worktreeTitles.contains { $0.contains("Worktree") })
         // Selection stays within the new set.
         XCTAssertNotNil(model.selectedItem)
@@ -275,7 +275,7 @@ final class PaletteModelTests: XCTestCase {
         let model = PaletteModel()
         model.configure(projectStore: store, sessionStore: sessions, settingsPanes: [])
         model.open()
-        model.query = "proje ekle"
+        model.query = "add a new project"
         model.recomputeNow()
         model.selectedIndex = model.flatItems.firstIndex { $0.action == .addProject } ?? 0
         model.executeSelected()

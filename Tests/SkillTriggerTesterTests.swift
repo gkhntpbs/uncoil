@@ -86,7 +86,7 @@ final class SkillTriggerTesterTests: XCTestCase {
             now: now
         )
         XCTAssertEqual(result.verdict, .noMatch)
-        XCTAssertTrue(result.verdict.advice.contains("dar"))
+        XCTAssertTrue(result.verdict.advice.contains("narrow"))
         XCTAssertTrue(result.matches.isEmpty)
     }
 
@@ -102,7 +102,7 @@ final class SkillTriggerTesterTests: XCTestCase {
             now: now
         )
         XCTAssertEqual(result.verdict, .conflict(count: 2))
-        XCTAssertTrue(result.verdict.advice.contains("ayrıştır"))
+        XCTAssertTrue(result.verdict.advice.contains("distinct"))
     }
 
     func testManyMatchesSuggestTheDescriptionsAreTooBroad() {
@@ -111,7 +111,7 @@ final class SkillTriggerTesterTests: XCTestCase {
             prompt: "kod yazma", candidates: candidates, agent: .claudeCode, now: now
         )
         XCTAssertEqual(result.verdict, .tooBroad(count: 6))
-        XCTAssertTrue(result.verdict.advice.contains("geniş"))
+        XCTAssertTrue(result.verdict.advice.contains("broad"))
     }
 
     func testMatchesAreOrderedByScore() {

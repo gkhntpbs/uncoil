@@ -58,9 +58,9 @@ final class MenuBarMonitorTests: XCTestCase {
             attention: [attention(.runtime, id: "runtime")]
         )
         XCTAssertEqual(MenuBarPrefs().label(for: summary), "1 1! 1×")
-        XCTAssertTrue(summary.headline.contains("1 çalışıyor"))
-        XCTAssertTrue(summary.headline.contains("1 izin bekliyor"))
-        XCTAssertTrue(summary.headline.contains("1 sorun"))
+        XCTAssertTrue(summary.headline.contains("1 running"))
+        XCTAssertTrue(summary.headline.contains("1 waiting for permission"))
+        XCTAssertTrue(summary.headline.contains("1 problem"))
     }
 
     /// Three logos, three answers: color while agents work, yellow whenever

@@ -37,8 +37,8 @@ struct MenuBarTaskCounts: Equatable {
     var headline: String {
         var parts: [String] = []
         if running > 0 { parts.append("\(running) tasks running") }
-        if queued > 0 { parts.append("\(queued) kuyrukta") }
-        if blocked > 0 { parts.append("\(blocked) bloklu") }
+        if queued > 0 { parts.append("\(queued) queued") }
+        if blocked > 0 { parts.append("\(blocked) blocked") }
         if awaitingReview > 0 { parts.append("\(awaitingReview) awaiting review") }
         if completed > 0 { parts.append("\(completed) done") }
         if mergeReady > 0 { parts.append("\(mergeReady) ready to merge") }
@@ -67,7 +67,7 @@ struct MenuBarSummary: Equatable {
         if waitingPermission > 0 { parts.append("\(waitingPermission) waiting for permission") }
         if waitingInput > 0 { parts.append("\(waitingInput) waiting for a reply") }
         if completed > 0 { parts.append("\(completed) done") }
-        if problems > 0 { parts.append("\(problems) sorun") }
+        if problems > 0 { parts.append("\(problems) problems") }
         return parts.isEmpty ? "Nothing pending" : parts.joined(separator: " · ")
     }
 

@@ -162,6 +162,13 @@ final class CodexAppServerSession {
         transport = nil
         if terminateServer {
             terminatePersistentServer()
+        } else {
+            // The server keeps running, but this session is done with it: the
+            // open log handle and the Process reference would otherwise live
+            // for the rest of the app.
+            try? serverLogHandle?.close()
+            serverLogHandle = nil
+            serverProcess = nil
         }
         continuations.values.forEach {
             $0.resume(throwing: CodexAppServerProtocolError.server("Codex app-server shut down."))
@@ -402,9 +409,18 @@ final class CodexAppServerSession {
             applyThreadStatus(params)
         case "turn/started":
             activeTurnID = params.objectValue?["turn"]?.objectValue?["id"]?.stringValue
+            // Per-turn item bookkeeping; an interrupted or failed turn never
+            // delivers item/completed for its members, so these are reset at
+            // the turn boundaries rather than trusted to drain themselves.
+            streamedAgentItems.removeAll()
+            startedItems.removeAll()
+            streamedOutputItems.removeAll()
             sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
         case "turn/completed":
             activeTurnID = nil
+            streamedAgentItems.removeAll()
+            startedItems.removeAll()
+            streamedOutputItems.removeAll()
             let status = params.objectValue?["turn"]?.objectValue?["status"]?.stringValue
             if status == "failed" {
                 sessionStore?.setStatus(.completed, detail: String(localized: "Codex turn failed"), for: recordID)

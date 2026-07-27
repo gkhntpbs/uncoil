@@ -37,7 +37,11 @@ final class CatalogStore: ObservableObject {
     private var loadTask: Task<Void, Never>?
     private var searchDebounce: Task<Void, Never>?
     /// Detail results are cached per item id so reopening a card is instant.
+    /// A skill's detail carries the whole package's file contents (up to a few
+    /// MB each), so the cache is bounded: oldest entry out past the cap.
     private var detailCache: [String: CatalogItem] = [:]
+    private var detailCacheOrder: [String] = []
+    private let detailCacheLimit = 8
     private var repoFactsCache: [String: CatalogRepoFacts] = [:]
     private var versionsCache: [String: [CatalogVersionEntry]] = [:]
 
@@ -145,6 +149,10 @@ final class CatalogStore: ObservableObject {
             full = try await gitHubSkills.detail(for: item, location: location)
         }
         detailCache[key] = full
+        detailCacheOrder.append(key)
+        if detailCacheOrder.count > detailCacheLimit {
+            detailCache.removeValue(forKey: detailCacheOrder.removeFirst())
+        }
         return full
     }
 
@@ -169,6 +177,9 @@ final class CatalogStore: ObservableObject {
     /// Drops per-item caches so a re-opened detail shows current data.
     func invalidateDetails() {
         detailCache = [:]
+        detailCacheOrder = []
+        repoFactsCache = [:]
+        versionsCache = [:]
     }
 
     // MARK: - Installed state

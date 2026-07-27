@@ -378,7 +378,7 @@ final class ProjectTasksAcceptanceTests: XCTestCase {
         )
         let prompt = TaskPromptBuilder.prompt(context)
         XCTAssertTrue(prompt.contains("ilk görev"))
-        XCTAssertTrue(prompt.contains("biçimini koru"), "the formatting rule always travels")
+        XCTAssertTrue(prompt.contains("Preserve `TODO.md`'s formatting"), "the formatting rule always travels")
         XCTAssertFalse(TaskPromptBuilder.worktreeName(for: target).isEmpty)
     }
 

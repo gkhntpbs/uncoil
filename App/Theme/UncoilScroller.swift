@@ -140,8 +140,16 @@ private struct ScrollerSweeper: NSViewRepresentable {
             ] {
                 observers.append(center.addObserver(
                     forName: name, object: nil, queue: .main
-                ) { [weak probe] _ in
-                    MainActor.assumeIsolated { WindowScrollerSweep.apply(in: probe?.window) }
+                ) { [weak self, weak probe] _ in
+                    MainActor.assumeIsolated {
+                        // A live resize fires this continuously; the coalesced
+                        // sweep keeps the full view-tree walk off that path.
+                        if probe?.window?.inLiveResize == true {
+                            self?.sweepSoon(probe?.window)
+                        } else {
+                            WindowScrollerSweep.apply(in: probe?.window)
+                        }
+                    }
                 })
             }
             // Scroll bars appearing and disappearing is a system-wide setting;

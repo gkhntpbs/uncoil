@@ -84,7 +84,7 @@ struct OrchestratorPlan: Equatable {
     func summary() -> String {
         var lines: [String] = []
         for (index, wave) in waves.enumerated() {
-            lines.append("Dalga \(index + 1) — \(wave.count) agent")
+            lines.append("Wave \(index + 1) — \(wave.count) agent")
             for dispatch in wave {
                 var line = "  · \(dispatch.role.label) (\(dispatch.provider.displayName)): \(dispatch.taskText)"
                 if dispatch.needsWorktree { line += " [worktree]" }

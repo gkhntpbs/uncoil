@@ -150,8 +150,11 @@ final class ExtensionRegistry: ObservableObject {
         guard let data = FileManager.default.contents(atPath: auditURL.path) else { return [] }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        // The file on disk is append-only and unbounded; only the newest 500
+        // lines are worth decoding into memory — the UI never shows more.
         return data
             .split(separator: 0x0A)
+            .suffix(500)
             .compactMap { try? decoder.decode(AuditEvent.self, from: Data($0)) }
             .reversed()
     }
@@ -275,7 +278,7 @@ final class ExtensionRegistry: ObservableObject {
         record(AuditEvent(
             kind: .quarantined, extensionID: packageID,
             detail: String(localized: "quarantined: \(reason)")
-                + (findingID.map { " (bulgu \($0))" } ?? "")
+                + (findingID.map { " (finding \($0))" } ?? "")
                 + String(localized: "; no file was deleted")
         ))
         let filesKept = package.activeRevision
@@ -394,7 +397,7 @@ final class ExtensionRegistry: ObservableObject {
         let adapters = adapters ?? AgentAdapterRegistry()
         let launcherPath = launcherPath ?? ExtensionLauncherService.bundledLauncherPath()
         installations = adapters.detectInstallations()
-        let read = adapters.readAll()
+        let read = adapters.readAll(installations: installations)
         configurations = read.configurations
         configurationIssues = read.failures + read.configurations.flatMap { configuration in
             adapters.adapter(for: configuration.installation.agent)?
@@ -889,7 +892,7 @@ final class ExtensionRegistry: ObservableObject {
             configDrift: configDriftCount,
             lastBumblebeeScan: findings.filter { $0.origin == .bumblebee }.map(\.foundAt).max(),
             bumblebeeSummary: findings.contains { $0.origin == .bumblebee }
-                ? "\(findings.filter { $0.origin == .bumblebee }.count) Bumblebee bulgusu"
+                ? "\(findings.filter { $0.origin == .bumblebee }.count) Bumblebee finding(s)"
                 : nil
         )
     }

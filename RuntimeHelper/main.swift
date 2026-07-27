@@ -76,8 +76,17 @@ final class PTYSession {
     let replayURL: URL
     var lastActivity = Date()
     var lastIdleReport = Date.distantPast
+    /// When the last client detached; nil while a client is attached. Together
+    /// with `lastActivity` this is what marks a session abandoned.
+    var unattachedSince: Date? = Date()
+    /// Cumulative CPU time (user+system, ns) at the last health tick. Any
+    /// growth counts as activity: an agent that wakes now and then to check a
+    /// date produces no terminal output, but it does burn CPU when it wakes.
+    var lastCPUTime: UInt64 = 0
     /// fd of the single attached client, if any.
-    var attachedFD: Int32?
+    var attachedFD: Int32? {
+        didSet { unattachedSince = attachedFD == nil ? Date() : nil }
+    }
 
     init(sid: String, masterFD: Int32, pid: pid_t, replayURL: URL) {
         self.sid = sid
@@ -559,7 +568,34 @@ final class RuntimeDaemon {
                 reap(session, status: -1)
                 continue
             }
+            // CPU growth counts as activity even without terminal output, so
+            // an agent quietly waiting on a timer or a date is never treated
+            // as abandoned while it keeps waking up.
+            var usage = rusage_info_current()
+            let cpuResult = withUnsafeMutablePointer(to: &usage) {
+                $0.withMemoryRebound(to: (rusage_info_t?).self, capacity: 1) {
+                    proc_pid_rusage(session.pid, RUSAGE_INFO_CURRENT, $0)
+                }
+            }
+            if cpuResult == 0 {
+                let cpu = usage.ri_user_time &+ usage.ri_system_time
+                if cpu != session.lastCPUTime {
+                    session.lastCPUTime = cpu
+                    session.lastActivity = Date()
+                }
+            }
             let idle = Date().timeIntervalSince(session.lastActivity)
+            // Abandoned: no client attached for a full day AND no output in as
+            // long. Without this, sessions left behind by closed apps (or dev
+            // builds) accumulate forever, each keeping an agent CLI and its
+            // MCP helper alive.
+            if let unattached = session.unattachedSince,
+               Date().timeIntervalSince(unattached) >= RuntimeProtocol.sessionAbandonedThreshold,
+               idle >= RuntimeProtocol.sessionAbandonedThreshold {
+                runtimeLog.write("session abandoned \(session.sid); terminating")
+                kill(sid: session.sid)
+                continue
+            }
             if idle >= RuntimeProtocol.sessionIdleThreshold,
                Date().timeIntervalSince(session.lastIdleReport) >= RuntimeProtocol.sessionIdleThreshold {
                 session.lastIdleReport = .now
@@ -568,7 +604,7 @@ final class RuntimeDaemon {
                         ev: "error",
                         sid: session.sid,
                         errorCode: "session_idle",
-                        message: "Oturum bir saattir çıktı üretmiyor."
+                        message: "The session has produced no output for an hour."
                     ), to: fd)
                 }
                 runtimeLog.write("session idle \(session.sid)")

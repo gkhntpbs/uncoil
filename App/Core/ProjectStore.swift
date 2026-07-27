@@ -541,8 +541,11 @@ final class SessionStore: ObservableObject {
     }
 
     func setStatus(_ status: AgentSessionStatus, detail: String? = nil, for recordID: UUID) {
-        statuses[recordID] = status
-        details[recordID] = detail
+        // Hook and PTY events repeat the same status many times per second;
+        // publishing only real changes keeps the whole window from re-rendering
+        // on every event.
+        if statuses[recordID] != status { statuses[recordID] = status }
+        if details[recordID] != detail { details[recordID] = detail }
     }
 
     func setCodexAuthentication(_ state: CodexAuthenticationState, for recordID: UUID) {

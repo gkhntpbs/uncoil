@@ -225,8 +225,15 @@ final class ProjectStoreTests: XCTestCase {
 
     func testCodexSessionLocatorFindsMatchingRecentMetadata() throws {
         let codexHome = tempDir.appendingPathComponent("codex", isDirectory: true)
+        // The locator only scans yesterday/today/tomorrow, so the fixture must
+        // live under today's date rather than a hardcoded one.
+        let calendar = Calendar(identifier: .gregorian)
+        let parts = calendar.dateComponents([.year, .month, .day], from: .now)
         let sessionDir = codexHome
-            .appendingPathComponent("sessions/2026/07/25", isDirectory: true)
+            .appendingPathComponent("sessions", isDirectory: true)
+            .appendingPathComponent(String(format: "%04d", parts.year!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.month!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.day!), isDirectory: true)
         try FileManager.default.createDirectory(
             at: sessionDir,
             withIntermediateDirectories: true

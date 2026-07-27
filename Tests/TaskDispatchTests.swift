@@ -63,18 +63,18 @@ final class TaskPromptBuilderTests: XCTestCase {
 
     func testPromptStatesWhereTheWorkLives() {
         let prompt = TaskPromptBuilder.prompt(context())
-        XCTAssertTrue(prompt.contains("Proje: uncoil"))
-        XCTAssertTrue(prompt.contains("Proje yolu: /repo"))
-        XCTAssertTrue(prompt.contains("TODO dosyası: /repo/TODO.md"))
+        XCTAssertTrue(prompt.contains("Project: uncoil"))
+        XCTAssertTrue(prompt.contains("Project path: /repo"))
+        XCTAssertTrue(prompt.contains("TODO file: /repo/TODO.md"))
         XCTAssertTrue(prompt.contains("Aşama 4 › 4.1 Runtime daemon"))
-        XCTAssertTrue(prompt.contains("Rol: Uygulayan"))
+        XCTAssertTrue(prompt.contains("Role: Implementer"))
     }
 
     func testPromptIncludesTheRawBlockSubtasksAndDescription() {
         let prompt = TaskPromptBuilder.prompt(context())
         XCTAssertTrue(prompt.contains("- [ ] daemon heartbeat ekle"))
         XCTAssertTrue(prompt.contains("Heartbeat aralığı yapılandırılabilir olmalı."))
-        XCTAssertTrue(prompt.contains("Alt görevler"))
+        XCTAssertTrue(prompt.contains("Subtasks"))
         XCTAssertTrue(prompt.contains("ping komutu"))
         XCTAssertTrue(prompt.contains("pong yanıtı"))
     }
@@ -83,10 +83,10 @@ final class TaskPromptBuilderTests: XCTestCase {
         for role in TaskAgentRole.allCases {
             let prompt = TaskPromptBuilder.prompt(context(role: role))
             XCTAssertTrue(
-                prompt.contains("biçimini koru"),
+                prompt.contains("Preserve `TODO.md`'s formatting"),
                 "\(role): the file's formatting rule is never omitted"
             )
-            XCTAssertTrue(prompt.contains("dosyayı yeniden üretme"), role.rawValue)
+            XCTAssertTrue(prompt.contains("never regenerate the file"), role.rawValue)
         }
     }
 
@@ -101,16 +101,16 @@ final class TaskPromptBuilderTests: XCTestCase {
 
     func testRoleSpecificRules() {
         XCTAssertTrue(
-            TaskPromptBuilder.prompt(context(role: .reviewer)).contains("yalnızca incele")
+            TaskPromptBuilder.prompt(context(role: .reviewer)).contains("review only")
         )
         XCTAssertTrue(
-            TaskPromptBuilder.prompt(context(role: .tester)).contains("Testleri çalıştır")
+            TaskPromptBuilder.prompt(context(role: .tester)).contains("Run the tests")
         )
         XCTAssertTrue(
-            TaskPromptBuilder.prompt(context(role: .observer)).contains("Hiçbir dosyayı değiştirme")
+            TaskPromptBuilder.prompt(context(role: .observer)).contains("Do not modify any file")
         )
         XCTAssertTrue(
-            TaskPromptBuilder.prompt(context(role: .orchestrator)).contains("alt görevlere böl")
+            TaskPromptBuilder.prompt(context(role: .orchestrator)).contains("Break the work into subtasks")
         )
     }
 
@@ -120,22 +120,22 @@ final class TaskPromptBuilderTests: XCTestCase {
             permissionProfile: ["artifacts.write", "sessions.read"]
         ))
         XCTAssertTrue(prompt.contains("/repo/.uncoil-worktrees/heartbeat"))
-        XCTAssertTrue(prompt.contains("Bu worktree dışında değişiklik yapma."))
-        XCTAssertTrue(prompt.contains("İzin profili: artifacts.write, sessions.read"))
+        XCTAssertTrue(prompt.contains("Do not change anything outside this worktree."))
+        XCTAssertTrue(prompt.contains("Permission profile: artifacts.write, sessions.read"))
 
         let plain = TaskPromptBuilder.prompt(context())
         XCTAssertFalse(plain.contains("Worktree:"))
-        XCTAssertFalse(plain.contains("İzin profili:"))
+        XCTAssertFalse(plain.contains("Permission profile:"))
     }
 
     func testReportingInstructionFollowsWhetherTheTasksMCPIsAvailable() {
         let withMCP = TaskPromptBuilder.prompt(context(tasksMCPAvailable: true))
         XCTAssertTrue(withMCP.contains("uncoil_tasks"))
-        XCTAssertTrue(withMCP.contains("Bu görevin kimliği:"))
+        XCTAssertTrue(withMCP.contains("This task's id:"))
 
         let withoutMCP = TaskPromptBuilder.prompt(context(tasksMCPAvailable: false))
         XCTAssertFalse(withoutMCP.contains("uncoil_tasks"))
-        XCTAssertTrue(withoutMCP.contains("Tasks MCP bu oturumda kapalı"))
+        XCTAssertTrue(withoutMCP.contains("the Tasks MCP is off for this session"))
     }
 
     func testPromptIsPreviewableBeforeSending() {

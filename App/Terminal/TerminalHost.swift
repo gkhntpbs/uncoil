@@ -20,6 +20,10 @@ final class TerminalRegistry {
     /// Sessions whose process exited; the next request recreates the terminal
     /// (auto-relaunch — the user never sees a "restart" screen).
     private var deadSessions: Set<UUID> = []
+    /// Dead sessions oldest-first, so the buffers of long-ended sessions can
+    /// be released while the few most recent stay instantly re-openable.
+    private var deadOrder: [UUID] = []
+    private let deadTerminalLimit = 4
 
     func hasTerminal(for recordID: UUID) -> Bool {
         terminals[recordID] != nil
@@ -27,6 +31,19 @@ final class TerminalRegistry {
 
     func markDead(_ recordID: UUID) {
         deadSessions.insert(recordID)
+        // The process is gone: its delegate can receive nothing further, and a
+        // Codex session that ended keeps an open transport for no one.
+        delegates[recordID] = nil
+        deadOrder.removeAll { $0 == recordID }
+        deadOrder.append(recordID)
+        // A dead terminal is only a scrollback snapshot; requesting it again
+        // recreates the view anyway (auto-relaunch). Keeping every ended
+        // session's full buffer alive is the app's largest slow leak.
+        while deadOrder.count > deadTerminalLimit {
+            let evicted = deadOrder.removeFirst()
+            terminals[evicted] = nil
+            delegates[evicted] = nil
+        }
     }
 
     func terminal(
@@ -511,6 +528,7 @@ final class TerminalRegistry {
         terminals[recordID] = nil
         delegates[recordID] = nil
         deadSessions.remove(recordID)
+        deadOrder.removeAll { $0 == recordID }
     }
 
     func prepareForApplicationTermination(terminateSessions: Bool) {

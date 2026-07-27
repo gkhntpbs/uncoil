@@ -183,8 +183,8 @@ enum TaskBoardMapping {
         // ones, so diacritic folding leaves them alone and "tamamlandı" would
         // never match "tamamlandi". They are mapped explicitly.
         let transliterated = heading
-            .replacingOccurrences(of: "i", with: "i")
-            .replacingOccurrences(of: "I", with: "i")
+            .replacingOccurrences(of: "\u{0131}", with: "i") // ı
+            .replacingOccurrences(of: "\u{0130}", with: "i") // İ
             .replacingOccurrences(of: "I", with: "i")
         let folded = transliterated
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en"))

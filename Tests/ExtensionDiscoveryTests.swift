@@ -648,7 +648,7 @@ final class ExtensionRegistryUndoTests: XCTestCase {
         )
         XCTAssertTrue(registry.setTracking(.tag("v2"), packageID: "acme/skills:review"))
         XCTAssertTrue(
-            registry.auditEvents.contains { $0.detail.contains("takip değişti") },
+            registry.auditEvents.contains { $0.detail.contains("tracking changed") },
             "\(registry.auditEvents.map(\.detail))"
         )
     }

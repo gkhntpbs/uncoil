@@ -330,7 +330,7 @@ final class ExtensionUpdateTests: XCTestCase {
             at: package.appendingPathComponent("escape"), withDestinationURL: escape
         )
         let issues = ExtensionUpdateEngine.structureIssues(at: package, kind: .skill)
-        XCTAssertTrue(issues.contains { $0.contains("symlink") })
+        XCTAssertTrue(issues.contains { $0.localizedCaseInsensitiveContains("symlink") })
 
         // An internal symlink is fine.
         let inner = base.appendingPathComponent("pkg2", isDirectory: true)
