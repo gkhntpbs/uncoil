@@ -155,7 +155,7 @@ struct OnboardingNotificationsStep: View {
                             Task { await authorization.sendTestNotification() }
                         }
                         .buttonStyle(.plain)
-                        .font(Theme.mono(.small, .semibold))
+                        .font(Theme.ui(.small, .semibold))
                         .foregroundStyle(Theme.highlight)
                         .accessibilityIdentifier("onboarding.testNotification")
                     }
@@ -173,7 +173,7 @@ struct OnboardingNotificationsStep: View {
                             set: { settings.notifications.onlyWhenBackgrounded = $0; settings.save() }
                         )) {
                             Text("Only while Uncoil is in the background")
-                                .font(Theme.mono(.body))
+                                .font(Theme.ui(.body))
                                 .foregroundStyle(Theme.textDim)
                         }
                         .toggleStyle(.switch)
@@ -184,7 +184,7 @@ struct OnboardingNotificationsStep: View {
                             set: { settings.notifications.suppressForVisibleSession = $0; settings.save() }
                         )) {
                             Text("Stay quiet about the session already on screen")
-                                .font(Theme.mono(.body))
+                                .font(Theme.ui(.body))
                                 .foregroundStyle(Theme.textDim)
                         }
                         .toggleStyle(.switch)
@@ -194,7 +194,7 @@ struct OnboardingNotificationsStep: View {
                 }
 
                 Text("Reminders, quiet hours and per-project rules live in Settings › Notifications.")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
 
                 OnboardingSkipLink(action: onSkip)
@@ -339,19 +339,19 @@ struct OnboardingCapabilitiesStep: View {
                       "actions": ["list", "get", "update", "dispatch", …],
                       "requires": ["tasks.read", "tasks.write"] }
                     """)
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textDim)
                     .textSelection(.enabled)
                     .padding(.top, 6)
                 } label: {
                     Text("How does the agent find these?")
-                        .font(Theme.mono(.body))
+                        .font(Theme.ui(.body))
                         .foregroundStyle(Theme.textDim)
                 }
                 .padding(.horizontal, 4)
 
                 Text("Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Privacy and Permissions.")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .fixedSize(horizontal: false, vertical: true)
 

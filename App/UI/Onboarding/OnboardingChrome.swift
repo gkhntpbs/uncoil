@@ -34,7 +34,7 @@ struct OnboardingScaffold<Content: View>: View {
                                 .multilineTextAlignment(.center)
                             if let subtitle {
                                 Text(subtitle)
-                                    .font(Theme.mono(.large))
+                                    .font(Theme.ui(.large))
                                     .foregroundStyle(Theme.textDim)
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: 560)
@@ -53,7 +53,7 @@ struct OnboardingScaffold<Content: View>: View {
 
             if let footnote {
                 Text(footnote)
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .padding(.bottom, 10)
             }
@@ -89,7 +89,7 @@ private struct OnboardingTopBar: View {
         .overlay(alignment: .topTrailing) {
             Button(action: onSkipAll) {
                 Text("Skip")
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textDim)
             }
             .buttonStyle(.plain)
@@ -114,7 +114,7 @@ private struct OnboardingBottomBar: View {
                             .font(.system(size: 10, weight: .semibold))
                         Text("Back")
                     }
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textDim)
                 }
                 .buttonStyle(.plain)
@@ -254,7 +254,7 @@ struct OnboardingCard<Content: View>: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(title)
-                        .font(Theme.mono(.large, .semibold))
+                        .font(Theme.ui(.large, .semibold))
                         .foregroundStyle(Theme.text)
                     if let badge {
                         OnboardingBadge(text: badge, tint: badgeTint ?? Theme.textDim)
@@ -262,7 +262,7 @@ struct OnboardingCard<Content: View>: View {
                 }
                 if let detail {
                     Text(detail)
-                        .font(Theme.mono(.body))
+                        .font(Theme.ui(.body))
                         .foregroundStyle(Theme.textDim)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -290,7 +290,7 @@ struct OnboardingBadge: View {
 
     var body: some View {
         Text(text)
-            .font(Theme.mono(.micro, .semibold))
+            .font(Theme.ui(.micro, .semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -310,7 +310,7 @@ struct OnboardingBullet: View {
                 .foregroundStyle(Theme.textDim)
                 .frame(width: 22)
             Text(text)
-                .font(Theme.mono(.large))
+                .font(Theme.ui(.large))
                 .foregroundStyle(Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -327,7 +327,7 @@ struct OnboardingSkipLink: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(Theme.mono(.body))
+                .font(Theme.ui(.body))
                 .foregroundStyle(Theme.textFaint)
         }
         .buttonStyle(.plain)
@@ -355,7 +355,7 @@ struct OnboardingCommandRow: View {
                 copied = true
             }
             .buttonStyle(.plain)
-            .font(Theme.mono(.small, .semibold))
+            .font(Theme.ui(.small, .semibold))
             .foregroundStyle(Theme.highlight)
         }
         .padding(.horizontal, 10)

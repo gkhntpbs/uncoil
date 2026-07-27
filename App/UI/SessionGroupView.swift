@@ -62,7 +62,7 @@ struct SessionGroupView: View {
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("group.backButton")
 
             TablerIcon(name: "folder", size: 18, color: Theme.highlight)
@@ -171,7 +171,7 @@ struct SessionGroupView: View {
 
             if records.isEmpty {
                 Text("No sessions in this group. Drag sessions here from the sidebar.")
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {

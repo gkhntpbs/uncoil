@@ -96,6 +96,21 @@ enum Theme {
         .system(size: size.rawValue, weight: weight, design: .monospaced)
     }
 
+    /// Prose: titles, explanations, empty states — anything a person reads as a
+    /// sentence rather than scans as data.
+    ///
+    /// Mono is the product's voice and stays on everything that *is* data: ids,
+    /// paths, branch names, log output, counters, session titles. It is the
+    /// wrong face for a paragraph. Setting a screen's explanatory copy in a
+    /// terminal face is what made a careful interface read as a developer
+    /// utility; the same words in the system face read as a product, and the
+    /// contrast between the two makes the mono mean something again.
+    ///
+    /// Same scale as ``mono(_:_:)`` — one type ramp, two faces on it.
+    static func ui(_ size: TypeScale, _ weight: Font.Weight = .regular) -> Font {
+        .system(size: size.rawValue, weight: weight)
+    }
+
     /// Escape hatch for sizes that are computed rather than chosen — a terminal
     /// font tied to a user setting, a glyph measured against its container.
     /// Fixed interface text belongs on ``TypeScale``.
@@ -202,10 +217,42 @@ enum Theme {
 }
 
 extension View {
+    /// The two things every control owes the pointer: it notices the cursor,
+    /// and it gives under the click.
+    ///
+    /// The give is deliberately small — 2% — and springs back. Anything larger
+    /// on a dense mono interface reads as a toy, and anything with no give at
+    /// all leaves the user unsure the click landed at all.
+    func buttonFeedback(isPressed: Bool, hovering: Binding<Bool>) -> some View {
+        scaleEffect(isPressed ? 0.98 : 1)
+            .animation(Theme.Motion.quick, value: isPressed)
+            .animation(Theme.Motion.quick, value: hovering.wrappedValue)
+            .onHover { hovering.wrappedValue = $0 }
+    }
+
     /// Lifts a surface off the plane behind it. See ``Theme/Elevation``.
     func elevated(_ level: Theme.Elevation) -> some View {
         modifier(ElevationStyle(level: level))
     }
+}
+
+/// `.plain`, plus the give a click deserves.
+///
+/// `.buttonStyle(.plain)` renders a control that never acknowledges being
+/// pressed — on an icon button with no fill of its own, the only feedback is
+/// whatever the action happens to change on screen, which may be nothing and is
+/// never immediate. The scale is larger than a labelled button's because the
+/// target is smaller: the same 2% on a 20pt glyph is invisible.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(Theme.Motion.quick, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var pressable: PressableButtonStyle { PressableButtonStyle() }
 }
 
 /// `Theme.Elevation.opacity` reads the live palette, which SwiftUI cannot track

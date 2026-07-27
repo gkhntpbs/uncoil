@@ -39,7 +39,7 @@ struct SessionHeaderBar<Trailing: View>: View {
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("session.backButton")
             .help(leadingHelp)
 
@@ -239,7 +239,7 @@ struct ControlButton: View {
                 .frame(width: 26, height: 24)
                 .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .onHover { hovering = $0 }
         .accessibilityIdentifier(identifier)
         .help(help)

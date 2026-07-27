@@ -317,7 +317,7 @@ struct ExtensionsView: View {
                 .padding(.vertical, 8)
                 .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .disabled(isCheckingHealth)
             .padding(.bottom, 12)
             .accessibilityIdentifier("extensions.runHealthCheck")
@@ -361,15 +361,15 @@ struct ExtensionsView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(isSearching ? "Arama" : selection.title)
-                        .font(Theme.mono(.title, .bold))
+                    Text(isSearching ? "Search" : selection.title)
+                        .font(Theme.ui(.title, .bold))
                         .foregroundStyle(Theme.text)
                     Text(
                         isSearching
                             ? "Results across every section for “\(trimmedQuery)”"
                             : selection.description
                     )
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textDim)
                 }
                 Spacer()
@@ -2129,7 +2129,7 @@ private struct AssignmentsScreen: View {
                                             .frame(width: 110, alignment: .leading)
                                             .contentShape(Rectangle())
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.pressable)
                                     .accessibilityIdentifier(
                                         "extensions.matrix.\(package.id).\(agent.rawValue)"
                                     )

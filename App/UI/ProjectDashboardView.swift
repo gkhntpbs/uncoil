@@ -403,7 +403,7 @@ struct ProjectDashboardView: View {
             let records = projectStore.activeSessions(for: project.id)
             if records.isEmpty {
                 Text("No sessions yet — start an agent from the top right.")
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {

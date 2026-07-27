@@ -33,7 +33,7 @@ struct OnboardingWelcomeStep: View {
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(Theme.text)
                     Text("A control centre for the coding agents you already run — across projects, worktrees and accounts.")
-                        .font(Theme.mono(.large))
+                        .font(Theme.ui(.large))
                         .foregroundStyle(Theme.textDim)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 560)
@@ -70,7 +70,7 @@ struct OnboardingWelcomeStep: View {
                         }
                     } label: {
                         Text("Interface language")
-                            .font(Theme.mono(.body))
+                            .font(Theme.ui(.body))
                             .foregroundStyle(Theme.textDim)
                     }
                     .pickerStyle(.menu)
@@ -85,14 +85,14 @@ struct OnboardingWelcomeStep: View {
                         }
                     } label: {
                         Text("Agent language")
-                            .font(Theme.mono(.body))
+                            .font(Theme.ui(.body))
                             .foregroundStyle(Theme.textDim)
                     }
                     .pickerStyle(.menu)
                     .accessibilityIdentifier("onboarding.agentLanguage")
 
                     Text("The interface language applies after a restart. The agent language is the one Uncoil writes in when it hands a task to an agent.")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -154,7 +154,7 @@ struct OnboardingCLIStep: View {
                         }
                     } label: {
                         Text("Default agent")
-                            .font(Theme.mono(.body))
+                            .font(Theme.ui(.body))
                             .foregroundStyle(Theme.textDim)
                     }
                     .pickerStyle(.menu)
@@ -192,7 +192,7 @@ struct OnboardingCLIStep: View {
                                     .font(.system(size: 10))
                                 Text("Open the install page")
                             }
-                            .font(Theme.mono(.small, .semibold))
+                            .font(Theme.ui(.small, .semibold))
                             .foregroundStyle(Theme.highlight)
                         }
                         .accessibilityIdentifier("onboarding.installPage.\(provider.rawValue)")
@@ -353,7 +353,7 @@ struct OnboardingAccountsStep: View {
                         settings.setDefaultAccount(entry.profile)
                     }
                     .buttonStyle(.plain)
-                    .font(Theme.mono(.small, .semibold))
+                    .font(Theme.ui(.small, .semibold))
                     .foregroundStyle(Theme.highlight)
                 }
             }

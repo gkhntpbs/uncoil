@@ -188,8 +188,14 @@ struct AccentButtonStyle: ButtonStyle {
     private struct Rendered: View {
         let configuration: Configuration
         @ObservedObject private var theme = ThemeStore.shared
+        @State private var hovering = false
 
         init(configuration: Configuration) { self.configuration = configuration }
+
+        private var fill: Color {
+            if configuration.isPressed { return Theme.highlightActive }
+            return hovering ? Theme.highlightHover : Theme.highlight
+        }
 
         var body: some View {
             configuration.label
@@ -197,10 +203,8 @@ struct AccentButtonStyle: ButtonStyle {
                 .foregroundStyle(Theme.textOnHighlight)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
-                .background(
-                    configuration.isPressed ? Theme.highlightActive : Theme.highlight,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                )
+                .background(fill, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                .buttonFeedback(isPressed: configuration.isPressed, hovering: $hovering)
         }
     }
 }
@@ -213,23 +217,32 @@ struct GhostButtonStyle: ButtonStyle {
     private struct Rendered: View {
         let configuration: Configuration
         @ObservedObject private var theme = ThemeStore.shared
+        @State private var hovering = false
 
         init(configuration: Configuration) { self.configuration = configuration }
+
+        private var fill: Color {
+            if configuration.isPressed { return Theme.panelActive }
+            return hovering ? Theme.panelHover : Theme.panel
+        }
 
         var body: some View {
             configuration.label
                 .font(Theme.mono(.body))
-                .foregroundStyle(Theme.textDim)
+                // A ghost button that only ever dims its own text is hard to
+                // tell from a label; the text lifts to full strength under the
+                // pointer, the way the fill does.
+                .foregroundStyle(hovering ? Theme.text : Theme.textDim)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(
-                    configuration.isPressed ? Theme.panelActive : Theme.panel,
-                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                )
+                .background(fill, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                        .strokeBorder(Theme.border, lineWidth: 1)
+                        .strokeBorder(
+                            hovering ? Theme.highlightBorder : Theme.border, lineWidth: 1
+                        )
                 )
+                .buttonFeedback(isPressed: configuration.isPressed, hovering: $hovering)
         }
     }
 }

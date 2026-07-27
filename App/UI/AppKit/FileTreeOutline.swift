@@ -276,7 +276,7 @@ private struct FileTreeRowView: View {
             .padding(.vertical, 3.5)
             .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .onHover { hovering = $0 }
     }
 }

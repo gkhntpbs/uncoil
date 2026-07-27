@@ -36,7 +36,7 @@ struct EditorOpenControl: View {
                 }
                 .frame(width: 24, height: 22)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("editor.openButton")
             .help("Open the project directory in \(editor.displayName)")
 
@@ -73,7 +73,7 @@ struct EditorOpenControl: View {
             // coming back full-size and near-white. `.button` + `.plain` hands
             // the drawing back to the label.
             .menuStyle(.button)
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityIdentifier("editor.menu")

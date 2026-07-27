@@ -113,11 +113,11 @@ struct OnboardingResumeRow: View {
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.highlight)
                     Text("Finish setup")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textDim)
                     Spacer(minLength: 0)
                     Text("\(remaining.count)")
-                        .font(Theme.mono(.micro, .semibold))
+                        .font(Theme.ui(.micro, .semibold))
                         .foregroundStyle(Theme.textFaint)
                 }
                 .padding(.horizontal, 10)

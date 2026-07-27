@@ -133,7 +133,7 @@ private struct AttentionRow: View {
                 )
                 .frame(width: 18, height: 18)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .opacity(hovering ? 1 : 0.35)
             .help("Mark as resolved")
             .accessibilityIdentifier("attention.resolve.\(item.id)")
@@ -182,7 +182,7 @@ struct AttentionRailButton: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .onHover { hovering = $0 }
         .help(
             store.unreadCount > 0

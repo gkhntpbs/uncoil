@@ -51,7 +51,7 @@ struct OnboardingExtensionsStep: View {
                     }
                     .padding(.top, 2)
                     Text("A Blocked finding stops adoption outright; nothing about it can be clicked past here.")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -65,7 +65,7 @@ struct OnboardingExtensionsStep: View {
                     VStack(alignment: .leading, spacing: 8) {
                         if !scanning && adoptable.isEmpty {
                             Text("Nothing to adopt — no external skill or MCP server was found.")
-                                .font(Theme.mono(.small))
+                                .font(Theme.ui(.small))
                                 .foregroundStyle(Theme.textFaint)
                         }
                         ForEach(adoptable.prefix(6)) { package in
@@ -79,7 +79,7 @@ struct OnboardingExtensionsStep: View {
                         }
                         if adoptable.count > 6 {
                             Text("+\(adoptable.count - 6) more")
-                                .font(Theme.mono(.small))
+                                .font(Theme.ui(.small))
                                 .foregroundStyle(Theme.textFaint)
                         }
                         if !adoptable.isEmpty {
@@ -94,7 +94,7 @@ struct OnboardingExtensionsStep: View {
                         }
                         if let message {
                             Text(message)
-                                .font(Theme.mono(.small))
+                                .font(Theme.ui(.small))
                                 .foregroundStyle(Theme.textDim)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -108,18 +108,18 @@ struct OnboardingExtensionsStep: View {
                 ) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Updates are staged, never applied blind: a new revision is fetched into a copy, scanned, structure-checked and smoke-tested first, and the active revision only switches once all of that passes. A failed update changes nothing.")
-                            .font(Theme.mono(.small))
+                            .font(Theme.ui(.small))
                             .foregroundStyle(Theme.textFaint)
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Extensions window · “Connect to a GitHub Source…”")
-                            .font(Theme.mono(.small, .semibold))
+                            .font(Theme.ui(.small, .semibold))
                             .foregroundStyle(Theme.textDim)
                     }
                     .padding(.top, 2)
                 }
 
                 Text("Installing the optional browser or Computer Use drivers, and running any remote install script, always asks you first.")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -230,7 +230,7 @@ struct OnboardingPaletteStep: View {
                         .accessibilityIdentifier("onboarding.paletteHotkey")
                         Button(String(localized: "Reset")) { settings.resetCommandPaletteHotkey() }
                             .buttonStyle(.plain)
-                            .font(Theme.mono(.small, .semibold))
+                            .font(Theme.ui(.small, .semibold))
                             .foregroundStyle(Theme.textDim)
                     }
                     .padding(.top, 2)
@@ -286,7 +286,7 @@ struct OnboardingFinishStep: View {
 
                 if !settings.remainingOnboardingSteps.isEmpty {
                     Text("Anything you skipped stays listed at the bottom of the sidebar under “Finish setup”.")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
                         .fixedSize(horizontal: false, vertical: true)
                 }

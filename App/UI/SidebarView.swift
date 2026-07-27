@@ -57,7 +57,7 @@ struct SidebarView: View {
                 if projectStore.projects.isEmpty {
                     VStack(spacing: 8) {
                         Text("No projects yet")
-                            .font(Theme.mono(.body))
+                            .font(Theme.ui(.body))
                             .foregroundStyle(Theme.textFaint)
                         Button("Add a Project") { showFolderPicker = true }
                             .buttonStyle(GhostButtonStyle())
@@ -362,7 +362,8 @@ private struct RailButton: View {
                 in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
+        .animation(Theme.Motion.quick, value: hovering)
         .onHover { hovering = $0 }
         .help(help)
     }
@@ -465,7 +466,7 @@ struct ProjectRowView: View {
                             // around the glyph rather than pushing the name.
                             .padding(.horizontal, -5)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .opacity(hovering || sessionsCollapsed ? 1 : 0)
                 }
                 Spacer(minLength: 4)
@@ -641,7 +642,7 @@ struct SessionGroupRowView: View {
                         .contentShape(Rectangle())
                         .padding(.horizontal, -5)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 TablerIcon(name: "folder", size: 12, color: Theme.textDim)
                 Text(group.name)
                     .font(Theme.mono(.body, .semibold))
@@ -724,7 +725,7 @@ struct SessionRowView: View {
                             .foregroundStyle(isMultiSelected ? Theme.highlight : Theme.textFaint)
                             .frame(width: 14, height: 14)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .accessibilityIdentifier("sidebar.select.\(record.title)")
                 }
 
@@ -865,7 +866,7 @@ private struct CollapseAllButton: View {
             .frame(width: 20, height: 20)
             .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.collapseAllButton")
         .help(allCollapsed ? "Show all sessions" : "Hide all sessions")

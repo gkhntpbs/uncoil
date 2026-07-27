@@ -159,7 +159,7 @@ struct OnboardingTasksStep: View {
                             }
                             if let createError {
                                 Text(createError)
-                                    .font(Theme.mono(.small))
+                                    .font(Theme.ui(.small))
                                     .foregroundStyle(Theme.danger)
                             }
                         }
