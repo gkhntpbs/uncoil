@@ -69,7 +69,7 @@ struct FolderPickerSheet: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(
                                     currentURL == url ? Theme.panelActive : .clear,
-                                    in: RoundedRectangle(cornerRadius: 6)
+                                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                                 )
                         }
                         .buttonStyle(.plain)
@@ -166,7 +166,7 @@ private struct DirectoryRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -199,7 +199,7 @@ struct AccentButtonStyle: ButtonStyle {
                 .padding(.vertical, 7)
                 .background(
                     configuration.isPressed ? Theme.highlightActive : Theme.highlight,
-                    in: RoundedRectangle(cornerRadius: 7)
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                 )
         }
     }
@@ -224,10 +224,10 @@ struct GhostButtonStyle: ButtonStyle {
                 .padding(.vertical, 7)
                 .background(
                     configuration.isPressed ? Theme.panelActive : Theme.panel,
-                    in: RoundedRectangle(cornerRadius: 7)
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
                         .strokeBorder(Theme.border, lineWidth: 1)
                 )
         }

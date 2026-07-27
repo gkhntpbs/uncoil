@@ -95,7 +95,7 @@ struct SidebarView: View {
                     help: isMultiSelecting ? String(localized: "Turn off multiple selection") : String(localized: "Select several"),
                     isOn: isMultiSelecting
                 ) {
-                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+                    withAnimation(Theme.Motion.standard) {
                         isMultiSelecting.toggle()
                         if !isMultiSelecting {
                             selectedSessionIDs.removeAll()
@@ -359,7 +359,7 @@ private struct RailButton: View {
             .frame(width: 20, height: 20)
             .background(
                 isOn ? Theme.panelActive : (hovering ? Theme.panelHover : .clear),
-                in: RoundedRectangle(cornerRadius: 5)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
         }
         .buttonStyle(.plain)
@@ -383,7 +383,7 @@ struct WindowControlsCluster: View {
                 iconName: "layout-sidebar",
                 help: sidebarVisible ? String(localized: "Hide the sidebar") : String(localized: "Show the sidebar")
             ) {
-                withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
+                withAnimation(Theme.Motion.standard) {
                     sidebarVisible.toggle()
                 }
             }
@@ -487,13 +487,13 @@ struct ProjectRowView: View {
                     .padding(.trailing, 8)
                     .opacity(hovering ? 1 : 0)
                     .allowsHitTesting(hovering)
-                    .animation(uncoilAnimation(.easeOut(duration: 0.12)), value: hovering)
+                    .animation(Theme.Motion.quick, value: hovering)
             }
             .background(
                 isProjectSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),
-                in: RoundedRectangle(cornerRadius: 7)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .padding(.horizontal, 8)
             // Sections used to be separated by the stack's own padding; as
             // outline rows they carry the gap themselves.
@@ -507,7 +507,7 @@ struct ProjectRowView: View {
     }
 
     private func toggleCollapsed() {
-        withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+        withAnimation(Theme.Motion.standard) {
             collapsedStore.set(projectID, collapsed: !sessionsCollapsed)
         }
     }
@@ -569,7 +569,7 @@ struct AgentLauncherStrip: View {
             }
         }
         .padding(3)
-        .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 6))
+        .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
     }
 
     private func launch(_ provider: AgentProvider) {
@@ -597,7 +597,7 @@ private struct LauncherButton: View {
         Button(action: action) {
             ProviderMark(provider: provider, size: 11)
                 .frame(width: 22, height: 18)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 4))
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -627,7 +627,7 @@ struct SessionGroupRowView: View {
         if let group {
             HStack(spacing: 7) {
                 Button {
-                    withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+                    withAnimation(Theme.Motion.standard) {
                         collapsedGroups.toggle(groupID)
                     }
                 } label: {
@@ -657,9 +657,9 @@ struct SessionGroupRowView: View {
             .padding(.vertical, 6)
             .background(
                 isSelected ? Theme.highlightMuted : Theme.panel.opacity(0.45),
-                in: RoundedRectangle(cornerRadius: 7)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .padding(.horizontal, SidebarIndent.outer)
             .overlay(alignment: .leading) { IndentRails(depth: 1) }
             .accessibilityElement(children: .contain)
@@ -772,17 +772,17 @@ struct SessionRowView: View {
             // selected row hard to find at a glance.
             .background(
                 isSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),
-                in: RoundedRectangle(cornerRadius: 7)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
             // A session that stopped to ask something has to be findable without
             // reading the list: it breathes in that status's own colour until it
             // is dealt with.
             .background(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     .fill(attentionColor.opacity(wantsAttention && pulsing ? 0.24 : 0.0))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     .strokeBorder(
                         wantsAttention
                             ? attentionColor.opacity(pulsing ? 0.85 : 0.25)
@@ -793,7 +793,7 @@ struct SessionRowView: View {
             .animation(
                 pulsing
                     ? uncoilAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true))
-                    : uncoilAnimation(.easeOut(duration: 0.2)),
+                    : Theme.Motion.standard,
                 value: pulsing
             )
             .onChange(of: wantsAttention, initial: true) { _, wants in
@@ -806,7 +806,7 @@ struct SessionRowView: View {
                     pulsing = false
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .padding(.horizontal, SidebarIndent.outer)
             .overlay(alignment: .leading) { IndentRails(depth: depth) }
             .onHover { hovering = $0 }
@@ -853,7 +853,7 @@ private struct CollapseAllButton: View {
 
     var body: some View {
         Button {
-            withAnimation(uncoilAnimation(.easeOut(duration: 0.15))) {
+            withAnimation(Theme.Motion.standard) {
                 collapsedStore.setAll(projectStore.projects.map(\.id), collapsed: !allCollapsed)
             }
         } label: {
@@ -863,7 +863,7 @@ private struct CollapseAllButton: View {
                 color: hovering ? Theme.text : Theme.textDim
             )
             .frame(width: 20, height: 20)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

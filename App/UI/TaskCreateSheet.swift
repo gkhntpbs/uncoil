@@ -113,7 +113,7 @@ struct TaskCreateSheet: View {
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                         .accessibilityIdentifier("tasks.create.preview")
                 }
             }

@@ -13,6 +13,14 @@ enum Theme {
     static var panelActive: Color { Color(hex: p.panelActive) }
     static var border: Color { Color(hex: p.border) }
 
+    /// The sidebar's own surface.
+    ///
+    /// It used to be `bg`, the same fill as the detail column, so the two halves
+    /// of the window were one flat field parted by a hairline. A navigator sits
+    /// behind the thing it navigates; a third of the way toward `panel` is
+    /// enough to say so without introducing a colour nobody chose.
+    static var sidebarSurface: Color { Color(hex: ThemePalette.mix(p.bg, p.panel, 0.35)) }
+
     // Text
     static var text: Color { Color(hex: p.text) }
     static var textDim: Color { Color(hex: p.textDim) }
@@ -94,6 +102,126 @@ enum Theme {
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
     }
+
+    // MARK: - Geometry
+
+    /// The corner radii the interface is allowed to use.
+    ///
+    /// The app had drifted to nine — 3, 4, 5, 6, 7, 8, 9, 10, 12 — where most
+    /// neighbouring pairs were the same role rounded differently in two files.
+    /// A window full of almost-matching corners reads as unconsidered even when
+    /// no single corner looks wrong. Three steps, tied to what a surface *is*
+    /// rather than how big it happens to be.
+    enum Radius {
+        /// Chips, badges, hover fills behind a single row.
+        static let chip: CGFloat = 6
+        /// Panels, cards, list containers — the app's basic surface.
+        static let panel: CGFloat = 10
+        /// Surfaces that float above the window: sheets, the palette, popovers.
+        static let sheet: CGFloat = 14
+    }
+
+    /// The spacing steps layouts are built from. A 4pt grid, named by role so
+    /// padding is a decision rather than a number someone happened to type.
+    enum Space {
+        /// Between a glyph and its label.
+        static let hair: CGFloat = 4
+        /// Inside a chip, between tight siblings.
+        static let tight: CGFloat = 8
+        /// Standard padding inside a panel.
+        static let snug: CGFloat = 12
+        /// Between panels, around a screen's content.
+        static let roomy: CGFloat = 16
+        /// Between major sections.
+        static let section: CGFloat = 24
+    }
+
+    // MARK: - Motion
+
+    /// How the interface moves.
+    ///
+    /// Everything used to be `easeOut` between 0.12s and 0.2s: correct, and
+    /// completely inert. Springs cost nothing extra and carry the weight that
+    /// makes a surface feel like an object rather than a redraw. Durations stay
+    /// in the same range — this is about the curve, not about slowing the app
+    /// down. Damping stays high; nothing here should visibly wobble.
+    enum Motion {
+        /// Hover and other pointer-tracking feedback. Must not lag the cursor.
+        static var quick: Animation? { uncoilAnimation(.spring(response: 0.22, dampingFraction: 0.9)) }
+        /// The default: selection, disclosure, a row appearing.
+        static var standard: Animation? { uncoilAnimation(.spring(response: 0.32, dampingFraction: 0.86)) }
+        /// Surfaces that arrive from somewhere — sheets, the palette, the
+        /// sidebar sliding in. Given a little more travel to read as movement.
+        static var expressive: Animation? { uncoilAnimation(.spring(response: 0.44, dampingFraction: 0.82)) }
+    }
+
+    // MARK: - Elevation
+
+    /// What separates a floating surface from the window behind it.
+    ///
+    /// A flat app has exactly one plane, and a sheet drawn on it is just a
+    /// lighter rectangle. These are deliberately soft and near-black: on the
+    /// dark palette a shadow is the only cue, and on the light one it is what
+    /// keeps white-on-white surfaces apart.
+    enum Elevation {
+        /// A row or chip lifted off its container on hover.
+        case low
+        /// Popovers, menus, the command palette.
+        case floating
+        /// Modal sheets — the only thing allowed to cast this far.
+        case modal
+
+        var radius: CGFloat {
+            switch self {
+            case .low: 6
+            case .floating: 26
+            case .modal: 40
+            }
+        }
+
+        var y: CGFloat {
+            switch self {
+            case .low: 1
+            case .floating: 8
+            case .modal: 18
+            }
+        }
+
+        @MainActor
+        var opacity: Double {
+            // A light window needs a denser shadow to read at all; on the dark
+            // palette the same value would look like soot.
+            let light = ThemeStore.shared.palette.isLight
+            switch self {
+            case .low: return light ? 0.10 : 0.24
+            case .floating: return light ? 0.16 : 0.40
+            case .modal: return light ? 0.22 : 0.55
+            }
+        }
+    }
+}
+
+extension View {
+    /// Lifts a surface off the plane behind it. See ``Theme/Elevation``.
+    func elevated(_ level: Theme.Elevation) -> some View {
+        modifier(ElevationStyle(level: level))
+    }
+}
+
+/// `Theme.Elevation.opacity` reads the live palette, which SwiftUI cannot track
+/// on its own — same reason ``PanelStyle`` observes the store.
+private struct ElevationStyle: ViewModifier {
+    let level: Theme.Elevation
+
+    @ObservedObject private var theme = ThemeStore.shared
+
+    func body(content: Content) -> some View {
+        content.shadow(
+            color: .black.opacity(level.opacity),
+            radius: level.radius,
+            y: level.y
+        )
+    }
 }
 
 extension Color {
@@ -113,9 +241,24 @@ extension Color {
 /// a dependency: without observing the store, a panel keeps the surface it was
 /// first drawn with and a theme switch leaves it stranded in the old palette.
 struct PanelStyle: ViewModifier {
-    var radius: CGFloat = 10
+    var radius: CGFloat = Theme.Radius.panel
 
     @ObservedObject private var theme = ThemeStore.shared
+
+    /// A hairline of light along the top edge, the way a raised surface catches
+    /// the room. One pixel of it is the difference between a panel that sits on
+    /// the window and a rectangle painted onto it — and it is the cheapest
+    /// depth cue there is, since it costs no shadow and no blur.
+    private var topLight: LinearGradient {
+        LinearGradient(
+            colors: [
+                .white.opacity(theme.palette.isLight ? 0.9 : 0.07),
+                .clear,
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
     func body(content: Content) -> some View {
         content
@@ -124,11 +267,25 @@ struct PanelStyle: ViewModifier {
                 RoundedRectangle(cornerRadius: radius)
                     .strokeBorder(Theme.border, lineWidth: 1)
             )
+            .overlay(
+                // Masked to the top third so the light falls off rather than
+                // outlining the whole panel a second time.
+                RoundedRectangle(cornerRadius: radius)
+                    .strokeBorder(topLight, lineWidth: 1)
+                    .mask(
+                        LinearGradient(
+                            colors: [.black, .clear],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+                    .allowsHitTesting(false)
+            )
     }
 }
 
 extension View {
-    func panel(radius: CGFloat = 10) -> some View {
+    func panel(radius: CGFloat = Theme.Radius.panel) -> some View {
         modifier(PanelStyle(radius: radius))
     }
 }

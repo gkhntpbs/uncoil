@@ -57,9 +57,9 @@ struct ProjectCustomizeSheet: View {
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
 
@@ -99,9 +99,9 @@ struct ProjectCustomizeSheet: View {
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
 
@@ -120,10 +120,10 @@ struct ProjectCustomizeSheet: View {
                                 .frame(width: 32, height: 30)
                                 .background(
                                     selectedIcon == iconName ? Theme.panelActive : Theme.panel,
-                                    in: RoundedRectangle(cornerRadius: 6)
+                                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                                 )
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
+                                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
                                         .strokeBorder(
                                             selectedIcon == iconName ? previewColor.opacity(0.6) : .clear,
                                             lineWidth: 1

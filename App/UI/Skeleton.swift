@@ -73,7 +73,7 @@ struct SkeletonListRows: View {
         VStack(spacing: 10) {
             ForEach(0..<max(1, count), id: \.self) { index in
                 HStack(spacing: 9) {
-                    SkeletonBlock(width: 13, height: 13, cornerRadius: 3)
+                    SkeletonBlock(width: 13, height: 13, cornerRadius: Theme.Radius.chip)
                     SkeletonBlock(width: index.isMultiple(of: 2) ? 150 : 110, height: 11)
                     Spacer(minLength: 8)
                     SkeletonBlock(width: 44, height: 9)

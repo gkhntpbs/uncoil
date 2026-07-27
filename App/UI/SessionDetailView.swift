@@ -145,7 +145,7 @@ struct SessionDetailView: View {
     }
 
     private func toggleChangesPanel(_ show: Bool) {
-        withAnimation(uncoilAnimation(.easeOut(duration: 0.18))) {
+        withAnimation(Theme.Motion.standard) {
             showChangesPanel = show
         }
     }
@@ -188,9 +188,9 @@ private struct CodexApprovalPanel: View {
             }
         }
         .padding(12)
-        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(Theme.warn.opacity(0.35), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
@@ -208,7 +208,7 @@ private struct CodexAuthenticationBanner: View {
             Spacer()
         }
         .padding(11)
-        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .accessibilityIdentifier("session.codexAuthentication.required")
     }
 }

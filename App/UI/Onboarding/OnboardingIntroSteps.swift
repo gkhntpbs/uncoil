@@ -7,6 +7,7 @@ import SwiftUI
 /// writes its prompts to agents in.
 struct OnboardingWelcomeStep: View {
     @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.colorScheme) private var colorScheme
     let onContinue: () -> Void
     let onSkipAll: () -> Void
 
@@ -20,11 +21,13 @@ struct OnboardingWelcomeStep: View {
         ) {
             VStack(spacing: 22) {
                 VStack(spacing: 10) {
-                    Image("MenuBarIconColor")
+                    // The full 1024px app icon, not the menu-bar glyph: at this
+                    // size the glyph reads as a thin, soft mark on Retina.
+                    Image(colorScheme == .light ? "AppIconLight" : "AppIconDark")
                         .resizable()
                         .interpolation(.high)
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 54, height: 54)
+                        .frame(width: 72, height: 72)
                         .accessibilityHidden(true)
                     Text("Welcome to Uncoil")
                         .font(.system(size: 28, weight: .bold))

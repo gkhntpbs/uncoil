@@ -44,7 +44,10 @@ struct MainWindow: View {
                     .transition(.opacity)
             }
         }
-        .animation(uncoilAnimation(.easeOut(duration: 0.2)), value: onboarding.isPresenting)
+        // The palette used to appear and vanish outright: its transition never
+        // ran because nothing animated the condition that mounts it.
+        .animation(Theme.Motion.expressive, value: palette.isOpen)
+        .animation(Theme.Motion.expressive, value: onboarding.isPresenting)
         .onChange(of: selection) { _, _ in
             syncPaletteSelection()
             persistSelection()
@@ -153,6 +156,7 @@ struct MainWindow: View {
                     showFolderPicker: $showFolderPicker
                 )
                 .frame(width: sidebarWidth)
+                .background(Theme.sidebarSurface)
                 .clipped()
                 .transition(.move(edge: .leading))
 
@@ -201,7 +205,7 @@ struct MainWindow: View {
         // The toggle also lives in the title bar, which is its own SwiftUI tree:
         // a `withAnimation` there cannot reach this one. Animating on the value
         // means the sidebar slides whoever asked for it.
-        .animation(uncoilAnimation(.easeOut(duration: 0.2)), value: sidebarVisible)
+        .animation(Theme.Motion.expressive, value: sidebarVisible)
         .background(
             // Setup owns the whole window, so the app's own title-bar controls
             // are taken out of it: a sidebar toggle and a palette button over a

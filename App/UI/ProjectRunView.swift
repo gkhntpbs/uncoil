@@ -76,8 +76,8 @@ struct ProjectRunView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border, lineWidth: 1))
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip).strokeBorder(Theme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .disabled(detecting)
@@ -93,8 +93,8 @@ struct ProjectRunView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border, lineWidth: 1))
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip).strokeBorder(Theme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("run.add")
@@ -128,7 +128,7 @@ struct ProjectRunView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.warnSurface, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.warnSurface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
     private var emptyState: some View {
@@ -142,8 +142,8 @@ struct ProjectRunView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border, lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
     }
 }
 
@@ -290,8 +290,8 @@ private struct RunConfigurationRow: View {
             }
         }
         .padding(12)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border, lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("run.row.\(config.id)")
     }
@@ -396,7 +396,7 @@ private struct RunConfigurationRow: View {
         } label: {
             TablerIcon(name: icon, size: 13, color: tint ?? Theme.textDim)
                 .padding(5)
-                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: 6))
+                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
@@ -408,7 +408,7 @@ private struct RunConfigurationRow: View {
         Button(action: action) {
             TablerIcon(name: icon, size: 13, color: tint ?? Theme.textDim)
                 .padding(5)
-                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: 6))
+                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
@@ -445,7 +445,7 @@ private struct RunConfigurationRow: View {
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
-                    .background(Theme.highlight, in: RoundedRectangle(cornerRadius: 7))
+                    .background(Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("run.repair.\(config.id)")
@@ -458,7 +458,7 @@ private struct RunConfigurationRow: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.dangerSurface, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.dangerSurface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
     private func lastLines(_ text: String, _ count: Int) -> String {
@@ -478,8 +478,8 @@ private struct RunConfigurationRow: View {
                     .padding(8)
             }
             .frame(height: 220)
-            .background(Theme.bg, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1))
+            .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
             if state.status == .running || state.status == .starting {
                 HStack(spacing: 6) {
                     TextField("Send input to the process (r for Flutter, for example)", text: $inputText)
@@ -507,8 +507,11 @@ private struct RunHistoryList: View {
     let project: Project
     let configID: String
 
+    /// Loaded once per appearance and per run start/stop — `history` reads a
+    /// file from disk, and this view's parent re-renders on every log chunk.
+    @State private var entries: [RunHistoryEntry] = []
+
     var body: some View {
-        let entries = RunRegistry.shared.history(project: project, configID: configID)
         VStack(alignment: .leading, spacing: 6) {
             Text("Previous runs")
                 .font(Theme.mono(.body, .semibold))
@@ -545,6 +548,9 @@ private struct RunHistoryList: View {
         }
         .padding(12)
         .frame(width: 300)
+        .task(id: configID) {
+            entries = RunRegistry.shared.history(project: project, configID: configID)
+        }
     }
 }
 

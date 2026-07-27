@@ -56,9 +56,9 @@ struct SessionGroupView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textDim)
                     .frame(width: 22, height: 22)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
             }
@@ -123,9 +123,9 @@ struct SessionGroupView: View {
                 .uncoilScrollers()
                 .frame(minHeight: 64, maxHeight: 110)
                 .padding(8)
-                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 8))
+                .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel)
                         .strokeBorder(Theme.border, lineWidth: 1)
                 )
                 .accessibilityIdentifier("group.prompt")
@@ -234,7 +234,7 @@ struct SessionGroupView: View {
         .padding(.vertical, 8)
         .background(
             selected ? Theme.panelActive : Theme.panel.opacity(0.35),
-            in: RoundedRectangle(cornerRadius: 8)
+            in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
         )
         .accessibilityIdentifier("group.session.\(record.title)")
     }

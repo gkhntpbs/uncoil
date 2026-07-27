@@ -155,7 +155,7 @@ struct ProjectDashboardView: View {
                         .padding(.vertical, 6)
                         .background(
                             isOn ? Theme.panelActive : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 7)
+                            in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                         )
                         .contentShape(Rectangle())
                     }
@@ -168,9 +168,9 @@ struct ProjectDashboardView: View {
             }
         }
         .padding(3)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 9))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
-            RoundedRectangle(cornerRadius: 9).strokeBorder(Theme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1)
         )
         // Never compressed: the row keeps its intrinsic width, and when that no
         // longer fits it is the labels that go, not the layout.
@@ -253,9 +253,9 @@ struct ProjectDashboardView: View {
                     .foregroundStyle(Theme.text)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Theme.bg, in: RoundedRectangle(cornerRadius: 6))
+                    .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
                     .onSubmit { createWorktree() }
@@ -352,9 +352,9 @@ struct ProjectDashboardView: View {
             // uses — one gesture means one thing wherever it appears.
             EditorOpenControl(directory: project.rootPath)
                 .padding(3)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: Theme.Radius.panel)
                         .strokeBorder(Theme.border, lineWidth: 1)
                 )
 
@@ -407,7 +407,7 @@ struct ProjectDashboardView: View {
                     .foregroundStyle(Theme.textFaint)
                     .padding(14)
             } else {
-                VStack(spacing: 1) {
+                LazyVStack(spacing: 1) {
                     ForEach(records) { record in
                         SessionCard(record: record) {
                             selection = .session(record.id)
@@ -424,7 +424,7 @@ struct ProjectDashboardView: View {
         let records = projectStore.sessionHistory(for: project.id)
         return VStack(alignment: .leading, spacing: 0) {
             PanelHeading(title: String(localized: "Closed Sessions"), count: records.count)
-            VStack(spacing: 1) {
+            LazyVStack(spacing: 1) {
                 ForEach(records) { record in
                     SessionCard(record: record) {
                         selection = .session(record.id)
@@ -629,7 +629,7 @@ private struct SessionCard: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("dashboard.session.\(record.title)")
@@ -675,7 +675,7 @@ private struct PullRequestRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -714,9 +714,9 @@ private struct WorktreeRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .onHover { value in
-            withAnimation(.easeOut(duration: 0.12)) { hovering = value }
+            withAnimation(Theme.Motion.quick) { hovering = value }
         }
     }
 }

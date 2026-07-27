@@ -141,7 +141,7 @@ struct ExtensionNoticeStack: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(uncoilAnimation(.easeOut(duration: 0.16)), value: center.notices)
+        .animation(Theme.Motion.standard, value: center.notices)
         .accessibilityIdentifier("extensions.notices")
     }
 
@@ -190,14 +190,14 @@ struct ExtensionNoticeStack: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
-                    .background(Theme.bg, in: RoundedRectangle(cornerRadius: 6))
+                    .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(tint(notice.level).opacity(0.35), lineWidth: 1)
         )
         .accessibilityIdentifier("extensions.notice")

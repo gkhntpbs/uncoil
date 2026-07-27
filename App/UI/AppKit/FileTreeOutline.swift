@@ -274,7 +274,7 @@ private struct FileTreeRowView: View {
             .padding(.leading, CGFloat(depth) * 14 + 8)
             .padding(.trailing, 8)
             .padding(.vertical, 3.5)
-            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
+            .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

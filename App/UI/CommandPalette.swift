@@ -25,6 +25,12 @@ struct CommandPaletteOverlay: View {
                 panel
                     .frame(width: 560)
                     .padding(.top, max(72, geo.size.height * 0.15))
+                    // The panel arrives on its own, slightly ahead of the
+                    // backdrop: a surface that only fades in reads as a picture
+                    // of a palette rather than one being opened.
+                    .transition(
+                        .scale(scale: 0.96, anchor: .top).combined(with: .opacity)
+                    )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -56,12 +62,12 @@ struct CommandPaletteOverlay: View {
             results
         }
         .background(Theme.bg)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sheet))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.Radius.sheet)
                 .strokeBorder(Theme.border, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.45), radius: 30, y: 14)
+        .elevated(.floating)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("palette.container")
     }
@@ -161,7 +167,7 @@ struct CommandPaletteOverlay: View {
             .frame(maxHeight: 380)
             .onChange(of: model.selectedIndex) { _, _ in
                 guard let id = model.selectedItem?.id else { return }
-                withAnimation(uncoilAnimation(.easeOut(duration: 0.12))) {
+                withAnimation(Theme.Motion.quick) {
                     proxy.scrollTo(id, anchor: .center)
                 }
             }
@@ -214,7 +220,7 @@ private struct PaletteRow: View {
         .padding(.vertical, 7)
         .background(
             selected ? Theme.panelActive : .clear,
-            in: RoundedRectangle(cornerRadius: 7)
+            in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
         )
         .padding(.horizontal, 6)
         .contentShape(Rectangle())

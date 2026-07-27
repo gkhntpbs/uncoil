@@ -95,6 +95,22 @@ struct ThemePalette: Codable, Equatable, Hashable {
     /// The shipped preset matching this palette's mode, for migration and for
     /// the "reset" button.
     var preset: ThemePalette { isLight ? .light : .dark }
+
+    /// Blends two palette colours in sRGB, `amount` of the way from `a` to `b`.
+    ///
+    /// Lets a derived surface stay a function of the user's palette instead of
+    /// a fourth hard-coded grey that a custom theme would leave stranded.
+    static func mix(_ a: UInt32, _ b: UInt32, _ amount: Double) -> UInt32 {
+        let t = min(1, max(0, amount))
+        var out: UInt32 = 0
+        for shift in stride(from: 16, through: 0, by: -8) {
+            let channelA = Double((a >> UInt32(shift)) & 0xFF)
+            let channelB = Double((b >> UInt32(shift)) & 0xFF)
+            let blended = UInt32((channelA + (channelB - channelA) * t).rounded())
+            out |= blended << UInt32(shift)
+        }
+        return out
+    }
 }
 
 @MainActor

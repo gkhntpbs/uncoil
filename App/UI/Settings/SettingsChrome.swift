@@ -197,7 +197,7 @@ struct SettingsTextField: View {
                 // The well is the page background, so it sits *below* the panel
                 // the row is drawn on — an inset, which is what makes it read as
                 // editable without a bezel.
-                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 6))
+                .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 // The edge does the actual work. `Theme.border` is only ~5/255
                 // away from the panel in the dark palette and the well only
                 // ~7/255 — measured, after both had been reported invisible —
@@ -205,13 +205,13 @@ struct SettingsTextField: View {
                 // see. `textFaint` is far enough from either surface, in both
                 // palettes, to read as an edge.
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
                         .strokeBorder(
                             focused ? Theme.highlight : Theme.textFaint.opacity(0.55),
                             lineWidth: focused ? 2 : 1
                         )
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 6))
+                .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 .onTapGesture { focused = true }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

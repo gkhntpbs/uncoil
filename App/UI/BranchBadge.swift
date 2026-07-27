@@ -256,9 +256,9 @@ struct BranchBadge: View {
         .frame(height: 22)
         .padding(3)
         .fixedSize()
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
-            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1)
         )
     }
 

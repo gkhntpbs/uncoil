@@ -81,7 +81,7 @@ private struct OnboardingTopBar: View {
                 Capsule()
                     .fill(candidate == step ? Theme.text : Theme.textFaint.opacity(0.5))
                     .frame(width: candidate == step ? 16 : 5, height: 5)
-                    .animation(uncoilAnimation(.easeOut(duration: 0.18)), value: step)
+                    .animation(Theme.Motion.standard, value: step)
             }
         }
         .frame(maxWidth: .infinity)
@@ -277,9 +277,9 @@ struct OnboardingCard<Content: View>: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
-            RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.border, lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1)
         )
     }
 }
@@ -360,7 +360,7 @@ struct OnboardingCommandRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 7))
-        .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border, lineWidth: 1))
+        .background(Theme.bg, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip).strokeBorder(Theme.border, lineWidth: 1))
     }
 }

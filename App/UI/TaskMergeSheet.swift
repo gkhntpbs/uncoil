@@ -118,7 +118,7 @@ struct TaskMergeSheet: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
     }
 
     @ViewBuilder

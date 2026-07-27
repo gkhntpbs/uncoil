@@ -448,7 +448,7 @@ struct ProjectTasksView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .accessibilityIdentifier("tasks.message")
     }
 
@@ -481,7 +481,7 @@ struct ProjectTasksView: View {
                         .font(Theme.mono(.body, .semibold))
                         .foregroundStyle(Theme.textDim)
                     }
-                    VStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(documentRows(document), id: \.id) { row in
                             switch row.kind {
                             case .heading(let level, let text):
@@ -630,7 +630,7 @@ struct ProjectTasksView: View {
             if filtered.isEmpty {
                 EmptyTaskList(isFiltered: preferences.filter.isActive)
             } else {
-                VStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(filtered.enumerated()), id: \.element.id) { index, task in
                         listRow(task)
                         if index != filtered.count - 1 {
@@ -840,7 +840,7 @@ struct ProjectTasksView: View {
         // Which column is about to take the card, before the write happens:
         // the drop used to be silent until the file had already changed.
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
                 .strokeBorder(
                     targetedColumn == column.heading ? Theme.highlight : .clear,
                     lineWidth: 1.5
@@ -910,7 +910,7 @@ struct ProjectTasksView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
-        .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 7))
+        .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         .onDrag { NSItemProvider(object: task.id as NSString) }
         .contextMenu { cardActions(task, in: document) }
         .accessibilityIdentifier("tasks.card.\(task.id)")
@@ -962,7 +962,7 @@ struct ProjectTasksView: View {
                     .frame(maxWidth: .infinity, minHeight: 120)
                     .panel()
             }
-            ForEach(grouped.keys.sorted(by: { $0.uuidString < $1.uuidString }), id: \.self) { sessionID in
+            ForEach(grouped.keys.sorted(), id: \.self) { sessionID in
                 let assignments = grouped[sessionID] ?? []
                 let record = projectStore.sessions.first { $0.id == sessionID }
                 VStack(alignment: .leading, spacing: 0) {

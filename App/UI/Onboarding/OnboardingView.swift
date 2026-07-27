@@ -51,7 +51,7 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg)
         .background(OnboardingWindowSizer().frame(width: 0, height: 0))
-        .animation(uncoilAnimation(.easeOut(duration: 0.16)), value: step)
+        .animation(Theme.Motion.standard, value: step)
         .onAppear {
             // Resuming lands on the first thing still undone; a first run has
             // nothing done, so that is the welcome.
@@ -122,7 +122,7 @@ struct OnboardingResumeRow: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(hovering ? Theme.panelHover : Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+                .background(hovering ? Theme.panelHover : Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             }
             .buttonStyle(.plain)
             .onHover { hovering = $0 }

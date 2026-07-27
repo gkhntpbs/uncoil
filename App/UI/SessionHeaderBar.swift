@@ -33,9 +33,9 @@ struct SessionHeaderBar<Trailing: View>: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textDim)
                     .frame(width: 22, height: 22)
-                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
                             .strokeBorder(Theme.border, lineWidth: 1)
                     )
             }
@@ -145,9 +145,9 @@ struct SessionHeaderBar<Trailing: View>: View {
                 trailing
             }
             .padding(3)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: Theme.Radius.panel)
                     .strokeBorder(Theme.border, lineWidth: 1)
             )
         }
@@ -237,7 +237,7 @@ struct ControlButton: View {
         Button(action: action) {
             TablerIcon(name: iconName, size: 13, color: tint ?? (hovering ? Theme.text : Theme.textDim))
                 .frame(width: 26, height: 24)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

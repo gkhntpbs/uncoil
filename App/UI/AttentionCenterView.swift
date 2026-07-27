@@ -143,9 +143,9 @@ private struct AttentionRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             hovering ? Theme.panelHover : (item.isRead ? .clear : Theme.panel.opacity(0.55)),
-            in: RoundedRectangle(cornerRadius: 8)
+            in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .onTapGesture(perform: onOpen)
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
@@ -173,7 +173,7 @@ struct AttentionRailButton: View {
                     color: badgeColor ?? (hovering ? Theme.text : Theme.textDim)
                 )
                 .frame(width: 20, height: 20)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: 5))
+                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 if store.unreadCount > 0 {
                     Circle()
                         .fill(badgeColor ?? Theme.highlight)

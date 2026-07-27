@@ -12,8 +12,10 @@ struct CatalogScreen: View {
 
     @State private var selectedItem: CatalogItem?
     /// Mirrors the Keychain state so the grid refreshes the moment the
-    /// existing GitHub device-flow sign-in completes.
-    @State private var gitHubConnected = KeychainStore.read(key: "github-token") != nil
+    /// existing GitHub device-flow sign-in completes. Starts optimistic and is
+    /// verified in `.task` — a Keychain query is a `securityd` round-trip, too
+    /// slow for a `@State` initializer that runs on every parent render.
+    @State private var gitHubConnected = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -30,6 +32,7 @@ struct CatalogScreen: View {
             if gitHubConnected { catalog.refresh() }
         }
         .task {
+            gitHubConnected = KeychainStore.read(key: "github-token") != nil
             if catalog.items.isEmpty, catalog.phase == .idle {
                 catalog.refresh()
             }
@@ -74,8 +77,8 @@ struct CatalogScreen: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(Theme.border, lineWidth: 1))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip).strokeBorder(Theme.border, lineWidth: 1))
             .frame(maxWidth: 320)
 
             if catalog.availableViews.count > 1 {
@@ -119,7 +122,7 @@ struct CatalogScreen: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Theme.warnSurface, in: RoundedRectangle(cornerRadius: 8))
+        .background(Theme.warnSurface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .accessibilityIdentifier("extensions.catalog.staleBanner")
     }
 
@@ -203,7 +206,7 @@ struct CatalogScreen: View {
                     ForEach(0..<6, id: \.self) { _ in
                         SkeletonBlock()
                             .frame(height: CatalogCard.height)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
                     }
                 } else {
                     ForEach(items) { item in

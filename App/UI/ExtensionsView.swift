@@ -256,9 +256,9 @@ struct ExtensionsView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 7))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .overlay(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     .strokeBorder(Theme.border, lineWidth: 1)
             )
             .padding(.horizontal, 6)
@@ -291,7 +291,7 @@ struct ExtensionsView: View {
                     .frame(height: 32)
                     .background(
                         selection == section ? Theme.panelActive : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 7)
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     )
                     .contentShape(Rectangle())
                 }
@@ -315,7 +315,7 @@ struct ExtensionsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: 7))
+                .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             }
             .buttonStyle(.plain)
             .disabled(isCheckingHealth)
@@ -932,12 +932,13 @@ private struct AgentsScreen: View {
                 }
             }
 
-            if !AgentAdapterRegistry().unmanagedAgents.isEmpty {
+            let unmanagedAgents = AgentAdapterRegistry().unmanagedAgents
+            if !unmanagedAgents.isEmpty {
                 SectionCard(
                     title: String(localized: "Agents not managed yet"),
                     detail: String(localized: "They will show up here once an adapter exists.")
                 ) {
-                    ForEach(AgentAdapterRegistry().unmanagedAgents) { agent in
+                    ForEach(unmanagedAgents) { agent in
                         KeyValueRow(key: agent.displayName, value: "no adapter")
                     }
                 }
@@ -1237,7 +1238,7 @@ private struct PackagesScreen: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        LazyVStack(alignment: .leading, spacing: 18) {
             toolbar
 
             if kind == .skill {
@@ -2781,7 +2782,7 @@ private struct UpdatesScreen: View {
     @State private var reviews: [String: UpdateReview] = [:]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        LazyVStack(alignment: .leading, spacing: 18) {
             if registry.updateCandidates.isEmpty {
                 SectionCard(title: String(localized: "No update")) {
                     EmptyRow(

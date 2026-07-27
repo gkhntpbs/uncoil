@@ -58,9 +58,9 @@ struct SkillCreateSheet: View {
                         .scrollContentBackground(.hidden)
                         .uncoilScrollers()
                         .padding(6)
-                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 6))
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: Theme.Radius.chip)
                                 .strokeBorder(Theme.border, lineWidth: 1)
                         )
                         .accessibilityIdentifier("extensions.skills.create.body")
