@@ -231,8 +231,40 @@ extension View {
     }
 
     /// Lifts a surface off the plane behind it. See ``Theme/Elevation``.
-    func elevated(_ level: Theme.Elevation) -> some View {
+    ///
+    /// `nil` casts nothing, so a surface that is only raised while the pointer
+    /// is over it can say so inline instead of branching its whole body.
+    func elevated(_ level: Theme.Elevation?) -> some View {
         modifier(ElevationStyle(level: level))
+    }
+}
+
+/// A list row that fills under the pointer.
+///
+/// Rows are the one control that must not scale — a line of a list shrinking
+/// under the cursor pushes its neighbours around — so they get a fill instead,
+/// and they own the state themselves rather than making every list that holds
+/// them declare an `@State` it does not otherwise need.
+struct HoverRowStyle: ViewModifier {
+    var radius: CGFloat = Theme.Radius.chip
+
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                hovering ? Theme.panelHover : .clear,
+                in: RoundedRectangle(cornerRadius: radius)
+            )
+            .animation(Theme.Motion.quick, value: hovering)
+            .onHover { hovering = $0 }
+    }
+}
+
+extension View {
+    /// See ``HoverRowStyle``. Apply to the row, outside its button style.
+    func hoverRow(radius: CGFloat = Theme.Radius.chip) -> some View {
+        modifier(HoverRowStyle(radius: radius))
     }
 }
 
@@ -258,15 +290,15 @@ extension ButtonStyle where Self == PressableButtonStyle {
 /// `Theme.Elevation.opacity` reads the live palette, which SwiftUI cannot track
 /// on its own — same reason ``PanelStyle`` observes the store.
 private struct ElevationStyle: ViewModifier {
-    let level: Theme.Elevation
+    let level: Theme.Elevation?
 
     @ObservedObject private var theme = ThemeStore.shared
 
     func body(content: Content) -> some View {
         content.shadow(
-            color: .black.opacity(level.opacity),
-            radius: level.radius,
-            y: level.y
+            color: .black.opacity(level?.opacity ?? 0),
+            radius: level?.radius ?? 0,
+            y: level?.y ?? 0
         )
     }
 }

@@ -250,7 +250,7 @@ struct ExtensionsView: View {
                             .font(.system(size: 10))
                             .foregroundStyle(Theme.textFaint)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .accessibilityIdentifier("extensions.search.clear")
                 }
             }
@@ -265,38 +265,13 @@ struct ExtensionsView: View {
             .padding(.bottom, 8)
 
             ForEach(visibleSections) { section in
-                Button {
+                SectionNavRow(
+                    section: section,
+                    isSelected: selection == section,
+                    badge: badge(for: section)
+                ) {
                     selection = section
-                } label: {
-                    HStack(spacing: 9) {
-                        TablerIcon(
-                            name: section.iconName,
-                            size: 13,
-                            color: selection == section ? Theme.text : Theme.textDim
-                        )
-                        Text(section.title)
-                            .font(Theme.mono(.body, selection == section ? .semibold : .regular))
-                            .foregroundStyle(selection == section ? Theme.text : Theme.textDim)
-                        Spacer()
-                        if let badge = badge(for: section) {
-                            Text("\(badge.count)")
-                                .font(Theme.mono(.micro, .semibold))
-                                .foregroundStyle(Theme.bg)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(badge.color, in: Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 9)
-                    .frame(height: 32)
-                    .background(
-                        selection == section ? Theme.panelActive : Color.clear,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    )
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("extensions.section.\(section.rawValue)")
             }
 
             Spacer()
@@ -465,6 +440,58 @@ struct ExtensionsView: View {
 
 // MARK: - Shared pieces
 
+/// A row in the Extensions window's own navigator.
+///
+/// Extracted from the list it used to be written inline in, because a row that
+/// tracks the pointer needs state and a `ForEach` body cannot hold any. Until
+/// now the only section that reacted to anything was the selected one: moving
+/// the cursor down the list changed nothing at all.
+private struct SectionNavRow: View {
+    let section: ExtensionsView.Section
+    let isSelected: Bool
+    let badge: (count: Int, color: Color)?
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    private var foreground: Color {
+        isSelected || hovering ? Theme.text : Theme.textDim
+    }
+
+    private var fill: Color {
+        if isSelected { return Theme.panelActive }
+        return hovering ? Theme.panelHover : .clear
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                TablerIcon(name: section.iconName, size: 13, color: foreground)
+                Text(section.title)
+                    .font(Theme.mono(.body, isSelected ? .semibold : .regular))
+                    .foregroundStyle(foreground)
+                Spacer()
+                if let badge {
+                    Text("\(badge.count)")
+                        .font(Theme.mono(.micro, .semibold))
+                        .foregroundStyle(Theme.bg)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(badge.color, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 9)
+            .frame(height: 32)
+            .background(fill, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .animation(Theme.Motion.quick, value: hovering)
+        .onHover { hovering = $0 }
+        .accessibilityIdentifier("extensions.section.\(section.rawValue)")
+    }
+}
+
 private struct StatTile: View {
     let label: String
     let value: String
@@ -567,7 +594,7 @@ private struct HealthRow: View {
                     .font(Theme.mono(.body, .medium))
                     .foregroundStyle(Theme.text)
                 Text(result.detail)
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textDim)
                 if let remedy = result.remedy {
                     Text(remedy)
@@ -713,7 +740,7 @@ private struct OverviewScreen: View {
                             .padding(.top, 2)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(issue.message)
-                                    .font(Theme.mono(.body))
+                                    .font(Theme.ui(.body))
                                     .foregroundStyle(Theme.text)
                                 if let remedy = issue.remedy {
                                     Text(remedy)
@@ -1419,6 +1446,8 @@ private struct PackageCard: View {
     /// Repository the user is typing to attach to a local source.
     @State private var linkingRepository: String?
     @State private var showsLogs = false
+    /// Pointer over the header, which is the whole disclosure target.
+    @State private var headerHovering = false
 
     private var candidate: UpdateCandidate? {
         registry.updateCandidate(for: package.id)
@@ -1582,7 +1611,7 @@ private struct PackageCard: View {
                         }
                     }
                     Text(package.summary ?? package.source.label)
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
                 }
@@ -1601,12 +1630,19 @@ private struct PackageCard: View {
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(Theme.textFaint)
                     .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                    .animation(Theme.Motion.standard, value: isExpanded)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
+            .background(
+                headerHovering ? Theme.panelHover : .clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .animation(Theme.Motion.quick, value: headerHovering)
+        .onHover { headerHovering = $0 }
     }
 
     @ViewBuilder
@@ -1979,7 +2015,7 @@ private struct TriggerTesterCard: View {
                                 .foregroundStyle(verdictColor(result.verdict))
                         }
                         Text(result.verdict.advice)
-                            .font(Theme.mono(.small))
+                            .font(Theme.ui(.small))
                             .foregroundStyle(Theme.textDim)
                         ForEach(result.matches) { match in
                             Text("· \(match.candidate.name) — \(Int(match.score * 100))% · \(match.matchedTerms.prefix(4).joined(separator: ", "))")
@@ -2202,7 +2238,7 @@ private struct AssignmentsScreen: View {
                                                 )
                                             )
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.pressable)
                                     .accessibilityIdentifier(
                                         "extensions.projectMatrix.\(package.id).\(project.id.uuidString)"
                                     )
@@ -2234,7 +2270,7 @@ private struct AssignmentsScreen: View {
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.textFaint)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .accessibilityIdentifier("extensions.assignments.search.clear")
                 Text("\(packages.count)/\(registry.packages.count)")
                     .font(Theme.mono(.micro))
@@ -2459,7 +2495,7 @@ private struct SourceRow: View {
                     .font(Theme.mono(.large, .bold))
                     .foregroundStyle(Theme.text)
                 Text("\(repository) — \(packages.count) extensions will be affected.")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textDim)
                 TextField(kind.placeholder, text: $reference)
                     .font(Theme.mono(.body))
@@ -2658,7 +2694,7 @@ private struct SecurityScreen: View {
                         Text(summary.caption(
                             scanned: registry.packages.count
                         ))
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(summary.hasParserDiagnostics ? Theme.warn : Theme.textFaint)
                         .padding(.horizontal, 12)
                         .padding(.top, 4)
@@ -2670,7 +2706,7 @@ private struct SecurityScreen: View {
                                     level: kind.isActionable ? .warning : .neutral
                                 )
                                 Text(kind.remedy)
-                                    .font(Theme.mono(.micro))
+                                    .font(Theme.ui(.micro))
                                     .foregroundStyle(Theme.textFaint)
                                     .lineLimit(2)
                                 Spacer()
@@ -2749,7 +2785,7 @@ private struct FindingRow: View {
                     }
                 }
                 Text(finding.message)
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.text)
                 if let path = finding.path {
                     Text(path)
@@ -3062,7 +3098,7 @@ private struct ActivityScreen: View {
                                 }
                             }
                             Text(event.detail)
-                                .font(Theme.mono(.small))
+                                .font(Theme.ui(.small))
                                 .foregroundStyle(Theme.textDim)
                         }
                         Spacer()

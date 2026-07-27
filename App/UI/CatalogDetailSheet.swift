@@ -287,11 +287,11 @@ struct CatalogDetailSheet: View {
         let choices = CatalogInstallService.choices(for: current)
         VStack(alignment: .leading, spacing: 8) {
             Text("Installation method")
-                .font(Theme.mono(.body, .semibold))
+                .font(Theme.ui(.body, .semibold))
                 .foregroundStyle(Theme.text)
             if choices.isEmpty {
                 Text("This entry offers no package or endpoint Uncoil can install.")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.warn)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
@@ -315,6 +315,7 @@ struct CatalogDetailSheet: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .hoverRow()
                     }
                 }
                 .panel()
@@ -361,7 +362,7 @@ struct CatalogDetailSheet: View {
                 .padding(.vertical, 6)
             }
             Text("Secret values are never written into config; they are provided per server after install and stored in the Keychain.")
-                .font(Theme.mono(.micro))
+                .font(Theme.ui(.micro))
                 .foregroundStyle(Theme.textFaint)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
@@ -402,6 +403,7 @@ struct CatalogDetailSheet: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .hoverRow()
                         .disabled(isWorking)
                     }
                 }
@@ -463,7 +465,7 @@ struct CatalogDetailSheet: View {
             HStack(spacing: 7) {
                 ProgressView().controlSize(.small).scaleEffect(0.6)
                 Text("Fetching the file list…")
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
             }
         }
@@ -474,12 +476,12 @@ struct CatalogDetailSheet: View {
     private var agentPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Install into")
-                .font(Theme.mono(.body, .semibold))
+                .font(Theme.ui(.body, .semibold))
                 .foregroundStyle(Theme.text)
             VStack(alignment: .leading, spacing: 0) {
                 if registry.installations.isEmpty {
                     Text("No manageable agent was found on this machine.")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
                         .padding(12)
                 }
@@ -517,6 +519,7 @@ struct CatalogDetailSheet: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .hoverRow()
                     .disabled(reason != nil)
                     .accessibilityIdentifier("extensions.catalog.agent.\(agent.rawValue)")
                 }
@@ -530,7 +533,7 @@ struct CatalogDetailSheet: View {
     private func mcpPlanStage(_ plans: [CatalogInstallService.MCPAgentPlan]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Exactly this will change — nothing has been written yet:")
-                .font(Theme.mono(.body))
+                .font(Theme.ui(.body))
                 .foregroundStyle(Theme.textDim)
             ForEach(plans) { plan in
                 VStack(alignment: .leading, spacing: 6) {
@@ -575,7 +578,7 @@ struct CatalogDetailSheet: View {
         let preview = plan.preview
         return VStack(alignment: .leading, spacing: 14) {
             Text("Staged and inspected — nothing has touched an agent yet:")
-                .font(Theme.mono(.body))
+                .font(Theme.ui(.body))
                 .foregroundStyle(Theme.textDim)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -607,7 +610,7 @@ struct CatalogDetailSheet: View {
                                     .font(Theme.mono(.small, .semibold))
                                     .foregroundStyle(Theme.text)
                                 Text(finding.message)
-                                    .font(Theme.mono(.small))
+                                    .font(Theme.ui(.small))
                                     .foregroundStyle(Theme.textDim)
                             }
                             Spacer()
@@ -621,7 +624,7 @@ struct CatalogDetailSheet: View {
 
             if !plan.structureIssues.isEmpty {
                 Text("Package layout: " + plan.structureIssues.joined(separator: "; "))
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.danger)
             }
 
@@ -629,7 +632,7 @@ struct CatalogDetailSheet: View {
                 Toggle(isOn: $approveExecutables) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("This skill contains executable files; I approve installing them.")
-                            .font(Theme.mono(.small, .medium))
+                            .font(Theme.ui(.small, .medium))
                             .foregroundStyle(Theme.text)
                         Text(preview.executables.prefix(4).joined(separator: ", "))
                             .font(Theme.mono(.micro))
@@ -660,7 +663,7 @@ struct CatalogDetailSheet: View {
                             .foregroundStyle(Theme.text)
                         Spacer()
                         Text(result.message)
-                            .font(Theme.mono(.small))
+                            .font(Theme.ui(.small))
                             .foregroundStyle(result.success ? Theme.textDim : Theme.danger)
                     }
                     .padding(.horizontal, 12)
@@ -668,7 +671,7 @@ struct CatalogDetailSheet: View {
                 }
                 if results.isEmpty {
                     Text("Nothing was selected.")
-                        .font(Theme.mono(.small))
+                        .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
                         .padding(12)
                 }

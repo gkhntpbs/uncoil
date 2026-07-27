@@ -169,7 +169,7 @@ struct ExtensionNoticeStack: View {
                     Button(notice.isExpanded ? "Hide" : "Detail") {
                         center.toggleDetail(notice.id)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .font(Theme.mono(.micro, .medium))
                     .foregroundStyle(Theme.textDim)
                 }
@@ -180,7 +180,7 @@ struct ExtensionNoticeStack: View {
                         .font(.system(size: 8, weight: .semibold))
                         .foregroundStyle(Theme.textFaint)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .accessibilityIdentifier("extensions.notice.dismiss")
             }
             if notice.isExpanded, let detail = notice.detail {

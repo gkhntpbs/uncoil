@@ -72,7 +72,7 @@ struct CatalogScreen: View {
                             .font(.system(size: 10))
                             .foregroundStyle(Theme.textFaint)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                 }
             }
             .padding(.horizontal, 8)
@@ -105,7 +105,7 @@ struct CatalogScreen: View {
                         .foregroundStyle(Theme.textDim)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("extensions.catalog.refresh")
         }
     }
@@ -114,7 +114,7 @@ struct CatalogScreen: View {
         HStack(spacing: 8) {
             TablerIcon(name: "wifi-off", size: 12, color: Theme.warn)
             Text("The registry could not be reached; showing the last cached results.")
-                .font(Theme.mono(.small))
+                .font(Theme.ui(.small))
                 .foregroundStyle(Theme.textDim)
             Spacer()
             Button("Retry") { catalog.refresh() }
@@ -140,7 +140,7 @@ struct CatalogScreen: View {
                 Text(catalog.searchText.isEmpty
                     ? "The catalog returned nothing."
                     : "Nothing matches “\(catalog.searchText)”.")
-                    .font(Theme.mono(.body))
+                    .font(Theme.ui(.body))
                     .foregroundStyle(Theme.textFaint)
                     .padding(12)
             }
@@ -160,12 +160,12 @@ struct CatalogScreen: View {
             HStack(spacing: 7) {
                 TablerIcon(name: "brand-github", size: 13, color: Theme.textDim)
                 Text("Connect GitHub for full browsing")
-                    .font(Theme.mono(.body, .semibold))
+                    .font(Theme.ui(.body, .semibold))
                     .foregroundStyle(Theme.text)
                 Spacer()
             }
             Text("Skills are discovered on GitHub. Without a connection the catalog still works inside GitHub's small anonymous limit; signing in with the browser removes that ceiling. The token stays in your Keychain.")
-                .font(Theme.mono(.small))
+                .font(Theme.ui(.small))
                 .foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             GitHubLoginView(loggedIn: $gitHubConnected)
@@ -181,7 +181,7 @@ struct CatalogScreen: View {
             HStack(spacing: 7) {
                 TablerIcon(name: "cloud-off", size: 13, color: Theme.danger)
                 Text("The catalog could not be loaded")
-                    .font(Theme.mono(.body, .semibold))
+                    .font(Theme.ui(.body, .semibold))
                     .foregroundStyle(Theme.text)
             }
             Text(reason)
@@ -266,6 +266,8 @@ struct CatalogCard: View {
 
     static let height: CGFloat = 128
 
+    @State private var hovering = false
+
     var body: some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 6) {
@@ -289,7 +291,7 @@ struct CatalogCard: View {
                         .lineLimit(1)
                 }
                 Text(item.summary ?? item.name)
-                    .font(Theme.mono(.small))
+                    .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(2, reservesSpace: true)
                 Spacer(minLength: 0)
@@ -299,9 +301,21 @@ struct CatalogCard: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .frame(height: Self.height)
             .panel()
+            // A grid of cards that are entirely clickable and answer the pointer
+            // with nothing reads as a picture of a catalogue. The card picks up
+            // the accent edge and lifts a little; the shadow is what makes the
+            // lift legible on a dark background, where a 2pt rise alone is not.
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                    .strokeBorder(hovering ? Theme.highlightBorder : .clear, lineWidth: 1)
+            )
+            .elevated(hovering ? .low : nil)
+            .offset(y: hovering ? -2 : 0)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .animation(Theme.Motion.quick, value: hovering)
+        .onHover { hovering = $0 }
         .accessibilityIdentifier("extensions.catalog.card.\(item.id)")
     }
 

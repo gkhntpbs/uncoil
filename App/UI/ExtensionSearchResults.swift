@@ -127,7 +127,7 @@ struct ExtensionSearchResults: View {
             if groups.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("No result")
-                        .font(Theme.mono(.body, .semibold))
+                        .font(Theme.ui(.body, .semibold))
                         .foregroundStyle(Theme.text)
                     Text("“\(query)” matched no extension, agent, source, finding or record.")
                         .font(Theme.mono(.small))
@@ -162,7 +162,7 @@ struct ExtensionSearchResults: View {
                                             .font(Theme.mono(.body, .medium))
                                             .foregroundStyle(row.tint ?? Theme.text)
                                         Text(row.detail)
-                                            .font(Theme.mono(.small))
+                                            .font(Theme.ui(.small))
                                             .foregroundStyle(Theme.textFaint)
                                             .lineLimit(1)
                                     }
@@ -179,6 +179,7 @@ struct ExtensionSearchResults: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .hoverRow()
                             .accessibilityIdentifier("extensions.search.result.\(row.id)")
                             if index != group.rows.count - 1 {
                                 Divider().overlay(Theme.border)
