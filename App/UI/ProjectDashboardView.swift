@@ -54,6 +54,9 @@ struct ProjectDashboardView: View {
     }
 
     @State private var area: Area = .overview
+    /// Whether this project has already turned down the TODO.md offer. Read
+    /// once per project rather than on every render — it is a defaults hit.
+    @State private var todoHintDismissed = true
     /// How wide the header actually is. Drives what the header may drop before
     /// it would otherwise wrap: the path, the branch, then the tab labels.
     @State private var headerWidth: CGFloat = 1_000
@@ -89,6 +92,7 @@ struct ProjectDashboardView: View {
         // Cheap and idempotent: it returns straight away while the snapshot is
         // fresh, so switching back to a project costs nothing.
         .task(id: project.id) {
+            todoHintDismissed = TodoHintDismissal.isDismissed(project.id)
             await pages.refreshIfNeeded(project: project)
             if LaunchConfig.shared.projectArea == "tasks", hasTaskSources {
                 area = .tasks
@@ -180,6 +184,21 @@ struct ProjectDashboardView: View {
 
     private var overviewContent: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // Only where the absence is the whole point: a project with a task
+            // source has a Tasks tab that explains itself.
+            if !hasTaskSources, !todoHintDismissed {
+                TodoHintCard(
+                    project: project,
+                    onCreated: {
+                        todoHintDismissed = true
+                        Task { await pages.refresh(project: project) }
+                    },
+                    onDismiss: {
+                        TodoHintDismissal.dismiss(project.id)
+                        todoHintDismissed = true
+                    }
+                )
+            }
             sessionsPanel
             if !projectStore.sessionHistory(for: project.id).isEmpty {
                 historyPanel
@@ -227,7 +246,7 @@ struct ProjectDashboardView: View {
                 .padding(6)
             }
         }
-        .panel(radius: 12)
+        .panel()
     }
 
     // MARK: - Worktrees
@@ -274,7 +293,7 @@ struct ProjectDashboardView: View {
                     .padding(.bottom, 10)
             }
         }
-        .panel(radius: 12)
+        .panel()
     }
 
     private func createWorktree() {
@@ -361,7 +380,7 @@ struct ProjectDashboardView: View {
             AgentLauncherStrip(project: project, selection: $selection)
         }
         .padding(14)
-        .panel(radius: 12)
+        .panel()
         .measureWidth { headerWidth = $0 }
     }
 
@@ -386,16 +405,12 @@ struct ProjectDashboardView: View {
                     count: projectStore.activeSessions(for: project.id).count
                 )
                 Spacer()
-                Button {
-                    onOrganizeSessions()
-                } label: {
-                    HStack(spacing: 6) {
-                        TablerIcon(name: "sparkles", size: 12, color: Theme.highlight)
-                        Text("Organise Automatically")
-                            .font(Theme.mono(.small, .medium))
-                    }
-                }
-                .buttonStyle(GhostButtonStyle())
+                PanelAction(
+                    iconName: "sparkles",
+                    title: String(localized: "Organise"),
+                    help: String(localized: "Group this project's sessions by what they are working on."),
+                    action: onOrganizeSessions
+                )
                 .accessibilityIdentifier("dashboard.sessions.organize")
                 .padding(.trailing, 10)
             }
@@ -417,7 +432,7 @@ struct ProjectDashboardView: View {
                 .padding(6)
             }
         }
-        .panel(radius: 12)
+        .panel()
     }
 
     private var historyPanel: some View {
@@ -433,7 +448,7 @@ struct ProjectDashboardView: View {
             }
             .padding(6)
         }
-        .panel(radius: 12)
+        .panel()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("dashboard.sessionHistory")
     }
@@ -539,7 +554,7 @@ struct ProjectDashboardView: View {
                 .padding(12)
             }
         }
-        .panel(radius: 12)
+        .panel()
     }
 
     private func statusColor(_ code: String) -> Color {
@@ -560,11 +575,123 @@ struct ProjectDashboardView: View {
             FileTreeView(rootURL: project.rootURL)
                 .padding(6)
         }
-        .panel(radius: 12)
+        .panel()
     }
 }
 
 // MARK: - Pieces
+
+/// The one-time offer to start a `TODO.md`.
+///
+/// Tasks are the half of Uncoil a user cannot discover from the interface: with
+/// no task source in the project the Tasks tab is not offered at all, so the
+/// feature is invisible precisely to the people who have not met it. The card
+/// says what the file buys them, writes it on request, and takes no for an
+/// answer permanently.
+private struct TodoHintCard: View {
+    let project: Project
+    let onCreated: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                TablerIcon(name: "checkbox", size: 14, color: Theme.highlight)
+                Text("Hand out work from a TODO.md")
+                    .font(Theme.ui(.large, .semibold))
+                    .foregroundStyle(Theme.text)
+                Spacer(minLength: 8)
+                Button(action: onDismiss) {
+                    TablerIcon(name: "x", size: 11, color: Theme.textFaint)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.pressable)
+                .help(String(localized: "Don't offer this again for this project"))
+                .accessibilityIdentifier("dashboard.todoHint.dismiss")
+            }
+
+            Text("This project has no TODO.md. With one, Uncoil gives it a Tasks tab: assign a checkbox to an agent, watch the run, review what came back and merge it. It stays a plain Markdown file your agents and editor can own.")
+                .font(Theme.ui(.small))
+                .foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let error {
+                Text(error)
+                    .font(Theme.ui(.small))
+                    .foregroundStyle(Theme.danger)
+            }
+
+            HStack(spacing: 8) {
+                Button(String(localized: "Create a TODO.md")) { create() }
+                    .buttonStyle(AccentButtonStyle())
+                    .accessibilityIdentifier("dashboard.todoHint.create")
+                Button(String(localized: "Not for this project")) { onDismiss() }
+                    .buttonStyle(GhostButtonStyle())
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .panel()
+        .accessibilityIdentifier("dashboard.todoHint")
+    }
+
+    private func create() {
+        switch TodoStarter.create(in: project.rootPath) {
+        case .success:
+            error = nil
+            onCreated()
+        case .failure(.alreadyExists):
+            // Nothing to offer: the file the card is about is already there.
+            error = nil
+            onCreated()
+        case .failure(.write(let message)):
+            error = message
+        }
+    }
+}
+
+/// A panel's own action, sitting opposite its heading.
+///
+/// Deliberately not a `GhostButtonStyle`: a full bordered pill next to a small
+/// dimmed section heading outweighed the panel it belonged to and read as the
+/// most important thing on the page, which "Organise" is not. A heading action
+/// is an offer — quiet until the pointer finds it, then the accent.
+private struct PanelAction: View {
+    let iconName: String
+    let title: String
+    var help: String?
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                TablerIcon(
+                    name: iconName,
+                    size: 11,
+                    color: hovering ? Theme.highlight : Theme.textFaint
+                )
+                Text(title)
+                    .font(Theme.ui(.small, .medium))
+                    .foregroundStyle(hovering ? Theme.text : Theme.textDim)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                hovering ? Theme.panelHover : .clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressable)
+        .animation(Theme.Motion.quick, value: hovering)
+        .onHover { hovering = $0 }
+        .help(help ?? "")
+    }
+}
 
 private struct PanelHeading: View {
     let title: String

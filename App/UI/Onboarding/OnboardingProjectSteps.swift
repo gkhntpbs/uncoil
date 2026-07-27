@@ -212,30 +212,19 @@ struct OnboardingTasksStep: View {
 
     /// Writes a starter file, and refuses if one is already there: the point of
     /// the shortcut is to save typing, not to touch a file the user owns.
+    /// The template and the rule live in `TodoStarter`, shared with the offer
+    /// the project screen makes to anyone who never saw this step.
     private func createTodo() {
         guard let projectPath else { return }
-        let url = URL(fileURLWithPath: projectPath).appendingPathComponent("TODO.md")
-        guard !FileManager.default.fileExists(atPath: url.path) else {
-            createError = String(localized: "There is already a TODO.md here.")
-            return
-        }
-        let template = """
-        # TODO
-
-        ## Next
-        - [ ] Describe the first task in one line
-        - [ ] And the second
-
-        ## Later
-        - [ ] Something that can wait
-        """
-        do {
-            try Data(template.utf8).write(to: url, options: .withoutOverwriting)
-            createdPath = url.path
+        switch TodoStarter.create(in: projectPath) {
+        case .success(let path):
+            createdPath = path
             createError = nil
             Task { await scan() }
-        } catch {
-            createError = error.localizedDescription
+        case .failure(.alreadyExists):
+            createError = String(localized: "There is already a TODO.md here.")
+        case .failure(.write(let message)):
+            createError = message
         }
     }
 }

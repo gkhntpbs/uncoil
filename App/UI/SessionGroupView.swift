@@ -152,7 +152,7 @@ struct SessionGroupView: View {
             }
         }
         .padding(14)
-        .panel(radius: 12)
+        .panel()
     }
 
     private var sessionsPanel: some View {
@@ -183,7 +183,7 @@ struct SessionGroupView: View {
                 .padding(6)
             }
         }
-        .panel(radius: 12)
+        .panel()
     }
 
     private func groupSessionRow(_ record: SessionRecord) -> some View {

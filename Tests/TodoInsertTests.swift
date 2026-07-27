@@ -118,3 +118,53 @@ final class TodoInsertTests: XCTestCase {
         )
     }
 }
+
+/// The starter file, and the offer the project screen makes once per project.
+final class TodoStarterTests: XCTestCase {
+    private var directory: URL!
+
+    override func setUp() async throws {
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("uncoil-todo-starter-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() async throws {
+        try? FileManager.default.removeItem(at: directory)
+    }
+
+    func testCreateWritesAParsableStarter() throws {
+        let result = TodoStarter.create(in: directory.path)
+        guard case .success(let path) = result else { return XCTFail("expected a file") }
+
+        let raw = try String(contentsOfFile: path, encoding: .utf8)
+        let document = TodoParser.parse(raw, path: path)
+        XCTAssertEqual(document.openTasks.count, 3, "the starter must read back as real tasks")
+    }
+
+    func testCreateRefusesToTouchAnExistingFile() throws {
+        let url = directory.appendingPathComponent("TODO.md")
+        try Data("mine\n".utf8).write(to: url)
+
+        XCTAssertEqual(TodoStarter.create(in: directory.path), .failure(.alreadyExists))
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), "mine\n")
+    }
+
+    func testHintDismissalIsPerProjectAndSticks() {
+        let suite = "uncoil-todo-hint-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let mine = UUID()
+        let other = UUID()
+        XCTAssertFalse(TodoHintDismissal.isDismissed(mine, defaults: defaults))
+
+        TodoHintDismissal.dismiss(mine, defaults: defaults)
+        XCTAssertTrue(TodoHintDismissal.isDismissed(mine, defaults: defaults))
+        XCTAssertFalse(TodoHintDismissal.isDismissed(other, defaults: defaults),
+                       "one project's answer must not speak for another")
+
+        // A fresh read of the same defaults is what a relaunch does.
+        XCTAssertTrue(TodoHintDismissal.isDismissed(mine, defaults: UserDefaults(suiteName: suite)!))
+    }
+}

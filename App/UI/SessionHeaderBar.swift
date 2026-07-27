@@ -152,7 +152,7 @@ struct SessionHeaderBar<Trailing: View>: View {
             )
         }
         .padding(14)
-        .panel(radius: 12)
+        .panel()
         // Cheap enough to re-ask while the session is open: a branch changes
         // under the agent's hands, and a stale one is worse than none.
         .task(id: workingDirectory) {

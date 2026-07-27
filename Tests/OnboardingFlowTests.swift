@@ -102,7 +102,17 @@ final class OnboardingSettingsTests: XCTestCase {
         XCTAssertTrue(store.shouldPresentOnboarding)
         store.finishOnboarding()
         XCTAssertFalse(store.shouldPresentOnboarding)
-        // …but what was skipped is still listed.
+        // …and nothing is left to nag about. Declining a step is an answer, so
+        // a finished flow leaves no remainder for the sidebar's resume row.
+        XCTAssertTrue(store.remainingOnboardingSteps.isEmpty)
+    }
+
+    /// A flow that was never finished still knows what is undone — that is the
+    /// case the resume row exists for.
+    func testAnUnfinishedFlowStillListsWhatIsLeft() throws {
+        let store = try makeStore()
+        store.markOnboardingStepCompleted(.clis)
+        XCTAssertFalse(store.remainingOnboardingSteps.contains(.clis))
         XCTAssertFalse(store.remainingOnboardingSteps.isEmpty)
     }
 

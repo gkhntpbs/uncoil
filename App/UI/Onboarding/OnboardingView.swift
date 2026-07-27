@@ -64,8 +64,16 @@ struct OnboardingView: View {
         }
     }
 
-    /// Move on without claiming the step was done.
+    /// Move on. Skipping a step settles it as much as doing it does.
+    ///
+    /// "Not now" used to leave the step listed forever, so a user who
+    /// deliberately declined to add a project was told to finish setup on every
+    /// launch afterwards. Declining is an answer; the sidebar's resume row is
+    /// for a flow that was interrupted, not for one whose questions were all
+    /// asked. Everything a skipped step would have set up stays reachable from
+    /// Settings, and About can start the whole flow over.
     private func advance() {
+        settings.markOnboardingStepCompleted(step)
         guard let next = OnboardingFlow.next(after: step) else { return finish() }
         step = next
     }
@@ -81,10 +89,16 @@ struct OnboardingView: View {
         step = previous
     }
 
-    /// Leaving the flow — from Skip or from the last page. Either way it is
-    /// stamped as seen so it does not reopen by itself; what is left undone
-    /// stays visible in the sidebar instead.
+    /// Leaving the flow — from Skip or from the last page.
+    ///
+    /// "Skip setup" means the user is done being asked, so the steps they never
+    /// reached are settled too. Without this, dismissing the flow on the first
+    /// page left nine items in the resume row and a permanent "Finish setup" in
+    /// the sidebar — the exact nagging the skip was asking to stop.
     private func skipAll() {
+        for step in settings.remainingOnboardingSteps {
+            settings.markOnboardingStepCompleted(step)
+        }
         finish()
     }
 

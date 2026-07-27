@@ -18,6 +18,17 @@ All notable changes to Uncoil are recorded here.
 
 ### Fixed
 
+- Cleared and read notifications stayed cleared. Marks were dropped for any row that left the list, and task rows leave it constantly — they come from a scan that runs on its own schedule and has produced nothing during the first refreshes of every launch — so every mark the user made was thrown away moments before the same rows came back. A row's absence is now only taken as "over" when the snapshot could have produced it: a session's status row while its session is present, a task row once the scan has produced something. Genuine recurrences still return unread, which is what occurrence signatures were always for.
+- A skipped setup step counts as answered. Declining to add a project during first-run left "Finish setup" in the sidebar on every launch afterwards, forever; skipping is an answer, and a flow the user has been through has no remainder. Everything a skipped step would have configured is still in Settings, and About still restarts the whole flow.
+
+### Added
+
+- A project with no `TODO.md` is offered one, on its General page, with a sentence about what the file buys: a Tasks tab, agents assigned to checkboxes, review and merge. It writes a starter file on request — the same template first-run setup uses — and "Not for this project" retires it for that project permanently. Tasks were previously invisible to anyone who skipped the first-run step, since without a task source there is no Tasks tab to discover.
+
+### Changed
+
+- The Sessions panel's "Organise Automatically" is now a quiet heading action rather than a full bordered button that outweighed the panel it belonged to.
+
 - The runtime daemon now reaps abandoned sessions: a session with no client attached for 24 hours that has shown no sign of life in as long is terminated (its agent CLI and MCP helper go with it). "Sign of life" is terminal output *or* CPU time — an agent quietly waking now and then to check a timer or a date burns CPU and is never touched, and a quiet-but-open session in the app stays the app's business. Without this, sessions left behind by quit apps and dev builds accumulated indefinitely.
 - Finished the Turkish→English string migration the tests were still asserting against: 96 pre-existing unit-test failures traced to stale Turkish expectations and fixtures, plus genuine half-migrated output in code — fuzzy search had lost its Turkish case/diacritic folding ("gorev" no longer matched "görev"), the menu bar still said "kuyrukta/bloklu", quarantine audits said "(bulgu f1)", the stale-edit sheet mixed "# Your edit" with "# Dosyadaki hâli", and orchestrator plans said "Dalga N". The test scheme now pins `en-US` so the suite is deterministic on non-English systems. All 1418 tests pass.
 

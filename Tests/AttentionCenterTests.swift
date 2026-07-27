@@ -329,3 +329,100 @@ final class AttentionPersistenceTests: XCTestCase {
         XCTAssertEqual(relaunched.unreadCount, 1)
     }
 }
+
+/// Task-derived rows across a relaunch.
+///
+/// The session rows above were covered; the task rows the user actually sees
+/// most of — an assignment running, a link that needs confirming — were not,
+/// and they take a different path to their occurrence signature.
+@MainActor
+final class TaskAttentionPersistenceTests: XCTestCase {
+    private let projectID = UUID()
+    private var suiteName = ""
+    private var defaults: UserDefaults!
+
+    override func setUp() async throws {
+        suiteName = "uncoil-attention-task-\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+    }
+
+    override func tearDown() async throws {
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    private func snapshot(updatedAt: Date) -> AttentionSnapshot {
+        let assignment = TaskSessionAssignment(
+            taskID: "t1",
+            sourcePath: "/tmp/TODO.md",
+            sessionID: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            role: .implementer,
+            state: .agentStarting,
+            assignedAt: updatedAt,
+            updatedAt: updatedAt
+        )
+        var snapshot = AttentionSnapshot()
+        snapshot.tasks.tasks = [
+            TaskAttentionInput(
+                taskID: "t1",
+                taskText: "ship it",
+                projectID: projectID,
+                projectName: "uncoil",
+                sourcePath: "/tmp/TODO.md",
+                assignments: [assignment],
+                updatedAt: updatedAt
+            ),
+        ]
+        return snapshot
+    }
+
+    func testClearedTaskRowStaysClearedAfterRelaunch() {
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+
+        let before = AttentionStore(defaults: defaults)
+        before.refresh(snapshot(updatedAt: stamp))
+        XCTAssertEqual(before.items.count, 1)
+        before.resolveAll()
+        XCTAssertTrue(before.items.isEmpty)
+
+        let after = AttentionStore(defaults: defaults)
+        after.refresh(AttentionSnapshot())
+        after.refresh(snapshot(updatedAt: stamp))
+        XCTAssertTrue(after.items.isEmpty, "a cleared task row must not return on relaunch")
+    }
+
+    func testReadTaskRowStaysReadAfterRelaunch() {
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+
+        let before = AttentionStore(defaults: defaults)
+        before.refresh(snapshot(updatedAt: stamp))
+        before.markAllRead()
+
+        let after = AttentionStore(defaults: defaults)
+        after.refresh(AttentionSnapshot())
+        after.refresh(snapshot(updatedAt: stamp))
+        XCTAssertEqual(after.items.count, 1)
+        XCTAssertEqual(after.unreadCount, 0, "a read task row must not go unread on relaunch")
+    }
+}
+
+extension TaskAttentionPersistenceTests {
+    /// Task rows are derived from a scan that runs on its own schedule, so the
+    /// snapshot legitimately has no task rows in it between scans — at launch,
+    /// most of all. A row that blinks out for that reason has not been dealt
+    /// with, and clearing it must survive the gap.
+    func testClearedRowSurvivesASnapshotWithoutTheTaskScan() {
+        let stamp = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = AttentionStore(defaults: defaults)
+
+        store.refresh(snapshot(updatedAt: stamp))
+        store.resolveAll()
+        XCTAssertTrue(store.items.isEmpty)
+
+        // The task scan has not produced anything yet on this pass.
+        store.refresh(AttentionSnapshot())
+        // …and now it has, with exactly the same occurrence as before.
+        store.refresh(snapshot(updatedAt: stamp))
+
+        XCTAssertTrue(store.items.isEmpty, "a cleared row must not return because a scan was between passes")
+    }
+}

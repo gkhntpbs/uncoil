@@ -469,8 +469,16 @@ final class SettingsStore: ObservableObject {
     }
 
     /// Actionable steps still undone — what the sidebar's resume row counts.
+    ///
+    /// A flow the user has been all the way through has no remainder, whatever
+    /// they answered along the way: the only exits are Skip and the last page,
+    /// and both mean "stop asking me". Someone who declined to add a project
+    /// during setup was otherwise told to finish setup on every launch
+    /// afterwards, forever. A version bump still reopens the flow — that is
+    /// `shouldPresentOnboarding`'s job — and the new steps are counted then.
     var remainingOnboardingSteps: [OnboardingStep] {
-        OnboardingFlow.remaining(completed: onboardingCompletedSteps)
+        guard onboardingVersion != OnboardingFlow.currentVersion else { return [] }
+        return OnboardingFlow.remaining(completed: onboardingCompletedSteps)
     }
 
     func markOnboardingStepCompleted(_ step: OnboardingStep) {

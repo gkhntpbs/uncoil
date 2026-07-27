@@ -348,6 +348,32 @@ final class AttentionStore: ObservableObject {
         }
     }
 
+    /// Whether this snapshot is in a position to say that row `id` is gone.
+    ///
+    /// Row ids carry their origin, which is what makes this decidable without
+    /// keeping a parallel record of where every mark came from:
+    ///
+    /// - a session's status row can be judged only while its session is in the
+    ///   snapshot — the status genuinely moved on;
+    /// - a task row only once the task scan has produced something, since an
+    ///   empty task snapshot means "not scanned", not "no tasks";
+    /// - conflict and runtime rows are never judged this way. Their signatures
+    ///   are the conflicted files and the failure itself, so a recurrence is
+    ///   already a different occurrence and needs no help from absence.
+    private static func isObservable(_ id: String, in snapshot: AttentionSnapshot) -> Bool {
+        let sessionPrefixes = ["permission:", "input:", "completed:", "auth:"]
+        if let prefix = sessionPrefixes.first(where: { id.hasPrefix($0) }) {
+            guard let sessionID = UUID(uuidString: String(id.dropFirst(prefix.count))) else {
+                return false
+            }
+            return snapshot.sessions.contains { $0.id == sessionID }
+        }
+        if id.hasPrefix("task-") {
+            return !snapshot.tasks.tasks.isEmpty
+        }
+        return false
+    }
+
     /// Whether `item` has already been handled: a mark counts only for the very
     /// occurrence it was made against.
     private func isMarked(_ marks: [String: Mark], _ item: AttentionItem) -> Bool {
@@ -382,7 +408,16 @@ final class AttentionStore: ObservableObject {
         let previouslyLive = seenLive
 
         let liveIDs = Set(derived.map(\.id)).union(reported.map(\.id))
-        let cleared = seenLive.subtracting(liveIDs)
+        // A row leaving the list only counts as "handled, and now over" when
+        // this snapshot could actually have produced it.
+        //
+        // Dropping the marks of every absent row is how a cleared notification
+        // came back after each restart: task rows come from a scan that runs on
+        // its own schedule and has produced nothing at all during the first
+        // refreshes of a launch, so every task mark the user had made was
+        // thrown away moments before the same rows returned. Absence tells you
+        // nothing when the thing that reports them has not reported yet.
+        let cleared = seenLive.subtracting(liveIDs).filter { Self.isObservable($0, in: snapshot) }
         if !cleared.isEmpty {
             for id in cleared {
                 readMarks.removeValue(forKey: id)
