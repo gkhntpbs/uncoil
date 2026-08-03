@@ -688,6 +688,10 @@ struct MainWindow: View {
             )
         }
         startControlPlane()
+        // Drop directories whose sessions are gone. Once at start rather than
+        // on a timer: the only thing that creates them is a session that no
+        // longer exists, and that set does not change while the app runs.
+        projectStore.pruneDroppedImages()
         Task { await settings.resolveBinaries() }
     }
 

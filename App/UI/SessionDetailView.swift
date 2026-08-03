@@ -13,10 +13,10 @@ struct SessionDetailView: View {
     /// Something is being dragged over the session, so the drop is shown as
     /// possible before it happens.
     @State private var isDropTargeted = false
-    /// What the last drop did. Cleared on its own: it reports a completed
-    /// action, and a banner that has to be dismissed is worse than the action
-    /// was small.
-    @State private var dropMessage: String?
+    /// How far the drop in flight has got, and what it did. Cleared on its
+    /// own: it reports a completed action, and a banner that has to be
+    /// dismissed is worse than the action was small.
+    @State private var dropProgress: SessionDropProgress = .idle
     @State private var git = GitService.Snapshot()
 
     private var status: AgentSessionStatus {
@@ -112,7 +112,7 @@ struct SessionDetailView: View {
             // screenshot be read as a session id that does not parse.
             if SessionImageDropService.handle(
                 providers, record: record, project: project,
-                onMessage: { dropMessage = $0 }
+                onProgress: { dropProgress = $0 }
             ) {
                 return true
             }
@@ -131,19 +131,28 @@ struct SessionDetailView: View {
         .overlay(alignment: .top) {
             if isDropTargeted {
                 DropTargetOverlay()
-            } else if let dropMessage {
-                Text(dropMessage)
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.textDim)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Theme.panelActive, in: Capsule())
-                    .padding(.top, 8)
-                    .transition(.opacity)
-                    .task(id: dropMessage) {
-                        try? await Task.sleep(nanoseconds: 3_000_000_000)
-                        withAnimation(Theme.Motion.standard) { self.dropMessage = nil }
+            } else if let message = dropProgress.message {
+                HStack(spacing: 6) {
+                    if dropProgress.isWorking {
+                        ProgressView().controlSize(.small).scaleEffect(0.55)
                     }
+                    Text(message)
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textDim)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Theme.panelActive, in: Capsule())
+                .padding(.top, 8)
+                .transition(.opacity)
+                .accessibilityIdentifier("session.dropProgress")
+                .task(id: message) {
+                    // Only a finished state clears itself; work in flight stays
+                    // until it is done, however long the copy takes.
+                    guard !dropProgress.isWorking else { return }
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    withAnimation(Theme.Motion.standard) { dropProgress = .idle }
+                }
             }
         }
         .animation(Theme.Motion.standard, value: isDropTargeted)

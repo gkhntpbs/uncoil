@@ -426,13 +426,58 @@ final class ProjectStore: ObservableObject {
     }
 
     func removeSession(_ id: UUID) {
-        sessions.removeAll { $0.id == id }
-        save()
+        removeSessions([id])
     }
 
     func removeSessions(_ ids: Set<UUID>) {
+        // Before the records go: the images a session was handed live in a
+        // directory named after it, and once the record is gone there is
+        // nothing left to say which directory that was.
+        let leaving = sessions.filter { ids.contains($0.id) }
         sessions.removeAll { ids.contains($0.id) }
         save()
+        discardDroppedImages(of: leaving)
+    }
+
+    /// Deletes the dropped-image directories of sessions that have just gone.
+    private func discardDroppedImages(of records: [SessionRecord]) {
+        let directories: [(UUID, String)] = records.compactMap { record in
+            guard let project = projects.first(where: { $0.id == record.projectID })
+            else { return nil }
+            return (record.id, record.workingDirectory(in: project))
+        }
+        guard !directories.isEmpty else { return }
+        Task.detached(priority: .utility) {
+            for (id, workingDirectory) in directories {
+                SessionImageDropService.removeDirectory(
+                    sessionID: id, workingDirectory: workingDirectory
+                )
+            }
+        }
+    }
+
+    /// Sweeps drop directories no live session owns, per project root.
+    ///
+    /// A session removed while Uncoil was not running — or on another machine —
+    /// leaves its images behind, and nothing else would ever clear them.
+    func pruneDroppedImages() {
+        var roots: [String: [UUID]] = [:]
+        for project in projects {
+            roots[project.rootPath] = []
+        }
+        for record in sessions {
+            guard let project = projects.first(where: { $0.id == record.projectID })
+            else { continue }
+            roots[record.workingDirectory(in: project), default: []].append(record.id)
+        }
+        let snapshot = roots
+        Task.detached(priority: .utility) {
+            for (root, live) in snapshot {
+                SessionImageDropService.pruneOrphans(
+                    workingDirectory: root, liveSessionIDs: live
+                )
+            }
+        }
     }
 
     // MARK: - Persistence

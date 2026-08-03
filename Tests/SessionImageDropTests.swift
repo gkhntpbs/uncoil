@@ -84,9 +84,65 @@ final class SessionImageDropTests: XCTestCase {
     /// Relative, and inside the working directory: the one form no agent has to
     /// ask permission for.
     func testThePathIsRelativeToTheWorkingDirectory() {
-        let path = SessionImageDrop.relativePath(fileName: "a.png")
-        XCTAssertEqual(path, ".uncoil/dropped/a.png")
+        let path = SessionImageDrop.relativePath(fileName: "a.png", sessionID: UUID())
+        XCTAssertTrue(path.hasPrefix(".uncoil/dropped/"))
+        XCTAssertTrue(path.hasSuffix("/a.png"))
         XCTAssertFalse(path.hasPrefix("/"))
+    }
+
+    /// Ownership has to be in the path. A flat directory would grow for the
+    /// life of the project, and nothing in it would say which session an image
+    /// belonged to — so closing a session could not take its images with it.
+    func testEachSessionOwnsItsOwnDirectory() {
+        let first = UUID()
+        let second = UUID()
+        XCTAssertNotEqual(
+            SessionImageDrop.directoryName(for: first),
+            SessionImageDrop.directoryName(for: second)
+        )
+        XCTAssertEqual(
+            SessionImageDrop.directoryName(for: first),
+            SessionImageDrop.directoryName(for: first)
+        )
+    }
+
+    /// Read by a person in their own prompt: thirty-six characters of UUID
+    /// there is noise.
+    func testTheTokenIsShortEnoughToLiveInAPrompt() {
+        let token = SessionImageDrop.token(for: UUID())
+        XCTAssertEqual(token.count, 8)
+        XCTAssertFalse(token.contains("-"))
+    }
+
+    // MARK: - Cleanup
+
+    /// Not every close goes through the app: a session removed while Uncoil was
+    /// not running leaves its directory behind, and nothing else would clear it.
+    func testADirectoryWithNoSessionBehindItIsOrphaned() {
+        let live = UUID()
+        let gone = UUID()
+        let orphans = SessionImageDrop.orphanedTokens(
+            present: [SessionImageDrop.token(for: live), SessionImageDrop.token(for: gone)],
+            liveSessionIDs: [live]
+        )
+        XCTAssertEqual(orphans, [SessionImageDrop.token(for: gone)])
+    }
+
+    /// The sweep must never take the directory's own ignore file with it.
+    func testTheIgnoreFileIsNotSweptAway() {
+        XCTAssertTrue(
+            SessionImageDrop.orphanedTokens(present: [".gitignore"], liveSessionIDs: [])
+                .isEmpty
+        )
+    }
+
+    func testALiveSessionsDirectoryIsNeverOrphaned() {
+        let live = UUID()
+        XCTAssertTrue(
+            SessionImageDrop.orphanedTokens(
+                present: [SessionImageDrop.token(for: live)], liveSessionIDs: [live]
+            ).isEmpty
+        )
     }
 
     /// A path with a space is two arguments to a shell, and a prompt is read
@@ -101,9 +157,9 @@ final class SessionImageDropTests: XCTestCase {
     /// them in their mouth.
     func testTheFragmentIsPathsAndNothingElse() {
         let fragment = SessionImageDrop.promptFragment(
-            relativePaths: [".uncoil/dropped/a.png", ".uncoil/dropped/b.png"]
+            relativePaths: [".uncoil/dropped/ab/a.png", ".uncoil/dropped/ab/b.png"]
         )
-        XCTAssertEqual(fragment, ".uncoil/dropped/a.png .uncoil/dropped/b.png ")
+        XCTAssertEqual(fragment, ".uncoil/dropped/ab/a.png .uncoil/dropped/ab/b.png ")
         // Trailing space: the cursor lands ready for the sentence.
         XCTAssertTrue(fragment.hasSuffix(" "))
     }

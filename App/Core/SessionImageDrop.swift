@@ -18,6 +18,25 @@ enum SessionImageDrop {
     /// meant to be committed and these are not.
     static let directoryName = ".uncoil/dropped"
 
+    /// One directory per session, inside it.
+    ///
+    /// A flat directory would grow without limit, and worse, nothing in it
+    /// would say which session an image belonged to — so closing a session
+    /// could not take its images with it. Ownership has to be in the path.
+    ///
+    /// Eight hex characters rather than the whole id: the path is read by a
+    /// person in their own prompt, and thirty-six characters of UUID there is
+    /// noise. Collisions are handled where they matter, by never deleting a
+    /// directory whose token still belongs to a live session.
+    static func token(for sessionID: UUID) -> String {
+        String(sessionID.uuidString.replacingOccurrences(of: "-", with: "").prefix(8))
+            .lowercased()
+    }
+
+    static func directoryName(for sessionID: UUID) -> String {
+        "\(directoryName)/\(token(for: sessionID))"
+    }
+
     /// Written into the directory when it is created.
     ///
     /// A self-contained ignore rather than an edit to the project's own
@@ -115,7 +134,21 @@ enum SessionImageDrop {
     }
 
     /// The relative path an agent is given for a file in the drop directory.
-    static func relativePath(fileName: String) -> String {
-        "\(directoryName)/\(fileName)"
+    static func relativePath(fileName: String, sessionID: UUID) -> String {
+        "\(directoryName(for: sessionID))/\(fileName)"
+    }
+
+    /// Session directories with no live session behind them.
+    ///
+    /// The per-session directory is removed when its session is closed, but not
+    /// every close goes through the app: a session removed while Uncoil was not
+    /// running, or on another machine, leaves its images behind. This is the
+    /// sweep that catches those, and it is deliberately conservative — a
+    /// directory is only orphaned when its token matches no session at all.
+    static func orphanedTokens(
+        present: [String], liveSessionIDs: [UUID]
+    ) -> [String] {
+        let live = Set(liveSessionIDs.map(token(for:)))
+        return present.filter { !live.contains($0) && $0 != ".gitignore" }
     }
 }

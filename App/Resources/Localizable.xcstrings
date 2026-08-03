@@ -2597,6 +2597,12 @@
         }
       }
     },
+    "Attached %@." : {
+
+    },
+    "Attached %lld images." : {
+
+    },
     "Attention" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4899,6 +4905,9 @@
           }
         }
       }
+    },
+    "Drop to attach the image to this session's message" : {
+
     },
     "Duration" : {
       "extractionState" : "manual",
@@ -8544,6 +8553,9 @@
 
     },
     "Nothing found. You can still write the configuration by hand, or ask an agent to." : {
+
+    },
+    "Nothing in that drop was an image." : {
 
     },
     "Nothing is installed into your agents' own configuration: the server is registered for one session, as that session launches, and goes away with it." : {
