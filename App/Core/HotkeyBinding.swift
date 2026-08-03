@@ -41,6 +41,17 @@ struct HotkeyBinding: Codable, Equatable {
     /// rejected so the shortcut can't swallow ordinary typing.
     var hasModifier: Bool { canonicalModifiers != 0 }
 
+    /// True when the binding cannot be confused with typing a character.
+    ///
+    /// Shift and Option are how a keyboard layout reaches its upper registers —
+    /// ⌥Q is `@` on Turkish-Q, ⌥3 is `#` — so a hotkey built only from those
+    /// silently steals a character the user has no other way to type. Command
+    /// and Control never carry a layout character, so one of them is required.
+    var isTextSafe: Bool {
+        let flags = NSEvent.ModifierFlags(rawValue: canonicalModifiers)
+        return flags.contains(.command) || flags.contains(.control)
+    }
+
     /// Does an event (its key code + raw modifier flags) fire this binding?
     func matches(keyCode: UInt16, modifiers raw: UInt) -> Bool {
         self.keyCode == keyCode

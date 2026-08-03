@@ -299,6 +299,21 @@ final class TerminalRegistry {
         terminal.foregroundColor = SwiftTerm.Color(rgb24: palette.terminalFg)
     }
 
+    /// Hands SwiftTerm the user's "Option is Meta" choice.
+    ///
+    /// Off by default, as in Terminal.app: with Meta on, SwiftTerm swallows
+    /// Option and emits ⎋<key>, so a Turkish-Q layout can never type `@` (⌥Q)
+    /// or `#` (⌥3). `TerminalKeyTranslation.editingBytes` supplies ⌥←/→ word
+    /// navigation in the off case so nothing is lost by the default.
+    private func applyOptionAsMeta(_ view: TerminalView, settings: SettingsStore) {
+        view.optionAsMetaKey = settings.optionAsMetaKey
+    }
+
+    /// Applies an "Option is Meta" change to every open terminal at once.
+    func applyOptionAsMetaToLiveTerminals(_ enabled: Bool) {
+        for view in terminals.values { view.optionAsMetaKey = enabled }
+    }
+
     /// Re-paints every open terminal after a theme change.
     ///
     /// A running agent keeps the colours it chose when it started — nothing can
@@ -332,6 +347,7 @@ final class TerminalRegistry {
         }
         let view = UncoilTerminalView(frame: .zero)
         applyTheme(view)
+        applyOptionAsMeta(view, settings: settings)
         let mode = record.launchSelection?.workingMode?.normalized(for: .codex)
             ?? settings.workingMode(for: .codex)
         let approvalPolicy: String
@@ -436,6 +452,7 @@ final class TerminalRegistry {
         projectStore: ProjectStore
     ) {
         applyTheme(view)
+        applyOptionAsMeta(view, settings: settings)
         let provider = record.provider
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
@@ -489,6 +506,7 @@ final class TerminalRegistry {
     ) -> TerminalView {
         let view = UncoilLocalTerminalView(frame: .zero)
         applyTheme(view)
+        applyOptionAsMeta(view, settings: settings)
         let provider = record.provider
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline

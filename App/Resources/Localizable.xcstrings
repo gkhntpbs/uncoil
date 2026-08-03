@@ -2397,20 +2397,6 @@
         }
       }
     },
-    "At least one modifier (⌘⌥⌃⇧) is required. It applies immediately — no restart, and you can change it later in Settings › General." : {
-
-    },
-    "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En az bir değiştirici tuş (⌘⌥⌃⇧) gerekir. Anında uygulanır."
-          }
-        }
-      }
-    },
     "At most" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4450,6 +4436,9 @@
     "Does not support STDIO MCP servers" : {
 
     },
+    "Don't offer this again for this project" : {
+
+    },
     "Done" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5350,6 +5339,9 @@
         }
       }
     },
+    "Group this project's sessions by what they are working on." : {
+
+    },
     "Guesses which skill a prompt could trigger, from the descriptions the agent sees." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5360,6 +5352,9 @@
           }
         }
       }
+    },
+    "Hand out work from a TODO.md" : {
+
     },
     "Hand out work straight from your project's TODO.md." : {
 
@@ -5988,6 +5983,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uncoil’in penceresi kapalıyken agent’ları izlemeyi sürdürür."
+          }
+        }
+      }
+    },
+    "Keyboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klavye"
           }
         }
       }
@@ -6796,6 +6802,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yukarı Taşı"
+          }
+        }
+      }
+    },
+    "Must include ⌘ or ⌃ — ⇧ and ⌥ belong to the keyboard layout. Applies immediately." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘ veya ⌃ içermeli — ⇧ ve ⌥ klavye düzenine aittir. Anında uygulanır."
+          }
+        }
+      }
+    },
+    "Must include ⌘ or ⌃ — ⇧ and ⌥ belong to the keyboard layout. It applies immediately — no restart, and you can change it later in Settings › General." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘ veya ⌃ içermeli — ⇧ ve ⌥ klavye düzenine aittir. Anında uygulanır — yeniden başlatma gerekmez, sonradan Ayarlar › Genel'den değiştirebilirsiniz."
           }
         }
       }
@@ -7799,6 +7827,9 @@
         }
       }
     },
+    "Not for this project" : {
+
+    },
     "Not found" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8030,6 +8061,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kapalı — çökme bilgisi toplanmaz."
+          }
+        }
+      }
+    },
+    "Off, Option types the character your keyboard layout prints — ⌥Q gives @ on a Turkish-Q layout. On, Option is sent to the agent as Meta (⌥f, ⌥b). Applies immediately." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapalıyken Option, klavye düzeninizin bastığı karakteri yazar — Türkçe-Q düzeninde ⌥Q, @ verir. Açıkken Option, ajana Meta olarak gönderilir (⌥f, ⌥b). Anında uygulanır."
           }
         }
       }
@@ -8445,6 +8487,9 @@
           }
         }
       }
+    },
+    "Organise" : {
+
     },
     "Organise Automatically" : {
       "extractionState" : "manual",
@@ -12840,6 +12885,9 @@
         }
       }
     },
+    "This project has no TODO.md. With one, Uncoil gives it a Tasks tab: assign a checkbox to an agent, watch the run, review what came back and merge it. It stays a plain Markdown file your agents and editor can own." : {
+
+    },
     "This session belongs to %@ but the task comes from %@. The agent's working directory will not match the task's file." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13496,6 +13544,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "güncelleniyor…"
+          }
+        }
+      }
+    },
+    "Use Option as Meta" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Option'ı Meta olarak kullan"
           }
         }
       }

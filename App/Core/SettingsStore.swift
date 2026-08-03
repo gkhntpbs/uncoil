@@ -43,6 +43,9 @@ final class SettingsStore: ObservableObject {
         /// Command-palette hotkey. Optional for backward compatibility with
         /// settings.json written before it was configurable; nil ⇒ ⌘K.
         var commandPaletteHotkey: HotkeyBinding? = nil
+        /// "Option is Meta" in the terminal. Optional for backward
+        /// compatibility; nil ⇒ off, Option types the layout's character.
+        var optionAsMetaKey: Bool? = nil
         var sessionQuitBehavior: SessionQuitBehavior? = nil
         var transcriptRetentionPolicy: TranscriptRetentionPolicy? = nil
         /// Minutes a permission request may sit unanswered; 0 = never
@@ -75,6 +78,10 @@ final class SettingsStore: ObservableObject {
     @Published var providerBehaviors: [String: ProviderBehavior] = [:]
     /// The hotkey that toggles the command palette. Defaults to ⌘K.
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
+    /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
+    /// — the default, matching Terminal.app — Option belongs to the keyboard
+    /// layout, so a Turkish-Q layout can type `@` with ⌥Q and `#` with ⌥3.
+    @Published private(set) var optionAsMetaKey = false
     @Published private(set) var sessionQuitBehavior: SessionQuitBehavior = .keepSessionsRunning
     @Published private(set) var transcriptRetentionPolicy: TranscriptRetentionPolicy = .disabled
     /// Minutes before an unanswered permission request expires; 0 = never.
@@ -208,6 +215,12 @@ final class SettingsStore: ObservableObject {
 
     func resetCommandPaletteHotkey() {
         setCommandPaletteHotkey(.commandPaletteDefault)
+    }
+
+    func setOptionAsMetaKey(_ enabled: Bool) {
+        optionAsMetaKey = enabled
+        TerminalRegistry.shared.applyOptionAsMetaToLiveTerminals(enabled)
+        save()
     }
 
     func setSessionQuitBehavior(_ behavior: SessionQuitBehavior) {
@@ -544,6 +557,7 @@ final class SettingsStore: ObservableObject {
         configuredPresets = decoded.presets
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
+        optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
         permissionTimeoutMinutes = decoded.permissionTimeoutMinutes ?? 10
@@ -590,6 +604,7 @@ final class SettingsStore: ObservableObject {
             providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors,
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
                 ? nil : commandPaletteHotkey,
+            optionAsMetaKey: optionAsMetaKey ? true : nil,
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
                 ? nil : sessionQuitBehavior,
             transcriptRetentionPolicy: transcriptRetentionPolicy == .disabled

@@ -220,7 +220,7 @@ struct OnboardingPaletteStep: View {
                     title: String(localized: "Your shortcut"),
                     badge: settings.commandPaletteHotkey.displayString,
                     badgeTint: Theme.highlight,
-                    detail: String(localized: "At least one modifier (⌘⌥⌃⇧) is required. It applies immediately — no restart, and you can change it later in Settings › General.")
+                    detail: String(localized: "Must include ⌘ or ⌃ — ⇧ and ⌥ belong to the keyboard layout. It applies immediately — no restart, and you can change it later in Settings › General.")
                 ) {
                     HStack(spacing: 10) {
                         HotkeyRecorder(

@@ -88,6 +88,22 @@ struct GeneralSettingsPage: View {
                 }
             }
 
+            Section("Keyboard") {
+                Toggle(isOn: Binding(
+                    get: { settings.optionAsMetaKey },
+                    set: { settings.setOptionAsMetaKey($0) }
+                )) {
+                    SettingsLabel(
+                        title: String(localized: "Use Option as Meta"),
+                        detail: String(
+                            localized: "Off, Option types the character your keyboard layout prints — ⌥Q gives @ on a Turkish-Q layout. On, Option is sent to the agent as Meta (⌥f, ⌥b). Applies immediately."
+                        ),
+                        symbol: "option"
+                    )
+                }
+                .settingsID("general.optionAsMeta")
+            }
+
             Section("Quitting the App") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },
@@ -109,7 +125,7 @@ struct GeneralSettingsPage: View {
                 AdaptiveRow {
                     SettingsLabel(
                         title: String(localized: "Shortcut"),
-                        detail: String(localized: "At least one modifier key (⌘⌥⌃⇧) is required. Applies immediately."),
+                        detail: String(localized: "Must include ⌘ or ⌃ — ⇧ and ⌥ belong to the keyboard layout. Applies immediately."),
                         symbol: "command"
                     )
                 } control: {
@@ -160,10 +176,12 @@ struct HotkeyRecorder: View {
                 return nil
             }
             let mods = HotkeyBinding.canonicalizeModifiers(event.modifierFlags.rawValue)
-            // Require at least one real modifier; ignore bare keys so the user
-            // keeps pressing until they add one.
-            guard mods != 0 else { return nil }
-            onCapture(HotkeyBinding(keyCode: event.keyCode, modifiers: mods))
+            // Require ⌘ or ⌃; ignore anything else so the user keeps pressing
+            // until they add one. A bare key, or one held with only ⇧/⌥, is how
+            // a keyboard layout types a character — see `isTextSafe`.
+            let candidate = HotkeyBinding(keyCode: event.keyCode, modifiers: mods)
+            guard candidate.isTextSafe else { return nil }
+            onCapture(candidate)
             stop()
             return nil
         }

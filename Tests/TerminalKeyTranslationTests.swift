@@ -64,4 +64,33 @@ final class TerminalKeyTranslationTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: dir)
     }
+
+    /// A new terminal takes the keyboard, but never out of a field someone is
+    /// typing in — the command palette and the rename fields keep it.
+    @MainActor
+    func testFocusIsNotClaimedFromTextEntry() {
+        XCTAssertTrue(TerminalFocus.isTyping(NSTextView()))
+        XCTAssertTrue(TerminalFocus.isTyping(NSTextField()))
+        XCTAssertTrue(TerminalFocus.isTyping(NSSearchField()))
+        XCTAssertFalse(TerminalFocus.isTyping(NSView()))
+        XCTAssertFalse(TerminalFocus.isTyping(nil))
+    }
+
+    /// Option belongs to the keyboard layout unless the user says otherwise,
+    /// and the choice survives a reload.
+    @MainActor
+    func testOptionAsMetaDefaultsOffAndRoundTrips() {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilOptionMetaTest-\(UUID().uuidString)")
+        let settings = SettingsStore(directory: dir)
+        XCTAssertFalse(settings.optionAsMetaKey)
+
+        settings.setOptionAsMetaKey(true)
+        XCTAssertTrue(SettingsStore(directory: dir).optionAsMetaKey)
+
+        settings.setOptionAsMetaKey(false)
+        XCTAssertFalse(SettingsStore(directory: dir).optionAsMetaKey)
+
+        try? FileManager.default.removeItem(at: dir)
+    }
 }

@@ -53,6 +53,17 @@ final class HotkeyBindingTests: XCTestCase {
         XCTAssertFalse(b.hasModifier)
     }
 
+    /// ⇧ and ⌥ reach the keyboard layout's upper registers — ⌥Q is `@` on
+    /// Turkish-Q — so a hotkey built only from those would steal a character.
+    func testTextSafeRequiresCommandOrControl() {
+        XCTAssertTrue(HotkeyBinding(keyCode: 40, modifiers: cmd).isTextSafe)
+        XCTAssertTrue(HotkeyBinding(keyCode: 40, modifiers: control).isTextSafe)
+        XCTAssertTrue(HotkeyBinding(keyCode: 40, modifiers: cmd | option).isTextSafe)
+        XCTAssertFalse(HotkeyBinding(keyCode: 12, modifiers: option).isTextSafe)
+        XCTAssertFalse(HotkeyBinding(keyCode: 40, modifiers: option | shift).isTextSafe)
+        XCTAssertFalse(HotkeyBinding(keyCode: 40, modifiers: capsLock | fn).isTextSafe)
+    }
+
     func testGlyphOrderIsMenuStyle() {
         let all = HotkeyBinding(keyCode: 40, modifiers: cmd | option | control | shift)
         XCTAssertEqual(all.displayString, "⌃⌥⇧⌘K")

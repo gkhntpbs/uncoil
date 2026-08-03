@@ -254,11 +254,36 @@ final class TerminalEditingKeyTests: XCTestCase {
         )
     }
 
-    /// SwiftTerm already sends ⎋b/⎋f for ⌥←/→; translating them here as well
-    /// would move two words per press.
-    func testOptionArrowsAreLeftToSwiftTerm() {
-        XCTAssertNil(TerminalKeyTranslation.editingBytes(keyCode: left, modifiers: [.option]))
-        XCTAssertNil(TerminalKeyTranslation.editingBytes(keyCode: right, modifiers: [.option]))
+    /// With Option treated as Meta, SwiftTerm already sends ⎋b/⎋f for ⌥←/→;
+    /// translating them here as well would move two words per press.
+    func testOptionArrowsAreLeftToSwiftTermWhenOptionIsMeta() {
+        XCTAssertNil(TerminalKeyTranslation.editingBytes(
+            keyCode: left, modifiers: [.option], optionIsMeta: true))
+        XCTAssertNil(TerminalKeyTranslation.editingBytes(
+            keyCode: right, modifiers: [.option], optionIsMeta: true))
+    }
+
+    /// With Option left to the keyboard layout — the default, so ⌥Q types `@` —
+    /// nothing else emits ⎋b/⎋f, so word navigation has to come from here.
+    func testOptionArrowsMoveByWordWhenOptionIsNotMeta() {
+        XCTAssertEqual(
+            TerminalKeyTranslation.editingBytes(keyCode: left, modifiers: [.option]),
+            TerminalKeyTranslation.Control.wordBack
+        )
+        XCTAssertEqual(
+            TerminalKeyTranslation.editingBytes(keyCode: right, modifiers: [.option]),
+            TerminalKeyTranslation.Control.wordForward
+        )
+    }
+
+    /// The bug this default fixes: ⌥Q on a Turkish-Q layout must reach the
+    /// keyboard layout as `@`, not be eaten as a Meta chord or an edit.
+    func testOptionLetterKeysAreNeverIntercepted() {
+        let qKeyCode: UInt16 = 12
+        XCTAssertNil(TerminalKeyTranslation.editingBytes(
+            keyCode: qKeyCode, modifiers: [.option]))
+        XCTAssertNil(TerminalKeyTranslation.newlineBytes(
+            keyCode: qKeyCode, modifiers: [.option], shiftEnterNewline: true))
     }
 
     func testAPlainKeyIsNotTouched() {

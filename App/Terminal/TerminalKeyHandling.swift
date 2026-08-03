@@ -52,13 +52,17 @@ enum TerminalKeyTranslation {
     ///
     /// Command never reaches the terminal — AppKit keeps it for menus — so
     /// ⌘⌫ and ⌘←/→ do nothing at all in a prompt unless they are translated
-    /// here. Option is different: SwiftTerm already sends ⎋b/⎋f for ⌥←/→ when it
-    /// treats Option as Meta, so those are left alone rather than sent twice.
-    /// ⌥⌫ is the exception — macOS means "delete the word", which no terminal
-    /// infers on its own.
+    /// here. ⌥⌫ is the same story: macOS means "delete the word", which no
+    /// terminal infers on its own.
+    ///
+    /// ⌥←/→ depends on `optionIsMeta`. With Option treated as Meta, SwiftTerm
+    /// already emits ⎋b/⎋f and translating here would send them twice; with
+    /// Option left to the keyboard layout (the default, so ⌥Q can type `@`)
+    /// nothing emits them, so word navigation has to come from here.
     static func editingBytes(
         keyCode: UInt16,
-        modifiers: NSEvent.ModifierFlags
+        modifiers: NSEvent.ModifierFlags,
+        optionIsMeta: Bool = false
     ) -> [UInt8]? {
         let flags = modifiers.intersection(.deviceIndependentFlagsMask)
         let command = flags.contains(.command)
@@ -71,6 +75,8 @@ enum TerminalKeyTranslation {
         case (deleteKeyCode, false): return Control.killWord
         case (leftArrowKeyCode, true): return Control.lineStart
         case (rightArrowKeyCode, true): return Control.lineEnd
+        case (leftArrowKeyCode, false): return optionIsMeta ? nil : Control.wordBack
+        case (rightArrowKeyCode, false): return optionIsMeta ? nil : Control.wordForward
         default: return nil
         }
     }
@@ -85,6 +91,9 @@ enum TerminalKeyTranslation {
 protocol ShiftEnterCapableTerminal: AnyObject {
     /// Resolved live from settings so a toggle change applies to open sessions.
     var resolveShiftEnterNewline: () -> Bool { get }
+    /// SwiftTerm's own "Option is Meta" switch, read back so the key monitor
+    /// knows whether ⌥←/→ already produce ⎋b/⎋f.
+    var optionAsMetaKey: Bool { get set }
     /// Sends raw bytes to the underlying PTY.
     func sendNewline(_ bytes: [UInt8])
 }
@@ -111,6 +120,34 @@ enum TerminalMetal {
     }
 }
 
+/// Gives a terminal the keyboard as soon as it appears, so a freshly opened
+/// session can be typed into without clicking it first.
+///
+/// Two things make this less trivial than `makeFirstResponder`. The view is not
+/// in a window yet when SwiftUI builds it, so the call has to wait for the next
+/// runloop turn; and focus is only ours to take when nobody is typing —
+/// the command palette's field, a rename field or a search box owns the
+/// keyboard while it is up, and yanking it away mid-word is worse than the
+/// extra click this saves.
+@MainActor
+enum TerminalFocus {
+    static func claim(_ view: NSView) {
+        DispatchQueue.main.async {
+            guard let window = view.window, window.isKeyWindow else { return }
+            guard !isTyping(window.firstResponder) else { return }
+            guard window.firstResponder !== view else { return }
+            window.makeFirstResponder(view)
+        }
+    }
+
+    /// True when the responder is a text-entry surface. A field editor is an
+    /// `NSTextView` whose delegate is the control being edited, so both the
+    /// editor and the control itself have to count.
+    static func isTyping(_ responder: NSResponder?) -> Bool {
+        responder is NSTextView || responder is NSTextField || responder is NSSearchField
+    }
+}
+
 /// Daemon-backed terminal view.
 final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
@@ -118,7 +155,9 @@ final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window != nil { TerminalMetal.enableIfPossible(self) }
+        guard window != nil else { return }
+        TerminalMetal.enableIfPossible(self)
+        TerminalFocus.claim(self)
     }
 }
 
@@ -135,7 +174,9 @@ final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapable
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window != nil { TerminalMetal.enableIfPossible(self) }
+        guard window != nil else { return }
+        TerminalMetal.enableIfPossible(self)
+        TerminalFocus.claim(self)
     }
 }
 
@@ -162,7 +203,9 @@ enum TerminalKeyMonitor {
                 return nil  // swallow: don't also submit the prompt
             }
             if let bytes = TerminalKeyTranslation.editingBytes(
-                keyCode: event.keyCode, modifiers: event.modifierFlags
+                keyCode: event.keyCode,
+                modifiers: event.modifierFlags,
+                optionIsMeta: terminal.optionAsMetaKey
             ) {
                 terminal.sendNewline(bytes)
                 return nil  // swallow: ⌘⌫ would otherwise ring the system bell
