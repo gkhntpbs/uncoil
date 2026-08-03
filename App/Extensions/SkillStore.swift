@@ -165,6 +165,11 @@ struct SkillStore {
         commitSHA: String? = nil,
         now: Date = .now
     ) throws -> InstalledRevision {
+        // Through a symlink, `copyItem` copies the link, not what it points at:
+        // the store would end up holding a pointer into the user's own folder
+        // and claim to own a copy. Adoption promises the opposite — the source
+        // is left alone and the store keeps its own bytes — so resolve first.
+        let source = source.resolvingSymlinksInPath()
         guard Self.isSkillDirectory(source) else {
             throw SkillStoreError.notASkill(source.path)
         }
@@ -321,14 +326,30 @@ struct SkillStore {
 
     /// Skill directories the user maintains by hand — present but not one of
     /// our symlinks. Listed so the UI can show them as unmanaged.
+    ///
+    /// "Not one of ours" is decided by where the link points, not by whether it
+    /// is a link. This used to skip every symlink, which meant the common way
+    /// of keeping skills — one repository, symlinked into each agent's
+    /// directory — was invisible: a machine full of skills reported nothing to
+    /// adopt, and onboarding said so.
     func unmanagedSkills(in directory: URL) -> [String] {
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ) else { return [] }
         return entries.compactMap { entry -> String? in
-            guard !isSymlink(entry), Self.isSkillDirectory(entry) else { return nil }
+            guard !isOurLink(entry), Self.isSkillDirectory(entry) else { return nil }
             return entry.lastPathComponent
         }.sorted()
+    }
+
+    /// True when `url` is a symlink Uncoil made: one that lands in its own
+    /// active-skills directory. A link anywhere else is the user's.
+    func isOurLink(_ url: URL) -> Bool {
+        guard isSymlink(url),
+              let target = try? FileManager.default
+                .destinationOfSymbolicLink(atPath: url.path)
+        else { return false }
+        return resolve(target, relativeTo: url).hasPrefix(layout.activeSkills.path)
     }
 
     /// True when the active files no longer hash to what the revision recorded.

@@ -251,6 +251,64 @@ final class SkillStoreTests: XCTestCase {
         XCTAssertEqual(store.unmanagedSkills(in: claude), ["mine"])
     }
 
+    /// The way most people already keep skills: one folder of them, symlinked
+    /// into each agent's directory. Every one of those links used to be skipped
+    /// as "probably ours", so a machine full of skills reported nothing to
+    /// adopt and onboarding told the user there was nothing there.
+    func testSkillsSymlinkedFromTheUsersOwnFolderAreUnmanaged() throws {
+        let claude = agentDirectory("claude")
+        try FileManager.default.createSymbolicLink(
+            at: claude.appendingPathComponent("linked"),
+            withDestinationURL: makeSkill("linked")
+        )
+
+        try store.install(from: makeSkill("managed"), name: "managed", revisionID: "rev-4")
+        try store.link(name: "managed", intoAgentDirectory: claude)
+
+        XCTAssertEqual(store.unmanagedSkills(in: claude), ["linked"])
+    }
+
+    func testOnlyLinksIntoTheStoreCountAsOurs() throws {
+        let claude = agentDirectory("claude")
+        try store.install(from: makeSkill("managed"), name: "managed", revisionID: "rev-5")
+        try store.link(name: "managed", intoAgentDirectory: claude)
+        try FileManager.default.createSymbolicLink(
+            at: claude.appendingPathComponent("theirs"),
+            withDestinationURL: makeSkill("theirs")
+        )
+
+        XCTAssertTrue(store.isOurLink(claude.appendingPathComponent("managed")))
+        XCTAssertFalse(store.isOurLink(claude.appendingPathComponent("theirs")))
+    }
+
+    /// Adopting through a symlink has to copy what it points at. `copyItem`
+    /// copies the link itself, which left the store holding a pointer into the
+    /// user's folder while claiming to own the bytes — deleting their folder
+    /// would then take the "managed" skill with it.
+    func testAdoptingASymlinkedSkillCopiesTheContents() throws {
+        let real = makeSkill("origin", body: "# origin\n")
+        let link = sourceRoot.appendingPathComponent("linked-origin", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+
+        let revision = try store.install(from: link, name: "origin", revisionID: "rev-6")
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: revision.path)
+        XCTAssertNotEqual(
+            attributes[.type] as? FileAttributeType, .typeSymbolicLink,
+            "the store kept a link instead of a copy"
+        )
+        try FileManager.default.removeItem(at: real)
+        XCTAssertEqual(
+            try String(
+                contentsOf: URL(fileURLWithPath: revision.path)
+                    .appendingPathComponent("SKILL.md"),
+                encoding: .utf8
+            ),
+            "# origin\n",
+            "the copy did not survive the source being removed"
+        )
+    }
+
     func testUninstallCleansOnlyItsOwnDeadLinks() throws {
         try store.install(from: makeSkill("writer"), name: "writer", revisionID: "rev-1")
         let claude = agentDirectory("claude")
