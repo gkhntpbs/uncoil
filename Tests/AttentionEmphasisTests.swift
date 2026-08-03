@@ -47,13 +47,27 @@ final class AttentionEmphasisTests: XCTestCase {
             .appendingPathComponent("UncoilAttentionTest-\(UUID().uuidString)")
         let settings = SettingsStore(directory: dir)
         XCTAssertEqual(settings.attentionEmphasis, .subtle)
-        XCTAssertEqual(AttentionMotion.shared.emphasis, .subtle)
 
         settings.setAttentionEmphasis(.off)
         XCTAssertEqual(AttentionMotion.shared.emphasis, .off)
         XCTAssertEqual(SettingsStore(directory: dir).attentionEmphasis, .off)
 
-        settings.setAttentionEmphasis(.subtle)
+        try? FileManager.default.removeItem(at: dir)
+    }
+
+    /// `AttentionMotion` is a global the views read, and it used to be written
+    /// only from `load()` — which returns early when there is no settings.json.
+    /// A store built over an empty directory then left the global holding the
+    /// previous store's answer: on a first launch, someone else's setting.
+    @MainActor
+    func testAFreshStoreResetsTheGlobal() {
+        AttentionMotion.shared.emphasis = .full
+
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("UncoilAttentionReset-\(UUID().uuidString)")
+        _ = SettingsStore(directory: dir)
+        XCTAssertEqual(AttentionMotion.shared.emphasis, .subtle)
+
         try? FileManager.default.removeItem(at: dir)
     }
 }

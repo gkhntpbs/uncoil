@@ -132,6 +132,10 @@ final class SettingsStore: ObservableObject {
         Self.applyInterfaceLanguage(language.interface)
         transcriptStore.prune(policy: transcriptRetentionPolicy)
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
+        // Mirrored here rather than in `load()`, which returns early when there
+        // is no settings.json — on a first launch that left the global holding
+        // whatever the last store had put there.
+        AttentionMotion.shared.emphasis = attentionEmphasis
         ensureDefaultAccounts()
     }
 
@@ -569,7 +573,6 @@ final class SettingsStore: ObservableObject {
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
-        AttentionMotion.shared.emphasis = attentionEmphasis
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
