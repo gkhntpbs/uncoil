@@ -134,6 +134,89 @@ final class ScratchWorkspaceTests: XCTestCase {
         XCTAssertTrue(store.projects.last?.isScratchWorkspace ?? false)
     }
 
+    // MARK: - Closing
+
+    /// A one-off session is a thing you finish. The row that held it says
+    /// nothing afterwards, and it comes straight back the next time one is
+    /// opened.
+    func testTheWorkspaceGoesWhenItsLastSessionDoes() {
+        let record = store.createScratchSession(provider: .claude)
+        XCTAssertNotNil(store.scratchProject)
+        store.removeSession(record.id)
+        XCTAssertNil(store.scratchProject)
+    }
+
+    func testItStaysWhileAnySessionRemains() {
+        let first = store.createScratchSession(provider: .claude)
+        _ = store.createScratchSession(provider: .codex)
+        store.removeSession(first.id)
+        XCTAssertNotNil(store.scratchProject)
+    }
+
+    /// An ended session is still something: its recording is readable, and
+    /// clearing the row would take that away without being asked.
+    func testAnEndedSessionStillKeepsTheWorkspace() {
+        let record = store.createScratchSession(provider: .claude)
+        store.markSessionEnded(record.id, exitCode: 0)
+        XCTAssertNotNil(store.scratchProject)
+        XCTAssertEqual(store.sessionHistory(for: record.projectID).count, 1)
+    }
+
+    /// Closing a project the user added does not touch anyone else's; this must
+    /// not either.
+    func testClosingTheWorkspaceLeavesTheUsersProjectsAlone() {
+        store.addProject(at: directory.appendingPathComponent("real"))
+        let real = store.visibleProjects[0]
+        let realSession = store.createSession(
+            projectID: real.id, provider: .claude, accountID: nil, title: "work"
+        )
+        _ = store.createScratchSession(provider: .claude)
+
+        store.closeScratchWorkspace()
+        XCTAssertNil(store.scratchProject)
+        XCTAssertEqual(store.visibleProjects.map(\.id), [real.id])
+        XCTAssertTrue(store.sessions.contains { $0.id == realSession.id })
+    }
+
+    func testClosingTakesTheSessionsInsideIt() {
+        let record = store.createScratchSession(provider: .claude)
+        store.closeScratchWorkspace()
+        XCTAssertNil(store.scratchProject)
+        XCTAssertFalse(store.sessions.contains { $0.id == record.id })
+    }
+
+    /// The folder is on disk and may hold something worth keeping. Nothing here
+    /// is entitled to delete a user's files.
+    func testClosingLeavesTheFolderOnDisk() throws {
+        _ = store.createScratchSession(provider: .claude)
+        let path = try XCTUnwrap(store.scratchProject).rootPath
+        store.closeScratchWorkspace()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: path))
+    }
+
+    func testItComesBackTheNextTimeOneIsOpened() {
+        let first = store.createScratchSession(provider: .claude)
+        store.removeSession(first.id)
+        XCTAssertNil(store.scratchProject)
+
+        let second = store.createScratchSession(provider: .claude)
+        XCTAssertNotNil(store.scratchProject)
+        XCTAssertEqual(store.scratchProject?.id, second.projectID)
+    }
+
+    /// A workspace whose sessions were pruned while the app was closed has
+    /// nothing left to show, and should not greet the next launch.
+    func testAnEmptyWorkspaceIsNotThereOnTheNextLaunch() throws {
+        let record = store.createScratchSession(provider: .claude)
+        let scratchID = try XCTUnwrap(store.scratchProject).id
+        // Straight through the record list, the way an outside edit would.
+        store.removeSessions([record.id])
+        XCTAssertNil(store.scratchProject)
+
+        let reopened = ProjectStore(directory: directory)
+        XCTAssertFalse(reopened.projects.contains { $0.id == scratchID })
+    }
+
     // MARK: - Naming
 
     /// "new session" repeated down the sidebar tells nobody anything, and a

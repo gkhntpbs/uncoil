@@ -36,6 +36,9 @@ final class ProjectStore: ObservableObject {
         sessionsURL = base.appendingPathComponent("sessions.json")
         sessionGroupsURL = base.appendingPathComponent("session-groups.json")
         load()
+        // A workspace whose sessions were pruned while the app was closed has
+        // nothing left to show; it should not greet the next launch.
+        closeScratchWorkspaceIfEmpty()
     }
 
     nonisolated static func defaultDirectory() -> URL {
@@ -495,6 +498,44 @@ final class ProjectStore: ObservableObject {
         sessions.removeAll { ids.contains($0.id) }
         save()
         discardDroppedImages(of: leaving)
+        closeScratchWorkspaceIfEmpty()
+    }
+
+    /// Takes the scratch workspace out of the sidebar once nothing is in it.
+    ///
+    /// A one-off session is a thing you finish. The row that held it is not
+    /// worth keeping afterwards: it says nothing, and it comes straight back
+    /// the next time one is opened. An *ended* session still counts as
+    /// something — its recording is still readable, and clearing the row would
+    /// take that away without being asked.
+    ///
+    /// The folder is left alone. It is on disk, it may hold something worth
+    /// keeping, and nothing here is entitled to delete a user's files.
+    func closeScratchWorkspaceIfEmpty() {
+        guard let scratch = scratchProject,
+              sessions(for: scratch.id).isEmpty else { return }
+        projects.removeAll { $0.id == scratch.id }
+        ProjectPageStore.shared.forget(scratch.id)
+        ProjectTaskStores.forget(projectID: scratch.id)
+        save()
+    }
+
+    /// Closes the scratch workspace and everything in it.
+    ///
+    /// Deliberately not `removeProject`: that is for a folder the user added
+    /// and can add again, while this one is Uncoil's and comes back on its own.
+    /// What it really removes is the sessions — which is why the caller asks
+    /// first.
+    func closeScratchWorkspace() {
+        guard let scratch = scratchProject else { return }
+        let ids = Set(sessions(for: scratch.id).map(\.id))
+        for id in ids {
+            TerminalRegistry.shared.closeTerminal(for: id)
+        }
+        removeSessions(ids)
+        // `removeSessions` clears it once it is empty; this covers a workspace
+        // that was already empty when the user asked.
+        closeScratchWorkspaceIfEmpty()
     }
 
     /// Deletes the dropped-image directories of sessions that have just gone.

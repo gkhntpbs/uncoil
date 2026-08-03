@@ -22,6 +22,8 @@ struct SidebarView: View {
     @State private var renamingGroup: SessionGroup?
     @State private var renameValue = ""
     @State private var deletingSession: SessionRecord?
+    /// Closing Scratch removes the sessions in it, so it is asked about.
+    @State private var confirmingScratchClose = false
 
     /// How far the window's own title bar reaches into the content.
     static let titlebarClearance: CGFloat = 32
@@ -58,7 +60,8 @@ struct SidebarView: View {
                             accountID: settings.defaultAccount(for: provider)?.id
                         )
                         selection = .session(record.id)
-                    }
+                    },
+                    closeScratch: { confirmingScratchClose = true }
                 )
             )
             .overlay(alignment: .top) {
@@ -173,6 +176,37 @@ struct SidebarView: View {
         } message: {
             Text("The running process is closed; the recording cannot be recovered.")
         }
+        .confirmationDialog(
+            scratchCloseTitle,
+            isPresented: $confirmingScratchClose,
+            titleVisibility: .visible
+        ) {
+            Button("Close", role: .destructive) {
+                // Before it goes: the selection may be pointing into it, and a
+                // highlighted row for something that no longer exists is worse
+                // than landing nowhere.
+                if let scratch = projectStore.scratchProject {
+                    let inside = Set(projectStore.sessions(for: scratch.id).map(\.id))
+                    switch selection {
+                    case .project(scratch.id): selection = nil
+                    case .session(let id) where inside.contains(id): selection = nil
+                    default: break
+                    }
+                }
+                projectStore.closeScratchWorkspace()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The folder itself is left alone — anything worth keeping is still in it. Scratch comes back the next time you open a one-off session.")
+        }
+    }
+
+    private var scratchCloseTitle: String {
+        let count = projectStore.scratchProject
+            .map { projectStore.sessions(for: $0.id).count } ?? 0
+        return count == 0
+            ? String(localized: "Close Scratch?")
+            : String(localized: "Close Scratch and its \(count) sessions?")
     }
 
     /// Presents an alert or dialog off an optional value, clearing it on dismiss.

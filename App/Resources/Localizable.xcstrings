@@ -6197,6 +6197,9 @@
     "In the strip" : {
 
     },
+    "In Uncoil's scratch folder, outside every project" : {
+
+    },
     "Inactive until it is turned on from the Reminders page." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8854,6 +8857,12 @@
     "One shortcut for everything" : {
 
     },
+    "One-off %@ session" : {
+
+    },
+    "One-off %@ Session" : {
+
+    },
     "Only ⌘V of an image is affected. Pasting text, a path or anything else is never touched, and neither is a plain terminal session." : {
 
     },
@@ -11254,6 +11263,9 @@
           }
         }
       }
+    },
+    "Scratch" : {
+
     },
     "Search commands, find files, jump to a project… (? to ask)" : {
       "extractionState" : "manual",

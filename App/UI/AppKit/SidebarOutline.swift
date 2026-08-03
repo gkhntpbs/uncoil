@@ -732,6 +732,10 @@ struct SidebarOutline: NSViewRepresentable {
                     add(to: menu, title: String(localized: "Show in Finder")) {
                         NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
                     }
+                    menu.addItem(.separator())
+                    add(to: menu, title: String(localized: "Close Scratch")) {
+                        environment.actions.closeScratch()
+                    }
                     return menu
                 }
                 add(
@@ -969,4 +973,7 @@ struct SidebarRowActions {
     var addProject: () -> Void
     /// A session in Uncoil's scratch folder, belonging to no project.
     var newScratchSession: (AgentProvider) -> Void
+    /// Closes the scratch workspace and the sessions in it. Asks first — the
+    /// sessions are what it really removes.
+    var closeScratch: () -> Void
 }
