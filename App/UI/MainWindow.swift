@@ -610,6 +610,17 @@ struct MainWindow: View {
             )
             startNotificationBridges()
         }
+        // The daemon reports what it still has at every handshake; that is the
+        // moment the sidebar can tell a session that survived the app from one
+        // that did not.
+        RuntimeClient.shared.onAliveSessions = { [weak sessionStore, weak projectStore] alive in
+            guard let sessionStore, let projectStore else { return }
+            sessionStore.reconcile(
+                aliveSessionIDs: alive,
+                records: projectStore.sessions,
+                markEnded: { projectStore.markSessionEnded($0, exitCode: nil) }
+            )
+        }
         startControlPlane()
         Task { await settings.resolveBinaries() }
     }

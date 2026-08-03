@@ -45,6 +45,20 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Whether Uncoil runs an agent in this session, or just a shell.
+    ///
+    /// The distinction was made ad hoc — twenty-odd `provider == .terminal`
+    /// comparisons, each deciding for itself — and the places that forgot it
+    /// are what put "Claude is waiting for your input" and an MCP badge on a
+    /// plain terminal. A terminal session has no agent, so it has no agent
+    /// status, no hooks and no control plane.
+    var isAgent: Bool {
+        switch self {
+        case .claude, .codex: true
+        case .terminal: false
+        }
+    }
+
     /// Default for the Shift+Enter → literal-newline behavior. Claude Code and
     /// the Codex TUI both accept a backslash+CR for an in-prompt newline (this
     /// is what `claude /terminal-setup` configures in iTerm/VSCode), so it is on

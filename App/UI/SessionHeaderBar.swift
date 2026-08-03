@@ -113,19 +113,24 @@ struct SessionHeaderBar<Trailing: View>: View {
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 7) {
-                StatusOrb(status: status, size: 13)
-                Text(sessionStore.detail(of: record.id) ?? status.label)
-                    .font(Theme.mono(.body, .medium))
-                    .foregroundStyle(status.color)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(status.color.opacity(0.10), in: Capsule())
-            .fixedSize()
+            // A terminal session has no agent, so it has no agent status and
+            // no control plane: the MCP binary is never handed to it, and a
+            // badge reporting on one it does not have was reporting on nothing.
+            if record.provider.isAgent {
+                HStack(spacing: 7) {
+                    StatusOrb(status: status, size: 13)
+                    Text(sessionStore.detail(of: record.id) ?? status.label)
+                        .font(Theme.mono(.body, .medium))
+                        .foregroundStyle(status.color)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(status.color.opacity(0.10), in: Capsule())
+                .fixedSize()
 
-            McpStatusBadge(sessionID: record.id)
+                McpStatusBadge(sessionID: record.id)
+            }
 
             HStack(spacing: 2) {
                 RunDefaultControl(project: project)

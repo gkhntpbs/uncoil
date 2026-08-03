@@ -33,6 +33,10 @@ final class RuntimeClient: @unchecked Sendable {
         var cwd: String
     }
 
+    /// Called on the main queue each time the daemon reports which sessions it
+    /// still has, which is at every handshake — launch and reconnect alike.
+    var onAliveSessions: ((Set<UUID>) -> Void)?
+
     /// Read from the main thread by TerminalRegistry; written on `queue`.
     private(set) var phase: Phase = .idle
 
@@ -265,6 +269,13 @@ final class RuntimeClient: @unchecked Sendable {
             aliveSessions = Set(event.sids ?? [])
             phase = .ready
             reconnectAttempts = 0
+            // The daemon's answer to "what survived?" — the only thing that
+            // knows, since agents outlive the app. Handed up so the sidebar can
+            // stop calling every restored session closed until it is clicked.
+            let reported = Set(aliveSessions.compactMap(UUID.init(uuidString:)))
+            if let onAliveSessions {
+                DispatchQueue.main.async { onAliveSessions(reported) }
+            }
             NSLog("[uncoil-runtime] ready, alive=%@", aliveSessions.joined(separator: ","))
             let pending = pendingOpens
             pendingOpens.removeAll()

@@ -536,6 +536,36 @@ final class SessionStore: ObservableObject {
         statuses[recordID] ?? .terminated
     }
 
+    /// Brings the sidebar back in line with what the runtime daemon actually
+    /// still has, after a launch or a reconnect.
+    ///
+    /// Statuses are transient — they live in memory and start empty — while
+    /// agents live in the daemon and outlive the app. So every restored session
+    /// read as Closed until it was clicked, including the ones still working,
+    /// and the record's own `endedAt` said the opposite. The daemon is the only
+    /// thing that knows; this asks it and makes both agree.
+    ///
+    /// Sessions the daemon has never heard of are genuinely gone: the
+    /// in-process fallback dies with the app, and so does anything it ran.
+    func reconcile(
+        aliveSessionIDs: Set<UUID>,
+        records: [SessionRecord],
+        markEnded: (UUID) -> Void
+    ) {
+        for record in records where record.endedAt == nil {
+            if aliveSessionIDs.contains(record.id) {
+                // Alive, but nothing has happened in it since the app started.
+                // For an agent the hooks will refine this within a turn.
+                if statuses[record.id] == nil || statuses[record.id] == .terminated {
+                    setStatus(.idle, for: record.id)
+                }
+            } else {
+                setStatus(.terminated, for: record.id)
+                markEnded(record.id)
+            }
+        }
+    }
+
     func detail(of recordID: UUID) -> String? {
         details[recordID]
     }
@@ -575,7 +605,14 @@ final class SessionStore: ObservableObject {
         projectSessions: [SessionRecord],
         project: Project
     ) -> UUID? {
-        let live = projectSessions.filter { (statuses[$0.id] ?? .terminated) != .terminated }
+        // Agent sessions only. A hook event comes from an agent, and every
+        // branch below ends in a guess — nearest cwd, then newest live session
+        // — so leaving terminal sessions in the pool let those guesses land on
+        // a plain shell, which is how a terminal row ended up announcing that
+        // Claude was waiting for input.
+        let live = projectSessions.filter {
+            $0.provider.isAgent && (statuses[$0.id] ?? .terminated) != .terminated
+        }
 
         if let providerSessionID,
            let bound = live.first(where: { $0.providerSessionID == providerSessionID }) {
