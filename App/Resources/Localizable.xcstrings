@@ -3029,6 +3029,17 @@
         }
       }
     },
+    "bundled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pakette"
+          }
+        }
+      }
+    },
     "Bundled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3069,6 +3080,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Değiştirilemez; alt agent’lar preseti bu adla ister."
+          }
+        }
+      }
+    },
+    "Capabilities…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yetkiler…"
           }
         }
       }
@@ -3880,6 +3902,17 @@
     },
     "Continue" : {
 
+    },
+    "Control plane" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrol düzlemi"
+          }
+        }
+      }
     },
     "Control plane not running" : {
       "extractionState" : "manual",
@@ -5686,6 +5719,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sağlıklı"
+          }
+        }
+      }
+    },
+    "Helper binary" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yardımcı ikili"
           }
         }
       }
@@ -8102,6 +8146,17 @@
         }
       }
     },
+    "No verified way to register a server per session yet, so Uncoil does not claim one: its sessions run without the uncoil tools rather than advertising tools that are not there." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oturum başına sunucu kaydetmenin doğrulanmış bir yolu henüz yok, bu yüzden Uncoil öyle bir iddiada bulunmuyor: oturumları, olmayan araçların reklamını yapmaktansa uncoil araçları olmadan çalışır."
+          }
+        }
+      }
+    },
     "No version information" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8238,6 +8293,17 @@
     "Not installed on this machine" : {
 
     },
+    "not serving" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hizmette değil"
+          }
+        }
+      }
+    },
     "Not signed in" : {
 
     },
@@ -8259,6 +8325,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hatırlatma zamanı gelmedi"
+          }
+        }
+      }
+    },
+    "not wired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bağlı değil"
+          }
+        }
+      }
+    },
+    "Nothing is installed into your agents' own configuration: the server is registered for one session, as that session launches, and goes away with it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajanlarının kendi yapılandırmasına hiçbir şey kurulmaz: sunucu, oturum başlarken yalnızca o oturum için kaydedilir ve onunla birlikte gider."
           }
         }
       }
@@ -8975,6 +9063,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bekleyenler"
+          }
+        }
+      }
+    },
+    "Per Agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajan Başına"
           }
         }
       }
@@ -9887,6 +9986,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "reddedildi: %@"
+          }
+        }
+      }
+    },
+    "Registered for every session Uncoil starts." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil'in başlattığı her oturum için kaydedilir."
           }
         }
       }
@@ -11172,6 +11282,17 @@
         }
       }
     },
+    "serving" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hizmette"
+          }
+        }
+      }
+    },
     "Session" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11375,6 +11496,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
+          }
+        }
+      }
+    },
+    "Settings…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayarlar…"
           }
         }
       }
@@ -13066,6 +13198,17 @@
         }
       }
     },
+    "The socket the agents' MCP helpers connect back to. It starts with Uncoil and needs no setup." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajanların MCP yardımcılarının bağlandığı soket. Uncoil ile birlikte başlar, kurulum gerektirmez."
+          }
+        }
+      }
+    },
     "The source is rate-limiting requests right now. Try again in a minute — signing in to GitHub raises the limit considerably." : {
 
     },
@@ -13461,6 +13604,17 @@
         }
       }
     },
+    "Tools" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Araçlar"
+          }
+        }
+      }
+    },
     "Topics" : {
 
     },
@@ -13678,6 +13832,17 @@
         }
       }
     },
+    "Uncoil MCP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil MCP"
+          }
+        }
+      }
+    },
     "Uncoil never raises a session above the mode you pick here — a child agent inherits its parent's, intersected, and cannot escalate." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13727,6 +13892,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uncoil sürümü"
+          }
+        }
+      }
+    },
+    "uncoil-mcp is missing from the app bundle. Sessions will start, and the uncoil tools will not be there." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "uncoil-mcp uygulama paketinde yok. Oturumlar açılır ama uncoil araçları orada olmaz."
           }
         }
       }
@@ -14420,6 +14596,17 @@
         }
       }
     },
+    "Which of them a session may use is a permission, not a setting here: Computer Use, task deletion, orchestration, worktrees and merges stay off until granted." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir oturumun hangilerini kullanabileceği burada bir ayar değil, bir izindir: Computer Use, görev silme, orkestrasyon, worktree ve merge verilene kadar kapalı kalır."
+          }
+        }
+      }
+    },
     "While it is off, Uncoil sends no banner at all." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14433,6 +14620,17 @@
     },
     "Will run: %@" : {
 
+    },
+    "wired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bağlı"
+          }
+        }
+      }
     },
     "With no record an extension is global; the project record, being the most specific, wins." : {
       "extractionState" : "manual",

@@ -76,6 +76,7 @@ struct SettingsView: View {
         case hooks
         case github
         case drivers
+        case mcp
         case about
 
         var id: String { rawValue }
@@ -89,7 +90,7 @@ struct SettingsView: View {
             case .menuBar: .menuBar
             case .theme: .appearance
             case .permissions, .privacyData, .hooks: .privacy
-            case .github, .drivers: .integrations
+            case .github, .drivers, .mcp: .integrations
             case .about: .about
             }
         }
@@ -114,6 +115,7 @@ struct SettingsView: View {
             case .hooks: String(localized: "Status Tracking")
             case .github: "GitHub"
             case .drivers: String(localized: "Drivers")
+            case .mcp: String(localized: "Uncoil MCP")
             case .about: String(localized: "About")
             }
         }
@@ -138,6 +140,7 @@ struct SettingsView: View {
             case .hooks: "point.3.connected.trianglepath.dotted"
             case .github: "chevron.left.forwardslash.chevron.right"
             case .drivers: "puzzlepiece.extension"
+            case .mcp: "point.3.connected.trianglepath.dotted"
             case .about: "info.circle"
             }
         }
@@ -166,6 +169,7 @@ struct SettingsView: View {
             case .hooks: "hook durum status izleme watching kanca claude settings.json"
             case .github: "github token pr pull request giriş login sign in"
             case .drivers: "sürücü driver agent-browser cua computer use kurulum install"
+            case .mcp: "mcp control plane kontrol düzlemi araç tool uncoil_projects sunucu server soket socket kurulum install yapılandırma configure"
             case .about: "hakkında about sürüm version veri klasörü data folder debug bundle kaldır uninstall"
             }
         }
@@ -301,6 +305,7 @@ struct SettingsView: View {
         case .hooks: HooksSettingsPage()
         case .github: GitHubSettingsPage()
         case .drivers: DriversSettingsPage()
+        case .mcp: McpSettingsPage()
         case .about: AboutSettingsPage()
         }
     }

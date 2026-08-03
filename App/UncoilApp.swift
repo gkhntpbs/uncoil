@@ -176,6 +176,17 @@ struct MainWindowCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        // Settings is a Window rather than SwiftUI's Settings scene — it owns
+        // the colour pickers and must not be rebuilt on every value change —
+        // and a plain Window gets no menu item of its own. So the app menu had
+        // no Settings at all, and ⌘, did nothing: the one shortcut every Mac
+        // user tries first.
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") {
+                openWindow(id: "settings")
+            }
+            .keyboardShortcut(",", modifiers: .command)
+        }
         CommandGroup(replacing: .newItem) {
             Button("New Uncoil Window") {
                 openWindow(id: "main")
