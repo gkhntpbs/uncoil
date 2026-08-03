@@ -2,6 +2,23 @@ import SwiftUI
 
 // MARK: - First project
 
+/// When choosing a folder again should take the previous one back out.
+///
+/// Pure so the rule can be tested without an onboarding window: it is the part
+/// that would quietly do damage if it were wrong.
+enum OnboardingProjectChoice {
+    static func shouldRemovePrevious(
+        previousPath: String?,
+        newPath: String,
+        previousHasSessions: Bool
+    ) -> Bool {
+        guard let previousPath, previousPath != newPath else { return false }
+        // A project someone has already started working in is theirs, not
+        // onboarding's, however they arrived at it.
+        return !previousHasSessions
+    }
+}
+
 /// Point Uncoil at a folder. Everything downstream — worktrees, tasks, runs —
 /// hangs off a project, so this is the one step worth nudging.
 struct OnboardingProjectStep: View {
@@ -48,11 +65,22 @@ struct OnboardingProjectStep: View {
                             ? String(localized: "Worktrees, task branches and diffs are available for this project.")
                             : String(localized: "Sessions work fine; worktrees and task branches need a git repository.")
                     ) {
-                        Text(project.rootPath)
-                            .font(Theme.mono(.small))
-                            .foregroundStyle(Theme.textFaint)
-                            .lineLimit(1)
-                            .truncationMode(.head)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(project.rootPath)
+                                .font(Theme.mono(.small))
+                                .foregroundStyle(Theme.textFaint)
+                                .lineLimit(1)
+                                .truncationMode(.head)
+                            // Picking the wrong folder used to be final: the
+                            // chooser disappeared the moment a project was
+                            // added, and the only way back was to finish
+                            // onboarding and delete the project by hand.
+                            Button(String(localized: "Choose a different folder…")) {
+                                showPicker = true
+                            }
+                            .buttonStyle(.link)
+                            .accessibilityIdentifier("onboarding.changeFolder")
+                        }
                     }
                 } else {
                     VStack(spacing: 12) {
@@ -93,10 +121,30 @@ struct OnboardingProjectStep: View {
         }
         .sheet(isPresented: $showPicker) {
             FolderPickerSheet { url in
-                projectStore.addProject(at: url)
-                addedProjectPath = url.standardizedFileURL.path
+                chooseFolder(url)
             }
         }
+    }
+
+    /// Points the step at `url`, and cleans up the folder it was pointing at.
+    ///
+    /// The project is added to the store the moment it is chosen, so choosing
+    /// again has to take the wrong one back out — otherwise a mis-click leaves
+    /// a project in the sidebar forever. Only the one this step added, and only
+    /// while nothing has been started inside it: once a session exists, the
+    /// project is the user's, not onboarding's, to delete.
+    private func chooseFolder(_ url: URL) {
+        let path = url.standardizedFileURL.path
+        if let previous = addedProject,
+           OnboardingProjectChoice.shouldRemovePrevious(
+               previousPath: previous.rootPath,
+               newPath: path,
+               previousHasSessions: !projectStore.sessions(for: previous.id).isEmpty
+           ) {
+            projectStore.removeProject(previous)
+        }
+        projectStore.addProject(at: url)
+        addedProjectPath = path
     }
 }
 

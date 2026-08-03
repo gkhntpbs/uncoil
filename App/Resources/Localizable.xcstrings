@@ -3081,6 +3081,17 @@
         }
       }
     },
+    "Choose a different folder…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farklı bir klasör seç…"
+          }
+        }
+      }
+    },
     "Choose folder…" : {
 
     },
