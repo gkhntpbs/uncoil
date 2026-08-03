@@ -388,6 +388,27 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    /// Records that a session went to sleep. The record is untouched otherwise:
+    /// a sleeping session is not a closed one, so `endedAt` stays nil and the
+    /// session keeps its place, its title and its provider session id — which is
+    /// the very thing waking it needs.
+    func markSessionAsleep(_ id: UUID, mode: SessionSleepMode) {
+        updateSession(id) {
+            $0.sleepMode = mode
+            $0.sleptAt = .now
+            $0.metadataVersion = Self.currentSessionSchemaVersion
+        }
+    }
+
+    func markSessionAwake(_ id: UUID) {
+        updateSession(id) {
+            $0.sleepMode = nil
+            $0.sleptAt = nil
+            $0.lastActivityAt = .now
+            $0.metadataVersion = Self.currentSessionSchemaVersion
+        }
+    }
+
     @discardableResult
     func claimProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
         guard !providerSessionID.isEmpty,
@@ -562,6 +583,14 @@ final class SessionStore: ObservableObject {
         markEnded: (UUID) -> Void
     ) {
         for record in records where record.endedAt == nil {
+            // A sleeping session is absent from the daemon on purpose — a
+            // hibernated one has no process at all — so the daemon's list says
+            // nothing about it. Reconciling it would answer "I put this to
+            // sleep" with "this session is over".
+            if let mode = record.sleepMode {
+                setStatus(SessionSleep.status(for: mode), for: record.id)
+                continue
+            }
             if aliveSessionIDs.contains(record.id) {
                 // Alive, but nothing has happened in it since the app started.
                 // For an agent the hooks will refine this within a turn.

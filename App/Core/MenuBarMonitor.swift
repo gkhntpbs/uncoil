@@ -123,7 +123,9 @@ enum MenuBarMonitorEngine {
                 summary.waitingInput += 1
             case .completed:
                 summary.completed += 1
-            case .idle, .terminated:
+            // A sleeping session is not doing anything and is not waiting for
+            // anyone, so it belongs in no count.
+            case .idle, .suspended, .hibernated, .terminated:
                 break
             }
         }

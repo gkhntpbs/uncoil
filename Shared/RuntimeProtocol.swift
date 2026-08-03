@@ -6,10 +6,10 @@ import Foundation
 /// connection on a version mismatch.
 enum RuntimeProtocol {
     static let version = 1
-    /// Minor revision: additive commands (`peek`/`replay`, then the task-claim
-    /// set) that don't break the version-1 handshake. Bumped when such commands
-    /// are added.
-    static let minor = 2
+    /// Minor revision: additive commands (`peek`/`replay`, the task-claim set,
+    /// then `suspend`/`resume`) that don't break the version-1 handshake.
+    /// Bumped when such commands are added.
+    static let minor = 3
     /// A task claim is granted for this long and renewed by heartbeat, so an
     /// agent that dies stops holding the task.
     static let taskLeaseDuration: TimeInterval = 15 * 60
@@ -48,6 +48,7 @@ enum RuntimeProtocol {
 /// App → daemon.
 struct RuntimeCommand: Codable {
     /// hello|launch|attach|input|resize|kill|list|shutdown|upgrade|peek
+    /// |suspend|resume
     /// |task_claim|task_release|task_heartbeat|task_claims
     /// |scan_schedule|scan_status|scan_cancel
     var cmd: String
@@ -88,6 +89,7 @@ struct RuntimeCommand: Codable {
 /// Daemon → app.
 struct RuntimeEventMessage: Codable {
     /// hello|sessions|data|exited|error|replay|task_claim|task_claims|scan_status
+    /// |suspended|resumed
     var ev: String
     var version: Int?
     var minor: Int?

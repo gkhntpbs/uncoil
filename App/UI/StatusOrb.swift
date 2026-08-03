@@ -4,6 +4,7 @@ import SwiftUI
 /// - running: three dots orbiting (agent thinking/working)
 /// - waitingForPermission / waitingForInput: pulsing glow (needs the human)
 /// - completed: calm solid dot with a soft ring
+/// - suspended / hibernated: hollow ring (stopped on purpose)
 /// - idle / terminated: static dim dot
 struct StatusOrb: View {
     let status: AgentSessionStatus
@@ -36,6 +37,14 @@ struct StatusOrb: View {
                     .frame(width: size * 0.45, height: size * 0.45)
             }
             .frame(width: size, height: size)
+        // A hollow ring, not a dot: asleep is not a level of activity, it is
+        // the absence of one, and a dimmer dot reads as "quiet" rather than
+        // "stopped on purpose".
+        case .suspended, .hibernated:
+            Circle()
+                .strokeBorder(status.color.opacity(0.8), lineWidth: 1)
+                .frame(width: size * 0.62, height: size * 0.62)
+                .frame(width: size, height: size)
         case .idle, .terminated:
             Circle()
                 .fill(status.color.opacity(0.7))

@@ -83,6 +83,10 @@ final class PTYSession {
     /// growth counts as activity: an agent that wakes now and then to check a
     /// date produces no terminal output, but it does burn CPU when it wakes.
     var lastCPUTime: UInt64 = 0
+    /// Stopped with SIGSTOP and waiting for SIGCONT. A stopped process burns no
+    /// CPU and writes nothing, which is indistinguishable from an abandoned one
+    /// — so the reaper has to be told the difference.
+    var isSuspended = false
     /// fd of the single attached client, if any.
     var attachedFD: Int32? {
         didSet { unattachedSince = attachedFD == nil ? Date() : nil }
@@ -354,7 +358,7 @@ final class RuntimeDaemon {
                     ev: "error",
                     sid: command.sid,
                     errorCode: "daemon_upgrading",
-                    message: "Runtime daemon güncelleme için yeni oturum kabul etmiyor."
+                    message: "The runtime daemon is upgrading and is not accepting new sessions."
                 ), to: fd)
             } else {
                 launch(command, from: fd)
@@ -409,6 +413,8 @@ final class RuntimeDaemon {
         case "scan_cancel":
             cancelScan()
             send(scanStatus(), to: fd)
+        case "suspend", "resume":
+            send(signalSession(command), to: fd)
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
         case "shutdown":
@@ -509,6 +515,46 @@ final class RuntimeDaemon {
         exitIfUpgradeIsDrained()
     }
 
+    /// SIGSTOP / SIGCONT for a session's process group.
+    ///
+    /// The group, not the pid: the child called `setsid`, and an agent CLI is a
+    /// tree — stopping only the leader leaves its children running, which is
+    /// exactly the CPU the user asked to get back.
+    ///
+    /// The signal goes to the session's own group rather than the terminal's
+    /// foreground group. `tcgetpgrp` reports whoever holds the terminal right
+    /// now, which for a stopped session is nobody — so resuming would have
+    /// nothing to signal and the session would never come back.
+    private func signalSession(_ command: RuntimeCommand) -> RuntimeEventMessage {
+        guard let sid = command.sid, let session = sessions[sid] else {
+            return RuntimeEventMessage(
+                ev: "error", sid: command.sid,
+                errorCode: "no_such_session", message: "no such session"
+            )
+        }
+        guard session.exitCode == nil else {
+            return RuntimeEventMessage(
+                ev: "error", sid: sid,
+                errorCode: "session_exited", message: "the session has already exited"
+            )
+        }
+        let suspending = command.cmd == "suspend"
+        guard Darwin.kill(-session.pid, suspending ? SIGSTOP : SIGCONT) == 0 else {
+            return RuntimeEventMessage(
+                ev: "error", sid: sid,
+                errorCode: "signal_failed",
+                message: "could not \(command.cmd) the session"
+            )
+        }
+        session.isSuspended = suspending
+        // A stopped session produces no output, and the reaper treats silence
+        // plus no attachment as abandoned. Without this a session suspended
+        // overnight would be killed rather than resumed.
+        session.lastActivity = .now
+        runtimeLog.write("session \(suspending ? "suspended" : "resumed") \(sid)")
+        return RuntimeEventMessage(ev: suspending ? "suspended" : "resumed", sid: sid)
+    }
+
     private func kill(sid: String) {
         guard let session = sessions[sid] else { return }
         session.readSource?.cancel()
@@ -589,6 +635,11 @@ final class RuntimeDaemon {
             // long. Without this, sessions left behind by closed apps (or dev
             // builds) accumulate forever, each keeping an agent CLI and its
             // MCP helper alive.
+            // A suspended session looks exactly like an abandoned one — no
+            // output, no CPU, nobody attached — but it was stopped on purpose
+            // and is waiting to be resumed. Reaping it would answer "pause
+            // this" with "this is gone".
+            if session.isSuspended { continue }
             if let unattached = session.unattachedSince,
                Date().timeIntervalSince(unattached) >= RuntimeProtocol.sessionAbandonedThreshold,
                idle >= RuntimeProtocol.sessionAbandonedThreshold {

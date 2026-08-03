@@ -549,6 +549,24 @@ final class RuntimeClient: @unchecked Sendable {
         sendInput(Data([0x03]), sid: sid)
     }
 
+    /// Whether the daemon reported this session alive. False before the
+    /// handshake lands, so a caller must treat it as "no process to talk to"
+    /// rather than as proof the session died.
+    func isAlive(sid: UUID) -> Bool {
+        queue.sync { aliveSessions.contains(sid.uuidString) }
+    }
+
+    /// Stops or restarts a session's process group without ending it.
+    ///
+    /// Handlers stay registered, unlike `kill`: the session is coming back, and
+    /// dropping them would leave a resumed process writing to nobody.
+    func setSuspended(_ suspended: Bool, sid: UUID) {
+        let key = sid.uuidString
+        queue.async { [self] in
+            sendCommand(RuntimeCommand(cmd: suspended ? "suspend" : "resume", sid: key))
+        }
+    }
+
     func kill(sid: UUID) {
         let key = sid.uuidString
         queue.async { [self] in

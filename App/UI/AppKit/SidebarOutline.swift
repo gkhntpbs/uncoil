@@ -779,6 +779,7 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: String(localized: "Open in a New Window")) {
                     environment.actions.openSessionWindow(id)
                 }
+                addSleepItems(to: menu, record: record, environment: environment)
                 menu.addItem(.separator())
                 // The session ID is what the control plane and the MCP tools
                 // address a session by, so copying it is the fastest way to
@@ -797,6 +798,63 @@ struct SidebarOutline: NSViewRepresentable {
                 }
             }
             return menu
+        }
+
+        /// Pause / Hibernate / Wake, offered only when the session's state allows
+        /// it.
+        ///
+        /// Hibernation is absent rather than disabled for a provider that cannot
+        /// resume: waking such a session would start a new conversation, and
+        /// there is no honest way to label that as picking up where it left off.
+        private func addSleepItems(
+            to menu: NSMenu,
+            record: SessionRecord,
+            environment: RowEnvironment
+        ) {
+            let id = record.id
+            let status = environment.sessionStore.status(of: id)
+            var items: [(String, () -> Void)] = []
+
+            if SessionSleep.canWake(status: status) {
+                items.append((String(localized: "Wake"), {
+                    guard let fresh = environment.projectStore.sessions
+                        .first(where: { $0.id == id }) else { return }
+                    SessionSleepService.wake(
+                        fresh,
+                        projectStore: environment.projectStore,
+                        sessionStore: environment.sessionStore
+                    )
+                    environment.selection.wrappedValue = .session(id)
+                }))
+            }
+            if case .success = SessionSleep.canSuspend(status: status) {
+                items.append((String(localized: "Pause"), {
+                    SessionSleepService.sleep(
+                        record, mode: .suspended,
+                        projectStore: environment.projectStore,
+                        sessionStore: environment.sessionStore
+                    )
+                }))
+            }
+            if case .success = SessionSleep.canHibernate(
+                status: status,
+                provider: record.provider,
+                providerSessionID: record.providerSessionID
+            ) {
+                items.append((String(localized: "Hibernate"), {
+                    SessionSleepService.sleep(
+                        record, mode: .hibernated,
+                        projectStore: environment.projectStore,
+                        sessionStore: environment.sessionStore
+                    )
+                }))
+            }
+
+            guard !items.isEmpty else { return }
+            menu.addItem(.separator())
+            for (title, action) in items {
+                add(to: menu, title: title, action: action)
+            }
         }
 
         /// The menu for the space below the rows.

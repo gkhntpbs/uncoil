@@ -132,6 +132,13 @@ struct LaunchConfig {
             projectID: project.id, provider: .claude, accountID: nil, title: "claude: sub-agent"
         )
         projectStore.updateSession(sub.id) { $0.parentSessionID = main.id }
+        // A hibernated session, so its screen and its sidebar orb are reachable
+        // without waiting out a real agent.
+        let asleep = projectStore.createSession(
+            projectID: project.id, provider: .claude, accountID: nil, title: "claude: parked"
+        )
+        projectStore.updateSession(asleep.id) { $0.providerSessionID = "demo-resume-id" }
+        projectStore.markSessionAsleep(asleep.id, mode: .hibernated)
         let history = projectStore.createSession(
             projectID: project.id,
             provider: .codex,

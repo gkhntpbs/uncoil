@@ -62,13 +62,26 @@ struct SessionDetailView: View {
                         .padding(.bottom, 10)
                 }
 
-                // Selecting a session always (re)starts its agent: the registry
-                // reuses a live terminal or launches fresh (resuming Claude when
-                // a provider session id is known). No "restart" screen.
-                TerminalHostView(record: record, project: project, account: account)
-                    .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
+                // A sleeping session must not be revived merely by being looked
+                // at: waking is the user's decision, and mounting the terminal
+                // here would relaunch the agent behind their back.
+                if let mode = record.sleepMode {
+                    SleepingSessionView(record: record, mode: mode) {
+                        SessionSleepService.wake(
+                            record, projectStore: projectStore, sessionStore: sessionStore
+                        )
+                    }
                     .padding(.horizontal, 10)
                     .padding(.bottom, 10)
+                } else {
+                    // Selecting a session always (re)starts its agent: the registry
+                    // reuses a live terminal or launches fresh (resuming Claude when
+                    // a provider session id is known). No "restart" screen.
+                    TerminalHostView(record: record, project: project, account: account)
+                        .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 10)
+                }
             }
 
             if showChangesPanel {

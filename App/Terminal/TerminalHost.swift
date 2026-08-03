@@ -515,6 +515,9 @@ final class TerminalRegistry {
                 view?.feed(byteArray: ArraySlice([UInt8](data)))
             },
             onExit: { [weak sessionStore, weak projectStore] code in
+                // An exit we asked for is not an ending: the session is asleep
+                // and its record has to stay intact for the wake.
+                guard !TerminalRegistry.shared.isHibernating(recordID) else { return }
                 sessionStore?.setStatus(.terminated, for: recordID)
                 projectStore?.markSessionEnded(recordID, exitCode: code)
                 TerminalRegistry.shared.reportExit(
@@ -568,6 +571,28 @@ final class TerminalRegistry {
         view.processDelegate = delegate
         delegates[record.id] = delegate
         return view
+    }
+
+    /// Sessions whose process is being ended on purpose, to be brought back.
+    ///
+    /// Killing a PTY is indistinguishable from an agent crashing: both arrive as
+    /// an exit. Without this, hibernating a session would mark it ended and it
+    /// would come back as a closed one — with the wake button on a row the app
+    /// believes is finished.
+    private var hibernating: Set<UUID> = []
+
+    func isHibernating(_ recordID: UUID) -> Bool { hibernating.contains(recordID) }
+
+    /// Ends the process but keeps the session: its record, its title and above
+    /// all its provider session id, which is what waking resumes from.
+    func hibernateTerminal(for recordID: UUID) {
+        hibernating.insert(recordID)
+        closeTerminal(for: recordID)
+    }
+
+    /// Called when a hibernated session is woken, before it is relaunched.
+    func clearHibernating(_ recordID: UUID) {
+        hibernating.remove(recordID)
     }
 
     func closeTerminal(for recordID: UUID) {
@@ -763,6 +788,7 @@ final class SessionProcessDelegate: LocalProcessTerminalViewDelegate {
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         let id = recordID
         Task { @MainActor [weak sessionStore, weak projectStore] in
+            guard !TerminalRegistry.shared.isHibernating(id) else { return }
             sessionStore?.setStatus(.terminated, for: id)
             projectStore?.markSessionEnded(id, exitCode: exitCode)
             if let record = projectStore?.sessions.first(where: { $0.id == id }),

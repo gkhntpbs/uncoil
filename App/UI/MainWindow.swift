@@ -615,6 +615,11 @@ struct MainWindow: View {
         // that did not.
         RuntimeClient.shared.onAliveSessions = { [weak sessionStore, weak projectStore] alive in
             guard let sessionStore, let projectStore else { return }
+            // Before reconciling: a session that was asleep when the app quit
+            // must get its status back, or it reopens looking terminated.
+            SessionSleepService.restoreStatuses(
+                projectStore: projectStore, sessionStore: sessionStore
+            )
             sessionStore.reconcile(
                 aliveSessionIDs: alive,
                 records: projectStore.sessions,

@@ -97,6 +97,23 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Whether relaunching this provider with a stored session id brings the
+    /// conversation back rather than starting a fresh one.
+    ///
+    /// The single source of truth for both the resume flag on the launch
+    /// command and whether a session may be hibernated: hibernating kills the
+    /// process, so a provider that cannot resume would wake up having lost the
+    /// conversation — which is not hibernation, it is a restart.
+    ///
+    /// Gemini has no verified resume flag, and guessing one is a launch failure
+    /// rather than a cosmetic bug. A plain shell has no conversation at all.
+    var resumesConversation: Bool {
+        switch self {
+        case .claude, .codex: true
+        case .gemini, .terminal: false
+        }
+    }
+
     /// Default for the Shift+Enter → literal-newline behavior. Claude Code and
     /// the Codex TUI both accept a backslash+CR for an in-prompt newline (this
     /// is what `claude /terminal-setup` configures in iTerm/VSCode), so it is on
@@ -341,6 +358,12 @@ enum AgentSessionStatus: String, Codable {
     case waitingForPermission
     case waitingForInput
     case completed
+    /// Stopped mid-flight with SIGSTOP: still in memory, using no CPU, and one
+    /// signal away from carrying on exactly where it was.
+    case suspended
+    /// The process is gone; the conversation comes back on wake through the
+    /// provider's own resume.
+    case hibernated
     case terminated
 
     var label: String {
@@ -351,6 +374,8 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForPermission: String(localized: "Waiting for permission")
         case .waitingForInput: String(localized: "Waiting for a reply")
         case .completed: String(localized: "Done")
+        case .suspended: String(localized: "Paused")
+        case .hibernated: String(localized: "Asleep")
         case .terminated: String(localized: "Closed")
         }
     }
@@ -364,6 +389,9 @@ enum AgentSessionStatus: String, Codable {
         case .running: Theme.ok
         case .completed: Theme.highlight
         case .idle: Theme.textDim
+        // Deliberately not the "closed" grey: a sleeping session is coming
+        // back, and reading it as dead is the whole confusion to avoid.
+        case .suspended, .hibernated: Theme.textDim
         case .terminated: Theme.textFaint
         }
     }
@@ -375,6 +403,8 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .waitingForPermission, .waitingForInput: true
         case .idle, .thinking, .running, .completed, .terminated: false
+        // Asleep on purpose. Nothing to answer, so nothing to nag about.
+        case .suspended, .hibernated: false
         }
     }
 
@@ -387,6 +417,7 @@ enum AgentSessionStatus: String, Codable {
         case .thinking: 3
         case .completed: 2
         case .idle: 1
+        case .suspended, .hibernated: 0
         case .terminated: 0
         }
     }
@@ -449,6 +480,11 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// provider's defaults. Backward-compatible.
     var launchSelection: AgentLaunchSelection?
     var groupID: UUID?
+    /// Asleep, and which way. nil = awake. Distinct from `endedAt`: a sleeping
+    /// session is coming back, a closed one is not, and collapsing the two is
+    /// how a hibernated session would read as dead.
+    var sleepMode: SessionSleepMode?
+    var sleptAt: Date?
     var endedAt: Date?
     var exitCode: Int32?
     var restartCount: Int?

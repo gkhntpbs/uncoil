@@ -32,7 +32,12 @@ extension AgentSessionStatus {
     var isWorking: Bool {
         switch self {
         case .thinking, .running, .waitingForPermission, .waitingForInput: true
-        case .idle, .completed, .terminated: false
+        // Frozen mid-action, not finished: it still has work in flight and
+        // cannot even react to the files moving under it. Hibernated is the
+        // opposite — there is no process, and treating it as working would
+        // block worktree operations forever on a session somebody parked.
+        case .suspended: true
+        case .idle, .completed, .hibernated, .terminated: false
         }
     }
 }
