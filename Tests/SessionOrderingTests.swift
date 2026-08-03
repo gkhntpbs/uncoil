@@ -155,7 +155,7 @@ final class SidebarStructureDepthTests: XCTestCase {
         SidebarStructure.build(
             projectIDs: [project],
             groups: { _ in [self.group] },
-            sessions: { _ in [(self.grouped, self.group), (self.loose, nil)] }
+            sessions: { _ in [(self.grouped, self.group, nil), (self.loose, nil, nil)] }
         )
     }
 
@@ -170,9 +170,9 @@ final class SidebarStructureDepthTests: XCTestCase {
         let orphaned = SidebarStructure.build(
             projectIDs: [project],
             groups: { _ in [] },
-            sessions: { _ in [(self.grouped, self.group)] }
+            sessions: { _ in [(self.grouped, self.group, nil)] }
         )
-        XCTAssertEqual(orphaned.projects.first?.ungrouped, [grouped])
+        XCTAssertEqual(orphaned.projects.first?.ungrouped.map(\.id), [grouped])
         XCTAssertEqual(orphaned.depth(of: .session(grouped)), 1)
     }
 

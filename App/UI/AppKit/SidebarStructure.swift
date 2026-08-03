@@ -26,15 +26,26 @@ enum SidebarItem: Equatable {
 /// it — is testable without a window server, and so the outline view can reload
 /// on structure changes only, leaving status ticks to the hosted SwiftUI rows.
 struct SidebarStructure: Equatable {
+    /// A session and the sessions it spawned.
+    ///
+    /// An agent can create child sessions through the control plane, and a child
+    /// is a real session with its own terminal — so it belongs under the session
+    /// that asked for it rather than beside it in a flat list, where nothing
+    /// says which agent is doing the work and which one is waiting.
+    struct SessionNode: Equatable {
+        let id: UUID
+        var children: [SessionNode] = []
+    }
+
     struct Group: Equatable {
         let id: UUID
-        let sessions: [UUID]
+        let sessions: [SessionNode]
     }
 
     struct Project: Equatable {
         let id: UUID
         let groups: [Group]
-        let ungrouped: [UUID]
+        let ungrouped: [SessionNode]
     }
 
     var projects: [Project] = []
@@ -42,28 +53,87 @@ struct SidebarStructure: Equatable {
     static func build(
         projectIDs: [UUID],
         groups: (UUID) -> [UUID],
-        sessions: (UUID) -> [(id: UUID, groupID: UUID?)]
+        sessions: (UUID) -> [(id: UUID, groupID: UUID?, parentID: UUID?)]
     ) -> SidebarStructure {
         SidebarStructure(projects: projectIDs.map { projectID in
             let records = sessions(projectID)
             let groupIDs = groups(projectID)
             let knownGroups = Set(groupIDs)
+            let nesting = Nesting(records: records)
+
+            // A child is placed by its parent, never by its own group: it is
+            // drawn inside the parent's row, and honouring its group as well
+            // would draw it twice.
+            let roots = records.filter { nesting.isRoot($0.id) }
+            func node(_ id: UUID) -> SessionNode {
+                SessionNode(id: id, children: nesting.children(of: id).map(node))
+            }
+
             return Project(
                 id: projectID,
                 groups: groupIDs.map { groupID in
                     Group(
                         id: groupID,
-                        sessions: records.filter { $0.groupID == groupID }.map(\.id)
+                        sessions: roots.filter { $0.groupID == groupID }.map { node($0.id) }
                     )
                 },
                 // A session whose group was deleted from under it still has to
                 // appear somewhere, so anything not in a live group counts as
                 // ungrouped rather than vanishing.
-                ungrouped: records
+                ungrouped: roots
                     .filter { $0.groupID.map { !knownGroups.contains($0) } ?? true }
-                    .map(\.id)
+                    .map { node($0.id) }
             )
         })
+    }
+
+    /// Resolves parent links into a tree within one project.
+    ///
+    /// Two things can go wrong and neither may lose a session: a parent that is
+    /// not in this project (it was moved, or ended and was swept), and a cycle
+    /// in the links. Both make the session a root, so it is drawn at the top
+    /// level instead of disappearing into a branch that is never reached.
+    private struct Nesting {
+        private let childrenByParent: [UUID: [UUID]]
+        private let rootIDs: Set<UUID>
+
+        init(records: [(id: UUID, groupID: UUID?, parentID: UUID?)]) {
+            let present = Set(records.map(\.id))
+            let parentOf = Dictionary(
+                records.compactMap { record in
+                    record.parentID.map { (record.id, $0) }
+                },
+                uniquingKeysWith: { first, _ in first }
+            )
+
+            func reachesARoot(from id: UUID) -> Bool {
+                var seen: Set<UUID> = [id]
+                var current = id
+                while let parent = parentOf[current] {
+                    guard present.contains(parent) else { return true }
+                    guard seen.insert(parent).inserted else { return false }
+                    current = parent
+                }
+                return true
+            }
+
+            var roots: Set<UUID> = []
+            var byParent: [UUID: [UUID]] = [:]
+            for record in records {
+                guard let parent = record.parentID,
+                      present.contains(parent),
+                      reachesARoot(from: record.id) else {
+                    roots.insert(record.id)
+                    continue
+                }
+                byParent[parent, default: []].append(record.id)
+            }
+            childrenByParent = byParent
+            rootIDs = roots
+        }
+
+        func isRoot(_ id: UUID) -> Bool { rootIDs.contains(id) }
+        func children(of id: UUID) -> [UUID] { childrenByParent[id] ?? [] }
     }
 
     /// How deep a row sits: a project is 0, its groups and loose sessions are 1,
@@ -77,11 +147,53 @@ struct SidebarStructure: Equatable {
         case .group:
             return 1
         case .session(let id):
-            let grouped = projects.contains { project in
-                project.groups.contains { $0.sessions.contains(id) }
+            for project in projects {
+                for group in project.groups {
+                    if let nested = Self.depth(of: id, in: group.sessions) { return 2 + nested }
+                }
+                if let nested = Self.depth(of: id, in: project.ungrouped) { return 1 + nested }
             }
-            return grouped ? 2 : 1
+            return 1
         }
+    }
+
+    /// How far below the given roots a session sits, or nil when it is not in
+    /// this branch at all.
+    private static func depth(of id: UUID, in nodes: [SessionNode]) -> Int? {
+        for node in nodes {
+            if node.id == id { return 0 }
+            if let found = depth(of: id, in: node.children) { return found + 1 }
+        }
+        return nil
+    }
+
+    /// True when this session was spawned by another one, so a row can say so.
+    func isChild(sessionID: UUID) -> Bool {
+        parent(ofSession: sessionID) != nil
+    }
+
+    /// The session that spawned this one, if any.
+    func parent(ofSession id: UUID) -> UUID? {
+        for project in projects {
+            for group in project.groups {
+                if let found = Self.parent(of: id, in: group.sessions) { return found }
+            }
+            if let found = Self.parent(of: id, in: project.ungrouped) { return found }
+        }
+        return nil
+    }
+
+    private static func parent(of id: UUID, in nodes: [SessionNode], under: UUID? = nil) -> UUID? {
+        for node in nodes {
+            if node.id == id { return under }
+            if let found = parent(of: id, in: node.children, under: node.id) { return found }
+        }
+        return nil
+    }
+
+    /// Every session in a branch, parents before their children.
+    static func flatten(_ nodes: [SessionNode]) -> [UUID] {
+        nodes.flatMap { [$0.id] + flatten($0.children) }
     }
 
     /// Whether this project shows any children at all — a project with none has
@@ -97,11 +209,13 @@ struct SidebarStructure: Equatable {
         for project in projects {
             for group in project.groups {
                 context.projectOfGroup[group.id] = project.id
-                for session in group.sessions {
+                // Children too: a nested session is still droppable, and one
+                // missing from this map reads as belonging to no project.
+                for session in Self.flatten(group.sessions) {
                     context.projectOfSession[session] = project.id
                 }
             }
-            for session in project.ungrouped {
+            for session in Self.flatten(project.ungrouped) {
                 context.projectOfSession[session] = project.id
             }
         }

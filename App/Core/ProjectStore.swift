@@ -638,6 +638,18 @@ final class SessionStore: ObservableObject {
         }
         if let match = unbound.max(by: { $0.createdAt < $1.createdAt }) { return match.id }
 
+        // An event that names a provider session nobody is bound to belongs to
+        // an agent Uncoil does not own — a sub-agent spawned by the Task tool
+        // carries its own session id — and attributing it to the newest live
+        // session means writing one agent's activity onto another's row.
+        //
+        // That is what made a waiting agent notify over and over: the sub-agent's
+        // tool events flipped the parent out of `waitingForInput`, the reminder
+        // sweep dropped the ledger entry because the status no longer matched,
+        // and the parent's next wait counted as a first banner rather than a
+        // capped reminder. So the guess stops here when the event identifies
+        // itself; only an event naming no session at all may fall through.
+        guard providerSessionID == nil else { return nil }
         return live.max(by: { $0.createdAt < $1.createdAt })?.id
     }
 

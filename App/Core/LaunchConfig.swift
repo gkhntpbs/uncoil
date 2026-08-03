@@ -123,9 +123,15 @@ struct LaunchConfig {
         projectStore.createSession(
             projectID: project.id, provider: .terminal, accountID: nil, title: "terminal"
         )
-        projectStore.createSession(
+        let main = projectStore.createSession(
             projectID: project.id, provider: .claude, accountID: nil, title: "claude: demo task"
         )
+        // A sub-agent, so the sidebar's nested session row is reachable without
+        // a live control-plane `create_child`.
+        let sub = projectStore.createSession(
+            projectID: project.id, provider: .claude, accountID: nil, title: "claude: sub-agent"
+        )
+        projectStore.updateSession(sub.id) { $0.parentSessionID = main.id }
         let history = projectStore.createSession(
             projectID: project.id,
             provider: .codex,

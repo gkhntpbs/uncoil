@@ -235,7 +235,23 @@ struct SidebarOutline: NSViewRepresentable {
             SidebarStructure.build(
                 projectIDs: store.projects.map(\.id),
                 groups: { store.groups(for: $0).map(\.id) },
-                sessions: { store.sessions(for: $0).map { ($0.id, $0.groupID) } }
+                sessions: {
+                    store.sessions(for: $0).map { ($0.id, $0.groupID, $0.parentSessionID) }
+                }
+            )
+        }
+
+        /// A session row, and under it the sessions it spawned. A session with
+        /// children is a group so the outline view gives it a disclosure
+        /// triangle; a plain one must not have one.
+        private static func sessionNode(
+            _ node: SidebarStructure.SessionNode
+        ) -> OutlineNode<SidebarItem> {
+            OutlineNode(
+                id: SidebarItem.session(node.id).nodeID,
+                payload: .session(node.id),
+                isGroup: !node.children.isEmpty,
+                children: node.children.map(sessionNode)
             )
         }
 
@@ -254,21 +270,9 @@ struct SidebarOutline: NSViewRepresentable {
                                 id: SidebarItem.group(group.id).nodeID,
                                 payload: .group(group.id),
                                 isGroup: true,
-                                children: group.sessions.map { session in
-                                    OutlineNode(
-                                        id: SidebarItem.session(session).nodeID,
-                                        payload: .session(session),
-                                        isGroup: false
-                                    )
-                                }
+                                children: group.sessions.map(sessionNode)
                             )
-                        } + project.ungrouped.map { session in
-                            OutlineNode(
-                                id: SidebarItem.session(session).nodeID,
-                                payload: .session(session),
-                                isGroup: false
-                            )
-                        }
+                        } + project.ungrouped.map(sessionNode)
                     )
                 }
             )
@@ -285,9 +289,38 @@ struct SidebarOutline: NSViewRepresentable {
                 guard case .project(let id) = node.payload else { continue }
                 setExpanded(!collapsedProjects.contains(id), for: node, in: outlineView)
                 for child in node.children {
-                    guard case .group(let groupID) = child.payload else { continue }
-                    setExpanded(!collapsedGroups.contains(groupID), for: child, in: outlineView)
+                    switch child.payload {
+                    case .group(let groupID):
+                        setExpanded(
+                            !collapsedGroups.contains(groupID), for: child, in: outlineView
+                        )
+                        // A sub-agent inside a group is two levels down, and
+                        // the sweep used to stop at the group — so its row was
+                        // built and then never shown.
+                        for session in child.children {
+                            expandSessions(session, collapsedGroups, in: outlineView)
+                        }
+                    case .session:
+                        expandSessions(child, collapsedGroups, in: outlineView)
+                    case .project:
+                        continue
+                    }
                 }
+            }
+        }
+
+        /// Sub-agents are shown unless the user folded them away: a child
+        /// session that is hidden by default is one the sidebar never mentions,
+        /// which is the whole thing this nesting exists to fix.
+        private func expandSessions(
+            _ node: OutlineNode<SidebarItem>,
+            _ collapsed: CollapsedGroups,
+            in outlineView: NSOutlineView
+        ) {
+            guard case .session(let id) = node.payload, !node.children.isEmpty else { return }
+            setExpanded(!collapsed.contains(id), for: node, in: outlineView)
+            for child in node.children {
+                expandSessions(child, collapsed, in: outlineView)
             }
         }
 
@@ -418,6 +451,7 @@ struct SidebarOutline: NSViewRepresentable {
                     SessionRowView(
                         sessionID: id,
                         depth: structure.depth(of: node.payload),
+                        isChild: structure.isChild(sessionID: id),
                         isSelected: environment.selection.wrappedValue == .session(id)
                             || selected.contains(id),
                         isMultiSelected: selected.contains(id),
@@ -529,7 +563,10 @@ struct SidebarOutline: NSViewRepresentable {
             switch node.payload {
             case .project(let id): CollapsedProjects.shared.set(id, collapsed: collapsed)
             case .group(let id): CollapsedGroups.shared.set(id, collapsed: collapsed)
-            case .session: break
+            // A session with sub-agents under it is a container too, and the
+            // same store holds it: an id can be a group's or a session's, never
+            // both.
+            case .session(let id): CollapsedGroups.shared.set(id, collapsed: collapsed)
             }
         }
 

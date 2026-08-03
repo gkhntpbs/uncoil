@@ -65,6 +65,45 @@ final class HookSessionRoutingTests: XCTestCase {
         XCTAssertEqual(resolve(providerSessionID: "prov-new", cwd: "/tmp/demo"), fresh.id)
     }
 
+    /// A Claude sub-agent spawned by the Task tool carries its own `session_id`
+    /// and shares its parent's `cwd`. Nothing is bound to that id, and once
+    /// every session in the project is bound the routing used to fall back to
+    /// the newest live one — writing the sub-agent's activity onto an agent
+    /// that is not it.
+    ///
+    /// That misattribution is what made a waiting agent notify over and over:
+    /// the sub-agent's tool events flipped the parent out of `waitingForInput`,
+    /// the reminder sweep dropped the ledger entry because the status no longer
+    /// matched, and the parent's next wait counted as a first banner instead of
+    /// a capped reminder.
+    func testASubAgentsEventIsNotWrittenOntoAnAlreadyBoundSession() {
+        let parent = makeSession()
+        projects.updateSession(parent.id) { $0.providerSessionID = "prov-parent" }
+        let other = makeSession()
+        projects.updateSession(other.id) { $0.providerSessionID = "prov-other" }
+
+        XCTAssertNil(resolve(providerSessionID: "prov-subagent", cwd: "/tmp/demo"))
+    }
+
+    /// The parent's own events still route: it is bound, and binding wins.
+    func testTheParentStillReceivesItsOwnEvents() {
+        let parent = makeSession()
+        projects.updateSession(parent.id) { $0.providerSessionID = "prov-parent" }
+        _ = makeSession()
+
+        XCTAssertEqual(resolve(providerSessionID: "prov-parent", cwd: "/tmp/demo"), parent.id)
+    }
+
+    /// An agent that reports no session id at all cannot be told apart from a
+    /// sub-agent, so the old guess stays for it — dropping those events would
+    /// take live status away from builds that never send one.
+    func testAnEventWithoutASessionIDStillFallsBack() {
+        let bound = makeSession()
+        projects.updateSession(bound.id) { $0.providerSessionID = "prov-a" }
+
+        XCTAssertEqual(resolve(providerSessionID: nil, cwd: "/elsewhere"), bound.id)
+    }
+
     func testWorkingDirectoryPicksAmongUnboundSessions() {
         let worktree = tempDir.appendingPathComponent("wt").path
         let inRoot = makeSession()

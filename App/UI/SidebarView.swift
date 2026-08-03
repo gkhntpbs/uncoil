@@ -710,8 +710,12 @@ struct SessionGroupRowView: View {
 /// affordance for it rather than the only place it works.
 struct SessionRowView: View {
     let sessionID: UUID
-    /// 1 directly under a project, 2 inside one of its groups.
+    /// 1 directly under a project, 2 inside one of its groups, and one deeper
+    /// per level of sub-agent.
     let depth: Int
+    /// Spawned by another session through the control plane. Indent alone does
+    /// not say so — a sub-agent sits at the same inset as a grouped session.
+    var isChild = false
     let isSelected: Bool
     let isMultiSelected: Bool
     let showsSelectionControl: Bool
@@ -787,6 +791,13 @@ struct SessionRowView: View {
                     // narrow those 18 points are worth more as title than as a
                     // decoration. Its identifier stays here, on the row's first
                     // element, so a drag still starts from the same place.
+                    if isChild {
+                        // Marks the row as work another agent handed out. Faint
+                        // on purpose: it qualifies the session, it is not its
+                        // status.
+                        TablerIcon(name: "corner-down-right", size: 9, color: Theme.textFaint)
+                            .accessibilityIdentifier("sidebar.session.child.\(record.title)")
+                    }
                     ProviderMark(provider: record.provider, size: 11)
                         .opacity(status == .terminated ? 0.45 : 1)
                         .accessibilityIdentifier("sidebar.drag.\(record.title)")
