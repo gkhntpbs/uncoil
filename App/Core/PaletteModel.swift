@@ -7,6 +7,9 @@ import SwiftUI
 /// `MainWindow` performs the side effects (routing, window opening, launches).
 enum PaletteAction: Equatable {
     case addProject
+    /// A one-off session in Uncoil's own scratch workspace, for the jobs that
+    /// belong to no project.
+    case newScratchSession(AgentProvider)
     case createTestWorkspace
     case createDebugBundle
     case openExtensions
@@ -108,6 +111,10 @@ struct PaletteContext {
     /// file, which is what makes capture silently unavailable rather than
     /// offering to write somewhere that does not exist.
     var captureTargets: [PaletteCaptureTarget] = []
+    /// The providers the quick-launch strip offers, in the user's order. What a
+    /// one-off session may be opened with — the same answer as everywhere else,
+    /// so an agent that is not installed is not offered here either.
+    var launcherProviders: [AgentProvider] = []
 }
 
 /// One place a captured task can land: a heading inside a task file.
@@ -295,6 +302,19 @@ enum PaletteEngine {
                 id: "cmd.ask", title: String(localized: "Ask an agent…"),
                 subtitle: String(localized: "Type ? and your question"),
                 iconName: "sparkles", kind: .command, action: .beginAsk, rank: 30))
+        }
+        // Ranked with the current project's own commands: a one-off session is
+        // reached for at exactly the moment nothing else is, and having to
+        // scroll past four projects to find it defeats the point of it being
+        // one keystroke.
+        for provider in ctx.launcherProviders {
+            items.append(PaletteItem(
+                id: "cmd.scratch.\(provider.rawValue)",
+                title: String(localized: "One-off \(provider.displayName) session"),
+                subtitle: String(localized: "In Uncoil's scratch folder, outside every project"),
+                iconName: "flask", provider: provider,
+                kind: .command, action: .newScratchSession(provider),
+                rank: currentProjectRank))
         }
         items += [
             PaletteItem(id: "cmd.addProject", title: String(localized: "Add a New Project"),
@@ -489,6 +509,11 @@ final class PaletteModel: ObservableObject {
     private weak var projectStore: ProjectStore?
     private weak var sessionStore: SessionStore?
     private var settingsPanes: [(id: String, title: String)] = []
+    /// Resolved live rather than stored: the strip's contents depend on what is
+    /// installed, and that is settled after the binaries are detected — which
+    /// happens later than the palette is configured.
+    var launcherProviders: [AgentProvider] { resolveLauncherProviders() }
+    private var resolveLauncherProviders: () -> [AgentProvider] = { AgentProvider.sessionKinds }
 
     var currentProjectID: UUID?
     var currentSessionID: UUID?
@@ -503,11 +528,13 @@ final class PaletteModel: ObservableObject {
         projectStore: ProjectStore,
         sessionStore: SessionStore,
         settingsPanes: [(id: String, title: String)],
+        launcherProviders: @escaping () -> [AgentProvider] = { AgentProvider.sessionKinds },
         dataDirectory: URL = ProjectStore.defaultDirectory()
     ) {
         self.projectStore = projectStore
         self.sessionStore = sessionStore
         self.settingsPanes = settingsPanes
+        self.resolveLauncherProviders = launcherProviders
         self.dataDirectory = dataDirectory
     }
 
@@ -646,7 +673,8 @@ final class PaletteModel: ObservableObject {
             artifacts: artifacts,
             projectRoot: currentProjectRoot,
             settingsPanes: settingsPanes,
-            captureTargets: captureTargets
+            captureTargets: captureTargets,
+            launcherProviders: launcherProviders
         )
         groups = PaletteEngine.compute(ctx)
         let count = flatItems.count

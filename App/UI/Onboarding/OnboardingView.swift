@@ -41,7 +41,7 @@ struct OnboardingView: View {
                 )
             case .tasks:
                 OnboardingTasksStep(
-                    projectPath: addedProjectPath ?? projectStore.projects.first?.rootPath,
+                    projectPath: addedProjectPath ?? projectStore.visibleProjects.first?.rootPath,
                     onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll
                 )
             case .extensions:

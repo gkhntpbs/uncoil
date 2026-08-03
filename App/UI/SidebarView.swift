@@ -51,7 +51,14 @@ struct SidebarView: View {
                         renamingGroup = $0
                     },
                     confirmDeleteSession: { deletingSession = $0 },
-                    addProject: { showFolderPicker = true }
+                    addProject: { showFolderPicker = true },
+                    newScratchSession: { provider in
+                        let record = projectStore.createScratchSession(
+                            provider: provider,
+                            accountID: settings.defaultAccount(for: provider)?.id
+                        )
+                        selection = .session(record.id)
+                    }
                 )
             )
             .overlay(alignment: .top) {
@@ -447,9 +454,11 @@ struct ProjectRowView: View {
                 ProjectIcon(project: project)
                 Text(project.name)
                     .font(Theme.mono(.large, .medium))
-                    .foregroundStyle(Theme.text)
+                    // Uncoil's own folder, not one of the user's projects: it
+                    // is reachable and it does not read as work.
+                    .foregroundStyle(project.isScratchWorkspace ? Theme.textDim : Theme.text)
                     .lineLimit(1)
-                if project.isPinned == true {
+                if project.isPinned == true, !project.isScratchWorkspace {
                     PinMark(isPinned: true, size: 10, color: Theme.textDim)
                         .help("Pinned")
                 }

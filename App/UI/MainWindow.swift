@@ -263,7 +263,10 @@ struct MainWindow: View {
         palette.configure(
             projectStore: projectStore,
             sessionStore: sessionStore,
-            settingsPanes: SettingsView.Pane.allCases.map { ($0.rawValue, $0.title) }
+            settingsPanes: SettingsView.Pane.allCases.map { ($0.rawValue, $0.title) },
+            launcherProviders: { [weak settings] in
+                settings?.launcherProviders ?? AgentProvider.sessionKinds
+            }
         )
         syncPaletteSelection()
         PaletteHotkeyMonitor.install(model: palette, settings: settings)
@@ -340,6 +343,12 @@ struct MainWindow: View {
             break                       // handled inside the palette; it stays open
         case .captureTask(let text, let projectID, let sourcePath, let heading):
             captureTask(text, projectID: projectID, sourcePath: sourcePath, heading: heading)
+        case .newScratchSession(let provider):
+            let record = projectStore.createScratchSession(
+                provider: provider,
+                accountID: settings.defaultAccount(for: provider)?.id
+            )
+            selection = .session(record.id)
         }
     }
 
@@ -593,7 +602,7 @@ struct MainWindow: View {
             selection = restored
             return
         }
-        if selection == nil, let first = projectStore.projects.first {
+        if selection == nil, let first = projectStore.visibleProjects.first {
             selection = .project(first.id)
         }
     }

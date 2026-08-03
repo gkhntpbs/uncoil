@@ -1271,6 +1271,9 @@
         }
       }
     },
+    "⌘V is passed straight through. Better when the agent reads pasted images well, and nothing at all when it does not." : {
+
+    },
     "7 days" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6659,6 +6662,9 @@
         }
       }
     },
+    "Let the agent handle the paste" : {
+
+    },
     "Let Uncoil manage these (%lld)" : {
 
     },
@@ -8848,6 +8854,9 @@
     "One shortcut for everything" : {
 
     },
+    "Only ⌘V of an image is affected. Pasting text, a path or anything else is never touched, and neither is a plain terminal session." : {
+
+    },
     "Only Chromium-based browsers installed on this Mac are listed." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9286,6 +9295,15 @@
       }
     },
     "Passed" : {
+
+    },
+    "Pasted %@." : {
+
+    },
+    "Pasted %lld images." : {
+
+    },
+    "Pasting an image" : {
 
     },
     "Paths Found" : {
@@ -11187,6 +11205,9 @@
         }
       }
     },
+    "Save the image and paste its path" : {
+
+    },
     "Saved. The running agent keeps the account it started with — restart the session to switch it." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12928,6 +12949,9 @@
         }
       }
     },
+    "That image could not be saved." : {
+
+    },
     "The %@ edit changed the number of lines." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13265,6 +13289,9 @@
           }
         }
       }
+    },
+    "The image is written into the session's working directory and its path is typed into the prompt — the same thing dropping an image does. Works with every agent." : {
+
     },
     "The interface language applies after a restart. The agent language is the one Uncoil writes in when it hands a task to an agent." : {
 

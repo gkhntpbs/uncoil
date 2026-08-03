@@ -25,10 +25,13 @@ final class ProjectStore: ObservableObject {
     private let projectsURL: URL
     private let sessionsURL: URL
     private let sessionGroupsURL: URL
+    /// Where Uncoil keeps its own data — the scratch workspace lives under it.
+    private let dataDirectory: URL
 
     init(directory: URL? = nil) {
         let base = directory ?? Self.defaultDirectory()
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        dataDirectory = base
         projectsURL = base.appendingPathComponent("projects.json")
         sessionsURL = base.appendingPathComponent("sessions.json")
         sessionGroupsURL = base.appendingPathComponent("session-groups.json")
@@ -45,6 +48,43 @@ final class ProjectStore: ObservableObject {
 
     // MARK: - Projects
 
+    /// The scratch workspace, created the first time something asks for it.
+    ///
+    /// Lazily rather than at launch: someone who never opens a one-off session
+    /// should not find a folder they did not ask for.
+    @discardableResult
+    func ensureScratchProject() -> Project {
+        let directory = ScratchWorkspace.ensureDirectory(dataDirectory: dataDirectory)
+        if let existing = scratchProject {
+            // The folder can be deleted from under the record; the record is
+            // what everything else refers to, so it is kept and the folder put
+            // back rather than the other way round.
+            return existing
+        }
+        var project = Project(name: ScratchWorkspace.name, rootPath: directory.path)
+        project.isScratch = true
+        project.iconName = "flask"
+        projects.append(project)
+        sortProjects()
+        save()
+        return project
+    }
+
+    /// Opens a one-off session and returns it. The whole feature, from the
+    /// caller's side.
+    @discardableResult
+    func createScratchSession(
+        provider: AgentProvider, accountID: UUID? = nil, now: Date = .now
+    ) -> SessionRecord {
+        let project = ensureScratchProject()
+        return createSession(
+            projectID: project.id,
+            provider: provider,
+            accountID: accountID,
+            title: ScratchWorkspace.sessionTitle(for: provider, at: now)
+        )
+    }
+
     func addProject(at url: URL) {
         let path = url.standardizedFileURL.path
         guard !projects.contains(where: { $0.rootPath == path }) else { return }
@@ -53,14 +93,32 @@ final class ProjectStore: ObservableObject {
         save()
     }
 
+    /// The projects the user opened. Excludes the scratch workspace, which is
+    /// Uncoil's own folder and has no business in a list of someone's projects
+    /// — a picker offering "apply this to Scratch" is offering nonsense.
+    ///
+    /// The sidebar deliberately does *not* use this: a one-off session has to
+    /// be reachable, it just belongs at the bottom and marked as what it is.
+    var visibleProjects: [Project] {
+        projects.filter { !$0.isScratchWorkspace }
+    }
+
+    var scratchProject: Project? {
+        projects.first { $0.isScratchWorkspace }
+    }
+
     /// Sidebar order: pinned first, then whatever the user dragged into place,
-    /// then the order they were added in. Held in the array itself so every
-    /// screen that reads `projects` shows the same order.
+    /// then the order they were added in — and the scratch workspace last
+    /// whatever else is true of it.
     func sortProjects() {
         projects.sort {
-            let leftPinned = $0.isPinned ?? false
-            let rightPinned = $1.isPinned ?? false
-            if leftPinned != rightPinned { return leftPinned }
+            let leftRank = ProjectSortRank.rank(
+                isScratch: $0.isScratchWorkspace, isPinned: $0.isPinned ?? false
+            )
+            let rightRank = ProjectSortRank.rank(
+                isScratch: $1.isScratchWorkspace, isPinned: $1.isPinned ?? false
+            )
+            if leftRank != rightRank { return leftRank < rightRank }
             switch ($0.sortIndex, $1.sortIndex) {
             case let (left?, right?): return left < right
             case (.some, nil): return true

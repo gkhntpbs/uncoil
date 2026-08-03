@@ -311,8 +311,17 @@ struct Project: Identifiable, Codable, Equatable {
     var isPinned: Bool?
     /// Manual sidebar order; nil = never moved by hand.
     var sortIndex: Double?
+    /// The folder Uncoil owns for one-off sessions. Optional so older documents
+    /// decode; nil and false both mean an ordinary project.
+    ///
+    /// A one-off session belongs to a project like any other — see
+    /// `ScratchWorkspace` — and this is the one bit that says which project
+    /// that is.
+    var isScratch: Bool?
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
+
+    var isScratchWorkspace: Bool { isScratch == true }
 
     @MainActor
     var accentColor: Color {

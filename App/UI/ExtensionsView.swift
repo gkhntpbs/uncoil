@@ -2212,7 +2212,7 @@ private struct AssignmentsScreen: View {
                                 .foregroundStyle(Theme.text)
                                 .lineLimit(1)
                             FlowRow(spacing: 6) {
-                                ForEach(projectStore.projects) { project in
+                                ForEach(projectStore.visibleProjects) { project in
                                     let binding = registry.projectBindings.first {
                                         $0.extensionID == package.id && $0.projectID == project.id
                                     }
@@ -2627,7 +2627,7 @@ private struct SecurityScreen: View {
                     .accessibilityIdentifier("extensions.security.manualScan")
 
                     Button("Project Scan") {
-                        let roots = projectStore.projects.map(\.rootPath)
+                        let roots = projectStore.visibleProjects.map(\.rootPath)
                         Task { message = await scans.scanProjects(roots: roots).message }
                     }
                     .buttonStyle(GhostButtonStyle())

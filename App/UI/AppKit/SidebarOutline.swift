@@ -715,6 +715,25 @@ struct SidebarOutline: NSViewRepresentable {
             case .project(let id):
                 guard let project = environment.projectStore.projects.first(where: { $0.id == id })
                 else { return nil }
+                // Uncoil's own scratch folder. Pinning and reordering are about
+                // where a project sits among the others, and this one always
+                // sits last; removing it would strand the sessions inside it
+                // and it would come back the next time one was opened.
+                if project.isScratchWorkspace {
+                    let collapsed = CollapsedProjects.shared.contains(id)
+                    add(
+                        to: menu,
+                        title: collapsed
+                            ? String(localized: "Show Sessions")
+                            : String(localized: "Hide Sessions")
+                    ) {
+                        CollapsedProjects.shared.set(id, collapsed: !collapsed)
+                    }
+                    add(to: menu, title: String(localized: "Show in Finder")) {
+                        NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
+                    }
+                    return menu
+                }
                 add(
                     to: menu,
                     title: project.isPinned == true ? String(localized: "Unpin") : String(localized: "Pin")
@@ -864,6 +883,17 @@ struct SidebarOutline: NSViewRepresentable {
             add(to: menu, title: String(localized: "New Project…")) {
                 environment.actions.addProject()
             }
+            menu.addItem(.separator())
+            // The other way in, for whoever right-clicks before reaching for
+            // the palette.
+            for provider in environment.settings.launcherProviders {
+                add(
+                    to: menu,
+                    title: String(localized: "One-off \(provider.displayName) Session")
+                ) {
+                    environment.actions.newScratchSession(provider)
+                }
+            }
             return menu
         }
 
@@ -937,4 +967,6 @@ struct SidebarRowActions {
     /// Raised from the empty space below the rows, where there is no project to
     /// act on and adding one is the only thing that makes sense.
     var addProject: () -> Void
+    /// A session in Uncoil's scratch folder, belonging to no project.
+    var newScratchSession: (AgentProvider) -> Void
 }
