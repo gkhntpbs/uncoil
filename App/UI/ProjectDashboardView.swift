@@ -98,6 +98,13 @@ struct ProjectDashboardView: View {
                 area = .tasks
             }
             if !hasTaskSources { area = .overview }
+            // Someone asked for a particular area — the session header's "open
+            // the logs" shortcut. Consumed once, so a later visit lands where
+            // the user left off instead of being dragged back here.
+            if let requested = ProjectAreaRoute.shared.take(for: project.id),
+               let target = Area(rawValue: requested) {
+                area = target
+            }
         }
     }
 

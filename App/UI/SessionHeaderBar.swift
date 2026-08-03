@@ -15,6 +15,10 @@ struct SessionHeaderBar<Trailing: View>: View {
     let leadingHelp: String
     let onLeading: () -> Void
     let onRestart: () -> Void
+    /// Navigates to the project screen. Distinct from `onLeading`, which in a
+    /// split pane closes the pane rather than going anywhere — routing the
+    /// logs shortcut through it would close the pane instead.
+    var onOpenProject: (() -> Void)?
     @ViewBuilder var trailing: Trailing
 
     @EnvironmentObject private var sessionStore: SessionStore
@@ -212,7 +216,7 @@ struct SessionHeaderBar<Trailing: View>: View {
             }
 
             HStack(spacing: 2) {
-                RunDefaultControl(project: project)
+                RunDefaultControl(project: project, onOpenLogs: onOpenProject)
 
                 EditorOpenControl(directory: workingDirectory)
 

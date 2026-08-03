@@ -127,6 +127,13 @@ struct RunProcessState {
     /// Capped in-memory tail; the full log is on disk at `logFileURL`.
     var logTail: String = ""
     var logFileURL: URL?
+    /// What Docker says about this run's containers, for a run that owns any.
+    ///
+    /// Separate from `status` because they answer different questions: `status`
+    /// is about the command Uncoil launched, and for `docker compose up` that
+    /// command stays alive and keeps printing while a container crash-loops.
+    var containers: [DockerContainer] = []
+    var containerHealth: DockerRunHealth = .unknown
 }
 
 // MARK: - Run history
@@ -237,6 +244,13 @@ final class RunRegistry: ObservableObject {
     var survivalGrace: TimeInterval = 2
     private static let logTailLimit = 32_768
 
+    /// Asks Docker about a run's containers. Injectable so the polling logic is
+    /// testable without a Docker daemon.
+    var dockerProbe: DockerProbing = ShellDockerProbe()
+    /// How often a running Docker configuration is asked about its containers.
+    var containerPollInterval: TimeInterval = 5
+
+    private var containerPolls: [Key: Task<Void, Never>] = [:]
     private var handles: [Key: RunProcessHandle] = [:]
     private var logHandles: [Key: FileHandle] = [:]
     private var generation: [Key: Int] = [:]
@@ -373,6 +387,8 @@ final class RunRegistry: ObservableObject {
         handles[key] = handle
         states[key]?.pid = handle.pid
 
+        startContainerPoll(key: key, project: project, config: config, generation: gen)
+
         let ready = await waitForReadiness(key: key, config: config, generation: gen)
         if ready {
             if generation[key] == gen, states[key]?.status == .starting {
@@ -388,6 +404,42 @@ final class RunRegistry: ObservableObject {
             return StartOutcome(configID: config.id, ok: false, status: .starting, issue: issue)
         }
         return StartOutcome(configID: config.id, ok: false, status: state.status, issue: state.issue)
+    }
+
+    /// Polls Docker while a container-backed run is up.
+    ///
+    /// Only for Docker configurations: every other run's process state already
+    /// says everything there is to know, and shelling out for them would be a
+    /// subprocess every few seconds for no answer.
+    private func startContainerPoll(
+        key: Key, project: Project, config: RunConfiguration, generation gen: Int
+    ) {
+        containerPolls[key]?.cancel()
+        guard let arguments = DockerStatus.statusArguments(for: config.command) else { return }
+        let cwd = config.cwd == "." ? project.rootURL
+            : project.rootURL.appendingPathComponent(config.cwd)
+        let interval = containerPollInterval
+        let probe = dockerProbe
+        containerPolls[key] = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.generation[key] == gen else { return }
+                let output = await probe.run(arguments: arguments, cwd: cwd)
+                guard !Task.isCancelled, self.generation[key] == gen else { return }
+                let containers = output.map(DockerStatus.parse) ?? []
+                // Only publish real changes: this ticks every few seconds and
+                // every assignment redraws the Run page.
+                if self.states[key]?.containers != containers {
+                    self.states[key]?.containers = containers
+                    self.states[key]?.containerHealth = DockerStatus.health(of: containers)
+                }
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            }
+        }
+    }
+
+    private func stopContainerPoll(key: Key) {
+        containerPolls[key]?.cancel()
+        containerPolls[key] = nil
     }
 
     private func waitForReadiness(key: Key, config: RunConfiguration, generation gen: Int) async -> Bool {
@@ -422,6 +474,7 @@ final class RunRegistry: ObservableObject {
             return
         }
         generation[key] = (generation[key] ?? 0) + 1  // invalidate readiness waits
+        stopContainerPoll(key: key)
         handle.terminate()
         let deadline = Date.now.addingTimeInterval(5)
         while handle.isRunning, Date.now < deadline {
@@ -482,6 +535,7 @@ final class RunRegistry: ObservableObject {
     ) {
         guard generation[key] == gen else { return }
         handles[key] = nil
+        stopContainerPoll(key: key)
         closeLog(key: key)
         closeHistory(key: key, exitCode: code)
         let previous = states[key]?.status

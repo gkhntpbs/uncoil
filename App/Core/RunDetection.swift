@@ -81,7 +81,9 @@ enum RunDetection {
         var configs: [RunConfiguration] = []
         configs += nodeConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         configs += xcodeConfigs(dir: dir, prefix: prefix, entries: entries)
+        configs += goConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         configs += composeConfigs(dir: dir, prefix: prefix, entries: entries)
+        configs += dockerfileConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         configs += procfileConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         configs += makefileConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         configs += pythonConfigs(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
@@ -165,8 +167,7 @@ enum RunDetection {
     private static func composeConfigs(
         dir: String, prefix: String, entries: Set<String>
     ) -> [RunConfiguration] {
-        let names = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"]
-        guard names.contains(where: entries.contains) else { return [] }
+        guard hasComposeFile(entries) else { return [] }
         return [RunConfiguration(
             id: prefix + "compose",
             name: dir == "." ? "Docker Compose" : "\(dir) compose",
@@ -174,6 +175,122 @@ enum RunDetection {
             cwd: dir,
             notes: "Detected from a compose file"
         )]
+    }
+
+    /// A Go module. The entry point is looked up rather than assumed: `go run .`
+    /// only works when the main package is at the module root, and the common
+    /// layout puts it under `cmd/<name>` instead — where a bare `go run .`
+    /// fails with "no Go files".
+    ///
+    /// No port and no ready pattern: Go's standard library prints nothing on
+    /// listen, every framework logs differently, and a wrong ready pattern
+    /// leaves the run stuck in "starting" forever.
+    private static func goConfigs(
+        dir: String, prefix: String, entries: Set<String>, fs: RunDetectionFileSystem
+    ) -> [RunConfiguration] {
+        guard entries.contains("go.mod") else { return [] }
+        let target = goEntryPoint(dir: dir, entries: entries, fs: fs)
+        return [RunConfiguration(
+            id: prefix + "go-run",
+            name: dir == "." ? "Go run" : "\(dir) go run",
+            command: "go run \(target)",
+            cwd: dir,
+            notes: target == "."
+                ? "Detected from go.mod with a main package at the module root"
+                : "Detected from go.mod; entry point found at \(target)"
+        )]
+    }
+
+    /// `.` when the module root holds a `main` package, otherwise the first
+    /// `cmd/<name>` that does. Returns `.` when neither is found, so the
+    /// suggestion still names the module and the user only has to fix the path.
+    private static func goEntryPoint(
+        dir: String, entries: Set<String>, fs: RunDetectionFileSystem
+    ) -> String {
+        if entries.contains(where: { $0.hasSuffix(".go") && declaresMainPackage(dir, $0, fs) }) {
+            return "."
+        }
+        guard entries.contains("cmd"), fs.isDirectory(path(dir, "cmd")) else { return "." }
+        for name in fs.list(path(dir, "cmd")).sorted() where !name.hasPrefix(".") {
+            let sub = path(dir, "cmd") + "/" + name
+            guard fs.isDirectory(sub) else { continue }
+            if fs.list(sub).contains(where: {
+                $0.hasSuffix(".go") && declaresMainPackage(sub, $0, fs)
+            }) {
+                return "./cmd/\(name)"
+            }
+        }
+        return "."
+    }
+
+    private static func declaresMainPackage(
+        _ dir: String, _ file: String, _ fs: RunDetectionFileSystem
+    ) -> Bool {
+        guard let text = fs.read(path(dir, file)) else { return false }
+        for line in text.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // The first package clause settles it; anything before it is a
+            // comment or a build constraint.
+            guard trimmed.hasPrefix("package ") else { continue }
+            return trimmed.dropFirst("package ".count)
+                .trimmingCharacters(in: .whitespaces) == "main"
+        }
+        return false
+    }
+
+    /// A Dockerfile with no compose file beside it. Compose already describes
+    /// how the thing runs, so when both exist the compose entry is the honest
+    /// one and this would only add a second, worse way to start the same app.
+    ///
+    /// Ports come from the Dockerfile's own `EXPOSE` lines — that is stated,
+    /// not guessed — and only then is a preview URL offered.
+    private static func dockerfileConfigs(
+        dir: String, prefix: String, entries: Set<String>, fs: RunDetectionFileSystem
+    ) -> [RunConfiguration] {
+        guard entries.contains("Dockerfile"), !hasComposeFile(entries) else { return [] }
+        let tag = slug(dir == "." ? "app" : dir)
+        let ports = exposedPorts(in: fs.read(path(dir, "Dockerfile")) ?? "")
+        let publish = ports.map { " -p \($0):\($0)" }.joined()
+        return [RunConfiguration(
+            id: prefix + "docker",
+            name: dir == "." ? "Docker" : "\(dir) docker",
+            // `--rm` so a stopped run leaves nothing behind, and a fixed name so
+            // the container can be found again to report its state.
+            command: "docker build -t \(tag) . && "
+                + "docker run --rm --name \(tag)\(publish) \(tag)",
+            cwd: dir,
+            ports: ports,
+            previewURL: ports.first.map { "http://localhost:\($0)" },
+            notes: ports.isEmpty
+                ? "Detected from a Dockerfile with no EXPOSE line — add the ports it serves"
+                : "Detected from a Dockerfile; ports read from its EXPOSE lines"
+        )]
+    }
+
+    static func hasComposeFile(_ entries: Set<String>) -> Bool {
+        composeFileNames.contains(where: entries.contains)
+    }
+
+    static let composeFileNames = [
+        "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml",
+    ]
+
+    /// Ports named by `EXPOSE` in a Dockerfile. `EXPOSE 80 443` and
+    /// `EXPOSE 8080/tcp` are both valid; a variable reference is not a number
+    /// and is skipped rather than guessed at.
+    static func exposedPorts(in dockerfile: String) -> [Int] {
+        var ports: [Int] = []
+        for line in dockerfile.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.uppercased().hasPrefix("EXPOSE ") else { continue }
+            for field in trimmed.dropFirst("EXPOSE ".count).split(separator: " ") {
+                let number = field.split(separator: "/").first.map(String.init) ?? ""
+                guard let port = Int(number), port > 0, port < 65536,
+                      !ports.contains(port) else { continue }
+                ports.append(port)
+            }
+        }
+        return ports
     }
 
     private static func procfileConfigs(

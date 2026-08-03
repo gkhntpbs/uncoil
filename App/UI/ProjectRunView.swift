@@ -152,6 +152,9 @@ struct ProjectRunView: View {
 /// default (and no single obvious) configuration.
 struct RunDefaultControl: View {
     let project: Project
+    /// Navigates to the project screen. nil on the project screen itself,
+    /// where there is nowhere to go.
+    var onOpenLogs: (() -> Void)?
     @ObservedObject private var registry = RunRegistry.shared
     @State private var busy = false
 
@@ -174,7 +177,7 @@ struct RunDefaultControl: View {
             }
             ControlButton(
                 iconName: active ? "player-stop" : "player-play",
-                help: active ? "\(config.name) — durdur" : "\(config.name) — run",
+                help: active ? "\(config.name) — stop" : "\(config.name) — run",
                 identifier: "session.runButton",
                 tint: status == .failed ? Theme.warn : (active ? Theme.danger : Theme.ok)
             ) {
@@ -189,6 +192,23 @@ struct RunDefaultControl: View {
                         _ = await RunRegistry.shared.start(project: project, configID: id)
                     }
                     busy = false
+                }
+            }
+
+            // Straight to the output of the run this session sits beside.
+            // Offered only once there is something to read: a run that has
+            // never started has no log, and a button onto an empty page is a
+            // worse answer than no button.
+            if registry.state(project: project, configID: config.id).logFileURL != nil {
+                ControlButton(
+                    iconName: "file-text",
+                    help: String(localized: "Open the log of \(config.name)"),
+                    identifier: "session.runLogsButton",
+                    tint: registry.state(project: project, configID: config.id)
+                        .containerHealth.isDegraded ? Theme.warn : nil
+                ) {
+                    ProjectAreaRoute.shared.request("run", for: project.id)
+                    onOpenLogs?()
                 }
             }
 
@@ -272,6 +292,9 @@ private struct RunConfigurationRow: View {
             if let issue = state.issue {
                 issueBanner(issue)
             }
+            if !state.containers.isEmpty {
+                containerStrip
+            }
             if state.status == .running, let preview = config.previewURL,
                let url = URL(string: preview) {
                 Button {
@@ -294,6 +317,42 @@ private struct RunConfigurationRow: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("run.row.\(config.id)")
+    }
+
+    /// The containers behind a Docker run, and what they add up to.
+    ///
+    /// Worth its own line because the row above it can say "running" while a
+    /// container crash-loops: `docker compose up` stays alive through it, which
+    /// is exactly the failure this makes visible.
+    private var containerStrip: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(state.containerHealth.label)
+                .font(Theme.mono(.micro, .semibold))
+                .foregroundStyle(state.containerHealth.isDegraded ? Theme.warn : Theme.textDim)
+            ForEach(state.containers) { container in
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(containerColor(container))
+                        .frame(width: 5, height: 5)
+                    Text(container.service.isEmpty ? container.name : container.service)
+                        .font(Theme.mono(.micro))
+                        .foregroundStyle(Theme.textDim)
+                    Text(container.health.isEmpty
+                         ? container.state
+                         : "\(container.state) · \(container.health)")
+                        .font(Theme.mono(.micro))
+                        .foregroundStyle(Theme.textFaint)
+                }
+            }
+        }
+        .padding(.leading, 16)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("run.containers.\(config.id)")
+    }
+
+    private func containerColor(_ container: DockerContainer) -> Color {
+        if container.isRestarting || container.isUnhealthy { return Theme.warn }
+        return container.isRunning ? Theme.ok : Theme.textFaint
     }
 
     private var sourceBadge: some View {

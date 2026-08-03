@@ -120,7 +120,8 @@ struct SessionDetailView: View {
             leadingIcon: "chevron.left",
             leadingHelp: String(localized: "Back to the project dashboard"),
             onLeading: { selection = .project(project.id) },
-            onRestart: { restart() }
+            onRestart: { restart() },
+            onOpenProject: { selection = .project(project.id) }
         ) {
             Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 
