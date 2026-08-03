@@ -589,14 +589,26 @@ struct AgentLauncherStrip: View {
                 LauncherButton(provider: provider) {
                     launch(provider)
                 }
+                // Clicking starts the default account, which is the common
+                // case and stays one click. A second login was enterable but
+                // never choosable; right-click is where the choice lives, so
+                // the common case does not pay for the rare one.
+                .contextMenu {
+                    let choices = settings.accounts(for: provider)
+                    if provider.isAgent, choices.count > 1 {
+                        ForEach(choices) { account in
+                            Button(account.name) { launch(provider, account: account) }
+                        }
+                    }
+                }
             }
         }
         .padding(3)
         .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
     }
 
-    private func launch(_ provider: AgentProvider) {
-        let account = settings.defaultAccount(for: provider)
+    private func launch(_ provider: AgentProvider, account chosen: AccountProfile? = nil) {
+        let account = chosen ?? settings.defaultAccount(for: provider)
         let worktreeName = worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent }
         let record = projectStore.createSession(
             projectID: project.id,

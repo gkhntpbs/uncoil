@@ -1479,6 +1479,17 @@
         }
       }
     },
+    "Account changed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hesap değişti"
+          }
+        }
+      }
+    },
     "Accounts" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6392,6 +6403,17 @@
         }
       }
     },
+    "Later" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonra"
+          }
+        }
+      }
+    },
     "Latest version" : {
 
     },
@@ -7455,6 +7477,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ bulunamadı"
+          }
+        }
+      }
+    },
+    "No account" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hesap yok"
           }
         }
       }
@@ -10283,6 +10316,17 @@
         }
       }
     },
+    "Restart now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Şimdi yeniden başlat"
+          }
+        }
+      }
+    },
     "Restart the session" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10768,6 +10812,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kaydet"
+          }
+        }
+      }
+    },
+    "Saved. The running agent keeps the account it started with — restart the session to switch it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydedildi. Çalışan ajan başladığı hesapla devam eder — değiştirmek için oturumu yeniden başlat."
           }
         }
       }
@@ -12967,6 +13022,17 @@
         }
       }
     },
+    "The session will start under this account." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oturum bu hesapla başlayacak."
+          }
+        }
+      }
+    },
     "The setup file could not be read." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14339,6 +14405,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hangi olaylar"
+          }
+        }
+      }
+    },
+    "Which login this session runs under. The config directory is handed to the agent when it starts, so switching applies from the next start." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu oturumun hangi girişle çalıştığı. Yapılandırma dizini ajana başlarken verilir, bu yüzden değişiklik bir sonraki başlangıçtan itibaren geçerlidir."
           }
         }
       }

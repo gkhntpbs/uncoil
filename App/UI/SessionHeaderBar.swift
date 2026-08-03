@@ -25,6 +25,8 @@ struct SessionHeaderBar<Trailing: View>: View {
     /// picked nothing. Detected rather than assumed: Codex writes its model
     /// into its own config, and a Claude build without `--model` has no answer.
     @State private var capabilities: AgentLaunchCapabilities?
+    /// What the last account change did, shown until it is dismissed.
+    @State private var accountNote: String?
 
     private var status: AgentSessionStatus { sessionStore.status(of: record.id) }
     private var account: AccountProfile? { settings.account(id: record.accountID) }
@@ -32,6 +34,25 @@ struct SessionHeaderBar<Trailing: View>: View {
 
     /// The model and effort chip. Deliberately quiet — it is reference, not
     /// status — and absent rather than guessed when nothing is known.
+    private var accountChoices: [AccountProfile] {
+        settings.accounts(for: record.provider)
+    }
+
+    /// Records the choice, and says what it did. A running agent keeps the
+    /// account it started with — the environment that selects it is set once,
+    /// at launch — so the alternative to saying so is letting the user believe
+    /// they switched while the agent goes on as the other account.
+    private func chooseAccount(_ id: UUID) {
+        let change = SessionAccountChange.classify(
+            current: record.accountID,
+            chosen: id,
+            isRunning: sessionStore.status(of: record.id) != .terminated
+        )
+        guard change != .unchanged else { return }
+        projectStore.updateSession(record.id) { $0.accountID = id }
+        accountNote = change.note
+    }
+
     private var runtimeInfo: SessionRuntimeInfo {
         SessionRuntimeInfo.resolve(
             reportedModel: sessionStore.reportedModel[record.id],
@@ -83,7 +104,38 @@ struct SessionHeaderBar<Trailing: View>: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    if let account {
+                    // The account was printed here and nothing else: multiple
+                    // logins could be entered but never chosen between. It is
+                    // a menu now, and what it can and cannot do mid-session is
+                    // said out loud rather than left to be discovered.
+                    if record.provider.isAgent, !accountChoices.isEmpty {
+                        Menu {
+                            ForEach(accountChoices) { choice in
+                                Button {
+                                    chooseAccount(choice.id)
+                                } label: {
+                                    if choice.id == record.accountID {
+                                        Label(choice.name, systemImage: "checkmark")
+                                    } else {
+                                        Text(choice.name)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Text(account?.name ?? String(localized: "No account"))
+                                .font(Theme.mono(.body))
+                                .foregroundStyle(record.provider.color.opacity(0.9))
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help(String(
+                            localized: "Which login this session runs under. The config directory is handed to the agent when it starts, so switching applies from the next start."
+                        ))
+                        .accessibilityIdentifier("session.accountMenu")
+                        Text("·")
+                            .foregroundStyle(Theme.textFaint)
+                    } else if let account {
                         Text(account.name)
                             .font(Theme.mono(.body))
                             .foregroundStyle(record.provider.color.opacity(0.9))
@@ -185,6 +237,27 @@ struct SessionHeaderBar<Trailing: View>: View {
         }
         .padding(14)
         .panel()
+        .alert(
+            String(localized: "Account changed"),
+            isPresented: Binding(
+                get: { accountNote != nil },
+                set: { if !$0 { accountNote = nil } }
+            )
+        ) {
+            // Restarting is the only thing that actually applies it, so it is
+            // offered here rather than described and left to the user to find.
+            if accountNote == SessionAccountChange.needsRestart.note {
+                Button(String(localized: "Restart now")) {
+                    accountNote = nil
+                    onRestart()
+                }
+                Button(String(localized: "Later"), role: .cancel) { accountNote = nil }
+            } else {
+                Button(String(localized: "OK"), role: .cancel) { accountNote = nil }
+            }
+        } message: {
+            Text(accountNote ?? "")
+        }
         // Cheap enough to re-ask while the session is open: a branch changes
         // under the agent's hands, and a stale one is worse than none.
         .task(id: record.provider) {
