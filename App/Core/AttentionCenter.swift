@@ -19,6 +19,8 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     case mergeReady
     /// A task's session lost its link to a task and the user has to say which.
     case relinkNeeded
+    /// An agent's process ended on its own, badly.
+    case agentCrashed
 
     var id: String { rawValue }
 
@@ -39,6 +41,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .taskCompleted: String(localized: "Task done")
         case .mergeReady: String(localized: "Ready to merge")
         case .relinkNeeded: String(localized: "Task link lost")
+        case .agentCrashed: String(localized: "Agent crashed")
         }
     }
 
@@ -59,6 +62,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .taskCompleted: "checkbox"
         case .mergeReady: "git-pull-request"
         case .relinkNeeded: "unlink"
+        case .agentCrashed: "skull"
         }
     }
 
@@ -67,7 +71,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .permission: Theme.claude
         case .input: Theme.warn
-        case .testFailure, .runtime, .taskFailed: Theme.danger
+        case .testFailure, .runtime, .taskFailed, .agentCrashed: Theme.danger
         case .mergeConflict: Theme.warn
         case .authentication: Theme.warn
         case .completed, .taskCompleted, .mergeReady: Theme.highlight
@@ -80,7 +84,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     var priority: Int {
         switch self {
         case .permission: 6
-        case .runtime, .taskFailed: 5
+        case .runtime, .taskFailed, .agentCrashed: 5
         case .mergeConflict: 4
         case .testFailure: 4
         case .authentication: 3
@@ -98,7 +102,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
              .taskFailed, .taskCompleted, .mergeReady, .relinkNeeded:
             true
         case .permission, .input, .testFailure, .mergeConflict, .authentication,
-             .runtime, .completed:
+             .runtime, .completed, .agentCrashed:
             false
         }
     }
@@ -108,7 +112,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     var isProblem: Bool {
         switch self {
         case .runtime, .testFailure, .mergeConflict, .authentication,
-             .taskFailed, .taskBlocked, .relinkNeeded:
+             .taskFailed, .taskBlocked, .relinkNeeded, .agentCrashed:
             true
         case .permission, .input, .completed, .taskAssigned, .reviewRequested,
              .changesRequested, .taskCompleted, .mergeReady:
@@ -126,7 +130,8 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .authentication: .loginRequired
         case .taskCompleted: .taskCompleted
         case .mergeReady: .mergeReady
-        case .runtime, .testFailure, .mergeConflict, .taskFailed, .taskBlocked, .relinkNeeded:
+        case .runtime, .testFailure, .mergeConflict, .taskFailed, .taskBlocked,
+             .relinkNeeded, .agentCrashed:
             .problem
         case .permission, .input, .completed, .taskAssigned, .reviewRequested, .changesRequested:
             nil

@@ -314,6 +314,34 @@ final class TerminalRegistry {
         for view in terminals.values { view.optionAsMetaKey = enabled }
     }
 
+    /// Raises an attention row when an agent's process ends badly.
+    ///
+    /// Every exit used to look the same — the row went quiet and that was it —
+    /// so an agent that died mid-task was indistinguishable from one the user
+    /// closed, and a crash in a session that was not on screen was silent.
+    /// Selecting the session still relaunches it, which is the restart; what
+    /// was missing was being told that it needed one.
+    func reportExit(
+        _ recordID: UUID,
+        exitCode: Int32?,
+        project: Project,
+        record: SessionRecord
+    ) {
+        let exit = SessionExit.classify(
+            exitCode: exitCode, isAgent: record.provider.isAgent
+        )
+        guard exit.isCrash, let reason = exit.reason else { return }
+        AttentionStore.shared.report(
+            kind: .agentCrashed,
+            title: record.displayTitle,
+            detail: String(
+                localized: "\(record.provider.displayName) stopped on its own (\(reason)). Open the session to start it again."
+            ),
+            projectID: project.id,
+            sessionID: recordID
+        )
+    }
+
     /// Re-paints every open terminal after a theme change.
     ///
     /// A running agent keeps the colours it chose when it started — nothing can
@@ -489,6 +517,9 @@ final class TerminalRegistry {
             onExit: { [weak sessionStore, weak projectStore] code in
                 sessionStore?.setStatus(.terminated, for: recordID)
                 projectStore?.markSessionEnded(recordID, exitCode: code)
+                TerminalRegistry.shared.reportExit(
+                    recordID, exitCode: code, project: project, record: record
+                )
                 TerminalRegistry.shared.markDead(recordID)
             }
         )
@@ -734,6 +765,12 @@ final class SessionProcessDelegate: LocalProcessTerminalViewDelegate {
         Task { @MainActor [weak sessionStore, weak projectStore] in
             sessionStore?.setStatus(.terminated, for: id)
             projectStore?.markSessionEnded(id, exitCode: exitCode)
+            if let record = projectStore?.sessions.first(where: { $0.id == id }),
+               let project = projectStore?.projects.first(where: { $0.id == record.projectID }) {
+                TerminalRegistry.shared.reportExit(
+                    id, exitCode: exitCode, project: project, record: record
+                )
+            }
             // Keep the frozen output visible; the next selection recreates
             // the terminal automatically (resuming Claude when possible).
             TerminalRegistry.shared.markDead(id)

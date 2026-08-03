@@ -569,6 +569,17 @@
         }
       }
     },
+    "%@ stopped on its own (%@). Open the session to start it again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ kendiliğinden durdu (%@). Yeniden başlatmak için oturumu aç."
+          }
+        }
+      }
+    },
     "%@ was added as a source. Adding an extension needs discovery." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1904,6 +1915,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agent config uyarıları"
+          }
+        }
+      }
+    },
+    "Agent crashed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajan çöktü"
           }
         }
       }
@@ -5051,6 +5073,17 @@
         }
       }
     },
+    "exit code %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "çıkış kodu %lld"
+          }
+        }
+      }
+    },
     "exited" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6228,6 +6261,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Klavye davranışı"
+          }
+        }
+      }
+    },
+    "killed by signal %lld" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sinyal %lld ile sonlandırıldı"
           }
         }
       }
