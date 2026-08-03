@@ -64,6 +64,7 @@ struct SettingsView: View {
         case launchArgs
         case agentBehavior
         case presets
+        case launcher
         case notifications
         case notificationEvents
         case reminders
@@ -84,7 +85,7 @@ struct SettingsView: View {
         var category: Category {
             switch self {
             case .general: .general
-            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
+            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets, .launcher: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours,
                  .projectNotifications: .notifications
             case .menuBar: .menuBar
@@ -103,6 +104,7 @@ struct SettingsView: View {
             case .launchArgs: String(localized: "Run Parameters")
             case .agentBehavior: String(localized: "Mode and Keyboard")
             case .presets: String(localized: "Session Presets")
+            case .launcher: String(localized: "Quick Launch")
             case .notifications: String(localized: "General")
             case .notificationEvents: String(localized: "Events")
             case .reminders: String(localized: "Reminders")
@@ -128,6 +130,7 @@ struct SettingsView: View {
             case .launchArgs: "command"
             case .agentBehavior: "keyboard"
             case .presets: "square.stack.3d.up"
+            case .launcher: "bolt"
             case .notifications: "bell"
             case .notificationEvents: "list.bullet.rectangle"
             case .reminders: "alarm"
@@ -157,6 +160,7 @@ struct SettingsView: View {
             case .launchArgs: "parametre argüman argument model flag bayrak"
             case .agentBehavior: "agent davranış behavior mod mode auto plan shift enter newline satır klavye keyboard behaviour line"
             case .presets: "preset alt agent child yetki capability prompt şablon template"
+            case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
             case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background"
             case .notificationEvents: "olay event izin permission girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority ses sound"
             case .reminders: "hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor waiting"
@@ -284,6 +288,7 @@ struct SettingsView: View {
         case .launchArgs: LaunchArgumentsSettingsPage()
         case .agentBehavior: AgentBehaviorSettingsPage()
         case .presets: SessionPresetsSettingsPage()
+        case .launcher: LauncherSettingsPage()
         case .notifications: NotificationGeneralPage()
         case .notificationEvents: NotificationEventsPage()
         case .reminders: NotificationRemindersPage()

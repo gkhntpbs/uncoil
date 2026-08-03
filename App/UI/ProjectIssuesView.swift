@@ -90,14 +90,21 @@ struct ProjectIssuesView: View {
             }
             // Which repositories these came from. A project bound to more than
             // one would otherwise show two issues numbered #1.
+            //
+            // Summarised past two: five spelled out is a line longer than the
+            // window, and every row already names its own repository.
             if store.repositories.count > 1 {
-                Text(store.repositories.joined(separator: " · "))
+                Text(repositorySummary)
                     .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
+                    // Yields before anything else in the row: it is a label,
+                    // and the refresh button is a control.
+                    .layoutPriority(-1)
+                    .help(store.repositories.joined(separator: "\n"))
             }
-            Spacer()
+            Spacer(minLength: 4)
             if store.isLoading {
                 ProgressView().controlSize(.small).scaleEffect(0.6)
             }
@@ -109,6 +116,13 @@ struct ProjectIssuesView: View {
                 Task { await store.refresh() }
             }
         }
+    }
+
+    private var repositorySummary: String {
+        let names = store.repositories
+        guard names.count > 2 else { return names.joined(separator: " · ") }
+        return names.prefix(2).joined(separator: " · ")
+            + String(localized: " +\(names.count - 2) more")
     }
 
     private var labelFilter: some View {

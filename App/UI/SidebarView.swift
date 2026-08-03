@@ -586,7 +586,10 @@ struct AgentLauncherStrip: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(AgentProvider.sessionKinds) { provider in
+            // What the user chose, resolved against what is installed — not
+            // every provider Uncoil knows. An agent that is not on the machine
+            // is a button that can only fail.
+            ForEach(settings.launcherProviders) { provider in
                 LauncherButton(provider: provider) {
                     launch(provider)
                 }

@@ -56,6 +56,9 @@ final class SettingsStore: ObservableObject {
         var permissionTimeoutMinutes: Int? = nil
         /// Menu-bar monitor appearance and contents; nil ⇒ defaults.
         var menuBar: MenuBarPrefs? = nil
+        /// Which shortcuts the quick-launch strip offers, and in what order.
+        /// nil ⇒ not configured, which resolves to what is installed.
+        var launcher: LauncherPrefs? = nil
         /// Interface and agent-prompt language; nil ⇒ follow the system.
         var language: LanguagePrefs? = nil
         /// Onboarding version the user last went through; nil ⇒ never seen it.
@@ -83,6 +86,7 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     /// How loudly the sidebar pulses for a session that wants attention.
     @Published private(set) var attentionEmphasis: AttentionEmphasis = .subtle
+    @Published private(set) var launcher: LauncherPrefs = .default
     /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
     /// — the default, matching Terminal.app — Option belongs to the keyboard
     /// layout, so a Turkish-Q layout can type `@` with ⌥Q and `#` with ⌥3.
@@ -230,6 +234,25 @@ final class SettingsStore: ObservableObject {
     func setAttentionEmphasis(_ emphasis: AttentionEmphasis) {
         attentionEmphasis = emphasis
         AttentionMotion.shared.emphasis = emphasis
+        save()
+    }
+
+    /// The strip's contents, resolved against what is installed.
+    ///
+    /// `resolvedBinaries` is what "installed" means here: it is filled by the
+    /// same detection the Agents settings page shows, so the strip and that
+    /// page can never disagree about which CLIs exist.
+    var launcherProviders: [AgentProvider] {
+        LauncherPrefs.resolved(launcher, installed: installedProviders)
+    }
+
+    var installedProviders: Set<AgentProvider> {
+        Set(AgentProvider.agents.filter { resolvedBinaries[$0.rawValue] != nil })
+    }
+
+    func setLauncherOrder(_ order: [AgentProvider]) {
+        guard order.count >= LauncherPrefs.minimumItems else { return }
+        launcher.order = order
         save()
     }
 
@@ -577,6 +600,7 @@ final class SettingsStore: ObservableObject {
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
+        launcher = decoded.launcher ?? .default
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
@@ -633,6 +657,7 @@ final class SettingsStore: ObservableObject {
             permissionTimeoutMinutes: permissionTimeoutMinutes == 10
                 ? nil : permissionTimeoutMinutes,
             menuBar: menuBar == MenuBarPrefs() ? nil : menuBar,
+            launcher: launcher == .default ? nil : launcher,
             language: language == LanguagePrefs() ? nil : language,
             onboardingVersion: onboardingVersion,
             onboardingCompletedSteps: onboardingCompletedSteps.isEmpty

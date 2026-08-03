@@ -216,6 +216,11 @@ struct BranchBadge: View {
     /// Longest name shown before it is cut; a chip is not the place to read a
     /// forty-character branch.
     var maximumCharacters = 22
+    /// Drawn as a line of text rather than a chip, for the project header
+    /// where it sits under the name. Same control, same menu, a third of the
+    /// width — a chip there was competing with the tabs for the space that ran
+    /// out.
+    var isCompact = false
 
     var body: some View {
         Group {
@@ -234,32 +239,52 @@ struct BranchBadge: View {
         .accessibilityIdentifier("branch.badge")
     }
 
+    @ViewBuilder
     private var chip: some View {
-        HStack(spacing: 5) {
-            TablerIcon(name: "git-branch", size: 12, color: Theme.textFaint)
-            Text(shortened)
-                .font(Theme.mono(.body, .medium))
-                .foregroundStyle(Theme.textDim)
-                .lineLimit(1)
-            if let worktreeName {
-                Text("·")
+        if isCompact {
+            HStack(spacing: 4) {
+                TablerIcon(name: "git-branch", size: 10, color: Theme.textFaint)
+                Text(shortened)
                     .font(Theme.mono(.body))
-                    .foregroundStyle(Theme.textFaint)
-                Text(worktreeName)
-                    .font(Theme.mono(.body))
-                    .foregroundStyle(Theme.textFaint)
+                    .foregroundStyle(Theme.textDim)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                if let worktreeName {
+                    Text("· \(worktreeName)")
+                        .font(Theme.mono(.body))
+                        .foregroundStyle(Theme.textFaint)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
+            .contentShape(Rectangle())
+        } else {
+            HStack(spacing: 5) {
+                TablerIcon(name: "git-branch", size: 12, color: Theme.textFaint)
+                Text(shortened)
+                    .font(Theme.mono(.body, .medium))
+                    .foregroundStyle(Theme.textDim)
+                    .lineLimit(1)
+                if let worktreeName {
+                    Text("·")
+                        .font(Theme.mono(.body))
+                        .foregroundStyle(Theme.textFaint)
+                    Text(worktreeName)
+                        .font(Theme.mono(.body))
+                        .foregroundStyle(Theme.textFaint)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            .padding(.horizontal, 7)
+            .frame(height: 22)
+            .padding(3)
+            .fixedSize()
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                    .strokeBorder(Theme.border, lineWidth: 1)
+            )
         }
-        .padding(.horizontal, 7)
-        .frame(height: 22)
-        .padding(3)
-        .fixedSize()
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1)
-        )
     }
 
     private var helpText: String {

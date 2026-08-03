@@ -158,6 +158,15 @@ struct MainWindow: View {
                 .frame(width: sidebarWidth)
                 .background(Theme.sidebarSurface)
                 .clipped()
+                // The sidebar wins every argument about width.
+                //
+                // `.frame(width:)` fixes what the sidebar *asks* for, but when
+                // the detail column's own minimum was wider than what was left,
+                // the HStack overflowed and centred itself — pushing the
+                // sidebar off the left edge, where it could not be reached at
+                // all. Priority plus a detail column that may shrink to nothing
+                // is what keeps that from happening.
+                .layoutPriority(1)
                 .transition(.move(edge: .leading))
 
                 // Divider doubles as a resize handle: drag to size the
@@ -199,7 +208,11 @@ struct MainWindow: View {
             }
 
             detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // minWidth 0: whatever is on the right compresses, scrolls or
+                // clips inside itself. It is never allowed to demand width from
+                // the window and take it out of the sidebar.
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
         }
         .ignoresSafeArea(edges: .top)
         // The toggle also lives in the title bar, which is its own SwiftUI tree:

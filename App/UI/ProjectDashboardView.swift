@@ -27,39 +27,14 @@ struct ProjectDashboardView: View {
     /// is nothing to draw and a skeleton belongs.
     private var isFirstLoad: Bool { !page.hasLoaded }
 
-    /// Which area of the project screen is showing. Tasks is a peer of the
-    /// overview rather than a panel inside it, so a long TODO.md gets the room.
-    private enum Area: String, CaseIterable, Identifiable {
-        case overview
-        case tasks
-        case run
-        case tests
-        case issues
+    /// Which areas this project actually has. Every area used to be offered
+    /// on every project, which showed four tabs leading to empty pages — and
+    /// made the header wider than the window, pushing the sidebar off the left
+    /// edge. See `ProjectAreaAvailability`.
+    private var facts: ProjectAreaFacts { page.areaFacts }
+    private var availableAreas: [ProjectArea] { ProjectAreaAvailability.areas(facts) }
 
-        var id: String { rawValue }
-
-        var title: String {
-            switch self {
-            case .overview: String(localized: "General")
-            case .tasks: String(localized: "Tasks")
-            case .run: String(localized: "Run")
-            case .tests: String(localized: "Tests")
-            case .issues: String(localized: "Issues")
-            }
-        }
-
-        var iconName: String {
-            switch self {
-            case .overview: "layout-dashboard"
-            case .tasks: "checkbox"
-            case .run: "player-play"
-            case .tests: "flask"
-            case .issues: "circle-dot"
-            }
-        }
-    }
-
-    @State private var area: Area = .overview
+    @State private var area: ProjectArea = .overview
     /// Whether this project has already turned down the TODO.md offer. Read
     /// once per project rather than on every render — it is a defaults hit.
     @State private var todoHintDismissed = true
@@ -76,7 +51,15 @@ struct ProjectDashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Outside the header card and hard right: it is a set of
+                // shortcuts, not part of what this project is, and inside the
+                // card it was the last thing that could not give way — which
+                // is how the card ended up wider than the window.
+                HStack(spacing: 6) {
+                    Spacer(minLength: 0)
+                    AgentLauncherStrip(project: project, selection: $selection)
+                }
                 header
                 if area == .tasks, hasTaskSources {
                     ProjectTasksView(project: project, selection: $selection)
@@ -104,19 +87,16 @@ struct ProjectDashboardView: View {
         .task(id: project.id) {
             todoHintDismissed = TodoHintDismissal.isDismissed(project.id)
             await pages.refreshIfNeeded(project: project)
-            if !hasTaskSources { area = .overview }
-            // Any area, not just tasks: the Run and Tests screens need to be
-            // reachable deterministically too.
-            if let requested = LaunchConfig.shared.projectArea,
-               let target = Area(rawValue: requested),
-               target != .tasks || hasTaskSources {
-                area = target
-            }
-            // Someone asked for a particular area — the session header's "open
-            // the logs" shortcut. Consumed once, so a later visit lands where
-            // the user left off instead of being dragged back here.
-            if let requested = ProjectAreaRoute.shared.take(for: project.id),
-               let target = Area(rawValue: requested) {
+            // An area can stop existing under the user — a TODO.md deleted, a
+            // remote removed — and General always does, so there is always
+            // somewhere to land.
+            area = ProjectAreaAvailability.resolve(area, facts: facts)
+            for requested in [
+                LaunchConfig.shared.projectArea,
+                ProjectAreaRoute.shared.take(for: project.id),
+            ].compactMap({ $0 }) {
+                guard let target = ProjectArea(rawValue: requested),
+                      availableAreas.contains(target) else { continue }
                 area = target
             }
         }
@@ -126,70 +106,15 @@ struct ProjectDashboardView: View {
         await pages.refresh(project: project)
     }
 
-    /// The tab row lives inside the header card: switching area is part of what
-    /// the project header is, not a floating control under it.
+    /// The tab row, pinned to the right of the header card.
+    ///
+    /// Only the areas this project has. Before, every project offered all five,
+    /// so four of them opened onto empty pages — and the row's intrinsic width
+    /// was what made the whole header wider than the window.
     private var areaTabs: some View {
         HStack(spacing: 2) {
-            ForEach(Area.allCases) { candidate in
-                if candidate != .tasks || hasTaskSources {
-                    let isOn = area == candidate
-                    Button {
-                        area = candidate
-                    } label: {
-                        HStack(spacing: 6) {
-                            TablerIcon(
-                                name: candidate.iconName,
-                                size: 12,
-                                color: isOn ? Theme.text : Theme.textFaint
-                            )
-                            // The open-task count rides the icon rather than
-                            // sitting beside the label as a pill of its own: a
-                            // second number in the row read as another control,
-                            // and the tab bar already says what a mark next to
-                            // an icon means.
-                            .overlay(alignment: .topTrailing) {
-                                if candidate == .tasks, openTaskCount > 0 {
-                                    Text(openTaskCount > 99 ? "99+" : "\(openTaskCount)")
-                                        .font(Theme.mono(.micro, .semibold))
-                                        .foregroundStyle(Theme.textOnHighlight)
-                                        .fixedSize()
-                                        .padding(.horizontal, 3)
-                                        .frame(minWidth: 11, minHeight: 11)
-                                        .background(Theme.highlight, in: Capsule())
-                                        // Kept inside the row's own padding: the
-                                        // icon is 12pt with 6pt to the label, so
-                                        // the badge overlaps the icon's corner
-                                        // rather than the word beside it.
-                                        .offset(x: 4, y: -5)
-                                }
-                            }
-                            if !tabsAreIconOnly {
-                                Text(candidate.title)
-                                    .font(Theme.mono(.body, isOn ? .semibold : .regular))
-                                    .foregroundStyle(isOn ? Theme.text : Theme.textDim)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: true)
-                            }
-                            if candidate == .run, runs.runningCount(projectID: project.id) > 0 {
-                                Circle()
-                                    .fill(Theme.ok)
-                                    .frame(width: 6, height: 6)
-                            }
-                        }
-                        .padding(.horizontal, tabsAreIconOnly ? 8 : 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            isOn ? Theme.panelActive : Color.clear,
-                            in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                        )
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("dashboard.area.\(candidate.rawValue)")
-                    // Icon-only tabs lose their words, so the name has to be
-                    // reachable some other way.
-                    .help(candidate.title)
-                }
+            ForEach(availableAreas) { candidate in
+                areaTab(candidate)
             }
         }
         .padding(3)
@@ -201,6 +126,62 @@ struct ProjectDashboardView: View {
         // longer fits it is the labels that go, not the layout.
         .fixedSize()
         .accessibilityIdentifier("dashboard.areaPicker")
+    }
+
+    private func areaTab(_ candidate: ProjectArea) -> some View {
+        let isOn = area == candidate
+        return Button {
+            area = candidate
+        } label: {
+            HStack(spacing: 6) {
+                TablerIcon(
+                    name: candidate.iconName,
+                    size: 12,
+                    color: isOn ? Theme.text : Theme.textFaint
+                )
+                // The open-task count rides the icon rather than sitting beside
+                // the label as a pill of its own: a second number in the row
+                // read as another control, and the tab bar already says what a
+                // mark next to an icon means.
+                .overlay(alignment: .topTrailing) {
+                    if candidate == .tasks, openTaskCount > 0 {
+                        Text(openTaskCount > 99 ? "99+" : "\(openTaskCount)")
+                            .font(Theme.mono(.micro, .semibold))
+                            .foregroundStyle(Theme.textOnHighlight)
+                            .fixedSize()
+                            .padding(.horizontal, 3)
+                            .frame(minWidth: 11, minHeight: 11)
+                            .background(Theme.highlight, in: Capsule())
+                            // Kept inside the row's own padding: the icon is
+                            // 12pt with 6pt to the label, so the badge overlaps
+                            // the icon's corner rather than the word beside it.
+                            .offset(x: 4, y: -5)
+                    }
+                }
+                if !tabsAreIconOnly {
+                    Text(candidate.title)
+                        .font(Theme.mono(.body, isOn ? .semibold : .regular))
+                        .foregroundStyle(isOn ? Theme.text : Theme.textDim)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: true)
+                }
+                if candidate == .run, runs.runningCount(projectID: project.id) > 0 {
+                    Circle().fill(Theme.ok).frame(width: 6, height: 6)
+                }
+            }
+            .padding(.horizontal, tabsAreIconOnly ? 8 : 12)
+            .padding(.vertical, 6)
+            .background(
+                isOn ? Theme.panelActive : Color.clear,
+                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("dashboard.area.\(candidate.rawValue)")
+        // Icon-only tabs lose their words, so the name has to be reachable some
+        // other way.
+        .help(candidate.title)
     }
 
     private var overviewContent: some View {
@@ -219,6 +200,13 @@ struct ProjectDashboardView: View {
                         todoHintDismissed = true
                     }
                 )
+            }
+            // What this project could turn on. Only here, because the tabs
+            // deliberately show nothing for an area with nothing in it, and
+            // without this there would be no way to find the feature at all.
+            ProjectAreaOffers(project: project, facts: facts) {
+                pages.invalidate(project.id)
+                Task { await pages.refresh(project: project) }
             }
             sessionsPanel
             if !projectStore.sessionHistory(for: project.id).isEmpty {
@@ -350,12 +338,38 @@ struct ProjectDashboardView: View {
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                if headerWidth >= 560 {
-                    Text(displayPath)
-                        .font(Theme.mono(.body))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                // The branch sits here now, under the name, rather than as a
+                // full badge among the controls on the right: it says where the
+                // project is, which is the same thing the name and the path
+                // say, and on the right it was competing with the tabs for the
+                // width that ran out.
+                HStack(spacing: 6) {
+                    if let branch = git.branch {
+                        BranchBadge(
+                            branch: branch,
+                            repoPath: project.rootPath,
+                            worktreeName: WorktreeNaming.name(
+                                forTreeAt: project.rootPath, projectRoot: project.rootPath),
+                            // A switch rewrites the whole working tree, so the
+                            // page's git snapshot, worktrees and file list are
+                            // all stale — and every session running in the
+                            // project root moves with it.
+                            onSwitched: { branch in
+                                pages.invalidate(project.id)
+                                Task { await pages.refresh(project: project) }
+                                announceSwitch(to: branch)
+                            },
+                            busyWarning: rootBusyWarning,
+                            isCompact: true
+                        )
+                    }
+                    if headerWidth >= 560 {
+                        Text(displayPath)
+                            .font(Theme.mono(.body))
+                            .foregroundStyle(Theme.textFaint)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                 }
             }
             // The title is the one thing allowed to give way; every control to
@@ -364,29 +378,6 @@ struct ProjectDashboardView: View {
             .layoutPriority(-1)
 
             Spacer(minLength: 8)
-
-            // Always shown: the row filters Tasks out on its own when the
-            // project has no task source, and hiding the whole row also hid
-            // the Run tab on every project without a TODO.md.
-            areaTabs
-
-            if let branch = git.branch, headerWidth >= 460 {
-                BranchBadge(
-                    branch: branch,
-                    repoPath: project.rootPath,
-                    worktreeName: WorktreeNaming.name(
-                        forTreeAt: project.rootPath, projectRoot: project.rootPath),
-                    // A switch rewrites the whole working tree, so the page's
-                    // git snapshot, worktrees and file list are all stale — and
-                    // every session running in the project root moves with it.
-                    onSwitched: { branch in
-                        pages.invalidate(project.id)
-                        Task { await pages.refresh(project: project) }
-                        announceSwitch(to: branch)
-                    },
-                    busyWarning: rootBusyWarning
-                )
-            }
 
             // The project's own root, in the same control the session header
             // uses — one gesture means one thing wherever it appears.
@@ -398,7 +389,8 @@ struct ProjectDashboardView: View {
                         .strokeBorder(Theme.border, lineWidth: 1)
                 )
 
-            AgentLauncherStrip(project: project, selection: $selection)
+            // Last, so the tabs sit hard against the right edge.
+            areaTabs
         }
         .padding(14)
         .panel()
@@ -714,7 +706,9 @@ private struct PanelAction: View {
     }
 }
 
-private struct PanelHeading: View {
+/// Shared with the other project-screen panels, so a heading looks the
+/// same wherever one appears.
+struct PanelHeading: View {
     let title: String
     let count: Int?
 

@@ -39,6 +39,10 @@ final class ProjectPageStore: ObservableObject {
         var prMessage: String?
         var hasTaskSources = false
         var openTaskCount = 0
+        /// Which areas of the project screen this project actually has. The
+        /// tabs are built from this rather than every area being offered
+        /// everywhere; see `ProjectAreaAvailability`.
+        var areaFacts = ProjectAreaFacts()
         /// When this was last built. `nil` means the project has never been
         /// opened, which is the only time the page has nothing to show.
         var loadedAt: Date?
@@ -81,6 +85,7 @@ final class ProjectPageStore: ObservableObject {
 
         let id = project.id
         let root = project.rootPath
+        let rootURL = project.rootURL
 
         // Tasks first: it is a couple of stat calls and it decides whether the
         // Tasks tab exists at all.
@@ -100,15 +105,27 @@ final class ProjectPageStore: ObservableObject {
             snapshots[id] = snapshot
         }
 
-        let (git, worktrees, remote) = await Task.detached(priority: .utility) {
+        let (git, worktrees, remote, runs, tests) = await Task.detached(priority: .utility) {
             (
                 GitService.snapshot(repoPath: root),
                 GitService.worktrees(repoPath: root),
-                GitService.remoteURL(repoPath: root)
+                GitService.remoteURL(repoPath: root),
+                !RunConfigFile.load(projectRoot: rootURL).configurations.isEmpty,
+                !TestConfigFile.load(projectRoot: rootURL).suites.isEmpty
             )
         }.value
         snapshot.git = git
         snapshot.worktrees = worktrees
+        snapshot.areaFacts = ProjectAreaFacts(
+            hasTaskSources: snapshot.hasTaskSources,
+            hasRunConfigurations: runs,
+            hasTestSuites: tests,
+            // The remote decides it, not the network: a repository whose issues
+            // cannot be read right now still has an Issues tab, and the screen
+            // says why. Hiding the tab on a failed request would make a rate
+            // limit look like a missing feature.
+            hasGitHubRepository: remote.flatMap(GitHubService.repoSlug(fromRemoteURL:)) != nil
+        )
         snapshots[id] = snapshot
 
         // The network call last: the local half of the page is already on
