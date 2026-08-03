@@ -14,6 +14,13 @@ extension CapabilityRouter {
             return .failure(request, code: .unknownProject, message: "project not found or not reachable")
         }
 
+        // Test suites are actions on this tool rather than a ninth one: the MCP
+        // surface is eight tools by design, and a suite is the same kind of
+        // thing a run is.
+        if let envelope = await handleTestAction(request, project: project, grants: grants) {
+            return envelope
+        }
+
         switch request.action {
         case "list":
             return requiringRun("runs.read", grants, request) { listRuns(request, project: project) }

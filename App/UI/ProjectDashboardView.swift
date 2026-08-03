@@ -33,6 +33,7 @@ struct ProjectDashboardView: View {
         case overview
         case tasks
         case run
+        case tests
 
         var id: String { rawValue }
 
@@ -41,6 +42,7 @@ struct ProjectDashboardView: View {
             case .overview: String(localized: "General")
             case .tasks: String(localized: "Tasks")
             case .run: String(localized: "Run")
+            case .tests: String(localized: "Tests")
             }
         }
 
@@ -49,6 +51,7 @@ struct ProjectDashboardView: View {
             case .overview: "layout-dashboard"
             case .tasks: "checkbox"
             case .run: "player-play"
+            case .tests: "flask"
             }
         }
     }
@@ -76,6 +79,8 @@ struct ProjectDashboardView: View {
                     ProjectTasksView(project: project, selection: $selection)
                 } else if area == .run {
                     ProjectRunView(project: project)
+                } else if area == .tests {
+                    ProjectTestsView(project: project)
                 } else {
                     overviewContent
                 }
@@ -94,10 +99,14 @@ struct ProjectDashboardView: View {
         .task(id: project.id) {
             todoHintDismissed = TodoHintDismissal.isDismissed(project.id)
             await pages.refreshIfNeeded(project: project)
-            if LaunchConfig.shared.projectArea == "tasks", hasTaskSources {
-                area = .tasks
-            }
             if !hasTaskSources { area = .overview }
+            // Any area, not just tasks: the Run and Tests screens need to be
+            // reachable deterministically too.
+            if let requested = LaunchConfig.shared.projectArea,
+               let target = Area(rawValue: requested),
+               target != .tasks || hasTaskSources {
+                area = target
+            }
             // Someone asked for a particular area — the session header's "open
             // the logs" shortcut. Consumed once, so a later visit lands where
             // the user left off instead of being dragged back here.

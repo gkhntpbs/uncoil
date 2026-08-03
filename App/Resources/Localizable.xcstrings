@@ -451,6 +451,12 @@
         }
       }
     },
+    "%@ is restarting" : {
+
+    },
+    "%@ is unhealthy" : {
+
+    },
     "%@ is unmanaged for now. Link it to a repo and it becomes updatable." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -867,6 +873,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld yeni"
+          }
+        }
+      }
+    },
+    "%lld of %lld containers stopped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld containers stopped"
           }
         }
       }
@@ -2115,7 +2131,13 @@
         }
       }
     },
+    "Already asleep." : {
+
+    },
     "Already declares “%@”" : {
+
+    },
+    "Already paused." : {
 
     },
     "Ambiguous: %lld candidates" : {
@@ -2413,6 +2435,9 @@
           }
         }
       }
+    },
+    "Asleep" : {
+
     },
     "Assign" : {
       "extractionState" : "manual",
@@ -3888,6 +3913,12 @@
           }
         }
       }
+    },
+    "Containers running" : {
+
+    },
+    "Containers stopped" : {
+
     },
     "Contents" : {
       "extractionState" : "manual",
@@ -5744,6 +5775,9 @@
           }
         }
       }
+    },
+    "Hibernate" : {
+
     },
     "Hide" : {
       "extractionState" : "manual",
@@ -7633,6 +7667,9 @@
         }
       }
     },
+    "No containers" : {
+
+    },
     "No diff." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8840,6 +8877,9 @@
         }
       }
     },
+    "Open the log of %@" : {
+
+    },
     "Open the menu" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9077,6 +9117,12 @@
           }
         }
       }
+    },
+    "Pause" : {
+
+    },
+    "Paused" : {
+
     },
     "Pending" : {
       "extractionState" : "manual",
@@ -12714,6 +12760,9 @@
         }
       }
     },
+    "The agent has been closed and is using nothing at all. Waking it starts %@ again and resumes the conversation." : {
+
+    },
     "The agent is asking to use a tool." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12735,6 +12784,9 @@
           }
         }
       }
+    },
+    "The agent is stopped and using no processor time. Waking it carries on exactly where it stopped." : {
+
     },
     "The agent's own file; Uncoil never deletes it" : {
       "extractionState" : "manual",
@@ -13179,6 +13231,9 @@
         }
       }
     },
+    "The session is not running." : {
+
+    },
     "The session will start under this account." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13532,6 +13587,9 @@
         }
       }
     },
+    "This agent cannot resume a conversation, so it cannot sleep." : {
+
+    },
     "This cannot be undone, and it removes every stored piece of sensitive terminal output." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13581,6 +13639,12 @@
           }
         }
       }
+    },
+    "This session is asleep" : {
+
+    },
+    "This session is paused" : {
+
     },
     "This skill contains executable files; I approve installing them." : {
 
@@ -14495,6 +14559,9 @@
           }
         }
       }
+    },
+    "Wake" : {
+
     },
     "Want a second account?" : {
 

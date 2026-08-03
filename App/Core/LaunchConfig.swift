@@ -30,7 +30,7 @@ struct LaunchConfig {
     let extensionsExpand: String?
     /// Quick action to run as the Extensions window opens.
     let extensionsAction: String?
-    /// Project dashboard area to open ("tasks"), for deterministic UI runs.
+    /// Project dashboard area to open (overview|tasks|run|tests).
     let projectArea: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
@@ -149,6 +149,51 @@ struct LaunchConfig {
             $0.providerSessionID = "019efe2f-5276-77c2-bd90-5191ecd4b7a0"
         }
         projectStore.markSessionEnded(history.id, exitCode: 0)
+        // A test suite plus a result, so the Tests screen shows what a run
+        // looks like without one having to be waited out.
+        try? TestConfigFile.save([
+            TestSuiteConfiguration(
+                id: "unit", name: "Unit tests", command: "swift test",
+                framework: .swift, isDefault: true
+            ),
+            TestSuiteConfiguration(
+                id: "e2e", name: "End-to-end", command: "./run-e2e.sh", framework: .unknown,
+                notes: "the output format is not recognised"
+            ),
+        ], projectRoot: projectDir)
+        TestRegistry.saveRecord(
+            TestRunRecord(
+                id: "demo-unit", suiteID: "unit",
+                startedAt: Date(timeIntervalSinceNow: -95),
+                finishedAt: Date(timeIntervalSinceNow: -90),
+                exitCode: 1,
+                summary: TestRunSummary(passed: 128, failed: 2, skipped: 1, isDetailed: true),
+                cases: [
+                    TestCaseResult(
+                        suite: "SidebarChildSessionTests", name: "testACycleLosesNoSession",
+                        outcome: .failed
+                    ),
+                    TestCaseResult(
+                        suite: "DockerStatusTests", name: "testEmptyOutputIsNoContainers",
+                        outcome: .failed
+                    ),
+                ],
+                logTail: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")"
+            ),
+            directory: TestRegistry.shared.resultsDirectory(projectID: project.id)
+        )
+        TestRegistry.saveRecord(
+            TestRunRecord(
+                id: "demo-e2e", suiteID: "e2e",
+                startedAt: Date(timeIntervalSinceNow: -400),
+                finishedAt: Date(timeIntervalSinceNow: -380),
+                exitCode: 0,
+                summary: TestRunSummary(isDetailed: false),
+                cases: [],
+                logTail: "all good\n"
+            ),
+            directory: TestRegistry.shared.resultsDirectory(projectID: project.id)
+        )
         // A group with something in it, and a pinned session: the sidebar's
         // nesting and its pin marker are otherwise only reachable by hand.
         if let group = projectStore.createGroup(projectID: project.id, name: "arka plan") {

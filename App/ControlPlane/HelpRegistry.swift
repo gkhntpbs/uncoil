@@ -417,11 +417,14 @@ enum HelpRegistry {
         Configurations live in the repo-owned `.uncoil/run.json` — editable by \
         hand or via `update`; detection only ever suggests, it never overwrites \
         user/agent entries. Verify your changes with start → status → logs.
+
+        The same tool runs the project's TESTS, under the `test_*` actions and         the same runs.* grants: `test_detect`, `test_list`, `test_run`,         `test_results`, `test_update`. Suites live in `.uncoil/tests.json` with         the same ownership rules. Per-test results are only available for         frameworks whose output is parsed (swift/xcodebuild, go, cargo, pytest,         jest/vitest); anything else reports pass/fail from the exit code and         says so via `detailed:false` — never read "0 failures" from an         undetailed result as "every test passed".
         """
         let names = [
             "help", "list", "detect", "get", "status", "logs",
             "start", "stop", "restart", "update", "remove", "set_default",
             "history", "send_input",
+            "test_detect", "test_list", "test_run", "test_results", "test_update",
         ]
         return CapabilityDoc(
             capability: "uncoil_run",
@@ -452,6 +455,16 @@ enum HelpRegistry {
                     doc: "# history\nRequires runs.read. Args: `id` (optional — all configurations), `limit` (default 20). Returns `runs:[{config_id, started_at, ended_at?, exit_code?, log_file}]`, newest first. The last \(RunHistoryStore.keptRunsPerConfiguration) runs per configuration are kept; read a past run's full output from its `log_file`."),
                 ActionDoc(action: "send_input", summary: "Write to a running dev server's stdin.",
                     doc: "# send_input\nRequires runs.control. Args: `id` (optional — default configuration), `text`, `raw` (bool, default false — a newline is appended unless raw; use raw for single-key commands like Flutter's `r`). INVALID_STATE_TRANSITION when nothing is running."),
+                ActionDoc(action: "test_detect", summary: "Inspect the repo and append suggested test suites.",
+                    doc: "# test_detect\nRequires runs.write. Scans for Xcode containers, Package.swift, go.mod, Cargo.toml, a package.json `test` script and a pytest configuration (root + one directory level). npm's \"no test specified\" placeholder is ignored — it is not a test suite. Appends only ids that don't exist; `{\"replace\":true}` drops previously *detected* entries first (never user/agent ones). Writes `.uncoil/tests.json`."),
+                ActionDoc(action: "test_list", summary: "All test suites of the project.",
+                    doc: "# test_list\nRequires runs.read. Returns `suites` (id, name, command, cwd, framework, default, source, notes) and `total`, plus `problems` for entries that were skipped."),
+                ActionDoc(action: "test_run", summary: "Run a suite and return its results.",
+                    doc: "# test_run\nRequires runs.control. Args: `id` (optional — the default suite, so \"run the tests\" needs no id). Blocks until the suite finishes. Returns `status` (passed/failed), `passed`/`failed`/`skipped`, `detailed`, `exit_code`, `failures:[{suite,name}]` (first 50) and `log_tail`. When `detailed` is false the counts came from the exit code alone, and a warning says so."),
+                ActionDoc(action: "test_results", summary: "The most recent result of each suite.",
+                    doc: "# test_results\nRequires runs.read. Args: `id` (optional — all suites). Returns `results:[{id, name, status, passed, failed, skipped, detailed, framework, finished_at, failures}]`. `status` is `never_run` for a suite that has not been run. Results survive app restarts."),
+                ActionDoc(action: "test_update", summary: "Create or replace one test suite.",
+                    doc: "# test_update\nRequires runs.write. Args: `suite` — an object (a JSON-encoded string is also accepted) with at least `id` and `command`; optional `name`, `cwd`, `env`, `framework` (swift|xcodebuild|go|cargo|pytest|jest|unknown — governs how the output is read; leave unset if unsure and only pass/fail is reported), `default`, `notes`. Unknown keys are preserved. Saved as source=agent so detection never overwrites it. This is how you register tests you have written."),
                 ActionDoc(action: "set_default", summary: "Mark one configuration as the project default.",
                     doc: "# set_default\nRequires runs.write. Args: `id`. The default is what id-less start/stop/status resolve to and what the session header's run button launches. Clears the flag on every other entry."),
             ])

@@ -79,6 +79,15 @@ enum JSONValue: Codable, Equatable {
         if case .bool(let value) = self { return value }
         return nil
     }
+    /// Accepts an int too: JSON has one number type, and a duration that
+    /// happens to land on a whole second decodes as `.int`.
+    var doubleValue: Double? {
+        switch self {
+        case .double(let value): return value
+        case .int(let value): return Double(value)
+        default: return nil
+        }
+    }
     var objectValue: [String: JSONValue]? {
         if case .object(let value) = self { return value }
         return nil
