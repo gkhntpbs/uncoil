@@ -762,6 +762,16 @@ struct SidebarOutline: NSViewRepresentable {
             return menu
         }
 
+        /// The menu for the space below the rows.
+        func emptyAreaMenu() -> NSMenu? {
+            guard let environment else { return nil }
+            let menu = NSMenu()
+            add(to: menu, title: String(localized: "New Project…")) {
+                environment.actions.addProject()
+            }
+            return menu
+        }
+
         private func add(to menu: NSMenu, title: String, action: @escaping () -> Void) {
             let item = MenuItem(title: title, action: action)
             menu.addItem(item)
@@ -802,7 +812,11 @@ final class SidebarOutlineView: NSOutlineView {
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = convert(event.locationInWindow, from: nil)
         let row = self.row(at: point)
-        guard row >= 0 else { return nil }
+        // Below the last row there is no project to act on, and right-clicking
+        // there did nothing at all — including on a first run, where the empty
+        // sidebar *is* the whole window and adding a project is the only thing
+        // to do.
+        guard row >= 0 else { return coordinator?.emptyAreaMenu() }
         // Right-clicking acts on the row under the cursor, so it becomes the
         // selected one unless it is already part of a selection being acted on.
         if !selectedRowIndexes.contains(row) {
@@ -825,4 +839,7 @@ struct SidebarRowActions {
     var createGroup: (Project) -> Void
     var renameGroup: (SessionGroup) -> Void
     var confirmDeleteSession: (SessionRecord) -> Void
+    /// Raised from the empty space below the rows, where there is no project to
+    /// act on and adding one is the only thing that makes sense.
+    var addProject: () -> Void
 }

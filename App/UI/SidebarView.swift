@@ -50,7 +50,8 @@ struct SidebarView: View {
                         renameValue = $0.name
                         renamingGroup = $0
                     },
-                    confirmDeleteSession: { deletingSession = $0 }
+                    confirmDeleteSession: { deletingSession = $0 },
+                    addProject: { showFolderPicker = true }
                 )
             )
             .overlay(alignment: .top) {

@@ -7371,6 +7371,17 @@
     "New profile" : {
 
     },
+    "New Project…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni Proje…"
+          }
+        }
+      }
+    },
     "New run configuration" : {
       "extractionState" : "manual",
       "localizations" : {

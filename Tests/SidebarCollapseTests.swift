@@ -54,7 +54,8 @@ final class SidebarCollapseTests: XCTestCase {
                 customizeProject: { _ in },
                 createGroup: { _ in },
                 renameGroup: { _ in },
-                confirmDeleteSession: { _ in }
+                confirmDeleteSession: { _ in },
+                addProject: {}
             ),
             isMultiSelecting: false,
             selection: Binding(get: { selection }, set: { selection = $0 }),
