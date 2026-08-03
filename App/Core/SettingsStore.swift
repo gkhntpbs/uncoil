@@ -376,7 +376,7 @@ final class SettingsStore: ObservableObject {
 
     /// Resolves the provider CLI through the user's login shell once and caches it.
     func resolveBinaries() async {
-        for provider in [AgentProvider.claude, .codex] {
+        for provider in AgentProvider.agents {
             // Drop cached paths whose binary vanished (reinstall/move).
             if let cached = resolvedBinaries[provider.rawValue],
                !FileManager.default.isExecutableFile(atPath: cached) {
@@ -397,7 +397,7 @@ final class SettingsStore: ObservableObject {
     // MARK: - CLI versions & updates
 
     func refreshCLIVersions() async {
-        for provider in [AgentProvider.claude, .codex] {
+        for provider in AgentProvider.agents {
             guard let path = binaryPath(for: provider) else { continue }
             let version = await Task.detached(priority: .utility) {
                 CLIToolService.version(binaryPath: path)
@@ -419,7 +419,7 @@ final class SettingsStore: ObservableObject {
     func checkCLIUpdates() async {
         cliChecking = true
         await refreshCLIVersions()
-        for provider in [AgentProvider.claude, .codex] {
+        for provider in AgentProvider.agents {
             if let latest = await CLIToolService.latestVersion(provider: provider) {
                 cliLatest[provider.rawValue] = latest
             }
@@ -550,7 +550,7 @@ final class SettingsStore: ObservableObject {
     // MARK: - Persistence
 
     private func ensureDefaultAccounts() {
-        for provider in [AgentProvider.claude, .codex]
+        for provider in AgentProvider.agents
         where !accounts.contains(where: { $0.provider == provider && $0.directoryName == nil }) {
             accounts.append(AccountProfile(provider: provider, name: "Default", directoryName: nil))
         }

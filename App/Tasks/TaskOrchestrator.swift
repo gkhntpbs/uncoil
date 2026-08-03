@@ -7,7 +7,7 @@ import Foundation
 /// nobody is watching.
 struct OrchestratorSettings: Equatable, Codable {
     var maxParallelAgents = 3
-    var allowedProviders: [AgentProvider] = [.claude, .codex]
+    var allowedProviders: [AgentProvider] = AgentProvider.agents
     /// Empty = whatever each provider defaults to.
     var allowedModels: [String] = []
     var maxWorktrees = 3

@@ -585,7 +585,7 @@ struct AgentLauncherStrip: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            ForEach([AgentProvider.claude, .codex, .terminal]) { provider in
+            ForEach(AgentProvider.sessionKinds) { provider in
                 LauncherButton(provider: provider) {
                     launch(provider)
                 }

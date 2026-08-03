@@ -16,7 +16,7 @@ struct OnboardingWorkingModesStep: View {
     let onBack: () -> Void
     let onSkipAll: () -> Void
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         OnboardingScaffold(

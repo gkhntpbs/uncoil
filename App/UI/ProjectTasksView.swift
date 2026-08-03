@@ -734,7 +734,7 @@ struct ProjectTasksView: View {
             // play button says which agent it will use before it is clicked.
             if !task.isDone, assignments.isEmpty {
                 Menu {
-                    ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
+                    ForEach(AgentProvider.agents, id: \.self) { provider in
                         Button("Start With \(provider.displayName)") {
                             sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
                         }
@@ -1039,7 +1039,7 @@ struct ProjectTasksView: View {
             sendToAgent(task, role: .implementer, reuseSession: true)
         }
         Menu("Start in a new session") {
-            ForEach([AgentProvider.claude, .codex], id: \.self) { provider in
+            ForEach(AgentProvider.agents, id: \.self) { provider in
                 Button(provider.displayName) {
                     sendToAgent(task, role: .implementer, reuseSession: false, provider: provider)
                 }

@@ -13,7 +13,7 @@ struct GeneralSettingsPage: View {
                     get: { settings.defaultProvider },
                     set: { settings.defaultProvider = $0; settings.save() }
                 )) {
-                    ForEach([AgentProvider.claude, .codex]) { provider in
+                    ForEach(AgentProvider.agents) { provider in
                         Text(provider.displayName).tag(provider)
                     }
                 } label: {

@@ -208,7 +208,7 @@ struct TaskDispatchSheet: View {
             VStack(spacing: 0) {
                 pickerRow(String(localized: "Agent")) {
                     Picker("", selection: $request.provider) {
-                        ForEach([AgentProvider.claude, .codex]) { provider in
+                        ForEach(AgentProvider.agents) { provider in
                             Text(provider.displayName).tag(provider)
                         }
                     }

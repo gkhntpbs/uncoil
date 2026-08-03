@@ -10,7 +10,7 @@ struct AccountsSettingsPage: View {
     @State private var newAccountName = ""
     @State private var addingFor: AgentProvider?
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         SettingsPage(
@@ -135,7 +135,7 @@ private struct AccountRow: View {
 struct CLIToolsSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         SettingsPage(
@@ -253,7 +253,7 @@ private struct CLIToolRow: View {
 struct LaunchArgumentsSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         SettingsPage(
@@ -285,7 +285,7 @@ struct LaunchArgumentsSettingsPage: View {
 struct AgentBehaviorSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         SettingsPage(title: String(localized: "Mode and Keyboard")) {
@@ -456,7 +456,7 @@ private struct SessionPresetEditorSheet: View {
                         .settingsID("presets.editor.name")
 
                     Picker("Provider", selection: $provider) {
-                        ForEach([AgentProvider.claude, .codex]) { candidate in
+                        ForEach(AgentProvider.agents) { candidate in
                             Text(candidate.displayName).tag(candidate)
                         }
                     }

@@ -118,7 +118,7 @@ struct OnboardingCLIStep: View {
 
     @State private var scanning = false
 
-    private let providers: [AgentProvider] = [.claude, .codex]
+    private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
         OnboardingScaffold(
@@ -295,7 +295,7 @@ struct OnboardingAccountsStep: View {
                     detail: String(localized: "A profile gets its own config root (CLAUDE_CONFIG_DIR / CODEX_HOME), so a work login and a personal one never mix — and each session picks the profile it runs under.")
                 ) {
                     HStack(spacing: 10) {
-                        ForEach([AgentProvider.claude, .codex]) { provider in
+                        ForEach(AgentProvider.agents) { provider in
                             Button(String(localized: "Add a \(provider.displayName) profile")) {
                                 newAccountName = ""
                                 newAccountProvider = provider

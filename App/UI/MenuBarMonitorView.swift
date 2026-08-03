@@ -110,7 +110,7 @@ struct MenuBarMonitorMenu: View {
             Menu("New Session") {
                 ForEach(projectStore.projects) { project in
                     Menu(project.name) {
-                        ForEach([AgentProvider.claude, .codex, .terminal]) { provider in
+                        ForEach(AgentProvider.sessionKinds) { provider in
                             Button(provider.displayName) {
                                 launch(project: project, provider: provider)
                             }

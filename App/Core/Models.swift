@@ -10,6 +10,19 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Every provider that runs an agent, in the order they are offered.
+    ///
+    /// This list was written out by hand in twenty-two places — some with the
+    /// terminal, some without, and the difference between the two was never
+    /// stated. Adding a provider meant finding all of them, and missing one
+    /// meant an agent that existed everywhere except the screen you forgot.
+    /// `CaseIterable` is derived from the cases themselves, so a new case is
+    /// picked up here by construction rather than by remembering.
+    static let agents: [AgentProvider] = allCases.filter(\.isAgent)
+
+    /// The agents plus the plain shell: what a "new session" chooser offers.
+    static let sessionKinds: [AgentProvider] = allCases
+
     var displayName: String {
         switch self {
         case .claude: "Claude"

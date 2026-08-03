@@ -235,7 +235,7 @@ enum PaletteEngine {
         ]
 
         for project in ctx.projects {
-            for provider in [AgentProvider.claude, .codex, .terminal] {
+            for provider in AgentProvider.sessionKinds {
                 items.append(PaletteItem(
                     id: "cmd.new.\(provider.rawValue).\(project.id)",
                     title: String(localized: "New Session: \(provider.displayName) [\(project.name)]"),
@@ -289,7 +289,7 @@ enum PaletteEngine {
                 rank: 10))
         }
 
-        for provider in [AgentProvider.claude, .codex] {
+        for provider in AgentProvider.agents {
             items.append(PaletteItem(
                 id: "ask.new.\(provider.rawValue)",
                 title: String(localized: "New \(provider.displayName) session"),

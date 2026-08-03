@@ -173,7 +173,7 @@ struct TaskOrchestratorSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             FlowRow(spacing: 10) {
                 Picker("", selection: $provider) {
-                    ForEach([AgentProvider.claude, .codex], id: \.self) { candidate in
+                    ForEach(AgentProvider.agents, id: \.self) { candidate in
                         Text(candidate.displayName).tag(candidate)
                     }
                 }
