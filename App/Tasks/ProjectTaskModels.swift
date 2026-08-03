@@ -75,6 +75,9 @@ struct ProjectTaskCheckboxState: Equatable, Codable {
 }
 
 /// A heading in the file, used to give tasks their context chain.
+///
+/// Flat, with a level: the nesting is what the file's own `#` counts say, and
+/// `headingChains` is what turns that into the path a task is filed under.
 struct ProjectTaskHeading: Equatable, Codable {
     /// 1…6.
     var level: Int

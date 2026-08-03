@@ -325,6 +325,54 @@ struct MainWindow: View {
             ask(prompt, target: target, projectID: projectID)
         case .beginAsk:
             break                       // handled inside the palette; it stays open
+        case .captureTask(let text, let projectID, let sourcePath, let heading):
+            captureTask(text, projectID: projectID, sourcePath: sourcePath, heading: heading)
+        }
+    }
+
+    /// Writes a captured task straight into its TODO.md.
+    ///
+    /// Through the same byte-range patch the Tasks screen uses, not an append:
+    /// the file belongs to the project and may be open in an editor or being
+    /// edited by an agent, and rewriting it wholesale is how a captured thought
+    /// costs someone else their work.
+    private func captureTask(
+        _ text: String, projectID: UUID, sourcePath: String, heading: [String]
+    ) {
+        guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
+        let sources = ProjectTaskStores.sources(
+            projectID: projectID, projectRoot: project.rootPath
+        )
+        guard let document = sources.document(for: sourcePath) else { return }
+        do {
+            let patch = try TodoEditor.insertTaskPatch(
+                text: text, under: heading, in: document
+            )
+            _ = try TodoEditor.write(
+                patches: [patch],
+                to: document.path,
+                expectedHash: document.contentHash,
+                // The palette's copy of the file can be a keystroke out of
+                // date, and a captured thought must not be lost to that: the
+                // patch is recomputed against whatever is on disk right now.
+                rebuild: { current in
+                    try? [TodoEditor.insertTaskPatch(
+                        text: text, under: heading, in: current
+                    )]
+                }
+            )
+            Task { @MainActor in
+                await sources.refreshAsync()
+            }
+        } catch {
+            AttentionStore.shared.report(
+                kind: .runtime,
+                title: String(localized: "Could not file that task"),
+                detail: error.localizedDescription,
+                projectID: projectID,
+                sessionID: nil,
+                id: "capture:\(projectID)"
+            )
         }
     }
 

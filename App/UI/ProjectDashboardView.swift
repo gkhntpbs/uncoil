@@ -34,6 +34,7 @@ struct ProjectDashboardView: View {
         case tasks
         case run
         case tests
+        case issues
 
         var id: String { rawValue }
 
@@ -43,6 +44,7 @@ struct ProjectDashboardView: View {
             case .tasks: String(localized: "Tasks")
             case .run: String(localized: "Run")
             case .tests: String(localized: "Tests")
+            case .issues: String(localized: "Issues")
             }
         }
 
@@ -52,6 +54,7 @@ struct ProjectDashboardView: View {
             case .tasks: "checkbox"
             case .run: "player-play"
             case .tests: "flask"
+            case .issues: "circle-dot"
             }
         }
     }
@@ -81,6 +84,8 @@ struct ProjectDashboardView: View {
                     ProjectRunView(project: project)
                 } else if area == .tests {
                     ProjectTestsView(project: project)
+                } else if area == .issues {
+                    ProjectIssuesView(project: project, selection: $selection)
                 } else {
                     overviewContent
                 }

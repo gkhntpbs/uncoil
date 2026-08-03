@@ -322,6 +322,15 @@ extension Color {
             blue: Double(hex & 0xFF) / 255
         )
     }
+
+    /// Six hex digits as an external service writes them (GitHub label colours
+    /// arrive with no leading `#`). Anything unparseable falls back to a
+    /// neutral grey rather than to black, which would read as a deliberate
+    /// choice.
+    init(hexString: String) {
+        let digits = hexString.hasPrefix("#") ? String(hexString.dropFirst()) : hexString
+        self.init(hex: UInt32(digits, radix: 16) ?? 0x888888)
+    }
 }
 
 /// Rounded panel with hairline border — the app's basic building block.

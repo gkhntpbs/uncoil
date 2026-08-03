@@ -23,6 +23,8 @@ enum PaletteAction: Equatable {
     case ask(prompt: String, target: AskTarget, projectID: UUID)
     /// Puts the palette into asking mode without closing it.
     case beginAsk
+    /// Appends a task to a project's TODO.md without opening anything.
+    case captureTask(text: String, projectID: UUID, sourcePath: String, heading: [String])
 }
 
 /// Where a quick question goes.
@@ -40,6 +42,7 @@ enum AskTarget: Equatable {
 
 enum PaletteGroupKind: Int, CaseIterable {
     case ask
+    case capture
     case command
     case project
     case session
@@ -50,6 +53,7 @@ enum PaletteGroupKind: Int, CaseIterable {
     var title: String {
         switch self {
         case .ask: String(localized: "Quick Question")
+        case .capture: String(localized: "Capture a Task")
         case .command: String(localized: "Commands")
         case .project: String(localized: "Projects")
         case .session: String(localized: "Sessions")
@@ -100,6 +104,21 @@ struct PaletteContext {
     var artifacts: [URL]
     var projectRoot: String?
     var settingsPanes: [(id: String, title: String)]
+    /// Where a captured task may be filed. Empty when the project has no task
+    /// file, which is what makes capture silently unavailable rather than
+    /// offering to write somewhere that does not exist.
+    var captureTargets: [PaletteCaptureTarget] = []
+}
+
+/// One place a captured task can land: a heading inside a task file.
+struct PaletteCaptureTarget: Equatable {
+    var sourcePath: String
+    /// Relative to the project root, for display.
+    var displayPath: String
+    var heading: [String]
+    /// Higher sorts first. The root file's first heading is the obvious
+    /// destination and should not have to be hunted for.
+    var rank: Int = 0
 }
 
 /// Pure result computation — no stores, no view state. Unit-tested directly.
@@ -121,6 +140,51 @@ enum PaletteEngine {
         return nil
     }
 
+    /// The task inside a palette query, or nil when this is not one.
+    ///
+    /// A leading `+` is the way in. Deliberately not a word: capturing is meant
+    /// to cost one keystroke more than the thought did, and every prefix that
+    /// reads as English collides with something someone might search for.
+    static func capturePrompt(in raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.hasPrefix(">") else { return nil }
+        for prefix in ["+", "todo:", "task:"] where trimmed.lowercased().hasPrefix(prefix) {
+            return String(trimmed.dropFirst(prefix.count))
+                .trimmingCharacters(in: .whitespaces)
+        }
+        return nil
+    }
+
+    /// Where a captured task can go: one entry per heading of every task file
+    /// the project has.
+    ///
+    /// Headings rather than files alone, because "which file" is rarely the
+    /// question — a TODO.md with `## Next` and `## Later` is a decision about
+    /// *when*, and that is exactly what someone capturing a thought wants to
+    /// say in the same keystroke.
+    static func captureItems(raw: String, ctx: PaletteContext) -> [PaletteItem] {
+        guard let pid = ctx.currentProjectID,
+              let text = capturePrompt(in: raw), !text.isEmpty else { return [] }
+        var items: [PaletteItem] = []
+        for target in ctx.captureTargets {
+            let heading = target.heading.joined(separator: " › ")
+            items.append(PaletteItem(
+                id: "capture.\(target.sourcePath).\(heading)",
+                title: heading.isEmpty ? target.displayPath : heading,
+                subtitle: heading.isEmpty
+                    ? String(localized: "Add to this file")
+                    : target.displayPath,
+                iconName: "plus",
+                kind: .capture,
+                action: .captureTask(
+                    text: text, projectID: pid,
+                    sourcePath: target.sourcePath, heading: target.heading
+                ),
+                rank: target.rank))
+        }
+        return items
+    }
+
     private static let perGroupLimit = 20
     private static let fileLimit = 30
 
@@ -138,6 +202,12 @@ enum PaletteEngine {
         let asks = askItems(raw: raw, ctx: ctx)
         if !asks.isEmpty {
             return [PaletteGroup(kind: .ask, items: asks)]
+        }
+        // Capturing takes the palette over for the same reason asking does:
+        // Enter has to mean one thing, and here it means "file this".
+        let captures = captureItems(raw: raw, ctx: ctx)
+        if !captures.isEmpty {
+            return [PaletteGroup(kind: .capture, items: captures)]
         }
         if !commandsOnly, askPrompt(in: raw) != nil, ctx.currentProjectID == nil {
             return []
@@ -515,6 +585,53 @@ final class PaletteModel: ObservableObject {
     }
 
     /// Builds a context snapshot from the live stores and recomputes results.
+    /// Where a captured task could go, from the task stores the app already
+    /// keeps for the current project.
+    ///
+    /// Read on demand rather than cached: the palette recomputes on every
+    /// keystroke, but these come from documents already parsed and held in
+    /// memory, so there is nothing to save by caching and a cache would go
+    /// stale the moment an agent edited the file.
+    private var captureTargets: [PaletteCaptureTarget] {
+        guard let projectID = currentProjectID,
+              let root = currentProjectRoot else { return [] }
+        let sources = ProjectTaskStores.sources(projectID: projectID, projectRoot: root)
+        var targets: [PaletteCaptureTarget] = []
+        for source in sources.sources {
+            guard let document = sources.document(for: source.path) else { continue }
+            // A jump from h1 to h3 leaves a short stack; the chain is whatever
+            // the file actually nests, not an invented level.
+            var stack: [String] = []
+            var chains: [[String]] = []
+            for heading in document.headings {
+                while stack.count >= heading.level { stack.removeLast() }
+                stack.append(heading.text)
+                chains.append(stack)
+            }
+            // A document's single top title is its name, not a place to file
+            // things under; deeper headings are real destinations.
+            let destinations = chains.filter { $0.count > 1 }
+            for (index, chain) in destinations.enumerated() {
+                targets.append(PaletteCaptureTarget(
+                    sourcePath: source.path,
+                    displayPath: source.displayPath,
+                    heading: chain,
+                    // The root file's first heading is the obvious destination.
+                    rank: (source.isRoot ? 100 : 0) - index
+                ))
+            }
+            if destinations.isEmpty {
+                targets.append(PaletteCaptureTarget(
+                    sourcePath: source.path,
+                    displayPath: source.displayPath,
+                    heading: [],
+                    rank: source.isRoot ? 100 : 0
+                ))
+            }
+        }
+        return targets.sorted { $0.rank > $1.rank }
+    }
+
     func recomputeNow() {
         guard let projectStore else { groups = []; return }
         let statuses = sessionStore?.statuses ?? [:]
@@ -528,7 +645,8 @@ final class PaletteModel: ObservableObject {
             files: files,
             artifacts: artifacts,
             projectRoot: currentProjectRoot,
-            settingsPanes: settingsPanes
+            settingsPanes: settingsPanes,
+            captureTargets: captureTargets
         )
         groups = PaletteEngine.compute(ctx)
         let count = flatItems.count
