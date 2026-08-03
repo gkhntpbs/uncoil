@@ -11,7 +11,7 @@ final class ProviderMarkRenderTests: XCTestCase {
     private struct Sampler: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 14) {
-                ForEach([AgentProvider.claude, .codex, .terminal], id: \.self) { provider in
+                ForEach(AgentProvider.sessionKinds, id: \.self) { provider in
                     HStack(alignment: .center, spacing: 16) {
                         Text(provider.displayName)
                             .font(Theme.mono(11))
@@ -36,7 +36,7 @@ final class ProviderMarkRenderTests: XCTestCase {
             throw XCTSkip("Set UNCOIL_MARK_SAMPLE_DIR to write provider mark samples")
         }
         let host = NSHostingView(rootView: Sampler())
-        host.frame = NSRect(x: 0, y: 0, width: 320, height: 190)
+        host.frame = NSRect(x: 0, y: 0, width: 320, height: 250)
         host.layoutSubtreeIfNeeded()
         let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
         host.cacheDisplay(in: host.bounds, to: rep)

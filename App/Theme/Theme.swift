@@ -43,10 +43,16 @@ enum Theme {
     // Agent marks
     static var claude: Color { Color(hex: p.claude) }
     static var codex: Color { Color(hex: p.codex) }
-    /// Falls back rather than defaulting to a palette field, so a theme the
-    /// user customised before Gemini existed still gives it a colour of its
-    /// own instead of borrowing Codex's blue.
-    static var gemini: Color { Color(hex: p.gemini ?? 0x7C5CE6) }
+    /// The blue the mark itself is built on. Optional in the palette so a
+    /// theme customised before Gemini existed still decodes; the fallback is
+    /// the brand colour rather than an invented one.
+    ///
+    /// It sits close to Codex's default blue, which is a real cost in the few
+    /// places a provider is named in colour rather than drawn. The marks
+    /// themselves stay unmistakable — Gemini's is the only one in four colours
+    /// — and taking the brand's own colour away to buy contrast in a caption
+    /// seemed the worse trade. Both are palette fields if it turns out wrong.
+    static var gemini: Color { Color(hex: p.gemini ?? 0x3186FF) }
     static let terminal = Color(hex: 0x8A8A93)
 
     // Meanings. Read from the palette rather than fixed: the green that reads on
