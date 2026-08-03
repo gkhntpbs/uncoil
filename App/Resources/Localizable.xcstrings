@@ -118,6 +118,9 @@
         }
       }
     },
+    "(%@ — no per-test detail)" : {
+
+    },
     "(%@)" : {
 
     },
@@ -339,6 +342,9 @@
           }
         }
       }
+    },
+    "%@ failed" : {
+
     },
     "%@ findings" : {
       "extractionState" : "manual",
@@ -741,6 +747,16 @@
         }
       }
     },
+    "%@#%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@#%2$lld"
+          }
+        }
+      }
+    },
     "%%%lld" : {
 
     },
@@ -772,6 +788,9 @@
         }
       }
     },
+    "%lld comments" : {
+
+    },
     "%lld commit" : {
 
     },
@@ -799,6 +818,9 @@
           }
         }
       }
+    },
+    "%lld failed" : {
+
     },
     "%lld files" : {
       "extractionState" : "manual",
@@ -887,6 +909,16 @@
         }
       }
     },
+    "%lld of %lld tests failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld tests failed"
+          }
+        }
+      }
+    },
     "%lld open" : {
 
     },
@@ -911,6 +943,9 @@
           }
         }
       }
+    },
+    "%lld passed" : {
+
     },
     "%lld pending notifications" : {
       "extractionState" : "manual",
@@ -1088,6 +1123,9 @@
         }
       }
     },
+    "%lld skipped" : {
+
+    },
     "%lld stars" : {
 
     },
@@ -1126,6 +1164,9 @@
           }
         }
       }
+    },
+    "%lld tests passed" : {
+
     },
     "%lld times" : {
       "extractionState" : "manual",
@@ -1608,6 +1649,9 @@
     "Add a %@ profile" : {
 
     },
+    "Add a comment" : {
+
+    },
     "Add a New Project" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1746,7 +1790,13 @@
         }
       }
     },
+    "Add to this file" : {
+
+    },
     "Add your first project" : {
+
+    },
+    "Added %lld." : {
 
     },
     "added from a folder: %@" : {
@@ -2483,6 +2533,9 @@
         }
       }
     },
+    "Assigned to %@" : {
+
+    },
     "Assigned to the %@ session as %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3120,6 +3173,9 @@
         }
       }
     },
+    "Capture a Task" : {
+
+    },
     "Change" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3501,6 +3557,9 @@
         }
       }
     },
+    "Closed #%lld." : {
+
+    },
     "Closed Sessions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3708,6 +3767,9 @@
         }
       }
     },
+    "Comment" : {
+
+    },
     "Comment left" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3718,6 +3780,9 @@
           }
         }
       }
+    },
+    "Commented on #%lld." : {
+
     },
     "Commit" : {
 
@@ -4050,6 +4115,9 @@
         }
       }
     },
+    "Could not file that task" : {
+
+    },
     "Could not install: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4071,6 +4139,12 @@
           }
         }
       }
+    },
+    "Could not read the issues" : {
+
+    },
+    "Could not write .uncoil/tests.json: %@" : {
+
     },
     "Counters" : {
       "extractionState" : "manual",
@@ -5348,6 +5422,9 @@
         }
       }
     },
+    "Fetch the issues again" : {
+
+    },
     "Fetching the file list…" : {
 
     },
@@ -5615,6 +5692,16 @@
         }
       }
     },
+    "GitHub returned %lld. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "GitHub returned %1$lld. %2$@"
+          }
+        }
+      }
+    },
     "GitHub sources" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5714,6 +5801,9 @@
           }
         }
       }
+    },
+    "Hand this issue to an agent" : {
+
     },
     "Has no skills directory" : {
 
@@ -5822,6 +5912,12 @@
           }
         }
       }
+    },
+    "Hide the details" : {
+
+    },
+    "Hide the results" : {
+
     },
     "Hide the sidebar" : {
       "extractionState" : "manual",
@@ -6335,6 +6431,12 @@
         }
       }
     },
+    "Issues" : {
+
+    },
+    "ISSUES" : {
+
+    },
     "Kanban works on a single source; pick a TODO.md above." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6686,6 +6788,12 @@
           }
         }
       }
+    },
+    "Look for test suites in this project" : {
+
+    },
+    "Look for tests" : {
+
     },
     "Looked in: the app bundle, %@, PATH" : {
       "extractionState" : "manual",
@@ -7670,6 +7778,9 @@
     "No containers" : {
 
     },
+    "No description." : {
+
+    },
     "No diff." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7895,6 +8006,9 @@
           }
         }
       }
+    },
+    "No open issues" : {
+
     },
     "No open task to start." : {
       "extractionState" : "manual",
@@ -8158,6 +8272,9 @@
         }
       }
     },
+    "No test suites yet" : {
+
+    },
     "No TODO.md found in this project" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8399,6 +8516,9 @@
         }
       }
     },
+    "Nothing found. Add a suite to .uncoil/tests.json by hand, or ask an agent to." : {
+
+    },
     "Nothing is installed into your agents' own configuration: the server is registered for one session, as that session launches, and goes away with it." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8411,6 +8531,9 @@
       }
     },
     "Nothing matches “%@”." : {
+
+    },
+    "Nothing new." : {
 
     },
     "Nothing shows up in the agents' skill directories." : {
@@ -8797,6 +8920,9 @@
         }
       }
     },
+    "Open on GitHub" : {
+
+    },
     "Open Session" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9106,6 +9232,9 @@
           }
         }
       }
+    },
+    "Passed" : {
+
     },
     "Paths Found" : {
       "extractionState" : "manual",
@@ -10737,6 +10866,9 @@
         }
       }
     },
+    "Run %@" : {
+
+    },
     "Run again" : {
 
     },
@@ -11148,6 +11280,9 @@
           }
         }
       }
+    },
+    "See the messages above. A private repository needs a token." : {
+
     },
     "Sees the Mac's screen, controls the mouse and keyboard." : {
       "extractionState" : "manual",
@@ -11717,6 +11852,12 @@
         }
       }
     },
+    "Show the details" : {
+
+    },
+    "Show the results" : {
+
+    },
     "Show the sidebar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11776,6 +11917,9 @@
       }
     },
     "Sign in again" : {
+
+    },
+    "Sign in to GitHub first — changing an issue needs a token." : {
 
     },
     "Sign in with a Browser" : {
@@ -12230,6 +12374,9 @@
         }
       }
     },
+    "Stop" : {
+
+    },
     "Stop the Orchestrator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12661,6 +12808,9 @@
         }
       }
     },
+    "TEST SUITES" : {
+
+    },
     "Test Workspace Could Not Be Created" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12671,6 +12821,9 @@
           }
         }
       }
+    },
+    "Tests" : {
+
     },
     "Tests failing" : {
       "extractionState" : "manual",
@@ -13303,6 +13456,9 @@
         }
       }
     },
+    "The suite exited with a non-zero status" : {
+
+    },
     "The symlink points outside the package." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13846,6 +14002,9 @@
     "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved." : {
 
     },
+    "Uncoil can look for the project's own test setup — a scheme, a Package.swift, go.mod, Cargo.toml, a package.json test script, or a pytest configuration. What it finds is written to .uncoil/tests.json, which you and your agents can edit." : {
+
+    },
     "Uncoil changes these files only through plan → apply." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13909,6 +14068,9 @@
           }
         }
       }
+    },
+    "Uncoil looks at the GitHub remote of this folder and of the repositories one level inside it. A private repository needs a token — sign in from Settings › Integrations." : {
+
     },
     "Uncoil mark" : {
       "extractionState" : "manual",
@@ -14195,6 +14357,9 @@
           }
         }
       }
+    },
+    "Unrecognised" : {
+
     },
     "Unsigned binary: %@" : {
       "extractionState" : "manual",
@@ -14979,6 +15144,9 @@
       }
     },
     "Your shortcut" : {
+
+    },
+    "Your token cannot write to this repository." : {
 
     }
   },
