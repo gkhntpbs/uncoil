@@ -2603,6 +2603,19 @@
     "Attached %lld images." : {
 
     },
+    "Attaching %lld of %lld…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Attaching %1$lld of %2$lld…"
+          }
+        }
+      }
+    },
+    "Attaching…" : {
+
+    },
     "Attention" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8555,7 +8568,7 @@
     "Nothing found. You can still write the configuration by hand, or ask an agent to." : {
 
     },
-    "Nothing in that drop was an image." : {
+    "Nothing in that drop could be attached." : {
 
     },
     "Nothing is installed into your agents' own configuration: the server is registered for one session, as that session launches, and goes away with it." : {

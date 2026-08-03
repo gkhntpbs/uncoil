@@ -332,6 +332,29 @@ struct AgentBehaviorSettingsPage: View {
                     String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately.")
                 )
             }
+
+            Section {
+                Picker(selection: Binding(
+                    get: { settings.imagePasteMode },
+                    set: { settings.setImagePasteMode($0) }
+                )) {
+                    ForEach(ImagePasteMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Pasting an image"),
+                        detail: settings.imagePasteMode.detail
+                    )
+                }
+                .settingsID("agentBehavior.imagePaste")
+            } header: {
+                Text("Pasting an image")
+            } footer: {
+                SettingsNote(
+                    String(localized: "Only ⌘V of an image is affected. Pasting text, a path or anything else is never touched, and neither is a plain terminal session.")
+                )
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.agentBehavior.container")

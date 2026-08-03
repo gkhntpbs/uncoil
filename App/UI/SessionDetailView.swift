@@ -13,10 +13,10 @@ struct SessionDetailView: View {
     /// Something is being dragged over the session, so the drop is shown as
     /// possible before it happens.
     @State private var isDropTargeted = false
-    /// How far the drop in flight has got, and what it did. Cleared on its
-    /// own: it reports a completed action, and a banner that has to be
-    /// dismissed is worse than the action was small.
-    @State private var dropProgress: SessionDropProgress = .idle
+    /// How far the drop or paste in flight has got, and what it did. Shared
+    /// rather than local: a drop is answered here, a paste by the app-wide key
+    /// monitor, and both belong in the same place on screen.
+    @ObservedObject private var dropReporter = SessionDropReporter.shared
     @State private var git = GitService.Snapshot()
 
     private var status: AgentSessionStatus {
@@ -112,7 +112,7 @@ struct SessionDetailView: View {
             // screenshot be read as a session id that does not parse.
             if SessionImageDropService.handle(
                 providers, record: record, project: project,
-                onProgress: { dropProgress = $0 }
+                onProgress: { dropReporter.report($0, for: record.id) }
             ) {
                 return true
             }
@@ -131,9 +131,9 @@ struct SessionDetailView: View {
         .overlay(alignment: .top) {
             if isDropTargeted {
                 DropTargetOverlay()
-            } else if let message = dropProgress.message {
+            } else if let message = dropReporter.progress(for: record.id).message {
                 HStack(spacing: 6) {
-                    if dropProgress.isWorking {
+                    if dropReporter.progress(for: record.id).isWorking {
                         ProgressView().controlSize(.small).scaleEffect(0.55)
                     }
                     Text(message)
@@ -149,9 +149,9 @@ struct SessionDetailView: View {
                 .task(id: message) {
                     // Only a finished state clears itself; work in flight stays
                     // until it is done, however long the copy takes.
-                    guard !dropProgress.isWorking else { return }
+                    guard !dropReporter.progress(for: record.id).isWorking else { return }
                     try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    withAnimation(Theme.Motion.standard) { dropProgress = .idle }
+                    withAnimation(Theme.Motion.standard) { dropReporter.clear(record.id) }
                 }
             }
         }

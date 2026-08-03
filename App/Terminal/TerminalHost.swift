@@ -485,6 +485,9 @@ final class TerminalRegistry {
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
         }
+        view.handleImagePaste = Self.imagePasteHandler(
+            record: record, project: project, settings: settings
+        )
 
         let (shell, args) = shellArguments(for: record, settings: settings)
         let spec = RuntimeClient.LaunchSpec(
@@ -545,6 +548,9 @@ final class TerminalRegistry {
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
         }
+        view.handleImagePaste = Self.imagePasteHandler(
+            record: record, project: project, settings: settings
+        )
         let recordID = record.id
         view.onDataReceived = { [weak settings] data in
             if let settings {
@@ -593,6 +599,30 @@ final class TerminalRegistry {
     /// Called when a hibernated session is woken, before it is relaunched.
     func clearHibernating(_ recordID: UUID) {
         hibernating.remove(recordID)
+    }
+
+    /// Answers ⌘V for one session, when the clipboard holds an image and the
+    /// setting says Uncoil should.
+    ///
+    /// Built here because this is the one place that has the session, its
+    /// project and the settings together; the key monitor has only the view
+    /// that holds the keyboard. A shell is never answered — a plain terminal
+    /// has no prompt to attach anything to, and taking its ⌘V would break
+    /// pasting into `vim`.
+    @MainActor
+    private static func imagePasteHandler(
+        record: SessionRecord, project: Project, settings: SettingsStore?
+    ) -> () -> Bool {
+        guard record.provider.isAgent else { return { false } }
+        return { [weak settings] in
+            guard let settings else { return false }
+            return SessionImageDropService.handlePaste(
+                record: record,
+                project: project,
+                mode: settings.imagePasteMode,
+                onProgress: { SessionDropReporter.shared.report($0, for: record.id) }
+            )
+        }
     }
 
     func closeTerminal(for recordID: UUID) {

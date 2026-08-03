@@ -180,6 +180,95 @@ enum SessionImageDropService {
         }
     }
 
+    // MARK: - Pasting
+
+    /// Handles ⌘V when the clipboard holds an image.
+    ///
+    /// Same destination and same prompt as a drop, deliberately: the two are
+    /// the same act — handing the agent a picture — and having them land in
+    /// different places would make the working directory harder to reason
+    /// about than either of them is worth.
+    ///
+    /// Returns false when this paste is not ours, so ⌘V keeps meaning what it
+    /// always did.
+    @MainActor
+    @discardableResult
+    static func handlePaste(
+        from pasteboard: NSPasteboard = .general,
+        record: SessionRecord,
+        project: Project,
+        mode: ImagePasteMode,
+        onProgress: @escaping (SessionDropProgress) -> Void = { _ in }
+    ) -> Bool {
+        guard let payloads = pastePayloads(from: pasteboard, mode: mode), !payloads.isEmpty
+        else { return false }
+
+        let directory = URL(fileURLWithPath: record.workingDirectory(in: project))
+            .appendingPathComponent(SessionImageDrop.directoryName(for: record.id))
+        let sessionID = record.id
+        let provider = record.provider
+
+        onProgress(.working(done: 0, total: payloads.count))
+        Task { @MainActor in
+            var written: [String] = []
+            for (index, payload) in payloads.enumerated() {
+                onProgress(.working(done: index, total: payloads.count))
+                let name = await Task.detached(priority: .userInitiated) {
+                    write(payload, into: directory)
+                }.value
+                guard let name else { continue }
+                written.append(
+                    SessionImageDrop.relativePath(fileName: name, sessionID: sessionID)
+                )
+            }
+            guard !written.isEmpty else {
+                onProgress(.failed(String(localized: "That image could not be saved.")))
+                return
+            }
+            await TerminalRegistry.shared.typeText(
+                SessionImageDrop.promptFragment(relativePaths: written),
+                for: sessionID,
+                provider: provider
+            )
+            onProgress(.finished(
+                written.count == 1
+                    ? String(localized: "Pasted \(written[0]).")
+                    : String(localized: "Pasted \(written.count) images.")
+            ))
+        }
+        return true
+    }
+
+    /// What is on the clipboard, if it is ours to take. nil means "not ours".
+    static func pastePayloads(
+        from pasteboard: NSPasteboard, mode: ImagePasteMode
+    ) -> [Payload]? {
+        guard mode == .attachFile else { return nil }
+
+        // Files first, so a copied screenshot keeps the name it had.
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
+           !urls.isEmpty,
+           ClipboardImagePaste.shouldIntercept(
+               fileNames: urls.map(\.lastPathComponent), mode: mode
+           ) {
+            return urls.map { Payload(name: $0.lastPathComponent, source: $0) }
+        }
+
+        guard ClipboardImagePaste.shouldIntercept(types: pasteboard.types ?? [], mode: mode)
+        else { return nil }
+        // Normalised to PNG for the same reason a dropped image is: the
+        // clipboard's own form is often TIFF, and a `.png` name over TIFF bytes
+        // is a file no agent can open.
+        guard let data = pasteboard.data(forType: .png)
+            ?? pasteboard.data(forType: .tiff).flatMap(pngData(from:))
+        else { return nil }
+        return [Payload(name: "pasted.png", data: data)]
+    }
+
+    private static func pngData(from data: Data) -> Data? {
+        NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:])
+    }
+
     // MARK: - Cleanup
 
     /// Removes a session's dropped images.
@@ -211,5 +300,29 @@ enum SessionImageDropService {
         ) {
             try? manager.removeItem(at: root.appendingPathComponent(token))
         }
+    }
+}
+
+/// Carries drop and paste progress to whatever is showing the session.
+///
+/// A drop is answered by the view and a paste by the app-wide key monitor,
+/// which has no view state at all — but both are the same act to the user and
+/// belong in the same place on screen. This is the one thing they share.
+@MainActor
+final class SessionDropReporter: ObservableObject {
+    static let shared = SessionDropReporter()
+
+    @Published private(set) var progress: [UUID: SessionDropProgress] = [:]
+
+    func report(_ value: SessionDropProgress, for sessionID: UUID) {
+        progress[sessionID] = value
+    }
+
+    func progress(for sessionID: UUID) -> SessionDropProgress {
+        progress[sessionID] ?? .idle
+    }
+
+    func clear(_ sessionID: UUID) {
+        progress[sessionID] = nil
     }
 }

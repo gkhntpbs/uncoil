@@ -57,6 +57,14 @@ enum TerminalKeyTranslation {
     ///
     /// ⌥←/→ depends on `optionIsMeta`. With Option treated as Meta, SwiftTerm
     /// already emits ⎋b/⎋f and translating here would send them twice; with
+    /// ⌘V, and nothing that merely looks like it: ⇧⌘V and ⌥⌘V are other
+    /// commands in plenty of programs, and answering them as a plain paste
+    /// would take them away.
+    static func isPaste(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        let relevant: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        return keyCode == 9 && modifiers.intersection(relevant) == .command
+    }
+
     /// Option left to the keyboard layout (the default, so ⌥Q can type `@`)
     /// nothing emits them, so word navigation has to come from here.
     static func editingBytes(
@@ -96,6 +104,13 @@ protocol ShiftEnterCapableTerminal: AnyObject {
     var optionAsMetaKey: Bool { get set }
     /// Sends raw bytes to the underlying PTY.
     func sendNewline(_ bytes: [UInt8])
+    /// Answers ⌘V when the clipboard holds an image, if this session and this
+    /// setting say so. Returns false to let ⌘V mean what it always did.
+    ///
+    /// Resolved through the terminal rather than looked up in the monitor: the
+    /// monitor knows which view has the keyboard and nothing else — not which
+    /// session it belongs to, nor which project that session runs in.
+    var handleImagePaste: () -> Bool { get }
 }
 
 /// Opts a terminal view into SwiftTerm's GPU renderer. `setUseMetal` must run
@@ -151,6 +166,7 @@ enum TerminalFocus {
 /// Daemon-backed terminal view.
 final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
+    var handleImagePaste: () -> Bool = { false }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
 
     override func viewDidMoveToWindow() {
@@ -164,6 +180,7 @@ final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
 /// In-process fallback terminal view.
 final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
+    var handleImagePaste: () -> Bool = { false }
     var onDataReceived: (Data) -> Void = { _ in }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
 
@@ -209,6 +226,15 @@ enum TerminalKeyMonitor {
             ) {
                 terminal.sendNewline(bytes)
                 return nil  // swallow: ⌘⌫ would otherwise ring the system bell
+            }
+            // ⌘V with an image on the clipboard. Everything else about ⌘V —
+            // text, a path, a mixed selection — is left exactly alone; the
+            // decision about what "an image" means lives in
+            // `ClipboardImagePaste`.
+            if TerminalKeyTranslation.isPaste(
+                keyCode: event.keyCode, modifiers: event.modifierFlags
+            ), terminal.handleImagePaste() {
+                return nil
             }
             return event
         }

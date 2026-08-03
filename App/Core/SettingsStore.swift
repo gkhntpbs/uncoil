@@ -56,6 +56,8 @@ final class SettingsStore: ObservableObject {
         var permissionTimeoutMinutes: Int? = nil
         /// Menu-bar monitor appearance and contents; nil ⇒ defaults.
         var menuBar: MenuBarPrefs? = nil
+        /// What ⌘V does when the clipboard holds an image; nil ⇒ the default.
+        var imagePasteMode: ImagePasteMode? = nil
         /// Which shortcuts the quick-launch strip offers, and in what order.
         /// nil ⇒ not configured, which resolves to what is installed.
         var launcher: LauncherPrefs? = nil
@@ -87,6 +89,7 @@ final class SettingsStore: ObservableObject {
     /// How loudly the sidebar pulses for a session that wants attention.
     @Published private(set) var attentionEmphasis: AttentionEmphasis = .subtle
     @Published private(set) var launcher: LauncherPrefs = .default
+    @Published private(set) var imagePasteMode: ImagePasteMode = .default
     /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
     /// — the default, matching Terminal.app — Option belongs to the keyboard
     /// layout, so a Turkish-Q layout can type `@` with ⌥Q and `#` with ⌥3.
@@ -248,6 +251,11 @@ final class SettingsStore: ObservableObject {
 
     var installedProviders: Set<AgentProvider> {
         Set(AgentProvider.agents.filter { resolvedBinaries[$0.rawValue] != nil })
+    }
+
+    func setImagePasteMode(_ mode: ImagePasteMode) {
+        imagePasteMode = mode
+        save()
     }
 
     func setLauncherOrder(_ order: [AgentProvider]) {
@@ -601,6 +609,7 @@ final class SettingsStore: ObservableObject {
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
         launcher = decoded.launcher ?? .default
+        imagePasteMode = decoded.imagePasteMode ?? .default
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
@@ -657,6 +666,7 @@ final class SettingsStore: ObservableObject {
             permissionTimeoutMinutes: permissionTimeoutMinutes == 10
                 ? nil : permissionTimeoutMinutes,
             menuBar: menuBar == MenuBarPrefs() ? nil : menuBar,
+            imagePasteMode: imagePasteMode == .default ? nil : imagePasteMode,
             launcher: launcher == .default ? nil : launcher,
             language: language == LanguagePrefs() ? nil : language,
             onboardingVersion: onboardingVersion,
