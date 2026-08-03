@@ -8157,6 +8157,9 @@
     "No project yet" : {
 
     },
+    "No projects in this window" : {
+
+    },
     "No projects yet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9031,6 +9034,9 @@
       }
     },
     "Open on GitHub" : {
+
+    },
+    "Open one you already have" : {
 
     },
     "Open Session" : {
