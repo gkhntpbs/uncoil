@@ -153,6 +153,85 @@ final class NewWindowOptionsTests: XCTestCase {
     }
 }
 
+/// Which projects a window lists.
+final class WindowProjectsTests: XCTestCase {
+    private func project(_ name: String) -> Project {
+        Project(name: name, rootPath: "/tmp/\(name)")
+    }
+
+    func testAWindowShowingEverythingShowsEverything() {
+        let projects = [project("a"), project("b")]
+        XCTAssertEqual(WindowProjects.all.filter(projects).map(\.id), projects.map(\.id))
+    }
+
+    /// The point of the whole thing: a clean window lists nothing.
+    func testACleanWindowListsNothing() {
+        XCTAssertTrue(WindowProjects.some([]).filter([project("a")]).isEmpty)
+    }
+
+    func testAWindowListsOnlyWhatWasOpenedInIt() {
+        let a = project("a")
+        let b = project("b")
+        XCTAssertEqual(
+            WindowProjects.some([a.id]).filter([a, b]).map(\.id), [a.id]
+        )
+    }
+
+    /// The sidebar's order is pinning, manual order and Scratch last. A `Set`
+    /// has none of that to offer, so the store's order is the one kept.
+    func testTheStoresOrderIsKeptRatherThanTheSets() {
+        let a = project("a")
+        let b = project("b")
+        let c = project("c")
+        XCTAssertEqual(
+            WindowProjects.some([c.id, a.id]).filter([a, b, c]).map(\.id), [a.id, c.id]
+        )
+    }
+
+    // MARK: - Opening and closing
+
+    func testOpeningAProjectPutsItInTheWindow() {
+        let id = UUID()
+        XCTAssertTrue(WindowProjects.some([]).adding(id).contains(id))
+    }
+
+    /// `.all` is not "a set of everything". Pinning it to a fixed set here is
+    /// how the original window would quietly stop seeing projects added later.
+    func testAWindowShowingEverythingStaysThatWayWhenAProjectIsOpened() {
+        XCTAssertEqual(WindowProjects.all.adding(UUID()), .all)
+        XCTAssertEqual(WindowProjects.all.removing(UUID()), .all)
+    }
+
+    func testAWindowShowingEverythingPicksUpProjectsAddedLater() {
+        let scope = WindowProjects.all.adding(UUID())
+        XCTAssertTrue(scope.contains(UUID()))
+    }
+
+    func testRemovingAProjectTakesItOutOfTheWindow() {
+        let id = UUID()
+        XCTAssertFalse(WindowProjects.some([id]).removing(id).contains(id))
+    }
+
+    // MARK: - Persistence
+
+    func testAWindowsProjectListSurvivesBeingWrittenDown() throws {
+        let id = UUID()
+        let saved = PersistedWindow(id: UUID(), selection: nil, projects: .some([id]))
+        let decoded = try JSONDecoder().decode(
+            PersistedWindow.self, from: try JSONEncoder().encode(saved)
+        )
+        XCTAssertEqual(decoded.projects, .some([id]))
+    }
+
+    /// Files written before windows had project lists have no field for one,
+    /// and those windows were showing everything.
+    func testAWindowSavedBeforeProjectListsExistedShowsEverything() throws {
+        let json = Data(#"{"id":"\#(UUID().uuidString)","selectionKind":"","selectionID":""}"#.utf8)
+        let decoded = try JSONDecoder().decode(PersistedWindow.self, from: json)
+        XCTAssertNil(decoded.projects)
+    }
+}
+
 /// Which window answers a "show me this" request.
 final class SessionRoutingTests: XCTestCase {
     private let key = UUID()

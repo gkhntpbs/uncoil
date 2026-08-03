@@ -88,6 +88,16 @@
     "“%@” is already installed outside Uncoil. Adopt it on the Skills screen first." : {
 
     },
+    "“%@” is running in “%@”. A session can only be shown in one window at a time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“%1$@” is running in “%2$@”. A session can only be shown in one window at a time."
+          }
+        }
+      }
+    },
     "“%@” matched no extension, agent, source, finding or record." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -223,6 +233,9 @@
           }
         }
       }
+    },
+    "%@ (popped out)" : {
+
     },
     "%@ (repository root)" : {
 
@@ -3530,6 +3543,12 @@
         }
       }
     },
+    "Clone “%@” Window" : {
+
+    },
+    "Clone Main Window" : {
+
+    },
     "Close" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5134,6 +5153,9 @@
           }
         }
       }
+    },
+    "Empty" : {
+
     },
     "End of file (no heading)" : {
       "extractionState" : "manual",
@@ -7378,6 +7400,9 @@
         }
       }
     },
+    "Move It Here" : {
+
+    },
     "Move it to the Uncoil launcher to keep the value in the Keychain." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7546,6 +7571,9 @@
         }
       }
     },
+    "New Empty Window" : {
+
+    },
     "New Group" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7702,6 +7730,9 @@
           }
         }
       }
+    },
+    "New Window" : {
+
     },
     "New worktree name (isolated task branch)" : {
       "extractionState" : "manual",
@@ -9197,6 +9228,15 @@
           }
         }
       }
+    },
+    "Opens on the same project and view as that window." : {
+
+    },
+    "Opens on the same project and view as the main window." : {
+
+    },
+    "Opens with nothing selected." : {
+
     },
     "Opt-in" : {
 
@@ -11958,6 +11998,9 @@
         }
       }
     },
+    "Show That Window" : {
+
+    },
     "Show the details" : {
 
     },
@@ -13926,6 +13969,9 @@
     "This session is asleep" : {
 
     },
+    "This session is open in another window" : {
+
+    },
     "This session is paused" : {
 
     },
@@ -14922,6 +14968,9 @@
           }
         }
       }
+    },
+    "What should this window open on?" : {
+
     },
     "What your agents may do" : {
 

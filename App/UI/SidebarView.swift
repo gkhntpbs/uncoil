@@ -7,6 +7,12 @@ struct SidebarView: View {
     @Binding var selection: MainSelection?
     @Binding var selectedSessionIDs: Set<UUID>
     @Binding var showFolderPicker: Bool
+    /// Which projects this window shows.
+    let scope: WindowProjects
+    /// Puts a project into this window. Anything that makes a project reachable
+    /// from here goes through it, or the sidebar would hold a row for something
+    /// the window does not list.
+    let openProject: (UUID) -> Void
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @Environment(\.openWindow) private var openWindow
     @State private var showCreateGroup = false
@@ -25,6 +31,53 @@ struct SidebarView: View {
     /// Closing Scratch removes the sessions in it, so it is asked about.
     @State private var confirmingScratchClose = false
 
+    /// Projects the app knows about that this window is not showing.
+    ///
+    /// A clean window would otherwise be a dead end: the only way into a
+    /// project it does not list would be to add its folder again, which is a
+    /// file dialog to reach something already open one window over.
+    private var elsewhere: [Project] {
+        projectStore.visibleProjects.filter { !scope.contains($0.id) }
+    }
+
+    @ViewBuilder
+    private var emptySidebar: some View {
+        VStack(spacing: Theme.Space.snug) {
+            VStack(spacing: Theme.Space.hair) {
+                Text(projectStore.projects.isEmpty ? "No projects yet" : "No projects in this window")
+                    .font(Theme.ui(.body))
+                    .foregroundStyle(Theme.textFaint)
+                Button("Add a Project") { showFolderPicker = true }
+                    .buttonStyle(GhostButtonStyle())
+            }
+            if !elsewhere.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Open one you already have")
+                        .font(Theme.ui(.small))
+                        .foregroundStyle(Theme.textFaint)
+                        .padding(.bottom, 2)
+                    ForEach(elsewhere) { project in
+                        Button {
+                            openProject(project.id)
+                            selection = .project(project.id)
+                        } label: {
+                            Text(project.name)
+                                .font(Theme.mono(.body))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier("sidebar.openExisting.\(project.name)")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 40)
+    }
+
     /// How far the window's own title bar reaches into the content.
     static let titlebarClearance: CGFloat = 32
 
@@ -41,6 +94,7 @@ struct SidebarView: View {
                 selection: $selection,
                 selectedSessionIDs: $selectedSessionIDs,
                 isMultiSelecting: isMultiSelecting,
+                scope: scope,
                 actions: SidebarRowActions(
                     openSessionWindow: { openWindow(id: "session-window", value: $0) },
                     customizeProject: { customizingProject = $0 },
@@ -59,21 +113,18 @@ struct SidebarView: View {
                             provider: provider,
                             accountID: settings.defaultAccount(for: provider)?.id
                         )
+                        // A one-off session makes the Scratch workspace, which
+                        // has to be in this window or its own session would
+                        // open onto a sidebar with no row for it.
+                        openProject(record.projectID)
                         selection = .session(record.id)
                     },
                     closeScratch: { confirmingScratchClose = true }
                 )
             )
             .overlay(alignment: .top) {
-                if projectStore.projects.isEmpty {
-                    VStack(spacing: 8) {
-                        Text("No projects yet")
-                            .font(Theme.ui(.body))
-                            .foregroundStyle(Theme.textFaint)
-                        Button("Add a Project") { showFolderPicker = true }
-                            .buttonStyle(GhostButtonStyle())
-                    }
-                    .padding(.top, 40)
+                if scope.filter(projectStore.projects).isEmpty {
+                    emptySidebar
                 }
             }
 

@@ -36,6 +36,21 @@ struct MainWindow: View {
     private static let hideThreshold: Double = 120
 
     var body: some View {
+        // Split in two on purpose: as one chain this stopped type-checking in
+        // reasonable time.
+        surfaces
+            .modifier(MainWindowSignals(
+                selection: $selection,
+                selectedSessionIDs: $selectedSessionIDs,
+                windowID: windowID,
+                onRoute: { openInThisWindow(projectID(of: $0)) },
+                onAttention: { refreshAttention() },
+                projectStore: projectStore,
+                sessionStore: sessionStore
+            ))
+    }
+
+    private var surfaces: some View {
         ZStack {
             mainContent
             if palette.isOpen {
@@ -67,9 +82,6 @@ struct MainWindow: View {
             syncOwnership()
         }
         .onChange(of: splitSessionID) { _, _ in syncOwnership() }
-        .onChange(of: projectStore.sessions.count) { _, _ in
-            windows.pruneOwnership(sessions: Set(projectStore.sessions.map(\.id)))
-        }
         .onChange(of: palette.pendingAction) { _, action in
             if let action { perform(action); palette.pendingAction = nil }
         }
@@ -114,18 +126,6 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
             runtimeCompatibilityError = $0.object as? String
         }
-        .onReceive(MainRoute.shared.$requestCounter) { _ in
-            guard let requested = MainRoute.shared.requestedSelection else { return }
-            // Every window hears this. Exactly one answers it, or a single
-            // click from the menu bar would rearrange the whole desktop.
-            guard let windowID, windows.routeTarget(for: requested) == windowID else { return }
-            selectedSessionIDs.removeAll()
-            selection = requested
-            MainRoute.shared.requestedSelection = nil
-            windows.reveal(windowID)
-        }
-        .onChange(of: sessionStore.statuses) { _, _ in refreshAttention() }
-        .onChange(of: sessionStore.codexAuthentication) { _, _ in refreshAttention() }
         .task {
             if LaunchConfig.shared.runtimeMismatchFixture {
                 runtimeCompatibilityError =
@@ -175,7 +175,9 @@ struct MainWindow: View {
                 SidebarView(
                     selection: $selection,
                     selectedSessionIDs: $selectedSessionIDs,
-                    showFolderPicker: $showFolderPicker
+                    showFolderPicker: $showFolderPicker,
+                    scope: projectScope,
+                    openProject: { openInThisWindow($0) }
                 )
                 .frame(width: sidebarWidth)
                 .background(Theme.sidebarSurface)
@@ -259,6 +261,7 @@ struct MainWindow: View {
         ) { url in
             projectStore.addProject(at: url)
             if let added = projectStore.projects.last {
+                openInThisWindow(added.id)
                 selection = .project(added.id)
             }
         }
@@ -335,6 +338,7 @@ struct MainWindow: View {
                 let url = try TestWorkspaceService().create()
                 projectStore.addProject(at: url)
                 if let project = projectStore.projects.first(where: { $0.rootPath == url.path }) {
+                    openInThisWindow(project.id)
                     selection = .project(project.id)
                 }
             } catch {
@@ -352,8 +356,12 @@ struct MainWindow: View {
         case .openExtensions:
             openWindow(id: "extensions")
         case .openProject(let id):
+            openInThisWindow(id)
             selection = .project(id)
         case .focusSession(let id):
+            if let projectID = projectStore.sessions.first(where: { $0.id == id })?.projectID {
+                openInThisWindow(projectID)
+            }
             selection = .session(id)
         case .newSession(let projectID, let provider):
             launchSession(projectID: projectID, provider: provider)
@@ -652,7 +660,8 @@ struct MainWindow: View {
         // A window that is still asking must not be answered for it, and a
         // restored one already has its selection back.
         guard newWindowOptions == nil else { return }
-        if selection == nil, let first = projectStore.visibleProjects.first {
+        if selection == nil,
+           let first = projectScope.filter(projectStore.visibleProjects).first {
             selection = .project(first.id)
         }
     }
@@ -679,6 +688,25 @@ struct MainWindow: View {
     }
 
     // MARK: - Windows
+
+    /// Which projects this window shows.
+    private var projectScope: WindowProjects {
+        windowID.map { windows.scope(of: $0) } ?? .all
+    }
+
+    private func openInThisWindow(_ projectID: UUID?) {
+        guard let windowID, let projectID else { return }
+        windows.open(project: projectID, in: windowID)
+    }
+
+    private func projectID(of selection: MainSelection?) -> UUID? {
+        switch selection {
+        case .project(let id): id
+        case .group(let id): projectStore.sessionGroups.first { $0.id == id }?.projectID
+        case .session(let id): projectStore.sessions.first { $0.id == id }?.projectID
+        case nil: nil
+        }
+    }
 
     /// The sessions this window is actually showing — the selected one, and
     /// the one in the split pane beside it.
@@ -744,10 +772,14 @@ struct MainWindow: View {
     }
 
     private func apply(_ choice: NewWindowChoice) {
+        guard let windowID else { return }
         switch choice {
         case .empty:
+            // Already `.some([])` from the moment the window registered, so
+            // the question was never asked over a sidebar full of projects.
             selection = nil
         case .clone(let sourceID):
+            windows.setScope(windows.scope(of: sourceID), for: windowID)
             selection = NewWindowOptions.clonedSelection(
                 from: windows.selection(of: sourceID),
                 projectOfSession: { id in
@@ -1088,5 +1120,47 @@ struct MainWindowFrame: NSViewRepresentable {
         if numbers[2] < minimumSensibleSize.width || numbers[3] < minimumSensibleSize.height {
             defaults.removeObject(forKey: key)
         }
+    }
+}
+
+/// The window's reactions to things happening elsewhere in the app.
+///
+/// Lifted out of `MainWindow.body` because as one chain it stopped
+/// type-checking in reasonable time. Grouping them is also honest: these are
+/// the app talking to a window, rather than the window drawing itself.
+private struct MainWindowSignals: ViewModifier {
+    @Binding var selection: MainSelection?
+    @Binding var selectedSessionIDs: Set<UUID>
+    let windowID: UUID?
+    let onRoute: (MainSelection) -> Void
+    let onAttention: () -> Void
+    @ObservedObject var projectStore: ProjectStore
+    @ObservedObject var sessionStore: SessionStore
+    @ObservedObject private var windows = WindowRegistry.shared
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: projectStore.sessions.count) { _, _ in
+                windows.pruneOwnership(sessions: Set(projectStore.sessions.map(\.id)))
+            }
+            .onChange(of: projectStore.projects.count) { _, _ in
+                windows.pruneScopes(projects: Set(projectStore.projects.map(\.id)))
+            }
+            .onChange(of: sessionStore.statuses) { _, _ in onAttention() }
+            .onChange(of: sessionStore.codexAuthentication) { _, _ in onAttention() }
+            .onReceive(MainRoute.shared.$requestCounter) { _ in
+                guard let requested = MainRoute.shared.requestedSelection else { return }
+                // Every window hears this. Exactly one answers it, or a single
+                // click from the menu bar would rearrange the whole desktop.
+                guard let windowID,
+                      windows.routeTarget(for: requested) == windowID else { return }
+                selectedSessionIDs.removeAll()
+                // "Show me this" means show it: a window asked for something it
+                // does not list opens it rather than refusing.
+                onRoute(requested)
+                selection = requested
+                MainRoute.shared.requestedSelection = nil
+                windows.reveal(windowID)
+            }
     }
 }

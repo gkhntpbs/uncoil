@@ -91,6 +91,10 @@ struct SidebarOutline: NSViewRepresentable {
     @Binding var selection: MainSelection?
     @Binding var selectedSessionIDs: Set<UUID>
     let isMultiSelecting: Bool
+    /// Which projects this window shows. The sidebar is the first thing you
+    /// look at, so a window that lists every project is not a clean window
+    /// whatever its detail column happens to be showing.
+    let scope: WindowProjects
     let actions: SidebarRowActions
 
     @EnvironmentObject private var projectStore: ProjectStore
@@ -140,6 +144,7 @@ struct SidebarOutline: NSViewRepresentable {
                 sessionStore: sessionStore,
                 settings: settings,
                 actions: actions,
+                scope: scope,
                 isMultiSelecting: isMultiSelecting,
                 selection: $selection,
                 selectedSessionIDs: $selectedSessionIDs
@@ -156,6 +161,7 @@ struct SidebarOutline: NSViewRepresentable {
         let sessionStore: SessionStore
         let settings: SettingsStore
         let actions: SidebarRowActions
+        let scope: WindowProjects
         let isMultiSelecting: Bool
         let selection: Binding<MainSelection?>
         let selectedSessionIDs: Binding<Set<UUID>>
@@ -195,7 +201,9 @@ struct SidebarOutline: NSViewRepresentable {
             isSyncing = true
             defer { isSyncing = false }
 
-            let fresh = Self.structure(from: environment.projectStore)
+            let fresh = Self.structure(
+                from: environment.projectStore, scope: environment.scope
+            )
             let structureChanged = fresh != structure
             structure = fresh
             if structureChanged {
@@ -231,9 +239,11 @@ struct SidebarOutline: NSViewRepresentable {
             }
         }
 
-        private static func structure(from store: ProjectStore) -> SidebarStructure {
+        private static func structure(
+            from store: ProjectStore, scope: WindowProjects
+        ) -> SidebarStructure {
             SidebarStructure.build(
-                projectIDs: store.projects.map(\.id),
+                projectIDs: scope.filter(store.projects).map(\.id),
                 groups: { store.groups(for: $0).map(\.id) },
                 sessions: {
                     store.sessions(for: $0).map { ($0.id, $0.groupID, $0.parentSessionID) }

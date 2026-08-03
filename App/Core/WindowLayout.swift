@@ -13,12 +13,66 @@ struct PersistedWindow: Codable, Equatable, Identifiable {
     /// `""` when the window was showing nothing.
     var selectionKind: String
     var selectionID: String
+    /// Absent in files written before windows had project lists of their own,
+    /// and read as "everything" — which is what those windows were showing.
+    var projects: WindowProjects?
 
-    init(id: UUID, selection: MainSelection?) {
+    init(id: UUID, selection: MainSelection?, projects: WindowProjects = .all) {
         self.id = id
         let coded = SelectionCoding.encode(selection)
         selectionKind = coded.kind
         selectionID = coded.id
+        self.projects = projects
+    }
+}
+
+/// Which projects a window shows.
+///
+/// A clean window has to be clean, and a window listing every project in the
+/// sidebar is not — the list is the first thing you look at. So the project
+/// list belongs to the window rather than to the app: open a project in one
+/// window and it is in *that* window, the way a workspace works.
+///
+/// `.all` is not the same as `.some` of everything, and the difference is
+/// projects added later. A window that was never asked the question shows
+/// whatever exists, then and afterwards; that is what every window did before
+/// this, and what the first window still does. Collapsing the two would mean
+/// the original window quietly stopped picking up new projects.
+enum WindowProjects: Codable, Equatable {
+    case all
+    case some(Set<UUID>)
+
+    func contains(_ id: UUID) -> Bool {
+        switch self {
+        case .all: true
+        case .some(let ids): ids.contains(id)
+        }
+    }
+
+    /// Opening a project in a window puts it in that window. `.all` already
+    /// has it, and must stay `.all` — pinning it to a fixed set here is how a
+    /// window would stop seeing anything added afterwards.
+    func adding(_ id: UUID) -> WindowProjects {
+        switch self {
+        case .all: .all
+        case .some(let ids): .some(ids.union([id]))
+        }
+    }
+
+    func removing(_ id: UUID) -> WindowProjects {
+        switch self {
+        case .all: .all
+        case .some(let ids): .some(ids.subtracting([id]))
+        }
+    }
+
+    /// Order is the store's, never the set's: the sidebar's sort is pinning,
+    /// manual order and Scratch last, and a `Set` has no order to offer.
+    func filter(_ projects: [Project]) -> [Project] {
+        switch self {
+        case .all: projects
+        case .some(let ids): projects.filter { ids.contains($0.id) }
+        }
     }
 }
 

@@ -57,6 +57,7 @@ final class SidebarCollapseTests: XCTestCase {
                 confirmDeleteSession: { _ in },
                 addProject: {}, newScratchSession: { _ in }, closeScratch: {}
             ),
+            scope: .all,
             isMultiSelecting: false,
             selection: Binding(get: { selection }, set: { selection = $0 }),
             selectedSessionIDs: Binding(

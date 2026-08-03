@@ -17,6 +17,8 @@ final class WindowRegistry: ObservableObject {
     /// Open windows, oldest first. Order is what makes one of them "main".
     @Published private(set) var order: [UUID] = []
     @Published private(set) var selections: [UUID: MainSelection?] = [:]
+    /// Which projects each window shows.
+    @Published private(set) var scopes: [UUID: WindowProjects] = [:]
     @Published private(set) var ownership = SessionOwnership()
 
     /// Windows waiting to come back from the last run, consumed one per
@@ -107,12 +109,24 @@ final class WindowRegistry: ObservableObject {
         }
         order.append(id)
         selections[id] = MainSelection?.none
+        switch mode {
+        case .restored(let saved):
+            scopes[id] = saved.projects ?? .all
+        case .first:
+            // The window someone has always had goes on showing everything.
+            scopes[id] = .all
+        case .asks:
+            // Decided by the answer; until then it shows nothing, so the
+            // question is never asked over a sidebar full of projects.
+            scopes[id] = .some([])
+        }
         return (id, mode)
     }
 
     func unregister(_ id: UUID) {
         order.removeAll { $0 == id }
         selections[id] = nil
+        scopes[id] = nil
         windows[id] = nil
         ownership.releaseAll(of: id)
         save()
@@ -153,6 +167,44 @@ final class WindowRegistry: ObservableObject {
 
     func selection(of id: UUID) -> MainSelection? {
         selections[id] ?? nil
+    }
+
+    // MARK: - Which projects a window shows
+
+    func scope(of id: UUID) -> WindowProjects {
+        scopes[id] ?? .all
+    }
+
+    func setScope(_ scope: WindowProjects, for id: UUID) {
+        guard order.contains(id) else { return }
+        scopes[id] = scope
+        save()
+    }
+
+    /// Opening a project in a window puts it in that window. Every route into
+    /// a project goes through here — the folder picker, the palette, a
+    /// notification, a one-off session — because a window that showed a
+    /// project it does not list would be showing something unreachable.
+    func open(project: UUID, in id: UUID) {
+        setScope(scope(of: id).adding(project), for: id)
+    }
+
+    /// A project removed from the app is removed from every window.
+    func forget(project: UUID) {
+        for id in order { scopes[id] = scope(of: id).removing(project) }
+        save()
+    }
+
+    /// Drops projects that no longer exist from every window's list. Done by
+    /// reconciliation rather than at each removal site, so a project deleted
+    /// by a route nobody thought of does not linger in a saved arrangement.
+    func pruneScopes(projects: Set<UUID>) {
+        for id in order {
+            guard case .some(let ids) = scope(of: id) else { continue }
+            let live = ids.intersection(projects)
+            if live != ids { scopes[id] = .some(live) }
+        }
+        save()
     }
 
     // MARK: - Ownership
@@ -263,7 +315,9 @@ final class WindowRegistry: ObservableObject {
 
     private func save() {
         guard !LaunchConfig.shared.isUITesting, !terminating else { return }
-        let saved = order.map { PersistedWindow(id: $0, selection: selection(of: $0)) }
+        let saved = order.map {
+            PersistedWindow(id: $0, selection: selection(of: $0), projects: scope(of: $0))
+        }
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true
         )
