@@ -687,6 +687,21 @@ struct ProjectTasksView: View {
         }
     }
 
+    /// A project can hold several task files, all of them named `TODO.md`, so a
+    /// task is named by its path from the project root rather than by its file
+    /// name — otherwise every row reads the same.
+    private func sourceDisplayPath(of task: ProjectTask) -> String {
+        TaskSourceLabel.displayPath(
+            forSourcePath: task.sourcePath,
+            knownSources: sources.sources,
+            projectRoot: project.rootPath
+        )
+    }
+
+    private func sourceLabel(of task: ProjectTask) -> String {
+        TaskSourceLabel.short(displayPath: sourceDisplayPath(of: task))
+    }
+
     private func listRow(_ task: ProjectTask) -> some View {
         let state = metadata.executionState(for: task.id)
         let assignments = metadata.assignments(for: task.id)
@@ -704,7 +719,7 @@ struct ProjectTasksView: View {
                     Text(task.headingPath.joined(separator: " › "))
                         .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
-                    Text(URL(fileURLWithPath: task.sourcePath).lastPathComponent)
+                    Text(sourceLabel(of: task))
                         .font(Theme.mono(.micro))
                         .foregroundStyle(Theme.textFaint)
                     if state != .unassigned {
@@ -888,7 +903,7 @@ struct ProjectTasksView: View {
                 }
             }
             HStack(spacing: 6) {
-                Text(URL(fileURLWithPath: task.sourcePath).lastPathComponent)
+                Text(sourceLabel(of: task))
                     .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                 if state != .unassigned {
@@ -1304,8 +1319,8 @@ struct ProjectTasksView: View {
 
     private func prompt(for task: ProjectTask, role: TaskAgentRole) -> String {
         let location = task.headingPath.isEmpty
-            ? URL(fileURLWithPath: task.sourcePath).lastPathComponent
-            : "\(URL(fileURLWithPath: task.sourcePath).lastPathComponent) › \(task.headingPath.joined(separator: " › "))"
+            ? sourceDisplayPath(of: task)
+            : "\(sourceDisplayPath(of: task)) › \(task.headingPath.joined(separator: " › "))"
         let body = task.rawBlock.trimmingCharacters(in: .whitespacesAndNewlines)
         switch role {
         case .reviewer:
@@ -1690,7 +1705,7 @@ struct ProjectTasksView: View {
         // The editor is opened at the file; the line is shown so the user can
         // jump there even when the editor does not accept a line argument.
         settings.preferredEditor.open(URL(fileURLWithPath: task.sourcePath))
-        message = String(localized: "\(URL(fileURLWithPath: task.sourcePath).lastPathComponent):\(task.lineRange.startLine)")
+        message = String(localized: "\(sourceDisplayPath(of: task)):\(task.lineRange.startLine)")
     }
 }
 
