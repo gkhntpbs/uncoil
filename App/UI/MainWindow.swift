@@ -24,9 +24,13 @@ struct MainWindow: View {
     @State private var runtimeCompatibilityError: String?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
-    @AppStorage("mainSelectionKind") private var persistedSelectionKind = ""
-    @AppStorage("mainSelectionID") private var persistedSelectionID = ""
     @State private var dragStartWidth: Double?
+    /// This window's identity, and everything that depends on knowing which
+    /// window this is. Assigned once, when the window first appears.
+    @ObservedObject private var windows = WindowRegistry.shared
+    @State private var windowID: UUID?
+    /// Non-nil while the "what should this window open on?" question is up.
+    @State private var newWindowOptions: [NewWindowOption]?
 
     static let maxSidebarWidth: Double = 252
     private static let hideThreshold: Double = 120
@@ -43,7 +47,16 @@ struct MainWindow: View {
                 OnboardingView()
                     .transition(.opacity)
             }
+            // Below setup on purpose: a machine that has never been set up has
+            // nothing worth cloning, and two questions at once is one too many.
+            if let newWindowOptions, !onboarding.isPresenting {
+                NewWindowOverlay(options: newWindowOptions) { choice in
+                    apply(choice)
+                }
+                .transition(.opacity)
+            }
         }
+        .animation(Theme.Motion.expressive, value: newWindowOptions == nil)
         // The palette used to appear and vanish outright: its transition never
         // ran because nothing animated the condition that mounts it.
         .animation(Theme.Motion.expressive, value: palette.isOpen)
@@ -51,6 +64,11 @@ struct MainWindow: View {
         .onChange(of: selection) { _, _ in
             syncPaletteSelection()
             persistSelection()
+            syncOwnership()
+        }
+        .onChange(of: splitSessionID) { _, _ in syncOwnership() }
+        .onChange(of: projectStore.sessions.count) { _, _ in
+            windows.pruneOwnership(sessions: Set(projectStore.sessions.map(\.id)))
         }
         .onChange(of: palette.pendingAction) { _, action in
             if let action { perform(action); palette.pendingAction = nil }
@@ -98,9 +116,13 @@ struct MainWindow: View {
         }
         .onReceive(MainRoute.shared.$requestCounter) { _ in
             guard let requested = MainRoute.shared.requestedSelection else { return }
+            // Every window hears this. Exactly one answers it, or a single
+            // click from the menu bar would rearrange the whole desktop.
+            guard let windowID, windows.routeTarget(for: requested) == windowID else { return }
             selectedSessionIDs.removeAll()
             selection = requested
             MainRoute.shared.requestedSelection = nil
+            windows.reveal(windowID)
         }
         .onChange(of: sessionStore.statuses) { _, _ in refreshAttention() }
         .onChange(of: sessionStore.codexAuthentication) { _, _ in refreshAttention() }
@@ -240,7 +262,12 @@ struct MainWindow: View {
                 selection = .project(added.id)
             }
         }
-        .background(MainWindowFrame())
+        .background(
+            MainWindowFrame(
+                windowID: windowID,
+                slot: windowID.flatMap { windows.order.firstIndex(of: $0) }
+            )
+        )
         .onAppear {
             // Deferred: mutating @Published stores inside the first view
             // update triggers "Publishing changes from within view updates".
@@ -250,9 +277,18 @@ struct MainWindow: View {
                     projectStore: projectStore, sessionStore: sessionStore
                 )
                 startServices()
+                adoptWindowIdentity()
                 applyLaunchRoute()
                 setupPalette()
                 presentOnboardingIfNeeded()
+            }
+        }
+        .onDisappear {
+            // Whatever this window held goes back into circulation, or the
+            // sessions inside a closed window would stay locked to it.
+            if let windowID {
+                windows.unregister(windowID)
+                PaletteHotkeyMonitor.forget(windowID)
             }
         }
     }
@@ -269,7 +305,8 @@ struct MainWindow: View {
             }
         )
         syncPaletteSelection()
-        PaletteHotkeyMonitor.install(model: palette, settings: settings)
+        if let windowID { PaletteHotkeyMonitor.register(palette, for: windowID) }
+        PaletteHotkeyMonitor.install(settings: settings)
     }
 
     private func syncPaletteSelection() {
@@ -494,6 +531,20 @@ struct MainWindow: View {
             }
         case .session(let id):
             if let record = projectStore.sessions.first(where: { $0.id == id }),
+               let holder = sessionHolder(of: id) {
+                // Drawn instead of the terminal, never beside it: mounting the
+                // terminal here is what would take it out of the other window.
+                SessionElsewhereView(
+                    sessionTitle: record.displayTitle,
+                    windowTitle: windows.title(of: holder, projectStore: projectStore),
+                    reveal: { windows.reveal(holder) },
+                    moveHere: {
+                        guard let windowID else { return }
+                        windows.take(id, by: windowID)
+                    }
+                )
+                .id(record.id)
+            } else if let record = projectStore.sessions.first(where: { $0.id == id }),
                let project = projectStore.projects.first(where: { $0.id == record.projectID }) {
                 HSplitView {
                     SessionDetailView(
@@ -598,10 +649,9 @@ struct MainWindow: View {
             selection = .session(record.id)
             return
         }
-        if !config.isUITesting, let restored = restoredSelection() {
-            selection = restored
-            return
-        }
+        // A window that is still asking must not be answered for it, and a
+        // restored one already has its selection back.
+        guard newWindowOptions == nil else { return }
         if selection == nil, let first = projectStore.visibleProjects.first {
             selection = .project(first.id)
         }
@@ -609,35 +659,105 @@ struct MainWindow: View {
 
     private func persistSelection() {
         MainRoute.shared.lastSelection = selection
-        guard !LaunchConfig.shared.isUITesting else { return }
+        guard let windowID else { return }
+        windows.setSelection(selection, for: windowID)
+    }
+
+    /// Only what still exists. A selection saved against a project that has
+    /// since been removed would open a window onto nothing and call it restored.
+    private func liveSelection(_ selection: MainSelection?) -> MainSelection? {
         switch selection {
         case .project(let id):
-            persistedSelectionKind = "project"
-            persistedSelectionID = id.uuidString
+            return projectStore.projects.contains { $0.id == id } ? .project(id) : nil
         case .group(let id):
-            persistedSelectionKind = "group"
-            persistedSelectionID = id.uuidString
+            return projectStore.sessionGroups.contains { $0.id == id } ? .group(id) : nil
         case .session(let id):
-            persistedSelectionKind = "session"
-            persistedSelectionID = id.uuidString
+            return projectStore.sessions.contains { $0.id == id } ? .session(id) : nil
         case nil:
-            persistedSelectionKind = ""
-            persistedSelectionID = ""
+            return nil
         }
     }
 
-    private func restoredSelection() -> MainSelection? {
-        guard let id = UUID(uuidString: persistedSelectionID) else { return nil }
-        switch persistedSelectionKind {
-        case "project":
-            return projectStore.projects.contains { $0.id == id } ? .project(id) : nil
-        case "group":
-            return projectStore.sessionGroups.contains { $0.id == id } ? .group(id) : nil
-        case "session":
-            return projectStore.sessions.contains { $0.id == id } ? .session(id) : nil
-        default:
-            return nil
+    // MARK: - Windows
+
+    /// The sessions this window is actually showing — the selected one, and
+    /// the one in the split pane beside it.
+    private var shownSessionIDs: Set<UUID> {
+        var ids: Set<UUID> = []
+        if case .session(let id) = selection { ids.insert(id) }
+        if let splitSessionID { ids.insert(splitSessionID) }
+        return ids
+    }
+
+    /// Keeps the ownership map equal to what is on screen.
+    ///
+    /// Navigating away from a session gives it up. It has to: the terminal is
+    /// unmounted the moment the detail column shows something else, so a window
+    /// that kept the claim would be holding a session it is not displaying and
+    /// locking every other window out of it for the rest of the run.
+    private func syncOwnership() {
+        guard let windowID else { return }
+        let shown = shownSessionIDs
+        for held in windows.ownership.sessions(heldBy: windowID) where !shown.contains(held) {
+            windows.release(held, from: windowID)
         }
+        for id in shown {
+            if case .heldElsewhere = windows.claim(id, by: windowID), id == splitSessionID {
+                // The split pane has no room to explain itself and is a
+                // convenience rather than a destination, so a session another
+                // window holds simply does not open there.
+                splitSessionID = nil
+            }
+        }
+    }
+
+    /// Who holds the selected session, when it is not this window.
+    private func sessionHolder(of id: UUID) -> UUID? {
+        guard let windowID,
+              case .heldElsewhere(let other) = windows.ownership.outcome(claiming: id, by: windowID)
+        else { return nil }
+        return other
+    }
+
+    private func adoptWindowIdentity() {
+        guard windowID == nil else { return }
+        // Asked before registering, so the count reflects the saved
+        // arrangement rather than this window having already joined it.
+        let extras = windows.prepareRestore()
+        let registration = windows.register()
+        windowID = registration.id
+        for _ in 0..<extras { openWindow(id: "main") }
+        switch registration.mode {
+        case .restored(let saved):
+            selection = liveSelection(
+                SelectionCoding.decode(kind: saved.selectionKind, id: saved.selectionID)
+            )
+            persistSelection()
+            syncOwnership()
+        case .first:
+            break
+        case .asks:
+            newWindowOptions = NewWindowOptions.options(
+                windows: windows.summaries(excluding: registration.id, projectStore: projectStore)
+            )
+        }
+    }
+
+    private func apply(_ choice: NewWindowChoice) {
+        switch choice {
+        case .empty:
+            selection = nil
+        case .clone(let sourceID):
+            selection = NewWindowOptions.clonedSelection(
+                from: windows.selection(of: sourceID),
+                projectOfSession: { id in
+                    projectStore.sessions.first { $0.id == id }?.projectID
+                }
+            )
+        }
+        newWindowOptions = nil
+        persistSelection()
+        syncOwnership()
     }
 
 
@@ -879,21 +999,50 @@ struct MainWindowFrame: NSViewRepresentable {
     /// Anything smaller than this is not an app window, whatever it claims.
     private static let minimumSensibleSize = NSSize(width: 400, height: 300)
 
+    /// Which window this is, once it knows. Nil until the window has adopted
+    /// an identity, which is a turn or two after the view first appears.
+    var windowID: UUID?
+    /// Position in the open order. Frames are saved per slot rather than per
+    /// id, because ids are minted fresh for hand-opened windows and a name
+    /// nothing has ever been saved under restores nothing. Slots are stable:
+    /// windows come back in the order they were written down.
+    var slot: Int?
+
+    /// One name per slot, so a second window does not land exactly on top of
+    /// the first and look like nothing happened.
+    static func autosaveName(slot: Int?) -> String {
+        guard let slot, slot > 0 else { return autosaveName }
+        return "\(autosaveName)-\(slot)"
+    }
+
     func makeNSView(context: Context) -> NSView {
-        let probe = NSView()
-        attach(probe, retries: 3)
-        return probe
+        NSView()
+    }
+
+    func updateNSView(_ probe: NSView, context: Context) {
+        guard let windowID, !context.coordinator.placed else { return }
+        context.coordinator.placed = true
+        attach(probe, windowID: windowID, retries: 3)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var placed = false
     }
 
     /// The view is not in a window yet on the first turn of the run loop; a few
     /// attempts cost nothing and beat never restoring the frame at all.
-    private func attach(_ probe: NSView, retries: Int) {
+    private func attach(_ probe: NSView, windowID: UUID, retries: Int) {
         DispatchQueue.main.async {
             guard let window = probe.window else {
-                if retries > 0 { attach(probe, retries: retries - 1) }
+                if retries > 0 { attach(probe, windowID: windowID, retries: retries - 1) }
                 return
             }
             guard window.canBecomeMain else { return }
+            // "Show That Window" needs something it can raise.
+            WindowRegistry.shared.bind(window, to: windowID)
+            let autosaveName = Self.autosaveName(slot: slot)
             let config = LaunchConfig.shared
             if let width = config.windowWidth, let height = config.windowHeight {
                 // A UI-test launch is placed exactly, and never remembered.
@@ -902,20 +1051,26 @@ struct MainWindowFrame: NSViewRepresentable {
                 )
                 return
             }
-            Self.forgetImplausibleFrame()
+            Self.forgetImplausibleFrame(key: "NSWindow Frame \(autosaveName)")
             // With nothing saved, place it ourselves. `.defaultPosition(.center)`
             // centres the window's *origin* before its content size is known, so
             // the window then grows up and to the right and lands in the corner —
             // which is exactly where every fresh launch was starting.
-            if !window.setFrameUsingName(Self.autosaveName, force: true) {
+            if !window.setFrameUsingName(autosaveName, force: true) {
                 window.center()
+                // A second window centred on the first is indistinguishable
+                // from no new window at all.
+                if let slot, slot > 0 {
+                    let step = CGFloat(slot) * 28
+                    window.setFrameOrigin(
+                        NSPoint(x: window.frame.origin.x + step, y: window.frame.origin.y - step)
+                    )
+                }
             }
-            window.setFrameAutosaveName(Self.autosaveName)
-            window.saveFrame(usingName: Self.autosaveName)
+            window.setFrameAutosaveName(autosaveName)
+            window.saveFrame(usingName: autosaveName)
         }
     }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
 
     /// Drops a saved frame too small to be this window. Without this, the frame
     /// the status-item window wrote would keep pulling the app into the corner.

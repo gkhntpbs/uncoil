@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// A session's terminal in its own window — just the PTY, minimal chrome.
@@ -8,6 +9,8 @@ struct SessionPopoutWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @ObservedObject private var windows = WindowRegistry.shared
+    @State private var windowID: UUID?
 
     private var record: SessionRecord? {
         projectStore.sessions.first { $0.id == sessionID }
@@ -37,12 +40,24 @@ struct SessionPopoutWindow: View {
                     .padding(.horizontal, 12)
                     .frame(height: 34)
 
-                    TerminalHostView(
-                        record: record,
-                        project: project,
-                        account: settings.account(id: record.accountID)
-                    )
-                    .padding([.horizontal, .bottom], 8)
+                    if let holder = otherHolder {
+                        SessionElsewhereView(
+                            sessionTitle: record.displayTitle,
+                            windowTitle: windows.title(of: holder, projectStore: projectStore),
+                            reveal: { windows.reveal(holder) },
+                            moveHere: {
+                                guard let windowID else { return }
+                                windows.take(sessionID, by: windowID)
+                            }
+                        )
+                    } else {
+                        TerminalHostView(
+                            record: record,
+                            project: project,
+                            account: settings.account(id: record.accountID)
+                        )
+                        .padding([.horizontal, .bottom], 8)
+                    }
                 }
             } else {
                 Text("Session not found")
@@ -55,5 +70,38 @@ struct SessionPopoutWindow: View {
         .background(Theme.bg)
         .preferredColorScheme(.dark)
         .ignoresSafeArea(edges: .top)
+        .onAppear {
+            guard windowID == nil else { return }
+            windowID = windows.registerPopout(sessionID: sessionID)
+        }
+        .onDisappear {
+            if let windowID { windows.unregisterPopout(windowID) }
+        }
+        .background(PopoutWindowBinder(windowID: windowID))
+    }
+
+    /// The window holding this session, when it is not this one.
+    private var otherHolder: UUID? {
+        guard let windowID,
+              case .heldElsewhere(let other) =
+                windows.ownership.outcome(claiming: sessionID, by: windowID)
+        else { return nil }
+        return other
+    }
+}
+
+/// Gives the registry the popout's `NSWindow`, so "Show That Window" can raise
+/// it the same way it raises a main window.
+private struct PopoutWindowBinder: NSViewRepresentable {
+    var windowID: UUID?
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ probe: NSView, context: Context) {
+        guard let windowID else { return }
+        DispatchQueue.main.async {
+            guard let window = probe.window else { return }
+            WindowRegistry.shared.bind(window, to: windowID)
+        }
     }
 }

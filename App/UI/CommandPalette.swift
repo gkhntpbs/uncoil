@@ -234,12 +234,32 @@ private struct PaletteRow: View {
 @MainActor
 enum PaletteHotkeyMonitor {
     private static var installed = false
+    /// One palette per window.
+    ///
+    /// There is a single key monitor, and it used to close over the first
+    /// window's model — so ⌘K in a second window toggled a palette in the
+    /// first, where nobody was looking. The event knows which window it was
+    /// delivered to, so the right model is a lookup rather than a guess.
+    private static var models: [UUID: PaletteModel] = [:]
 
-    static func install(model: PaletteModel, settings: SettingsStore) {
+    static func register(_ model: PaletteModel, for windowID: UUID) {
+        models[windowID] = model
+    }
+
+    static func forget(_ windowID: UUID) {
+        models[windowID] = nil
+    }
+
+    private static func model(for window: NSWindow?) -> PaletteModel? {
+        guard let id = WindowRegistry.shared.windowID(for: window) else { return nil }
+        return models[id]
+    }
+
+    static func install(settings: SettingsStore) {
         guard !installed else { return }
         installed = true
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak model, weak settings] event in
-            guard let model, let settings else { return event }
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak settings] event in
+            guard let settings, let model = model(for: event.window) else { return event }
 
             // The configurable palette hotkey toggles — read live so a rebind
             // applies without restart. Suppressed in settings / popout windows.

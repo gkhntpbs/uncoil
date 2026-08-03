@@ -3541,6 +3541,15 @@
         }
       }
     },
+    "Close Scratch" : {
+
+    },
+    "Close Scratch and its %lld sessions?" : {
+
+    },
+    "Close Scratch?" : {
+
+    },
     "Close the changes panel" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13279,6 +13288,9 @@
           }
         }
       }
+    },
+    "The folder itself is left alone — anything worth keeping is still in it. Scratch comes back the next time you open a one-off session." : {
+
     },
     "the heartbeat disappeared" : {
       "extractionState" : "manual",

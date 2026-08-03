@@ -4,6 +4,16 @@ All notable changes to Uncoil are recorded here.
 
 ## Unreleased
 
+### Added
+
+- Real multi-window support. ⌘N already opened a second window, but every window read the same stored selection and fought over it; a window now takes an identity when it appears, keeps its own selection and split pane, remembers its frame under a name of its own, and gives everything back when it closes. Opening one by hand asks what it should open on — clone the main window, clone a named window, or start empty — and a clone opens on the source's project and view rather than its session. The arrangement comes back at launch, and quitting is told apart from closing so the last window out does not record a single-window app.
+- A session is shown in one window at a time, and the others say so. This was already true of the machinery and not of the interface: one `TerminalView` exists per session, an `NSView` has one superview, and a second window mounting the same terminal took it out of the first silently, mid-render. Selecting a session claims it, navigating away gives it up, and claiming never steals — a window that does not have it draws "This session is open in another window" where the terminal would be, names the window that does, and offers both answers: go there, or move it here. Dragging a terminal into a popout still takes it, because someone who did that meant to, and the popout is a window under the same rule.
+
+### Fixed
+
+- A request from the menu bar, a notification or the command palette now lands in exactly one window instead of every window at once. A session already open somewhere goes to the window that has it, in preference to the one in front — otherwise "take me to my agent" would have been answered with "this session is open in another window".
+- ⌘K opens the palette in the window you are in. A single key monitor closed over the first window's palette, so the shortcut toggled one nobody was looking at.
+
 ### Changed
 
 - The interface has depth and weight it did not have before. Corner radii were nine different values across the app and are now three, tied to what a surface is — chip, panel, or a sheet that floats above the window — alongside new spacing, motion and elevation tokens. Panels catch a hairline of light along the top edge, floating surfaces cast a real shadow whose density follows the palette (a light window needs a darker shadow than a dark one), and the sidebar sits on its own surface instead of sharing the detail column's fill, so the window reads as two planes rather than one field split by a line. Every animation moved from `easeOut` to a high-damping spring in the same duration range. Two animation bugs fell out of it: the project dashboard's hover ignored `-disable-animations`, and the command palette's transition never ran because nothing animated the condition that mounts it — it now scales in from the top.
