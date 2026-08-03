@@ -5304,7 +5304,7 @@
     "Every session shows working, needs input or done. Anything waiting on you collects in the Attention Center and in the menu-bar monitor." : {
 
     },
-    "Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Security and Data › Permissions." : {
+    "Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Uncoil › Permissions." : {
 
     },
     "Everything is in place; the merge is only waiting for your word." : {
@@ -6046,7 +6046,7 @@
     "Homebrew has no package for this tool." : {
 
     },
-    "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Integrations › Agent Status Hooks." : {
+    "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Uncoil › Agent Status Hooks." : {
 
     },
     "Hourly" : {
@@ -6393,9 +6393,6 @@
         }
       }
     },
-    "Installed from Settings › Integrations › Drivers, where the driver's own setup runs. It is a separate download, so it asks first." : {
-
-    },
     "Installed from Settings › Permissions, where the driver's own setup runs. It is a separate download, so it asks first." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6406,6 +6403,9 @@
           }
         }
       }
+    },
+    "Installed from Settings › Uncoil › Drivers, where the driver's own setup runs. It is a separate download, so it asks first." : {
+
     },
     "Installed outside Uncoil" : {
       "extractionState" : "manual",
@@ -11447,9 +11447,6 @@
         }
       }
     },
-    "Security and Data" : {
-
-    },
     "Security finding" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14321,7 +14318,7 @@
         }
       }
     },
-    "Uncoil looks at the GitHub remote of this folder and of the repositories one level inside it. A private repository needs a token — sign in from Settings › Integrations." : {
+    "Uncoil looks at the GitHub remote of this folder and of the repositories one level inside it. A private repository needs a token — sign in from Settings › Uncoil › GitHub." : {
 
     },
     "Uncoil mark" : {
