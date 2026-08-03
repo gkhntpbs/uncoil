@@ -282,3 +282,72 @@ final class PaletteModelTests: XCTestCase {
         XCTAssertEqual(model.pendingAction, .addProject)
     }
 }
+
+/// With several projects open every one of them offers the same commands, so
+/// the one the user is looking at was buried among the rest in store order:
+/// "new terminal" meant scrolling past four other projects to reach the
+/// obvious answer.
+@MainActor
+final class PaletteCurrentProjectTests: XCTestCase {
+    private func context(
+        query: String, projects: [Project], currentProjectID: UUID?
+    ) -> PaletteContext {
+        PaletteContext(
+            query: query, projects: projects, sessions: [], statuses: [:],
+            currentProjectID: currentProjectID, currentSessionID: nil,
+            files: [], artifacts: [], projectRoot: nil,
+            settingsPanes: []
+        )
+    }
+
+    private func newTerminalTitles(_ groups: [PaletteGroup]) -> [String] {
+        groups.flatMap(\.items)
+            .filter { if case .newSession(_, .terminal) = $0.action { return true }; return false }
+            .map(\.title)
+    }
+
+    func testTheCurrentProjectComesFirstInAnEmptyPalette() {
+        let first = Project(name: "alpha", rootPath: "/tmp/alpha")
+        let second = Project(name: "beta", rootPath: "/tmp/beta")
+        let groups = PaletteEngine.compute(
+            context(query: "", projects: [first, second], currentProjectID: second.id)
+        )
+        let titles = newTerminalTitles(groups)
+        // Only assert the ordering between the two, not the whole palette: what
+        // is being fixed is which project wins, not the list around it.
+        if let a = titles.firstIndex(where: { $0.contains("alpha") }),
+           let b = titles.firstIndex(where: { $0.contains("beta") }) {
+            XCTAssertLessThan(b, a, "the current project should be reachable first")
+        }
+    }
+
+    /// A query that matches both equally has to break the tie the same way,
+    /// otherwise typing makes the ordering worse rather than better.
+    func testTheCurrentProjectWinsTiesUnderAQuery() {
+        let first = Project(name: "alpha", rootPath: "/tmp/alpha")
+        let second = Project(name: "beta", rootPath: "/tmp/beta")
+        let groups = PaletteEngine.compute(
+            context(query: "New Session: Terminal", projects: [first, second],
+                    currentProjectID: second.id)
+        )
+        let titles = newTerminalTitles(groups)
+        if let a = titles.firstIndex(where: { $0.contains("alpha") }),
+           let b = titles.firstIndex(where: { $0.contains("beta") }) {
+            XCTAssertLessThan(b, a)
+        }
+    }
+
+    /// With no current project nothing is promoted — the palette must not
+    /// invent a favourite.
+    func testNoProjectIsPromotedWithoutOne() {
+        let first = Project(name: "alpha", rootPath: "/tmp/alpha")
+        let second = Project(name: "beta", rootPath: "/tmp/beta")
+        let groups = PaletteEngine.compute(
+            context(query: "", projects: [first, second], currentProjectID: nil)
+        )
+        let ranks = groups.flatMap(\.items)
+            .filter { if case .newSession = $0.action { return true }; return false }
+            .map(\.rank)
+        XCTAssertTrue(ranks.allSatisfy { $0 == 0 }, "\(ranks)")
+    }
+}

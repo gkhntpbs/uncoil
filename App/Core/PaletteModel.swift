@@ -213,6 +213,11 @@ enum PaletteEngine {
 
     // MARK: Helpers
 
+    /// Boost for commands aimed at the project the user is currently in. Below
+    /// `Ask an agent…` at 30, which is about the session in front of them and
+    /// so is nearer still, and above everything with no project at all.
+    static let currentProjectRank = 20
+
     private static func commandItems(ctx: PaletteContext) -> [PaletteItem] {
         var items: [PaletteItem] = []
         if ctx.currentProjectID != nil {
@@ -234,19 +239,28 @@ enum PaletteEngine {
                         iconName: "settings", kind: .command, action: .openSettings(nil)),
         ]
 
+        // Every project offers the same commands, so with more than a couple
+        // open the one you are looking at was buried among the rest in store
+        // order — and "new terminal" meant scrolling past four other projects
+        // to reach the obvious answer. Rank puts the current project first,
+        // both in the empty palette and as the tie-break when several match a
+        // query equally.
         for project in ctx.projects {
+            let rank = project.id == ctx.currentProjectID ? currentProjectRank : 0
             for provider in AgentProvider.sessionKinds {
                 items.append(PaletteItem(
                     id: "cmd.new.\(provider.rawValue).\(project.id)",
                     title: String(localized: "New Session: \(provider.displayName) [\(project.name)]"),
                     iconName: "plus", provider: provider,
-                    kind: .command, action: .newSession(project.id, provider)))
+                    kind: .command, action: .newSession(project.id, provider),
+                    rank: rank))
             }
             items.append(PaletteItem(
                 id: "cmd.worktree.\(project.id)",
                 title: String(localized: "Create Worktree… [\(project.name)]"),
                 iconName: "git-branch", kind: .command,
-                action: .createWorktree(project.id)))
+                action: .createWorktree(project.id),
+                rank: rank))
         }
 
         if let sid = ctx.currentSessionID {
