@@ -120,7 +120,8 @@ final class SettingsStore: ObservableObject {
     /// Providers with an update currently running.
     @Published var cliUpdating: Set<String> = []
     /// Last update-run output per provider.
-    @Published var cliUpdateResult: [String: String] = [:]
+    /// What the last update attempt actually did, per provider.
+    @Published var cliUpdateOutcome: [String: AgentUpdateOutcome] = [:]
     /// Latest published versions from the registry.
     @Published var cliLatest: [String: String] = [:]
     @Published var cliChecking = false
@@ -462,28 +463,44 @@ final class SettingsStore: ObservableObject {
         cliChecking = false
     }
 
-    func updateCLI(_ provider: AgentProvider) async {
-        guard !cliUpdating.contains(provider.rawValue) else { return }
-        let source = binaryPath(for: provider).map {
+    /// How this install would be updated, and by what command.
+    func updatePlan(for provider: AgentProvider) -> AgentUpdatePlan {
+        CLIToolService.updatePlan(provider: provider, source: installSource(for: provider))
+    }
+
+    func installSource(for provider: AgentProvider) -> AgentInstallSource {
+        binaryPath(for: provider).map {
             CLIToolService.source(forBinaryAt: $0, provider: provider)
         } ?? .unknown
-        guard let command = CLIToolService.updateCommand(provider: provider, source: source) else {
-            cliUpdateResult[provider.rawValue] = "No update path is known for this installation."
+    }
+
+    func updateCLI(_ provider: AgentProvider) async {
+        guard !cliUpdating.contains(provider.rawValue) else { return }
+        guard case .run(let command) = updatePlan(for: provider) else {
+            if case .cannot(let reason) = updatePlan(for: provider) {
+                cliUpdateOutcome[provider.rawValue] = .failed(reason)
+            }
             return
         }
+        // What the version was before, so "the command exited 0" can be told
+        // apart from "the tool actually moved".
+        let before = cliVersions[provider.rawValue]
         cliUpdating.insert(provider.rawValue)
-        cliUpdateResult[provider.rawValue] = nil
+        cliUpdateOutcome[provider.rawValue] = nil
         let result = await Task.detached(priority: .userInitiated) {
             CLIToolService.runUpdate(command: command)
         }.value
         cliUpdating.remove(provider.rawValue)
-        cliUpdateResult[provider.rawValue] = result.success
-            ? "✓ \(result.output)"
-            : "✗ \(result.output)"
         // Path may have changed (e.g. npm relink); re-resolve then re-read.
         resolvedBinaries[provider.rawValue] = nil
         await resolveBinaries()
         await checkCLIUpdates()
+        cliUpdateOutcome[provider.rawValue] = AgentCLIInstall.outcome(
+            succeeded: result.success,
+            output: result.output,
+            before: before,
+            after: cliVersions[provider.rawValue]
+        )
     }
 
     /// Resolves a CLI by name using well-known install locations and an

@@ -2,58 +2,33 @@ import Foundation
 
 /// Version checks and updates for the agent CLIs (claude, codex).
 enum CLIToolService {
-    enum Source: String {
-        case homebrew
-        case npm
-        case nativeInstaller
-        case unknown
-
-        var label: String {
-            switch self {
-            case .homebrew: "Homebrew"
-            case .npm: "npm"
-            case .nativeInstaller: String(localized: "built-in updater")
-            case .unknown: String(localized: "unknown")
-            }
-        }
+    /// Where a launcher really points. The launcher is nearly always a
+    /// symlink, and which install it belongs to — and therefore how it is
+    /// updated — is only visible at the other end of it.
+    static func resolvedPath(of path: String) -> String? {
+        let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        return resolved == path ? nil : resolved
     }
 
-    static func source(forBinaryAt path: String, provider: AgentProvider) -> Source {
-        if path.contains("/opt/homebrew/") || path.contains("/usr/local/Cellar/") {
-            return .homebrew
-        }
-        if path.contains("node_modules") || path.contains("/.npm") || path.contains("/npm/") {
-            return .npm
-        }
-        if provider == .claude, path.contains("/.local/bin/") {
-            return .nativeInstaller
-        }
-        return .unknown
+    static func source(
+        forBinaryAt path: String, provider: AgentProvider
+    ) -> AgentInstallSource {
+        AgentCLIInstall.source(
+            path: path, resolvedPath: resolvedPath(of: path), provider: provider
+        )
     }
 
-    /// Shell command that updates the tool, or nil when we can't know how.
-    static func updateCommand(provider: AgentProvider, source: Source) -> String? {
-        switch (provider, source) {
-        case (.claude, .nativeInstaller), (.claude, .unknown):
-            return "claude update"
-        case (.claude, .npm):
-            return "npm install -g @anthropic-ai/claude-code@latest"
-        case (.codex, .npm), (.codex, .unknown):
-            return "npm install -g @openai/codex@latest"
-        case (_, .homebrew):
-            return "brew upgrade \(provider.rawValue)"
-        default:
-            return nil
+    /// Shell command that updates the tool, or why there is none.
+    static func updatePlan(
+        provider: AgentProvider, source: AgentInstallSource
+    ) -> AgentUpdatePlan {
+        AgentCLIInstall.updatePlan(provider: provider, source: source) {
+            FileManager.default.isExecutableFile(atPath: $0)
         }
     }
 
     static func npmPackage(for provider: AgentProvider) -> String {
-        switch provider {
-        case .claude: "@anthropic-ai/claude-code"
-        case .codex: "@openai/codex"
-        case .gemini: "@google/gemini-cli"
-        case .terminal: ""
-        }
+        AgentCLIInstall.npmPackage(for: provider)
     }
 
     /// Latest published version from the npm registry (both CLIs publish
@@ -117,8 +92,14 @@ enum CLIToolService {
         process.waitUntilExit()
         let output = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let tail = output.split(separator: "\n").suffix(3).joined(separator: " · ")
-        return (process.terminationStatus == 0, String(tail))
+        // A failing `npm install -g` ends with a log path, not the reason —
+        // the reason is further up. Keeping only the last three lines was
+        // reporting the least useful part of every failure.
+        let lines = output.split(separator: "\n")
+        let kept = process.terminationStatus == 0
+            ? lines.suffix(3)
+            : lines.suffix(12)
+        return (process.terminationStatus == 0, kept.joined(separator: "\n"))
     }
 
     private static func runLoginShell(_ command: String, timeout: TimeInterval) -> String? {

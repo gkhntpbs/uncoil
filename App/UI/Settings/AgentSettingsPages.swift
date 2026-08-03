@@ -140,7 +140,7 @@ struct CLIToolsSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: String(localized: "CLI Tools"),
-            subtitle: String(localized: "Check the installed versions and update with one click.")
+            subtitle: String(localized: "What is installed on this Mac, where it lives, and how Uncoil would update it.")
         ) {
             Section {
                 ForEach(providers) { provider in
@@ -166,20 +166,6 @@ struct CLIToolsSettingsPage: View {
                 }
             }
 
-            Section("Paths Found") {
-                ForEach(providers) { provider in
-                    LabeledContent(provider.displayName) {
-                        Text(settings.binaryPath(for: provider) ?? "not found")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(
-                                settings.binaryPath(for: provider) == nil
-                                    ? Theme.danger : Theme.textFaint
-                            )
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                }
-            }
         }
         .task { await settings.checkCLIUpdates() }
     }
@@ -191,9 +177,21 @@ private struct CLIToolRow: View {
 
     private var path: String? { settings.binaryPath(for: provider) }
     private var updating: Bool { settings.cliUpdating.contains(provider.rawValue) }
+    private var source: AgentInstallSource { settings.installSource(for: provider) }
+    private var plan: AgentUpdatePlan { settings.updatePlan(for: provider) }
 
-    private var sourceLabel: String? {
-        path.map { CLIToolService.source(forBinaryAt: $0, provider: provider).label }
+    /// Both halves of the comparison are in. Until then there is nothing to
+    /// say, and saying "up to date" would be saying it without looking.
+    private var isChecked: Bool {
+        settings.cliVersions[provider.rawValue] != nil
+            && settings.cliLatest[provider.rawValue] != nil
+    }
+
+    /// Where the launcher actually points. Two agents can be on `PATH` at
+    /// paths that look alike and come from completely different installs; the
+    /// far end of the symlink is the only place that says which.
+    private var realPath: String? {
+        path.flatMap { CLIToolService.resolvedPath(of: $0) }
     }
 
     var body: some View {
@@ -202,8 +200,8 @@ private struct CLIToolRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(provider.displayName)
-                        if let sourceLabel {
-                            Text(sourceLabel)
+                        if path != nil {
+                            Text(source.label)
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textDim)
                                 .padding(.horizontal, 5)
@@ -227,23 +225,99 @@ private struct CLIToolRow: View {
                         if let latest = settings.cliLatest[provider.rawValue] {
                             Text("new: \(latest)").font(.caption).foregroundStyle(Theme.warn)
                         }
-                        Button("Update") { Task { await settings.updateCLI(provider) } }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(path == nil)
+                        if case .run = plan {
+                            Button("Update") { Task { await settings.updateCLI(provider) } }
+                                .buttonStyle(.borderedProminent)
+                        }
                     }
-                } else if path != nil {
+                } else if path != nil, isChecked {
                     SettingsStatusLine(level: .ok, text: String(localized: "up to date"))
+                } else if path != nil {
+                    // Neither installed version nor latest is known yet, and
+                    // "up to date" is a claim rather than a placeholder.
+                    Text("checking…").font(.caption).foregroundStyle(Theme.textDim)
                 } else {
                     SettingsStatusLine(level: .error, text: String(localized: "not installed"))
                 }
             }
 
-            if let result = settings.cliUpdateResult[provider.rawValue] {
-                Text(result)
-                    .font(.caption)
-                    .foregroundStyle(result.hasPrefix("✓") ? Theme.ok : Theme.danger)
-                    .lineLimit(3)
+            if path != nil {
+                details
             }
+            if let outcome = settings.cliUpdateOutcome[provider.rawValue] {
+                Text(message(for: outcome))
+                    .font(.caption)
+                    .foregroundStyle(outcome.isFailure ? Theme.danger : Theme.ok)
+                    .textSelection(.enabled)
+                    .lineLimit(6)
+            }
+        }
+    }
+
+    /// Path, real path and the update command, in one place.
+    ///
+    /// The command is shown rather than merely run because it is the answer to
+    /// "why did the update do nothing" — an `npm install -g` pointed at a Node
+    /// the binary on `PATH` does not come from looks identical to a working
+    /// one until you can read which npm it uses.
+    @ViewBuilder
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let path {
+                detailLine(String(localized: "path"), path)
+            }
+            if let realPath {
+                detailLine(String(localized: "resolves to"), realPath)
+            }
+            switch plan {
+            case .run(let command):
+                detailLine(String(localized: "updates with"), command, wraps: true)
+            case .cannot(let reason):
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("updates with")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.textDim)
+                        .frame(width: 76, alignment: .leading)
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private func detailLine(
+        _ label: String, _ value: String, wraps: Bool = false
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Theme.textDim)
+                .frame(width: 76, alignment: .leading)
+            Text(value)
+                .font(.caption2.monospaced())
+                .foregroundStyle(Theme.textFaint)
+                .textSelection(.enabled)
+                .lineLimit(wraps ? 3 : 1)
+                .truncationMode(.middle)
+                .fixedSize(horizontal: false, vertical: wraps)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func message(for outcome: AgentUpdateOutcome) -> String {
+        switch outcome {
+        case .updated(let from, let to):
+            if let from {
+                return String(localized: "Updated: \(from) → \(to)")
+            }
+            return String(localized: "Updated to \(to)")
+        case .ranButUnchanged(let version):
+            return String(localized: "The update command succeeded but \(provider.displayName) is still \(version). It most likely installed into a different Node than the one this binary comes from — the command above says which npm was used.")
+        case .failed(let message):
+            return message
         }
     }
 }
