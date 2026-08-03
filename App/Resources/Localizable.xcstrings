@@ -4965,6 +4965,17 @@
         }
       }
     },
+    "Eight tools, each taking an action. Every one of them answers {\"action\":\"help\"} with its own documentation, which is the authoritative list — this page does not repeat it." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her biri bir action alan sekiz araç. Hepsi {\"action\":\"help\"} çağrısına kendi belgesiyle yanıt verir; yetkili liste odur, bu sayfa onu tekrarlamaz."
+          }
+        }
+      }
+    },
     "empty" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11489,17 +11500,6 @@
         }
       }
     },
-    "settings.json updated; its backup is under config-backups/. Restart open Claude sessions." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
-          }
-        }
-      }
-    },
     "Settings…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11507,6 +11507,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ayarlar…"
+          }
+        }
+      }
+    },
+    "settings.json updated; its backup is under config-backups/. Restart open Claude sessions." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "settings.json güncellendi; yedeği config-backups/ altında. Açık Claude oturumlarını yeniden başlat."
           }
         }
       }
@@ -12105,6 +12116,9 @@
           }
         }
       }
+    },
+    "Status" : {
+
     },
     "Status and the attention list" : {
 
@@ -13896,6 +13910,30 @@
         }
       }
     },
+    "uncoil_browser — driven by the optional agent-browser driver over a Playwright-managed Chromium, in a blank profile with no access to your own logins. Installing that driver always asks you first." : {
+
+    },
+    "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard through the optional cua-driver, which also needs macOS's Screen Recording and Accessibility permissions. Off until you turn it on." : {
+
+    },
+    "uncoil_projects · uncoil_artifacts — the agent reads your projects, cuts a worktree for itself, and leaves files behind that you can open." : {
+
+    },
+    "uncoil_projects · uncoil_sessions · uncoil_artifacts · uncoil_tasks" : {
+
+    },
+    "uncoil_run — detects how the project starts, edits that configuration and launches it, so the agent can verify its own change." : {
+
+    },
+    "uncoil_run · uncoil_system · uncoil_browser · uncoil_computer" : {
+
+    },
+    "uncoil_sessions — the agent sees the other sessions in its project and can start a child agent. No raw shell is ever accepted: children come from named presets only." : {
+
+    },
+    "uncoil_tasks — the agent reads your TODO.md and ticks off what it finished. The file stays yours: only the relevant line is patched." : {
+
+    },
     "uncoil-mcp is missing from the app bundle. Sessions will start, and the uncoil tools will not be there." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13906,24 +13944,6 @@
           }
         }
       }
-    },
-    "uncoil_browser — driven by the optional agent-browser driver over a Playwright-managed Chromium, in a blank profile with no access to your own logins. Installing that driver always asks you first." : {
-
-    },
-    "uncoil_computer — sees this Mac's screen and drives its mouse and keyboard through the optional cua-driver, which also needs macOS's Screen Recording and Accessibility permissions. Off until you turn it on." : {
-
-    },
-    "uncoil_projects · uncoil_artifacts — the agent reads your projects, cuts a worktree for itself, and leaves files behind that you can open." : {
-
-    },
-    "uncoil_run — detects how the project starts, edits that configuration and launches it, so the agent can verify its own change." : {
-
-    },
-    "uncoil_sessions — the agent sees the other sessions in its project and can start a child agent. No raw shell is ever accepted: children come from named presets only." : {
-
-    },
-    "uncoil_tasks — the agent reads your TODO.md and ticks off what it finished. The file stays yours: only the relevant line is patched." : {
-
     },
     "uncoil-runtimed is unreachable; sessions run on the in-app PTY." : {
       "extractionState" : "manual",
