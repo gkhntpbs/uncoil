@@ -44,8 +44,7 @@ struct SettingsView: View {
         case agents
         case notifications
         case appearance
-        case security
-        case integrations
+        case uncoil
         case about
 
         var id: String { rawValue }
@@ -56,8 +55,7 @@ struct SettingsView: View {
             case .agents: String(localized: "Agents")
             case .notifications: String(localized: "Notifications")
             case .appearance: String(localized: "Appearance")
-            case .security: String(localized: "Security and Data")
-            case .integrations: String(localized: "Integrations")
+            case .uncoil: "Uncoil"
             case .about: String(localized: "About")
             }
         }
@@ -92,12 +90,11 @@ struct SettingsView: View {
         case launcher
 
         case permissions
-        case privacyData
-
-        case github
         case mcp
         case hooks
         case drivers
+        case github
+        case privacyData
 
         case about
 
@@ -111,10 +108,15 @@ struct SettingsView: View {
                  .projectNotifications: .notifications
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
-            case .permissions, .privacyData: .security
-            // Status tracking edits Claude's own config file; that is an
-            // integration with a CLI, not a privacy setting.
-            case .github, .mcp, .hooks, .drivers: .integrations
+            // Uncoil's own machinery: what it lets agents do, how it talks to
+            // them, what it connects to, and what it keeps.
+            //
+            // "Security and Data" and "Integrations" were dissolved into this
+            // rather than left beside it. Splitting them three ways would have
+            // put Permissions and the control plane that enforces them under
+            // different headings, and left the two survivors holding one page
+            // each — the defect this tree was reorganised to remove.
+            case .permissions, .mcp, .hooks, .drivers, .github, .privacyData: .uncoil
             case .about: .about
             }
         }

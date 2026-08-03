@@ -2098,6 +2098,9 @@
         }
       }
     },
+    "Agent Status Hooks" : {
+
+    },
     "Agents" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3545,6 +3548,9 @@
           }
         }
       }
+    },
+    "Clipboard" : {
+
     },
     "Clone “%@” Window" : {
 
@@ -5298,7 +5304,7 @@
     "Every session shows working, needs input or done. Anything waiting on you collects in the Attention Center and in the menu-bar monitor." : {
 
     },
-    "Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Privacy and Permissions." : {
+    "Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Security and Data › Permissions." : {
 
     },
     "Everything is in place; the merge is only waiting for your word." : {
@@ -6040,7 +6046,7 @@
     "Homebrew has no package for this tool." : {
 
     },
-    "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Privacy and Permissions › Status Tracking." : {
+    "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Integrations › Agent Status Hooks." : {
 
     },
     "Hourly" : {
@@ -6085,6 +6091,9 @@
     "How does the agent find these?" : {
 
     },
+    "How keys and the clipboard behave in a session's prompt." : {
+
+    },
     "How many times it is repeated after the first notification." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6095,6 +6104,9 @@
           }
         }
       }
+    },
+    "How much each agent does without asking." : {
+
     },
     "How much should an agent do on its own?" : {
       "extractionState" : "manual",
@@ -6381,6 +6393,9 @@
         }
       }
     },
+    "Installed from Settings › Integrations › Drivers, where the driver's own setup runs. It is a separate download, so it asks first." : {
+
+    },
     "Installed from Settings › Permissions, where the driver's own setup runs. It is a separate download, so it asks first." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6574,6 +6589,9 @@
           }
         }
       }
+    },
+    "Keyboard and Input" : {
+
     },
     "Keyboard behaviour" : {
       "extractionState" : "manual",
@@ -7361,6 +7379,9 @@
           }
         }
       }
+    },
+    "Modifier keys" : {
+
     },
     "Momentary events such as a finished turn are not on the list: there is no state behind. A session that stops waiting drops its reminder too." : {
       "extractionState" : "manual",
@@ -11426,6 +11447,9 @@
         }
       }
     },
+    "Security and Data" : {
+
+    },
     "Security finding" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15188,6 +15212,9 @@
           }
         }
       }
+    },
+    "Working Mode" : {
+
     },
     "Working modes" : {
       "extractionState" : "manual",

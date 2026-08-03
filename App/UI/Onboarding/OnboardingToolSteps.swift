@@ -233,7 +233,7 @@ struct OnboardingToolsStep: View {
             badgeTint: browser?.installed == true ? Theme.ok : Theme.textDim,
             detail: String(localized: "A Chromium the agent drives on its own, in a blank profile with none of your logins in it. Without the driver the browser tools simply report that they are unavailable.")
         ) {
-            Text("Installed from Settings › Integrations › Drivers, where the driver's own setup runs. It is a separate download, so it asks first.")
+            Text("Installed from Settings › Uncoil › Drivers, where the driver's own setup runs. It is a separate download, so it asks first.")
                 .font(Theme.ui(.small))
                 .foregroundStyle(Theme.textFaint)
                 .fixedSize(horizontal: false, vertical: true)

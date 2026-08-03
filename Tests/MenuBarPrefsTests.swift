@@ -146,9 +146,12 @@ final class SettingsNavigationTests: XCTestCase {
         // How Uncoil looks in the menu bar; it was a category of its own.
         XCTAssertEqual(SettingsView.Pane.menuBar.category, .appearance)
         // Writes into Claude's own settings.json: an integration with a CLI.
-        XCTAssertEqual(SettingsView.Pane.hooks.category, .integrations)
-        XCTAssertEqual(SettingsView.Pane.permissions.category, .security)
-        XCTAssertEqual(SettingsView.Pane.privacyData.category, .security)
+        // Uncoil's own machinery, all under one heading: what it lets agents
+        // do, the control plane that enforces it, what it connects to, and
+        // what it keeps.
+        for pane: SettingsView.Pane in [.permissions, .mcp, .hooks, .drivers, .github, .privacyData] {
+            XCTAssertEqual(pane.category, .uncoil, pane.rawValue)
+        }
         // Agent policy stays with the agents; typing does not.
         XCTAssertEqual(SettingsView.Pane.agentBehavior.category, .agents)
         XCTAssertEqual(SettingsView.Pane.input.category, .general)

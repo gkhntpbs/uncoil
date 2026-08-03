@@ -170,7 +170,7 @@ struct ProjectIssuesView: View {
                 .font(Theme.mono(.body, .semibold))
                 .foregroundStyle(Theme.text)
             Text(store.problems.isEmpty
-                 ? "Uncoil looks at the GitHub remote of this folder and of the repositories one level inside it. A private repository needs a token — sign in from Settings › Integrations."
+                 ? "Uncoil looks at the GitHub remote of this folder and of the repositories one level inside it. A private repository needs a token — sign in from Settings › Uncoil › GitHub."
                  : "See the messages above. A private repository needs a token.")
                 .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
