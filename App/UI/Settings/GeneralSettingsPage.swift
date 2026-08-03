@@ -88,22 +88,6 @@ struct GeneralSettingsPage: View {
                 }
             }
 
-            Section("Keyboard") {
-                Toggle(isOn: Binding(
-                    get: { settings.optionAsMetaKey },
-                    set: { settings.setOptionAsMetaKey($0) }
-                )) {
-                    SettingsLabel(
-                        title: String(localized: "Use Option as Meta"),
-                        detail: String(
-                            localized: "Off, Option types the character your keyboard layout prints — ⌥Q gives @ on a Turkish-Q layout. On, Option is sent to the agent as Meta (⌥f, ⌥b). Applies immediately."
-                        ),
-                        symbol: "option"
-                    )
-                }
-                .settingsID("general.optionAsMeta")
-            }
-
             Section("Quitting the App") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },

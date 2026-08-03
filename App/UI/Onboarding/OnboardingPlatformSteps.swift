@@ -72,7 +72,7 @@ struct OnboardingHooksStep: View {
                     OnboardingCard(
                         symbol: "questionmark.folder",
                         title: String(localized: "Claude Code is not installed"),
-                        detail: String(localized: "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Privacy and Permissions › Status Tracking.")
+                        detail: String(localized: "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Integrations › Agent Status Hooks.")
                     )
                 }
 
@@ -350,7 +350,7 @@ struct OnboardingCapabilitiesStep: View {
                 }
                 .padding(.horizontal, 4)
 
-                Text("Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Privacy and Permissions.")
+                Text("Every tool answers {\"action\":\"help\"} with its own actions, so an agent discovers what it may do. A child agent's grants are intersected with its parent's — never widened. You can change all of this later in Settings › Security and Data › Permissions.")
                     .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .fixedSize(horizontal: false, vertical: true)

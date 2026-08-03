@@ -343,7 +343,7 @@ struct HooksSettingsPage: View {
 
     var body: some View {
         SettingsPage(
-            title: String(localized: "Status Tracking"),
+            title: String(localized: "Agent Status Hooks"),
             subtitle: String(localized: "Claude Code's hooks are what make session states stream into Uncoil live.")
         ) {
             Section {

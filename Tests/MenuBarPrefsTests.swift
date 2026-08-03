@@ -126,6 +126,43 @@ final class SettingsNavigationTests: XCTestCase {
         }
     }
 
+    /// A category of one is a heading pretending to be a group, and there were
+    /// four of them — which pushed the pages that belong together apart. About
+    /// is the exception: it is one page and always will be.
+    func testNoCategoryIsAHeadingOverASinglePage() {
+        for category in SettingsView.Category.allCases where category != .about {
+            XCTAssertGreaterThan(
+                category.panes.count, 1,
+                "\(category.rawValue) holds a single page"
+            )
+        }
+    }
+
+    /// Pages sat where they had been written rather than where they are looked
+    /// for. These are the moves, asserted so they cannot drift back.
+    func testPagesAreFiledWhereTheyAreLookedFor() {
+        // A strip in the interface, not an agent setting.
+        XCTAssertEqual(SettingsView.Pane.launcher.category, .appearance)
+        // How Uncoil looks in the menu bar; it was a category of its own.
+        XCTAssertEqual(SettingsView.Pane.menuBar.category, .appearance)
+        // Writes into Claude's own settings.json: an integration with a CLI.
+        XCTAssertEqual(SettingsView.Pane.hooks.category, .integrations)
+        XCTAssertEqual(SettingsView.Pane.permissions.category, .security)
+        XCTAssertEqual(SettingsView.Pane.privacyData.category, .security)
+        // Agent policy stays with the agents; typing does not.
+        XCTAssertEqual(SettingsView.Pane.agentBehavior.category, .agents)
+        XCTAssertEqual(SettingsView.Pane.input.category, .general)
+    }
+
+    /// The keyboard and paste settings moved off the agent page, and a link
+    /// written against the old one must still land somewhere sensible.
+    func testLinksToTheSplitPageStillResolve() {
+        XCTAssertEqual(SettingsView.Pane.resolve("keyboard"), .input)
+        XCTAssertEqual(SettingsView.Pane.resolve("imagePaste"), .input)
+        // The page that kept the raw value keeps answering to it.
+        XCTAssertEqual(SettingsView.Pane.resolve("agentBehavior"), .agentBehavior)
+    }
+
     func testLegacyDeepLinksStillResolve() {
         // Written by older builds of the command palette.
         XCTAssertEqual(SettingsView.Pane.resolve("defaults"), .general)
@@ -147,6 +184,10 @@ final class SettingsNavigationTests: XCTestCase {
         XCTAssertTrue(search("editor").contains(.general))
         XCTAssertTrue(search("transcript").contains(.privacyData))
         XCTAssertTrue(search("computer use").contains(.permissions))
+        // The words for the settings that moved off the agent page.
+        XCTAssertTrue(search("klavye").contains(.input))
+        XCTAssertTrue(search("shift enter").contains(.input))
+        XCTAssertTrue(search("yapıştır").contains(.input))
         XCTAssertTrue(search("zzzz").isEmpty)
     }
 }

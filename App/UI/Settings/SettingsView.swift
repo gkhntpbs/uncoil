@@ -27,13 +27,24 @@ struct SettingsView: View {
 
     // MARK: - Structure
 
+    /// The six things settings are actually about, plus About.
+    ///
+    /// There were eight, and four of them held a single page — a category of
+    /// one is a heading pretending to be a group, and it pushed the pages that
+    /// really belonged together apart. Pages also sat where they had been
+    /// written rather than where they are looked for: Quick Launch is a strip
+    /// in the interface and was filed under Agents, and Status Tracking writes
+    /// into Claude's own `settings.json`, which makes it an integration with a
+    /// CLI rather than a privacy setting.
+    ///
+    /// Raw values are not load-bearing here — deep links address *panes* — so
+    /// a category can be renamed without breaking anything.
     enum Category: String, CaseIterable, Identifiable {
         case general
         case agents
         case notifications
-        case menuBar
         case appearance
-        case privacy
+        case security
         case integrations
         case about
 
@@ -44,9 +55,8 @@ struct SettingsView: View {
             case .general: String(localized: "General")
             case .agents: String(localized: "Agents")
             case .notifications: String(localized: "Notifications")
-            case .menuBar: String(localized: "Menu Bar")
             case .appearance: String(localized: "Appearance")
-            case .privacy: String(localized: "Privacy and Permissions")
+            case .security: String(localized: "Security and Data")
             case .integrations: String(localized: "Integrations")
             case .about: String(localized: "About")
             }
@@ -58,40 +68,53 @@ struct SettingsView: View {
     /// One detail page. Raw values are stable: the command palette and the UI
     /// tests address panes by them.
     enum Pane: String, CaseIterable, Identifiable {
+        // Declaration order is the order a category lists its pages in, so it
+        // is the reading order: the page most people want first, then the ones
+        // they go looking for. Raw values are addressed by deep links and the
+        // command palette and are never changed by reordering.
         case general
+        case input
+
         case accounts
         case cliTools
         case launchArgs
         case agentBehavior
         case presets
-        case launcher
+
         case notifications
         case notificationEvents
         case reminders
         case quietHours
         case projectNotifications
-        case menuBar
+
         case theme
+        case menuBar
+        case launcher
+
         case permissions
         case privacyData
-        case hooks
+
         case github
-        case drivers
         case mcp
+        case hooks
+        case drivers
+
         case about
 
         var id: String { rawValue }
 
         var category: Category {
             switch self {
-            case .general: .general
-            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets, .launcher: .agents
+            case .general, .input: .general
+            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours,
                  .projectNotifications: .notifications
-            case .menuBar: .menuBar
-            case .theme: .appearance
-            case .permissions, .privacyData, .hooks: .privacy
-            case .github, .drivers, .mcp: .integrations
+            // How Uncoil looks and what it puts in front of you.
+            case .theme, .menuBar, .launcher: .appearance
+            case .permissions, .privacyData: .security
+            // Status tracking edits Claude's own config file; that is an
+            // integration with a CLI, not a privacy setting.
+            case .github, .mcp, .hooks, .drivers: .integrations
             case .about: .about
             }
         }
@@ -99,10 +122,11 @@ struct SettingsView: View {
         var title: String {
             switch self {
             case .general: String(localized: "General")
+            case .input: String(localized: "Keyboard and Input")
             case .accounts: String(localized: "Accounts")
             case .cliTools: String(localized: "CLI Tools")
             case .launchArgs: String(localized: "Run Parameters")
-            case .agentBehavior: String(localized: "Mode and Keyboard")
+            case .agentBehavior: String(localized: "Working Mode")
             case .presets: String(localized: "Session Presets")
             case .launcher: String(localized: "Quick Launch")
             case .notifications: String(localized: "General")
@@ -114,7 +138,7 @@ struct SettingsView: View {
             case .theme: String(localized: "Theme and Colours")
             case .permissions: String(localized: "Permissions")
             case .privacyData: String(localized: "Data and Transcripts")
-            case .hooks: String(localized: "Status Tracking")
+            case .hooks: String(localized: "Agent Status Hooks")
             case .github: "GitHub"
             case .drivers: String(localized: "Drivers")
             case .mcp: String(localized: "Uncoil MCP")
@@ -125,10 +149,11 @@ struct SettingsView: View {
         var symbolName: String {
             switch self {
             case .general: "gearshape"
+            case .input: "keyboard"
             case .accounts: "person.2"
             case .cliTools: "terminal"
             case .launchArgs: "command"
-            case .agentBehavior: "keyboard"
+            case .agentBehavior: "slider.horizontal.3"
             case .presets: "square.stack.3d.up"
             case .launcher: "bolt"
             case .notifications: "bell"
@@ -154,11 +179,12 @@ struct SettingsView: View {
         var keywords: String {
             switch self {
             case .general:
-                "varsayılan default editör editor agent kapanış quit çıkış kısayol hotkey komut paleti palette"
+                "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette"
+            case .input: "klavye keyboard shift enter newline satır line yapıştır paste görsel image ⌘v pano clipboard giriş input option meta alt değiştirici modifier"
             case .accounts: "hesap account claude codex login giriş profil profile e-posta email"
             case .cliTools: "cli güncelle update sürüm version brew npm kurulum install"
             case .launchArgs: "parametre argüman argument model flag bayrak"
-            case .agentBehavior: "agent davranış behavior mod mode auto plan shift enter newline satır klavye keyboard behaviour line"
+            case .agentBehavior: "agent davranış behavior mod mode auto plan onay approval yetki varsayılan default"
             case .presets: "preset alt agent child yetki capability prompt şablon template"
             case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
             case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background"
@@ -187,6 +213,8 @@ struct SettingsView: View {
             case "defaults": return .general
             case "notificationSounds": return .notifications
             case "transcripts": return .privacyData
+            // The keyboard and paste settings moved off the agent page.
+            case "keyboard", "shiftEnter", "imagePaste", "optionAsMeta": return .input
             default: return nil
             }
         }
@@ -283,6 +311,7 @@ struct SettingsView: View {
     private var detail: some View {
         switch pane {
         case .general: GeneralSettingsPage()
+        case .input: InputSettingsPage()
         case .accounts: AccountsSettingsPage()
         case .cliTools: CLIToolsSettingsPage()
         case .launchArgs: LaunchArgumentsSettingsPage()

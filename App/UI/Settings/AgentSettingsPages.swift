@@ -356,13 +356,22 @@ struct LaunchArgumentsSettingsPage: View {
 
 // MARK: - Mode & keyboard
 
+/// What an agent is allowed to do on its own, before anyone asks it anything.
+///
+/// This page used to be called "Mode and Keyboard" and held two unrelated
+/// things: a per-agent policy, and how the keyboard behaves in a prompt. One
+/// is about trust and the other about typing, and a page whose title has to
+/// name both is a page that should be two.
 struct AgentBehaviorSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
     private let providers: [AgentProvider] = AgentProvider.agents
 
     var body: some View {
-        SettingsPage(title: String(localized: "Mode and Keyboard")) {
+        SettingsPage(
+            title: String(localized: "Working Mode"),
+            subtitle: String(localized: "How much each agent does without asking.")
+        ) {
             Section {
                 ForEach(providers) { provider in
                     Picker(selection: Binding(
@@ -385,6 +394,40 @@ struct AgentBehaviorSettingsPage: View {
             } footer: {
                 SettingsNote(String(localized: "New sessions start in the selected mode; open sessions are unaffected."))
             }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settings.agentBehavior.container")
+    }
+}
+
+/// Typing and pasting, which is app behaviour rather than agent policy.
+struct InputSettingsPage: View {
+    @EnvironmentObject private var settings: SettingsStore
+
+    private let providers: [AgentProvider] = AgentProvider.agents
+
+    var body: some View {
+        SettingsPage(
+            title: String(localized: "Keyboard and Input"),
+            subtitle: String(localized: "How keys and the clipboard behave in a session's prompt.")
+        ) {
+            // Was a "Keyboard" section on the General page. Keyboard settings
+            // in two places is the same defect this reorganisation is for.
+            Section("Modifier keys") {
+                Toggle(isOn: Binding(
+                    get: { settings.optionAsMetaKey },
+                    set: { settings.setOptionAsMetaKey($0) }
+                )) {
+                    SettingsLabel(
+                        title: String(localized: "Use Option as Meta"),
+                        detail: String(
+                            localized: "Off, Option types the character your keyboard layout prints — ⌥Q gives @ on a Turkish-Q layout. On, Option is sent to the agent as Meta (⌥f, ⌥b). Applies immediately."
+                        ),
+                        symbol: "option"
+                    )
+                }
+                .settingsID("general.optionAsMeta")
+            }
 
             Section {
                 ForEach(providers) { provider in
@@ -392,15 +435,12 @@ struct AgentBehaviorSettingsPage: View {
                         get: { settings.shiftEnterNewline(for: provider) },
                         set: { settings.setShiftEnterNewline($0, for: provider) }
                     )) {
-                        SettingsLabel(
-                            title: provider.displayName,
-                            detail: String(localized: "Shift+Enter for a newline")
-                        )
+                        SettingsLabel(title: provider.displayName)
                     }
                     .settingsID("agentBehavior.shiftEnter.\(provider.rawValue)")
                 }
             } header: {
-                Text("Keyboard behaviour")
+                Text("Shift+Enter for a newline")
             } footer: {
                 SettingsNote(
                     String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately.")
@@ -423,7 +463,7 @@ struct AgentBehaviorSettingsPage: View {
                 }
                 .settingsID("agentBehavior.imagePaste")
             } header: {
-                Text("Pasting an image")
+                Text("Clipboard")
             } footer: {
                 SettingsNote(
                     String(localized: "Only ⌘V of an image is affected. Pasting text, a path or anything else is never touched, and neither is a plain terminal session.")
@@ -431,11 +471,9 @@ struct AgentBehaviorSettingsPage: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("settings.agentBehavior.container")
+        .accessibilityIdentifier("settings.input.container")
     }
 }
-
-// MARK: - Session presets
 
 struct SessionPresetsSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
