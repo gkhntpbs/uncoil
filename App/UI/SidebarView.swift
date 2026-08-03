@@ -435,6 +435,11 @@ struct ProjectRowView: View {
         childCount > 0 || !projectStore.groups(for: projectID).isEmpty
     }
 
+    /// The chevron's slot at the trailing edge: its hit target, and the width
+    /// the project name stops short of. Fixed so the chevron sits in the same
+    /// place on every row whatever the name's length or the hover state.
+    static let chevronSlot: CGFloat = 22
+
     var body: some View {
         if let project {
             HStack(spacing: 8) {
@@ -447,6 +452,24 @@ struct ProjectRowView: View {
                     PinMark(isPinned: true, size: 10, color: Theme.textDim)
                         .help("Pinned")
                 }
+                // Nothing follows the name inline. The chevron owns a fixed slot
+                // at the trailing edge and the name stops short of it.
+                Spacer(minLength: Self.chevronSlot)
+            }
+            .padding(.leading, SidebarIndent.leading(depth: 0))
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            // The collapse chevron never moves.
+            //
+            // It used to be laid out after the project name, which put it in a
+            // different place on every row and, on a long name, directly under
+            // the launcher strip. Then it was grouped with the launcher, which
+            // was worse: hovering *inserted* the strip to its left, so the
+            // chevron jumped ~90pt away from the cursor that was reaching for
+            // it. A control you have to chase is a control you do not have.
+            // It gets its own slot, sized and placed the same on every row,
+            // hovered or not; the launcher is laid out to the left of it.
+            .overlay(alignment: .trailing) {
                 if hasChildren {
                     Button {
                         toggleCollapsed()
@@ -455,40 +478,39 @@ struct ProjectRowView: View {
                             .font(.system(size: 8, weight: .semibold))
                             .foregroundStyle(Theme.textFaint)
                             .rotationEffect(.degrees(sessionsCollapsed ? -90 : 0))
-                            // An 8pt glyph is an 8pt target: the chevron was
+                            // An 8pt glyph is an 8pt target: the chevron is
                             // drawn small on purpose, but it still has to be
                             // hittable without aiming. The frame is the target,
                             // not the mark.
-                            .frame(width: 20, height: 20)
+                            .frame(width: Self.chevronSlot, height: 22)
                             .contentShape(Rectangle())
-                            // Negative padding keeps the row's layout exactly
-                            // where it was: the target grows into the gaps
-                            // around the glyph rather than pushing the name.
-                            .padding(.horizontal, -5)
                     }
                     .buttonStyle(.pressable)
                     .opacity(hovering || sessionsCollapsed ? 1 : 0)
-                }
-                Spacer(minLength: 4)
-                if sessionsCollapsed, childCount > 0 {
-                    // Collapsed, the project has to say how much it is hiding.
-                    Text("\(childCount)")
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
+                    .allowsHitTesting(hovering || sessionsCollapsed)
+                    .padding(.trailing, 6)
                 }
             }
-            .padding(.leading, SidebarIndent.leading(depth: 0))
-            .padding(.trailing, 10)
-            .padding(.vertical, 6)
-            // The launcher floats above the row instead of sitting in it: laid
-            // out inline it grew the row on hover (the whole list twitched), and
-            // reserving its width truncated every project name for good.
+            // The launcher and the collapsed count share the space to the left
+            // of the chevron's slot — they swap on hover, and neither can push
+            // the chevron anywhere, because the chevron is not in this stack.
             .overlay(alignment: .trailing) {
-                AgentLauncherStrip(project: project, selection: $selection)
-                    .padding(.trailing, 8)
-                    .opacity(hovering ? 1 : 0)
-                    .allowsHitTesting(hovering)
-                    .animation(Theme.Motion.quick, value: hovering)
+                Group {
+                    if hovering {
+                        // The launcher floats above the row instead of sitting
+                        // in it: laid out inline it grew the row on hover (the
+                        // whole list twitched), and reserving its full width
+                        // truncated every project name for good.
+                        AgentLauncherStrip(project: project, selection: $selection)
+                    } else if sessionsCollapsed, childCount > 0 {
+                        // Collapsed, the project has to say how much it hides.
+                        Text("\(childCount)")
+                            .font(Theme.mono(.micro))
+                            .foregroundStyle(Theme.textFaint)
+                    }
+                }
+                .padding(.trailing, Self.chevronSlot + 6)
+                .animation(Theme.Motion.quick, value: hovering)
             }
             .background(
                 isProjectSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),

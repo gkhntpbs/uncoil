@@ -67,12 +67,6 @@ struct UncoilApp: App {
                     .environmentObject(sessionStore)
                     .environmentObject(settings)
             }
-                .onAppear {
-                    applyApplicationIcon()
-                }
-                .onChange(of: theme.palette.isLight) {
-                    applyApplicationIcon()
-                }
                 .frame(minWidth: 940, minHeight: 600)
         }
         .defaultPosition(.center)
@@ -167,29 +161,14 @@ struct UncoilApp: App {
         )
     }
 
-    private func applyApplicationIcon() {
-        if theme.palette.isLight {
-            guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-                  let image = NSImage(contentsOf: url) else {
-                return
-            }
-            NSApplication.shared.applicationIconImage = image
-        } else {
-            guard let image = NSImage(named: "AppIconDark") else {
-                return
-            }
-            let canvas = NSImage(size: NSSize(width: 1024, height: 1024))
-            canvas.lockFocus()
-            image.draw(
-                in: NSRect(x: 96, y: 96, width: 832, height: 832),
-                from: .zero,
-                operation: .sourceOver,
-                fraction: 1
-            )
-            canvas.unlockFocus()
-            NSApplication.shared.applicationIconImage = canvas
-        }
-    }
+    // The Dock icon is `App/AppIcon.icon` and nothing else.
+    //
+    // Uncoil used to overwrite `applicationIconImage` whenever its own theme
+    // flipped, which meant the icon in the Dock depended on the app's palette
+    // while it ran and reverted to the bundled one the moment it quit — two
+    // different icons for the same app. The Icon Composer icon already answers
+    // macOS's light, dark and tinted appearances on its own, so the honest fix
+    // is to let it, and never assign the icon at runtime.
 
 }
 

@@ -335,7 +335,7 @@ private struct RunConfigurationRow: View {
                 iconButton("player-stop", tint: Theme.danger, id: "run.stop.\(config.id)") {
                     await RunRegistry.shared.stop(project: project, configID: config.id)
                 }
-                iconButton("Refresh", id: "run.restart.\(config.id)") {
+                iconButton("refresh", id: "run.restart.\(config.id)") {
                     _ = await RunRegistry.shared.restart(project: project, configID: config.id)
                 }
             } else {
@@ -343,22 +343,22 @@ private struct RunConfigurationRow: View {
                     _ = await RunRegistry.shared.start(project: project, configID: config.id)
                 }
             }
-            plainIconButton("History", id: "run.history.\(config.id)") {
+            plainIconButton("history", id: "run.history.\(config.id)") {
                 showHistory = true
             }
             .popover(isPresented: $showHistory, arrowEdge: .bottom) {
                 RunHistoryList(project: project, configID: config.id)
             }
             plainIconButton(
-                "Star", tint: config.isDefault ? Theme.warn : Theme.textDim,
+                "star", tint: config.isDefault ? Theme.warn : Theme.textDim,
                 id: "run.default.\(config.id)"
             ) {
                 try? RunConfigFile.setDefault(config.id, projectRoot: project.rootURL)
                 onReload()
             }
             plainIconButton("file-text", id: "run.log.\(config.id)", action: onToggleLog)
-            plainIconButton("Pencil", id: "run.edit.\(config.id)", action: onEdit)
-            plainIconButton("Trash", id: "run.delete.\(config.id)") {
+            plainIconButton("pencil", id: "run.edit.\(config.id)", action: onEdit)
+            plainIconButton("trash", id: "run.delete.\(config.id)") {
                 confirmingDelete = true
             }
             // A live process would orphan silently if its row vanished —
