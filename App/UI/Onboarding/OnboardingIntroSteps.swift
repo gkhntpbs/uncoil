@@ -218,6 +218,7 @@ struct OnboardingCLIStep: View {
         switch provider {
         case .claude: URL(string: "https://docs.claude.com/en/docs/claude-code/setup")
         case .codex: URL(string: "https://developers.openai.com/codex/cli/")
+        case .gemini: URL(string: "https://github.com/google-gemini/gemini-cli")
         case .terminal: nil
         }
     }

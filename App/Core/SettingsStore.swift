@@ -194,6 +194,7 @@ final class SettingsStore: ObservableObject {
         let fallback: AgentWorkingMode = switch provider {
         case .claude: .manual
         case .codex: .askForApproval
+        case .gemini: .providerDefault
         case .terminal: .providerDefault
         }
         let mode = (providerBehaviors[provider.rawValue]?.workingMode ?? fallback)
@@ -363,7 +364,10 @@ final class SettingsStore: ObservableObject {
             }
             return "linked"  // auth file exists but no readable identity
 
-        case .terminal:
+        // Nothing is read for Gemini: where its CLI keeps its identity, and in
+        // what shape, is not verified here. Reporting "linked" off a file whose
+        // meaning is a guess would be worse than reporting nothing.
+        case .gemini, .terminal:
             return nil
         }
     }

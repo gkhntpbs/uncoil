@@ -43,6 +43,10 @@ enum Theme {
     // Agent marks
     static var claude: Color { Color(hex: p.claude) }
     static var codex: Color { Color(hex: p.codex) }
+    /// Falls back rather than defaulting to a palette field, so a theme the
+    /// user customised before Gemini existed still gives it a colour of its
+    /// own instead of borrowing Codex's blue.
+    static var gemini: Color { Color(hex: p.gemini ?? 0x7C5CE6) }
     static let terminal = Color(hex: 0x8A8A93)
 
     // Meanings. Read from the palette rather than fixed: the green that reads on

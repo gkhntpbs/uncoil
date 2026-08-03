@@ -6,6 +6,7 @@ import AppKit
 enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     case claude
     case codex
+    case gemini
     case terminal
 
     var id: String { rawValue }
@@ -27,6 +28,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: "Claude"
         case .codex: "Codex"
+        case .gemini: "Gemini"
         case .terminal: "Terminal"
         }
     }
@@ -36,6 +38,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: Theme.claude
         case .codex: Theme.codex
+        case .gemini: Theme.gemini
         case .terminal: Theme.terminal
         }
     }
@@ -45,6 +48,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: "claude"
         case .codex: "codex"
+        case .gemini: "gemini"
         case .terminal: nil  // plain login shell
         }
     }
@@ -54,6 +58,11 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .claude: "claude /login"
         case .codex: "codex login"
+        // The Gemini CLI runs its own sign-in on first start, and Uncoil has
+        // no verified non-interactive command to drive it. Offering a login
+        // terminal that types a guessed command would be worse than not
+        // offering one.
+        case .gemini: nil
         case .terminal: nil
         }
     }
@@ -67,7 +76,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// status, no hooks and no control plane.
     var isAgent: Bool {
         switch self {
-        case .claude, .codex: true
+        case .claude, .codex, .gemini: true
         case .terminal: false
         }
     }
@@ -79,6 +88,11 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     var defaultShiftEnterNewline: Bool {
         switch self {
         case .claude, .codex: true
+        // Unverified for the Gemini CLI: backslash+CR is what Claude Code and
+        // the Codex TUI document, and sending it to a prompt that does not
+        // understand it would put a stray backslash in the message. Off until
+        // it is checked; the setting is there for anyone who has.
+        case .gemini: false
         case .terminal: false
         }
     }
@@ -106,6 +120,11 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             [.manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
         case .codex:
             [.askForApproval, .approveForMe, .fullAccess]
+        // No modes offered: the Gemini CLI's approval flags are not verified
+        // here, and Uncoil's rule is that it adds no flag it was not asked
+        // for. An unverified flag on a real CLI is a launch failure.
+        case .gemini:
+            [.providerDefault]
         case .terminal:
             [.providerDefault]
         }
@@ -235,6 +254,10 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         switch provider {
         case .claude: "CLAUDE_CONFIG_DIR"
         case .codex: "CODEX_HOME"
+        // No verified variable for an isolated Gemini config root, so Uncoil
+        // does not claim to isolate one: profiles for it would share the
+        // CLI's own home and quietly overwrite each other.
+        case .gemini: nil
         case .terminal: nil
         }
     }

@@ -50,3 +50,38 @@ final class AgentProviderListTests: XCTestCase {
         XCTAssertNil(AgentProvider.terminal.launchCommand)
     }
 }
+
+/// Gemini is the first provider added since the lists became derived, so it is
+/// also the check that adding one is now a case rather than a hunt.
+final class GeminiProviderTests: XCTestCase {
+    func testGeminiIsAnAgentAndIsOffered() {
+        XCTAssertTrue(AgentProvider.gemini.isAgent)
+        XCTAssertTrue(AgentProvider.agents.contains(.gemini))
+        XCTAssertTrue(AgentProvider.sessionKinds.contains(.gemini))
+        XCTAssertEqual(AgentProvider.gemini.launchCommand, "gemini")
+    }
+
+    /// Uncoil adds no flag it was not asked for, and none it has not verified.
+    /// An invented flag on a real CLI is a launch failure, not a cosmetic bug.
+    func testNoUnverifiedFlagsAreInvented() {
+        XCTAssertEqual(
+            AgentWorkingMode.options(for: .gemini), [.providerDefault],
+            "an approval-mode flag would be guessed"
+        )
+        XCTAssertEqual(AgentWorkingMode.providerDefault.launchArguments(for: .gemini), [])
+
+        let withEffort = AgentLaunchCatalog.launchArguments(
+            for: .gemini, selection: AgentLaunchSelection(model: "x", effort: "high")
+        )
+        XCTAssertEqual(withEffort, ["--model", "x"], "there is no verified effort flag")
+    }
+
+    /// Claiming an isolated config root Uncoil cannot actually isolate would
+    /// let two profiles quietly share — and overwrite — one login.
+    func testNoIsolationIsClaimedWithoutAVerifiedVariable() {
+        let profile = AccountProfile(
+            id: UUID(), provider: .gemini, name: "personal", directoryName: "personal"
+        )
+        XCTAssertNil(profile.isolationEnvironmentKey)
+    }
+}

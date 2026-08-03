@@ -56,7 +56,7 @@ final class JSONMCPAdapterTests: XCTestCase {
         for agent in ExtensionAgentID.supported {
             XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
         }
-        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex])
+        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex, .geminiCLI])
     }
 
     // MARK: - Reading

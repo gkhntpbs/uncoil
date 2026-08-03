@@ -70,10 +70,9 @@ final class PaletteModelTests: XCTestCase {
         let project = makeProject("p", path: "/tmp/p")
         let groups = PaletteEngine.compute(baseContext(
             query: "bu ne işe yarar?", projects: [project], currentProjectID: project.id))
-        XCTAssertEqual(askActions(groups), [
-            .ask(prompt: "bu ne işe yarar?", target: .newSession(.claude), projectID: project.id),
-            .ask(prompt: "bu ne işe yarar?", target: .newSession(.codex), projectID: project.id),
-        ])
+        XCTAssertEqual(askActions(groups), AgentProvider.agents.map {
+            .ask(prompt: "bu ne işe yarar?", target: .newSession($0), projectID: project.id)
+        }, "every agent gets an offer; the list is derived, not written out again")
     }
 
     /// A live session is the first thing the keyboard lands on: continuing a

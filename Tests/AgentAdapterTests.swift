@@ -494,9 +494,10 @@ final class AgentAdapterRegistryTests: XCTestCase {
             XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
         }
         XCTAssertTrue(registry.unmanagedAgents.isEmpty)
-        // Managed is not the same as launchable: Uncoil edits Gemini CLI, Cursor
-        // and Amp configs but does not run their sessions.
-        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex])
+        // Managed is not the same as launchable: Uncoil edits Cursor and Amp
+        // configs but does not run their sessions. Gemini moved across when it
+        // became a session provider, which is what `launchable` is derived from.
+        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex, .geminiCLI])
     }
 
     func testSupportedAgentsMatchTheAdaptersWeShip() {

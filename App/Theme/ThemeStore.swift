@@ -54,6 +54,8 @@ struct ThemePalette: Codable, Equatable, Hashable {
     // Agent brand marks, in each product's own colour.
     var claude: UInt32 = 0xD97757
     var codex: UInt32 = 0x3B82F6
+    /// Optional so a palette written before Gemini existed still decodes.
+    var gemini: UInt32? = nil
 
     var terminalBg: UInt32 = 0x0F0F11
     var terminalFg: UInt32 = 0xE9E9EC

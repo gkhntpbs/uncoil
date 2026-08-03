@@ -84,6 +84,12 @@ enum AgentLaunchCatalog {
             // nothing about it; the levels are the ones the config accepts.
             result.efforts = ["minimal", "low", "medium", "high", "xhigh"]
                 .map { AgentLaunchCapabilities.Option(id: $0, label: $0) }
+        case .gemini:
+            // Only what the installed build documents. No model list is
+            // hard-coded: Gemini's names change often enough that a stale one
+            // would be handed to `--model` and fail the launch, and there is
+            // no `--help` line to read them from the way Claude's efforts are.
+            break
         case .terminal:
             break
         }
@@ -142,6 +148,10 @@ enum AgentLaunchCatalog {
             if let effort = selection.effort {
                 arguments += ["-c", "model_reasoning_effort=\"\(effort)\""]
             }
+        case .gemini:
+            // `--model` is documented, so it is passed when the user picked
+            // one; there is no verified effort flag, so none is invented.
+            if let model = selection.model { arguments += ["--model", model] }
         case .terminal:
             break
         }

@@ -51,6 +51,7 @@ enum CLIToolService {
         switch provider {
         case .claude: "@anthropic-ai/claude-code"
         case .codex: "@openai/codex"
+        case .gemini: "@google/gemini-cli"
         case .terminal: ""
         }
     }

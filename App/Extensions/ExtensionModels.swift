@@ -29,7 +29,8 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .claudeCode: .claude
         case .codex: .codex
-        case .geminiCLI, .cursor, .amp: nil
+        case .geminiCLI: .gemini
+        case .cursor, .amp: nil
         }
     }
 

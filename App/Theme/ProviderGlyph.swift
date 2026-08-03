@@ -16,6 +16,10 @@ struct ProviderMark: View {
         switch provider {
         case .claude: "ProviderMarkClaude"
         case .codex: "ProviderMarkCodex"
+        // No vector mark is bundled for Gemini — drawing someone's logo from
+        // memory is not a thing to do — so it falls through to the icon font
+        // below, like the shell does.
+        case .gemini: nil
         // A shell has no logo; the icon font's chevron-and-underscore says it.
         case .terminal: nil
         }
@@ -31,7 +35,11 @@ struct ProviderMark: View {
                     .aspectRatio(contentMode: .fit)
                     .foregroundStyle(provider.color)
             } else {
-                TablerIcon(name: "terminal-2", size: size, color: provider.color)
+                TablerIcon(
+                    name: provider == .terminal ? "terminal-2" : "sparkles",
+                    size: size,
+                    color: provider.color
+                )
             }
         }
         .frame(width: size, height: size)
