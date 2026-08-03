@@ -118,6 +118,9 @@
         }
       }
     },
+    "(%@)" : {
+
+    },
     "#%lld" : {
 
     },
@@ -3233,6 +3236,17 @@
     "Choose your agent CLIs" : {
 
     },
+    "chosen when this session started" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bu oturum başlarken seçilen"
+          }
+        }
+      }
+    },
     "Claimed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4874,6 +4888,17 @@
     "Effort" : {
 
     },
+    "Effort: %@ — %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efor: %@ — %@"
+          }
+        }
+      }
+    },
     "Effort: default" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4881,6 +4906,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Effort: varsayılan"
+          }
+        }
+      }
+    },
+    "Effort: not set, so the CLI's own default." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efor ayarlanmadı; CLI'ın kendi varsayılanı geçerli."
           }
         }
       }
@@ -6265,6 +6301,9 @@
         }
       }
     },
+    "killed by signal %d" : {
+
+    },
     "killed by signal %lld" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6970,6 +7009,17 @@
     },
     "Model" : {
 
+    },
+    "Model: %@ — %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model: %@ — %@"
+          }
+        }
+      }
     },
     "Model: default" : {
       "extractionState" : "manual",
@@ -10139,6 +10189,17 @@
         }
       }
     },
+    "reported by the agent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ajanın kendi bildirdiği"
+          }
+        }
+      }
+    },
     "Repository" : {
 
     },
@@ -12838,6 +12899,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sağlayıcı oturumu düştü, yeniden giriş gerekiyor."
+          }
+        }
+      }
+    },
+    "the provider's default" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sağlayıcının varsayılanı"
           }
         }
       }

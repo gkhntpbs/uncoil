@@ -494,6 +494,15 @@ final class SessionStore: ObservableObject {
     @Published private(set) var details: [UUID: String] = [:]
     @Published private(set) var codexAuthentication: [UUID: CodexAuthenticationState] = [:]
     @Published private(set) var codexApprovals: [UUID: CodexApprovalRequest] = [:]
+    /// The model an agent said it was using, when its hook payload carried one.
+    /// Only the agent can see a `/model` typed inside the session.
+    @Published private(set) var reportedModel: [UUID: String] = [:]
+
+    func setReportedModel(_ model: String, for recordID: UUID) {
+        guard !model.isEmpty, reportedModel[recordID] != model else { return }
+        reportedModel[recordID] = model
+    }
+
     /// Bumped to force a session's terminal view to rebuild (palette "restart").
     @Published private(set) var restartCounter: [UUID: Int] = [:]
 

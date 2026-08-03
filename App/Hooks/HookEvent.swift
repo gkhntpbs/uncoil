@@ -20,6 +20,11 @@ struct HookEvent {
     let toolName: String?
     let message: String?
     let prompt: String?
+    /// Reported by the agent when its payload carries it. Claude Code does not
+    /// send these on every event and older builds send neither, so both stay
+    /// optional and the UI falls back to what the session was launched with.
+    let model: String?
+    let permissionMode: String?
 
     init?(jsonLine: Data) {
         guard
@@ -33,5 +38,7 @@ struct HookEvent {
         toolName = object["tool_name"] as? String
         message = object["message"] as? String
         prompt = object["prompt"] as? String
+        model = object["model"] as? String
+        permissionMode = object["permission_mode"] as? String
     }
 }

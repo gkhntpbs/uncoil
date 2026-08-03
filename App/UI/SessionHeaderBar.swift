@@ -21,10 +21,24 @@ struct SessionHeaderBar<Trailing: View>: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
     @State private var branch: String?
+    /// Only for `defaultModelDetail` — what "default" resolves to when the user
+    /// picked nothing. Detected rather than assumed: Codex writes its model
+    /// into its own config, and a Claude build without `--model` has no answer.
+    @State private var capabilities: AgentLaunchCapabilities?
 
     private var status: AgentSessionStatus { sessionStore.status(of: record.id) }
     private var account: AccountProfile? { settings.account(id: record.accountID) }
     private var workingDirectory: String { record.workingDirectory(in: project) }
+
+    /// The model and effort chip. Deliberately quiet — it is reference, not
+    /// status — and absent rather than guessed when nothing is known.
+    private var runtimeInfo: SessionRuntimeInfo {
+        SessionRuntimeInfo.resolve(
+            reportedModel: sessionStore.reportedModel[record.id],
+            selection: record.launchSelection,
+            defaultModelDetail: capabilities?.defaultModelDetail
+        )
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -54,6 +68,19 @@ struct SessionHeaderBar<Trailing: View>: View {
                         .font(Theme.mono(.large))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
+                    // Model and effort: reference, not status. Parenthesised,
+                    // small and faint so it reads as an aside to the name
+                    // rather than competing with the state capsule opposite.
+                    if let runtime = runtimeInfo.summary {
+                        Text("(\(runtime))")
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.textFaint)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .help(runtimeInfo.help ?? runtime)
+                            .accessibilityIdentifier("session.runtimeInfo")
+                            .accessibilityValue(runtime)
+                    }
                 }
                 HStack(spacing: 6) {
                     if let account {
@@ -160,6 +187,13 @@ struct SessionHeaderBar<Trailing: View>: View {
         .panel()
         // Cheap enough to re-ask while the session is open: a branch changes
         // under the agent's hands, and a stale one is worse than none.
+        .task(id: record.provider) {
+            guard record.provider.isAgent else { return }
+            capabilities = await AgentLaunchCatalog.detect(
+                provider: record.provider,
+                binaryPath: settings.binaryPath(for: record.provider)
+            )
+        }
         .task(id: workingDirectory) {
             let directory = workingDirectory
             while !Task.isCancelled {

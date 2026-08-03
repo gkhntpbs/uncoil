@@ -63,6 +63,7 @@ extension SessionStore {
 
         touchSession(sessionID)
         applyMeta(sessionID, event.sessionID, Self.titleCandidate(from: event))
+        if let model = event.model { setReportedModel(model, for: sessionID) }
 
         let prefs = notificationPrefs()
         let sessionTitle = sessionTitle(sessionID) ?? "session"
