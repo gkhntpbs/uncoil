@@ -218,12 +218,13 @@ struct MainWindow: View {
             .frame(width: 0, height: 0)
         )
         .background(Theme.bg)
-        .sheet(isPresented: $showFolderPicker) {
-            FolderPickerSheet { url in
-                projectStore.addProject(at: url)
-                if let added = projectStore.projects.last {
-                    selection = .project(added.id)
-                }
+        .folderPicker(
+            isPresented: $showFolderPicker,
+            prompt: String(localized: "Add Project")
+        ) { url in
+            projectStore.addProject(at: url)
+            if let added = projectStore.projects.last {
+                selection = .project(added.id)
             }
         }
         .background(MainWindowFrame())

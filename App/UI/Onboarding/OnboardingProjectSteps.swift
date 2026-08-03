@@ -119,10 +119,11 @@ struct OnboardingProjectStep: View {
                 OnboardingSkipLink(action: onSkip)
             }
         }
-        .sheet(isPresented: $showPicker) {
-            FolderPickerSheet { url in
-                chooseFolder(url)
-            }
+        .folderPicker(
+            isPresented: $showPicker,
+            prompt: String(localized: "Add Project")
+        ) { url in
+            chooseFolder(url)
         }
     }
 
