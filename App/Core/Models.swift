@@ -81,6 +81,22 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Whether Uncoil actually registers its MCP server for this provider.
+    ///
+    /// Registration is provider-specific — `--mcp-config` for Claude Code,
+    /// `-c mcp_servers.uncoil.*` for Codex — so it is not enough for a session
+    /// to be an agent's. Gemini has no verified per-session equivalent yet, and
+    /// handing a session the control socket in its environment while nothing
+    /// serves it would advertise a control plane that is not there: the agent
+    /// would read the variables, find no tools, and the failure would look like
+    /// a broken socket rather than a missing feature.
+    var wiresControlPlane: Bool {
+        switch self {
+        case .claude, .codex: true
+        case .gemini, .terminal: false
+        }
+    }
+
     /// Default for the Shift+Enter → literal-newline behavior. Claude Code and
     /// the Codex TUI both accept a backslash+CR for an in-prompt newline (this
     /// is what `claude /terminal-setup` configures in iTerm/VSCode), so it is on

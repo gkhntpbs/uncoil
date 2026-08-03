@@ -199,7 +199,7 @@ final class TerminalRegistry {
         }
         // Control-plane wiring: agent sessions learn their identity and the
         // control socket so the bundled uncoil-mcp server can reach the app.
-        if record.provider != .terminal {
+        if record.provider.wiresControlPlane {
             env.append("UNCOIL_SESSION_ID=\(record.id.uuidString)")
             env.append("UNCOIL_PROJECT_ID=\(record.projectID.uuidString)")
             env.append("UNCOIL_CONTROL_SOCKET=\(ControlPlaneServer.defaultSocketPath())")
@@ -258,7 +258,7 @@ final class TerminalRegistry {
     private func shellArguments(for record: SessionRecord, settings: SettingsStore) -> (shell: String, args: [String]) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
-        let mcpBinaryPath = record.provider == .terminal ? nil : bundledMCPBinaryPath()
+        let mcpBinaryPath = record.provider.wiresControlPlane ? bundledMCPBinaryPath() : nil
         let mcpConfigPath = record.provider == .claude
             ? mcpBinaryPath.flatMap { writeMCPConfig(for: record, binaryPath: $0) }
             : nil
