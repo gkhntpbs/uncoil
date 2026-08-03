@@ -97,7 +97,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         case .fullAccess: "Full Access"
         case .dontAsk: "Don't Ask"
         case .onRequest: "On Request"
-        case .readOnly: "Salt Okunur"
+        case .readOnly: "Read Only"
         }
     }
 

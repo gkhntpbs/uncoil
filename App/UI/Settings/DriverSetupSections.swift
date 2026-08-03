@@ -43,7 +43,7 @@ struct AgentBrowserSetupSection: View {
         } control: {
             SettingsStatusLine(
                 level: status?.installed == true ? .ok : .warning,
-                text: status?.installed == true ? "ready" : "eksik"
+                text: status?.installed == true ? "ready" : "missing"
             )
         }
 
@@ -69,7 +69,7 @@ struct AgentBrowserSetupSection: View {
     }
 
     private var statusTitle: String {
-        guard let status else { return "Agent Browser denetleniyor" }
+        guard let status else { return "Checking the Agent Browser…" }
         guard status.path != nil else { return "Agent Browser CLI not installed" }
         guard status.installed else { return "Chromium runtime required" }
         return status.version ?? "Agent Browser ready"
@@ -171,7 +171,7 @@ struct CuaDriverSetupSection: View {
         } control: {
             SettingsStatusLine(
                 level: status?.installed == true ? .ok : .warning,
-                text: status?.installed == true ? "ready" : "eksik"
+                text: status?.installed == true ? "ready" : "missing"
             )
         }
 
@@ -196,7 +196,7 @@ struct CuaDriverSetupSection: View {
     }
 
     private var statusTitle: String {
-        guard let status else { return "Cua Driver denetleniyor" }
+        guard let status else { return "Checking the Cua Driver…" }
         guard status.installed else { return "Cua Driver not installed" }
         if let version = status.version, !version.isEmpty {
             return version

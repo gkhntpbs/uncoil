@@ -75,7 +75,7 @@ final class CodexAppServerSession {
     }
 
     func start() {
-        feed("\u{001B}[2mCodex app-server denetleniyor…\u{001B}[0m\r\n")
+        feed("\u{001B}[2mChecking the Codex app-server…\u{001B}[0m\r\n")
         let binaryPath = binaryPath
         let environment = environment
         Task {
