@@ -4,6 +4,7 @@ import SwiftUI
 /// also the one page whose controls are bound live to `ThemeStore`.
 struct AppearanceSettingsPage: View {
     @EnvironmentObject private var theme: ThemeStore
+    @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
         SettingsPage(title: String(localized: "Theme and Colours")) {
@@ -19,6 +20,28 @@ struct AppearanceSettingsPage: View {
                 }
                 .pickerStyle(.segmented)
                 .settingsID("theme.preset")
+            }
+
+            Section("Attention") {
+                Picker(selection: Binding(
+                    get: { settings.attentionEmphasis },
+                    set: { settings.setAttentionEmphasis($0) }
+                )) {
+                    ForEach(AttentionEmphasis.allCases) { emphasis in
+                        Text(emphasis.title).tag(emphasis)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Sidebar pulse"),
+                        detail: String(
+                            localized: "How a session that is waiting for you moves in the sidebar. Applies immediately."
+                        )
+                    )
+                }
+                .pickerStyle(.inline)
+                .settingsID("appearance.attentionEmphasis")
+
+                SettingsNote(settings.attentionEmphasis.detail)
             }
 
             Section("Interface") {

@@ -43,6 +43,9 @@ final class SettingsStore: ObservableObject {
         /// Command-palette hotkey. Optional for backward compatibility with
         /// settings.json written before it was configurable; nil ⇒ ⌘K.
         var commandPaletteHotkey: HotkeyBinding? = nil
+        /// How loudly the sidebar pulses for a session that wants attention.
+        /// Optional for backward compatibility; nil ⇒ subtle.
+        var attentionEmphasis: AttentionEmphasis? = nil
         /// "Option is Meta" in the terminal. Optional for backward
         /// compatibility; nil ⇒ off, Option types the layout's character.
         var optionAsMetaKey: Bool? = nil
@@ -78,6 +81,8 @@ final class SettingsStore: ObservableObject {
     @Published var providerBehaviors: [String: ProviderBehavior] = [:]
     /// The hotkey that toggles the command palette. Defaults to ⌘K.
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
+    /// How loudly the sidebar pulses for a session that wants attention.
+    @Published private(set) var attentionEmphasis: AttentionEmphasis = .subtle
     /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
     /// — the default, matching Terminal.app — Option belongs to the keyboard
     /// layout, so a Turkish-Q layout can type `@` with ⌥Q and `#` with ⌥3.
@@ -215,6 +220,12 @@ final class SettingsStore: ObservableObject {
 
     func resetCommandPaletteHotkey() {
         setCommandPaletteHotkey(.commandPaletteDefault)
+    }
+
+    func setAttentionEmphasis(_ emphasis: AttentionEmphasis) {
+        attentionEmphasis = emphasis
+        AttentionMotion.shared.emphasis = emphasis
+        save()
     }
 
     func setOptionAsMetaKey(_ enabled: Bool) {
@@ -557,6 +568,8 @@ final class SettingsStore: ObservableObject {
         configuredPresets = decoded.presets
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
+        attentionEmphasis = decoded.attentionEmphasis ?? .subtle
+        AttentionMotion.shared.emphasis = attentionEmphasis
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
@@ -604,6 +617,7 @@ final class SettingsStore: ObservableObject {
             providerBehaviors: providerBehaviors.isEmpty ? nil : providerBehaviors,
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
                 ? nil : commandPaletteHotkey,
+            attentionEmphasis: attentionEmphasis == .subtle ? nil : attentionEmphasis,
             optionAsMetaKey: optionAsMetaKey ? true : nil,
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
                 ? nil : sessionQuitBehavior,

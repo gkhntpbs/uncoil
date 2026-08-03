@@ -8,13 +8,25 @@ import SwiftUI
 struct StatusOrb: View {
     let status: AgentSessionStatus
     var size: CGFloat = 12
+    @ObservedObject private var motion = AttentionMotion.shared
 
     var body: some View {
         switch status {
+        // With the attention emphasis off, the orb keeps its colour and loses
+        // its motion — the same bargain the sidebar row makes. A still dot
+        // still says "running"; a list of them does not flicker.
         case .running, .thinking:
-            OrbitingDots(color: status.color, size: size)
+            if motion.animates {
+                OrbitingDots(color: status.color, size: size)
+            } else {
+                StillOrb(color: status.color, size: size)
+            }
         case .waitingForPermission, .waitingForInput:
-            PulsingOrb(color: status.color, size: size)
+            if motion.animates {
+                PulsingOrb(color: status.color, size: size, period: motion.emphasis.period)
+            } else {
+                StillOrb(color: status.color, size: size, ring: true)
+            }
         case .completed:
             ZStack {
                 Circle()
@@ -71,10 +83,33 @@ private struct OrbitingDots: View {
     }
 }
 
+/// The orb with its motion removed: colour, and a ring when it is waiting.
+private struct StillOrb: View {
+    let color: Color
+    let size: CGFloat
+    var ring: Bool = false
+
+    var body: some View {
+        ZStack {
+            if ring {
+                Circle()
+                    .strokeBorder(color.opacity(0.5), lineWidth: 1)
+                    .frame(width: size, height: size)
+            }
+            Circle()
+                .fill(color)
+                .frame(width: size * 0.42, height: size * 0.42)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 /// Breathing glow — attention needed, without being a notification banner.
 private struct PulsingOrb: View {
     let color: Color
     let size: CGFloat
+    /// Seconds for one full breath, from `AttentionEmphasis`.
+    let period: Double
 
     var body: some View {
         TimelineView(.animation(
@@ -82,7 +117,7 @@ private struct PulsingOrb: View {
             paused: LaunchConfig.shared.disableAnimations
         )) { context in
             let t = context.date.timeIntervalSinceReferenceDate
-            let phase = (sin(t * 3.4) + 1) / 2  // 0…1
+            let phase = (sin(t * (.pi * 2 / max(period, 0.1))) + 1) / 2  // 0…1
             ZStack {
                 Circle()
                     .fill(color.opacity(0.18 + phase * 0.25))

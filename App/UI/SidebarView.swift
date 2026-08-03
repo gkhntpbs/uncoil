@@ -709,6 +709,7 @@ struct SessionRowView: View {
     @State private var hovering = false
     /// Drives the attention pulse; flipped by the status, animated by SwiftUI.
     @State private var pulsing = false
+    @ObservedObject private var attentionMotion = AttentionMotion.shared
 
     private var record: SessionRecord? {
         projectStore.sessions.first { $0.id == sessionID }
@@ -729,6 +730,21 @@ struct SessionRowView: View {
     /// its unlooked-at notification borrows the "ready" accent instead.
     private var attentionColor: Color {
         status.needsAttention ? status.color : Theme.highlight
+    }
+
+    private var emphasis: AttentionEmphasis {
+        attentionMotion.emphasis
+    }
+
+    /// Starts or stops the breath. Deferred for the same reason the orb defers:
+    /// a repeating animation started during the first render keeps the window
+    /// from being presented at all.
+    private func updatePulse(wants: Bool) {
+        guard wants, attentionMotion.animates else {
+            pulsing = false
+            return
+        }
+        DeferredMotion.start { pulsing = true }
     }
 
     var body: some View {
@@ -798,36 +814,43 @@ struct SessionRowView: View {
                 in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
             // A session that stopped to ask something has to be findable without
-            // reading the list: it breathes in that status's own colour until it
-            // is dealt with.
+            // reading the list: it is marked in that status's own colour until
+            // it is dealt with, and — unless the user turned the motion off —
+            // breathes. How far it breathes is `AttentionEmphasis`; a dozen
+            // agents working at once used to make the whole sidebar flicker.
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    .fill(attentionColor.opacity(wantsAttention && pulsing ? 0.24 : 0.0))
+                    .fill(attentionColor.opacity(
+                        wantsAttention && pulsing ? emphasis.fillOpacity : 0.0
+                    ))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     .strokeBorder(
                         wantsAttention
-                            ? attentionColor.opacity(pulsing ? 0.85 : 0.25)
+                            ? attentionColor.opacity(
+                                pulsing ? emphasis.borderRange.high : emphasis.borderRange.low
+                            )
                             : (isSelected ? Theme.highlightBorder : .clear),
                         lineWidth: 1
                     )
             )
             .animation(
                 pulsing
-                    ? uncoilAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true))
+                    ? uncoilAnimation(
+                        .easeInOut(duration: emphasis.period).repeatForever(autoreverses: true)
+                    )
                     : Theme.Motion.standard,
                 value: pulsing
             )
             .onChange(of: wantsAttention, initial: true) { _, wants in
-                // Deferred for the same reason the orb defers: a repeating
-                // animation started during the first render keeps the window
-                // from being presented at all.
-                if wants {
-                    DeferredMotion.start { pulsing = true }
-                } else {
-                    pulsing = false
-                }
+                updatePulse(wants: wants)
+            }
+            // Turning the emphasis down mid-pulse has to stop the old
+            // animation, not leave the row breathing at the previous rate.
+            .onChange(of: emphasis) { _, _ in
+                pulsing = false
+                updatePulse(wants: wantsAttention)
             }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
             .padding(.horizontal, SidebarIndent.outer)

@@ -1261,6 +1261,17 @@
     "A control centre for the coding agents you already run — across projects, worktrees and accounts." : {
 
     },
+    "A faster, stronger pulse that is hard to miss and hard to ignore." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaçırması da görmezden gelmesi de zor, daha hızlı ve güçlü bir nabız."
+          }
+        }
+      }
+    },
     "A port this configuration needs%@ is already taken. Stop the other process, or change the port in the command/env and update 'ports' in .uncoil/run.json." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1330,6 +1341,17 @@
         }
       }
     },
+    "A session that needs you is marked in its colour and never moves." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seni bekleyen oturum kendi rengiyle işaretlenir, hiç hareket etmez."
+          }
+        }
+      }
+    },
     "A single-colour SF Symbol, which sits better in the menu bar." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1337,6 +1359,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Menü çubuğuna daha iyi uyan tek renkli SF Symbol."
+          }
+        }
+      }
+    },
+    "A slow, shallow pulse. Visible when you look, quiet when you do not." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yavaş ve sığ bir nabız. Baktığında görünür, bakmadığında sessiz."
           }
         }
       }
@@ -2408,6 +2441,17 @@
         }
       }
     },
+    "Attention" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dikkat"
+          }
+        }
+      }
+    },
     "Attention center" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3439,6 +3483,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Logları ve yapılandırmayı tek dosyada toplar; hassas içerik ayıklanır."
+          }
+        }
+      }
+    },
+    "Colour only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca renk"
           }
         }
       }
@@ -5182,6 +5237,17 @@
         }
       }
     },
+    "Full" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tam"
+          }
+        }
+      }
+    },
     "General" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5532,6 +5598,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bir projenin üzerine gel, agent seç"
+          }
+        }
+      }
+    },
+    "How a session that is waiting for you moves in the sidebar. Applies immediately." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seni bekleyen bir oturumun kenar çubuğunda nasıl hareket edeceği. Anında uygulanır."
           }
         }
       }
@@ -11101,6 +11178,17 @@
         }
       }
     },
+    "Sidebar pulse" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kenar çubuğu nabzı"
+          }
+        }
+      }
+    },
     "Sign in" : {
 
     },
@@ -11607,6 +11695,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Structured Codex hazır"
+          }
+        }
+      }
+    },
+    "Subtle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İnce"
           }
         }
       }
