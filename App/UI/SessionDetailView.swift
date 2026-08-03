@@ -10,6 +10,13 @@ struct SessionDetailView: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @State private var showChangesPanel = false
     @State private var restartToken = 0
+    /// Something is being dragged over the session, so the drop is shown as
+    /// possible before it happens.
+    @State private var isDropTargeted = false
+    /// What the last drop did. Cleared on its own: it reports a completed
+    /// action, and a banner that has to be dismissed is worse than the action
+    /// was small.
+    @State private var dropMessage: String?
     @State private var git = GitService.Snapshot()
 
     private var status: AgentSessionStatus {
@@ -96,7 +103,19 @@ struct SessionDetailView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.container")
-        .onDrop(of: [.text], isTargeted: nil) { providers in
+        .onDrop(
+            of: [.text] + SessionImageDropService.acceptedTypes,
+            isTargeted: $isDropTargeted
+        ) { providers in
+            // Images first, and only then the session drag: a session is
+            // carried as text, so asking about images last would let a dragged
+            // screenshot be read as a session id that does not parse.
+            if SessionImageDropService.handle(
+                providers, record: record, project: project,
+                onMessage: { dropMessage = $0 }
+            ) {
+                return true
+            }
             guard let splitBinding = splitSessionID,
                   let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: NSString.self) { object, _ in
@@ -109,6 +128,25 @@ struct SessionDetailView: View {
             }
             return true
         }
+        .overlay(alignment: .top) {
+            if isDropTargeted {
+                DropTargetOverlay()
+            } else if let dropMessage {
+                Text(dropMessage)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textDim)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.panelActive, in: Capsule())
+                    .padding(.top, 8)
+                    .transition(.opacity)
+                    .task(id: dropMessage) {
+                        try? await Task.sleep(nanoseconds: 3_000_000_000)
+                        withAnimation(Theme.Motion.standard) { self.dropMessage = nil }
+                    }
+            }
+        }
+        .animation(Theme.Motion.standard, value: isDropTargeted)
     }
 
     // MARK: - Header
@@ -425,5 +463,36 @@ struct SplitSessionPane: View {
         TerminalRegistry.shared.closeTerminal(for: record.id)
         projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
         restartToken += 1
+    }
+}
+
+/// Shown while something is dragged over a session.
+///
+/// A border rather than a full-screen panel: the terminal underneath is what
+/// the drop is being aimed at, and covering it would hide the very thing that
+/// says which session this is.
+private struct DropTargetOverlay: View {
+    var body: some View {
+        VStack {
+            HStack(spacing: 6) {
+                TablerIcon(name: "photo-plus", size: 12, color: Theme.highlight)
+                Text("Drop to attach the image to this session's message")
+                    .font(Theme.mono(.small, .semibold))
+                    .foregroundStyle(Theme.highlight)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Theme.panelActive, in: Capsule())
+            .padding(.top, 10)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                .strokeBorder(Theme.highlight.opacity(0.6), lineWidth: 2)
+                .padding(6)
+        )
+        .allowsHitTesting(false)
+        .accessibilityIdentifier("session.dropTarget")
     }
 }
