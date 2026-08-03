@@ -123,16 +123,21 @@ final class GitHubIssueParsingTests: XCTestCase {
 /// A project folder is often more than one checkout, and their issues belong to
 /// the project just as much as the root's.
 final class GitHubRepoDiscoveryTests: XCTestCase {
+    /// `repositories` defaults to "wherever there is a remote", since that is
+    /// the ordinary case; the tests that care about the cheap pre-check pass it
+    /// explicitly.
     private func discover(
         root: String = "/p",
         entries: [String: [String]] = [:],
         directories: Set<String> = [],
-        remotes: [String: String] = [:]
+        remotes: [String: String] = [:],
+        repositories: Set<String>? = nil
     ) -> [String] {
         GitHubRepoDiscovery.slugs(
             projectRoot: root,
             listDirectory: { entries[$0] ?? [] },
             isDirectory: { directories.contains($0) },
+            isRepository: { repositories?.contains($0) ?? (remotes[$0] != nil) },
             remoteURL: { remotes[$0] }
         )
     }
@@ -181,6 +186,46 @@ final class GitHubRepoDiscoveryTests: XCTestCase {
             ]
         )
         XCTAssertTrue(slugs.isEmpty)
+    }
+
+    /// The case this exists for: a project folder that is not a checkout at
+    /// all, holding several that are. Its own directory has no remote, and
+    /// before this the Issues tab was hidden on exactly the projects with the
+    /// most issues.
+    func testAContainerFolderWithNoRemoteOfItsOwnStillFindsItsCheckouts() {
+        let slugs = discover(
+            entries: ["/p": ["console", "infra", "server"]],
+            directories: ["/p/console", "/p/infra", "/p/server"],
+            remotes: [
+                "/p/console": "git@github.com:Midyanet/midyanet-console.git",
+                "/p/infra": "git@github.com:Midyanet/midyanet-infra.git",
+                "/p/server": "git@github.com:Midyanet/midyanet-server.git",
+            ]
+        )
+        XCTAssertEqual(slugs, [
+            "Midyanet/midyanet-console",
+            "Midyanet/midyanet-infra",
+            "Midyanet/midyanet-server",
+        ])
+    }
+
+    /// Asking git for a remote costs a subprocess, and this walks every
+    /// directory in the project root. A folder that is not a checkout must not
+    /// be asked at all.
+    func testADirectoryThatIsNotACheckoutIsNeverAskedForARemote() {
+        var asked: [String] = []
+        let slugs = GitHubRepoDiscovery.slugs(
+            projectRoot: "/p",
+            listDirectory: { $0 == "/p" ? ["docs", "app"] : [] },
+            isDirectory: { ["/p/docs", "/p/app"].contains($0) },
+            isRepository: { $0 == "/p/app" },
+            remoteURL: { path in
+                asked.append(path)
+                return "git@github.com:owner/app.git"
+            }
+        )
+        XCTAssertEqual(slugs, ["owner/app"])
+        XCTAssertEqual(asked, ["/p/app"])
     }
 
     func testANonGitHubRemoteIsIgnored() {

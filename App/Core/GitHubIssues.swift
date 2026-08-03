@@ -230,13 +230,19 @@ enum GitHubRepoDiscovery {
         projectRoot: String,
         listDirectory: (String) -> [String],
         isDirectory: (String) -> Bool,
+        isRepository: (String) -> Bool,
         remoteURL: (String) -> String?
     ) -> [String] {
         var found: [String] = []
         var seen = Set<String>()
 
         func add(_ path: String) {
-            guard let remote = remoteURL(path),
+            // The cheap check first. Asking git for a remote costs a
+            // subprocess, and this walks every directory in the project root —
+            // on a folder holding twenty things, nineteen of which are not
+            // checkouts, that is nineteen processes for nothing.
+            guard isRepository(path),
+                  let remote = remoteURL(path),
                   let slug = GitHubService.repoSlug(fromRemoteURL: remote),
                   seen.insert(slug).inserted else { return }
             found.append(slug)
@@ -252,6 +258,12 @@ enum GitHubRepoDiscovery {
         return found
     }
 
+    /// True when the project has any GitHub repository at all — its own or one
+    /// inside it. What decides whether the Issues tab exists.
+    static func hasRepository(projectRoot: String) -> Bool {
+        !slugs(projectRoot: projectRoot).isEmpty
+    }
+
     /// The on-disk version.
     static func slugs(projectRoot: String) -> [String] {
         let manager = FileManager.default
@@ -261,6 +273,12 @@ enum GitHubRepoDiscovery {
             isDirectory: {
                 var isDir: ObjCBool = false
                 return manager.fileExists(atPath: $0, isDirectory: &isDir) && isDir.boolValue
+            },
+            // A `.git` entry, not a `.git` *directory*: inside a worktree it is
+            // a file pointing at the real one, and requiring a directory would
+            // skip every worktree.
+            isRepository: {
+                manager.fileExists(atPath: "\($0)/.git")
             },
             remoteURL: { GitService.remoteURL(repoPath: $0) }
         )

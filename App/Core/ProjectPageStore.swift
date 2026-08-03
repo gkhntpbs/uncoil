@@ -105,11 +105,16 @@ final class ProjectPageStore: ObservableObject {
             snapshots[id] = snapshot
         }
 
-        let (git, worktrees, remote, runs, tests) = await Task.detached(priority: .utility) {
+        let (git, worktrees, remote, hasGitHub, runs, tests) = await Task.detached(priority: .utility) {
             (
                 GitService.snapshot(repoPath: root),
                 GitService.worktrees(repoPath: root),
                 GitService.remoteURL(repoPath: root),
+                // Not the root's own remote: a project folder is often a
+                // container holding several checkouts, and its own directory
+                // is not a repository at all. Their issues are the project's
+                // issues, so the tab has to exist for them.
+                GitHubRepoDiscovery.hasRepository(projectRoot: root),
                 !RunConfigFile.load(projectRoot: rootURL).configurations.isEmpty,
                 !TestConfigFile.load(projectRoot: rootURL).suites.isEmpty
             )
@@ -120,11 +125,11 @@ final class ProjectPageStore: ObservableObject {
             hasTaskSources: snapshot.hasTaskSources,
             hasRunConfigurations: runs,
             hasTestSuites: tests,
-            // The remote decides it, not the network: a repository whose issues
+            // The remotes decide it, not the network: a repository whose issues
             // cannot be read right now still has an Issues tab, and the screen
             // says why. Hiding the tab on a failed request would make a rate
             // limit look like a missing feature.
-            hasGitHubRepository: remote.flatMap(GitHubService.repoSlug(fromRemoteURL:)) != nil
+            hasGitHubRepository: hasGitHub
         )
         snapshots[id] = snapshot
 
