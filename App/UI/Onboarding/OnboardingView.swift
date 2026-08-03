@@ -26,6 +26,10 @@ struct OnboardingView: View {
                 OnboardingAccountsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .hooks:
                 OnboardingHooksStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
+            case .workingModes:
+                OnboardingWorkingModesStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
+            case .tools:
+                OnboardingToolsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .notifications:
                 OnboardingNotificationsStep(onContinue: complete, onSkip: advance, onBack: back, onSkipAll: skipAll)
             case .capabilities:

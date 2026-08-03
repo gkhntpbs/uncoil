@@ -390,6 +390,9 @@
         }
       }
     },
+    "%@ installed." : {
+
+    },
     "%@ is not a git repository." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1247,6 +1250,17 @@
     "A Blocked finding stops adoption outright; nothing about it can be clicked past here." : {
 
     },
+    "A Chromium the agent drives on its own, in a blank profile with none of your logins in it. Without the driver the browser tools simply report that they are unavailable." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajanın kendi başına sürdüğü, senin hiçbir oturum açman bulunmayan boş bir profildeki Chromium. Sürücü olmadan tarayıcı araçları yalnızca kullanılamadıklarını bildirir."
+          }
+        }
+      }
+    },
     "A clean result does not mean the extension is entirely safe." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1315,6 +1329,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Çalıştırma izni olan script."
+          }
+        }
+      }
+    },
+    "A second opinion on every extension. Uncoil scans packages itself either way; Bumblebee adds a deeper pass. Uncoil fetches the release from the project's own GitHub and checks it against the checksums published with it — the archive is unpacked, never executed." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her uzantı için ikinci bir görüş. Uncoil paketleri her hâlükârda kendi tarar; Bumblebee daha derin bir geçiş ekler. Uncoil sürümü projenin kendi GitHub'ından indirir ve yanında yayımlanan sağlama toplamlarıyla doğrular — arşiv açılır, asla çalıştırılmaz."
           }
         }
       }
@@ -2317,6 +2342,17 @@
         }
       }
     },
+    "Asks before it edits a file or runs a command." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir dosyayı düzenlemeden veya komut çalıştırmadan önce sorar."
+          }
+        }
+      }
+    },
     "Asks for" : {
 
     },
@@ -2924,6 +2960,17 @@
         }
       }
     },
+    "Bumblebee scanner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bumblebee tarayıcı"
+          }
+        }
+      }
+    },
     "Bumblebee's scan was not used: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3069,6 +3116,28 @@
     },
     "checkbox" : {
 
+    },
+    "Checking the Agent Browser…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agent Browser denetleniyor…"
+          }
+        }
+      }
+    },
+    "Checking the Cua Driver…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cua Driver denetleniyor…"
+          }
+        }
+      }
     },
     "Checking…" : {
       "extractionState" : "manual",
@@ -3629,6 +3698,17 @@
     "Computer Use" : {
 
     },
+    "Computer Use stays off for every session until you turn it on, whether the driver is installed or not." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Computer Use, sürücü kurulu olsun olmasın, sen açana kadar her oturumda kapalı kalır."
+          }
+        }
+      }
+    },
     "Config change plan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4034,6 +4114,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Oluşturuluyor…"
+          }
+        }
+      }
+    },
+    "Cua Driver — Computer Use" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cua Driver — Computer Use"
           }
         }
       }
@@ -4538,6 +4629,17 @@
         }
       }
     },
+    "Download and install Bumblebee" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bumblebee'yi indir ve kur"
+          }
+        }
+      }
+    },
     "Downloading…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4732,6 +4834,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Editör"
+          }
+        }
+      }
+    },
+    "Edits files without asking; still asks before running commands." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosyaları sormadan düzenler; komut çalıştırmadan önce yine de sorar."
           }
         }
       }
@@ -5641,6 +5754,17 @@
         }
       }
     },
+    "How much should an agent do on its own?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir ajan kendi başına ne kadarını yapsın?"
+          }
+        }
+      }
+    },
     "How the scanner rates a package" : {
 
     },
@@ -5905,6 +6029,17 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Installed from %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "Installed from Settings › Permissions, where the driver's own setup runs. It is a separate download, so it asks first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayarlar › İzinler'den kurulur; sürücünün kendi kurulumu orada çalışır. Ayrı bir indirme olduğu için önce sorar."
           }
         }
       }
@@ -6753,6 +6888,17 @@
         }
       }
     },
+    "missing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "eksik"
+          }
+        }
+      }
+    },
     "Missing: %@" : {
 
     },
@@ -6959,6 +7105,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Claude Code veya Codex kurulu değil."
+          }
+        }
+      }
+    },
+    "Never asks — including for commands outside the project. Pick this only for a session you are watching." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiç sormaz — proje dışındaki komutlar dahil. Bunu yalnızca izlediğin bir oturum için seç."
           }
         }
       }
@@ -8482,6 +8639,17 @@
         }
       }
     },
+    "Open the setup guide" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurulum kılavuzunu aç"
+          }
+        }
+      }
+    },
     "Open the Setup Guide" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8550,6 +8718,17 @@
     },
     "Opt-in" : {
 
+    },
+    "Optional tools" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İsteğe bağlı araçlar"
+          }
+        }
+      }
     },
     "Or skip this for now." : {
 
@@ -9428,6 +9607,17 @@
         }
       }
     },
+    "Read Only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salt Okunur"
+          }
+        }
+      }
+    },
     "Reading and ticking tasks" : {
 
     },
@@ -9471,6 +9661,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Çalışma ağacı okunuyor…"
+          }
+        }
+      }
+    },
+    "Reads and plans, and changes nothing until you accept the plan." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Okur ve plan yapar; sen planı kabul edene kadar hiçbir şeyi değiştirmez."
           }
         }
       }
@@ -11362,6 +11563,17 @@
     "Skip" : {
 
     },
+    "Skipping this changes nothing about how extensions are scanned today." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bunu atlamak, uzantıların bugün nasıl tarandığı konusunda hiçbir şeyi değiştirmez."
+          }
+        }
+      }
+    },
     "Someone else's symlink" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12995,6 +13207,17 @@
         }
       }
     },
+    "This is the mode every new session starts in. You can change it per session at any time, and change the default later in Settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her yeni oturumun başlayacağı mod budur. Oturum bazında istediğin zaman, varsayılanı da sonradan Ayarlar'dan değiştirebilirsin."
+          }
+        }
+      }
+    },
     "This project has no TODO.md. With one, Uncoil gives it a Tasks tab: assign a checkbox to an agent, watch the run, review what came back and merge it. It stays a plain Markdown file your agents and editor can own." : {
 
     },
@@ -13011,6 +13234,17 @@
     },
     "This skill contains executable files; I approve installing them." : {
 
+    },
+    "Three things Uncoil can use but does not ship. Each is a download, so each is a button — nothing here installs itself, and no install script is ever run." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil'in kullanabildiği ama birlikte gelmeyen üç şey. Her biri bir indirme, dolayısıyla her biri bir buton — burada hiçbir şey kendiliğinden kurulmaz ve hiçbir kurulum betiği çalıştırılmaz."
+          }
+        }
+      }
     },
     "Timed Out" : {
       "extractionState" : "manual",
@@ -13258,6 +13492,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uncoil logosu"
+          }
+        }
+      }
+    },
+    "Uncoil never raises a session above the mode you pick here — a child agent inherits its parent's, intersected, and cannot escalate." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil bir oturumu burada seçtiğin modun üstüne çıkarmaz — alt ajan, ebeveyninin modunu kesişimle devralır ve yetkisini yükseltemez."
           }
         }
       }
@@ -13902,6 +14147,17 @@
     "What it can reach" : {
 
     },
+    "What lets an agent drive the Mac itself: real windows, real clicks, your screen. It needs Accessibility and Screen Recording permission, which only you can grant, so its installer walks you through it rather than Uncoil doing it behind your back." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir ajanın Mac'in kendisini sürmesini sağlayan şey: gerçek pencereler, gerçek tıklamalar, senin ekranın. Erişilebilirlik ve Ekran Kaydı izni gerekir; bunları yalnızca sen verebilirsin, bu yüzden kurulumu Uncoil arkandan halletmek yerine sana adım adım anlatır."
+          }
+        }
+      }
+    },
     "What should happen?" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13915,6 +14171,17 @@
     },
     "What your agents may do" : {
 
+    },
+    "Whatever the CLI does by default." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CLI varsayılan olarak ne yapıyorsa o."
+          }
+        }
+      }
     },
     "When busy" : {
       "extractionState" : "manual",
@@ -14014,6 +14281,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Çalışma modu"
+          }
+        }
+      }
+    },
+    "Working modes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çalışma modları"
+          }
+        }
+      }
+    },
+    "Works through the task on its own, inside the project's folder." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İşi proje klasörünün içinde kendi başına yürütür."
           }
         }
       }

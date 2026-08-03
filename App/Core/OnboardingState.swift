@@ -10,9 +10,11 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
     case welcome
     case clis
     case accounts
+    case workingModes
     case hooks
     case notifications
     case capabilities
+    case tools
     case project
     case tasks
     case extensions
@@ -26,9 +28,11 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
         case .welcome: String(localized: "Welcome")
         case .clis: String(localized: "Agent CLIs")
         case .accounts: String(localized: "Accounts")
+        case .workingModes: String(localized: "Working modes")
         case .hooks: String(localized: "Status tracking")
         case .notifications: String(localized: "Notifications")
         case .capabilities: String(localized: "Agent capabilities")
+        case .tools: String(localized: "Optional tools")
         case .project: String(localized: "First project")
         case .tasks: String(localized: "Tasks")
         case .extensions: String(localized: "Extensions")
@@ -52,7 +56,9 @@ enum OnboardingStep: String, CaseIterable, Identifiable, Sendable {
 enum OnboardingFlow {
     /// Bumped when a step is added that an existing user should still see.
     /// A stamped version lower than this reopens the flow at the new steps only.
-    static let currentVersion = 2
+    ///
+    /// 3: the working-mode and optional-tools steps.
+    static let currentVersion = 3
 
     static var all: [OnboardingStep] { OnboardingStep.allCases }
 

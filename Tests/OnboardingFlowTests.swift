@@ -41,6 +41,25 @@ final class OnboardingFlowTests: XCTestCase {
         XCTAssertEqual(OnboardingFlow.resumeStep(completed: everything), .welcome)
     }
 
+    /// Both new steps ask the user for something, so both have to be counted as
+    /// work — and both have to sit next to what they are about: the mode after
+    /// the accounts it applies to, the tools after the capabilities that need
+    /// them.
+    func testTheWorkingModeAndToolStepsAreActionableAndInPlace() {
+        XCTAssertTrue(OnboardingStep.workingModes.isActionable)
+        XCTAssertTrue(OnboardingStep.tools.isActionable)
+        XCTAssertEqual(OnboardingFlow.next(after: .accounts), .workingModes)
+        XCTAssertEqual(OnboardingFlow.next(after: .capabilities), .tools)
+        XCTAssertEqual(OnboardingFlow.next(after: .tools), .project)
+    }
+
+    /// Adding a step is only half of it: without the version bump, everyone who
+    /// already finished setup would never be shown the new ones.
+    func testTheVersionWasBumpedForTheNewSteps() {
+        XCTAssertGreaterThanOrEqual(OnboardingFlow.currentVersion, 3)
+        XCTAssertTrue(OnboardingFlow.shouldPresent(stampedVersion: 2))
+    }
+
     func testPresentationIsGatedOnTheStampedVersion() {
         XCTAssertTrue(OnboardingFlow.shouldPresent(stampedVersion: nil))
         XCTAssertFalse(OnboardingFlow.shouldPresent(stampedVersion: OnboardingFlow.currentVersion))
