@@ -3319,6 +3319,9 @@
         }
       }
     },
+    "checking…" : {
+
+    },
     "Checking…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6030,6 +6033,12 @@
           }
         }
       }
+    },
+    "Homebrew" : {
+
+    },
+    "Homebrew has no package for this tool." : {
+
     },
     "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Privacy and Permissions › Status Tracking." : {
 
@@ -8778,6 +8787,9 @@
         }
       }
     },
+    "npm" : {
+
+    },
     "Observer" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9368,6 +9380,9 @@
 
     },
     "Pasting an image" : {
+
+    },
+    "path" : {
 
     },
     "Paths Found" : {
@@ -10751,6 +10766,9 @@
           }
         }
       }
+    },
+    "resolves to" : {
+
     },
     "Restart" : {
       "extractionState" : "manual",
@@ -13811,6 +13829,22 @@
         }
       }
     },
+    "The update command failed and said nothing." : {
+
+    },
+    "The update command succeeded but %@ is still %@. It most likely installed into a different Node than the one this binary comes from — the command above says which npm was used." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The update command succeeded but %1$@ is still %2$@. It most likely installed into a different Node than the one this binary comes from — the command above says which npm was used."
+          }
+        }
+      }
+    },
+    "The update ran, but the version could not be read afterwards." : {
+
+    },
     "The update removed a tool: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13982,6 +14016,12 @@
 
     },
     "This skill contains executable files; I approve installing them." : {
+
+    },
+    "This tool has no updater Uncoil knows how to run." : {
+
+    },
+    "This tool is not published on npm." : {
 
     },
     "Three things Uncoil can use but does not ship. Each is a download, so each is a button — nothing here installs itself, and no install script is ever run." : {
@@ -14188,6 +14228,9 @@
 
     },
     "Uncoil can look for the test setup this project already has, run it, and show what failed." : {
+
+    },
+    "Uncoil cannot tell how this was installed, so it will not guess at an update command." : {
 
     },
     "Uncoil changes these files only through plan → apply." : {
@@ -14681,6 +14724,16 @@
         }
       }
     },
+    "Updated: %@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Updated: %1$@ → %2$@"
+          }
+        }
+      }
+    },
     "Updates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14693,6 +14746,9 @@
       }
     },
     "Updates are staged, never applied blind: a new revision is fetched into a copy, scanned, structure-checked and smoke-tested first, and the active revision only switches once all of that passes. A failed update changes nothing." : {
+
+    },
+    "updates with" : {
 
     },
     "updating…" : {
@@ -14809,6 +14865,9 @@
       }
     },
     "version unknown" : {
+
+    },
+    "Volta" : {
 
     },
     "Waiting" : {
@@ -14948,6 +15007,9 @@
       }
     },
     "What gets announced" : {
+
+    },
+    "What is installed on this Mac, where it lives, and how Uncoil would update it." : {
 
     },
     "What it can reach" : {
