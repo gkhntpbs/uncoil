@@ -7,6 +7,9 @@
     " · " : {
 
     },
+    " +%lld more" : {
+
+    },
     " High-priority events are still announced during this window." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1356,6 +1359,9 @@
           }
         }
       }
+    },
+    "A plain Markdown checklist your agents can read and tick off. Uncoil never adds syntax of its own to it." : {
+
     },
     "A port this configuration needs%@ is already taken. Stop the other process, or change the port in the command/env and update 'ports' in .uncoil/run.json." : {
       "extractionState" : "manual",
@@ -4880,6 +4886,9 @@
         }
       }
     },
+    "Drag to reorder. At least one shortcut stays — without one there is no way to start a session from the project screen." : {
+
+    },
     "Drivers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5558,6 +5567,9 @@
         }
       }
     },
+    "Found %lld. The tab is on the right." : {
+
+    },
     "Found on PATH" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6156,6 +6168,9 @@
           }
         }
       }
+    },
+    "In the strip" : {
+
     },
     "Inactive until it is turned on from the Reminders page." : {
       "extractionState" : "manual",
@@ -6777,6 +6792,9 @@
           }
         }
       }
+    },
+    "Look" : {
+
     },
     "Look at the logs; do not restart until it is fixed." : {
       "extractionState" : "manual",
@@ -8444,6 +8462,9 @@
         }
       }
     },
+    "Not in the strip" : {
+
+    },
     "not installed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8465,6 +8486,9 @@
           }
         }
       }
+    },
+    "Not installed — hidden from the strip until it is" : {
+
     },
     "Not installed on this machine" : {
 
@@ -8517,6 +8541,9 @@
       }
     },
     "Nothing found. Add a suite to .uncoil/tests.json by hand, or ask an agent to." : {
+
+    },
+    "Nothing found. You can still write the configuration by hand, or ask an agent to." : {
 
     },
     "Nothing is installed into your agents' own configuration: the server is registered for one session, as that session launches, and goes away with it." : {
@@ -9876,6 +9903,9 @@
         }
       }
     },
+    "Quick Launch" : {
+
+    },
     "Quick Question" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10396,6 +10426,9 @@
           }
         }
       }
+    },
+    "Remove from the strip" : {
+
     },
     "Remove Source" : {
       "extractionState" : "manual",
@@ -10929,6 +10962,9 @@
           }
         }
       }
+    },
+    "Run this project's tests from Uncoil" : {
+
     },
     "Run with Orchestrator" : {
       "extractionState" : "manual",
@@ -11659,6 +11695,9 @@
         }
       }
     },
+    "Set up" : {
+
+    },
     "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11868,6 +11907,9 @@
           }
         }
       }
+    },
+    "Show this repository's GitHub issues" : {
+
     },
     "Shown as a number next to the icon." : {
       "extractionState" : "manual",
@@ -12237,6 +12279,9 @@
           }
         }
       }
+    },
+    "Start this project from Uncoil" : {
+
     },
     "Start With %@" : {
       "extractionState" : "manual",
@@ -13232,6 +13277,9 @@
         }
       }
     },
+    "The last shortcut cannot be removed" : {
+
+    },
     "The package contains binary files." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13760,6 +13808,9 @@
     "This entry offers no package or endpoint Uncoil can install." : {
 
     },
+    "This folder has no GitHub remote. Add one, and the open issues of every repository in it show up here." : {
+
+    },
     "This folder is not a git repository." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14002,7 +14053,13 @@
     "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved." : {
 
     },
+    "Uncoil can look for the dev server, build or compose stack this project already has, and put it behind one button." : {
+
+    },
     "Uncoil can look for the project's own test setup — a scheme, a Package.swift, go.mod, Cargo.toml, a package.json test script, or a pytest configuration. What it finds is written to .uncoil/tests.json, which you and your agents can edit." : {
+
+    },
+    "Uncoil can look for the test setup this project already has, run it, and show what failed." : {
 
     },
     "Uncoil changes these files only through plan → apply." : {

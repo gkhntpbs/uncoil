@@ -51,15 +51,7 @@ struct ProjectDashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                // Outside the header card and hard right: it is a set of
-                // shortcuts, not part of what this project is, and inside the
-                // card it was the last thing that could not give way — which
-                // is how the card ended up wider than the window.
-                HStack(spacing: 6) {
-                    Spacer(minLength: 0)
-                    AgentLauncherStrip(project: project, selection: $selection)
-                }
+            VStack(alignment: .leading, spacing: 14) {
                 header
                 if area == .tasks, hasTaskSources {
                     ProjectTasksView(project: project, selection: $selection)
@@ -379,8 +371,11 @@ struct ProjectDashboardView: View {
 
             Spacer(minLength: 8)
 
-            // The project's own root, in the same control the session header
-            // uses — one gesture means one thing wherever it appears.
+            areaTabs
+
+            // Right of the tabs: opening the project in an editor is a thing
+            // done *to* the project, not one of its screens, so it sits past
+            // the row that switches between them.
             EditorOpenControl(directory: project.rootPath)
                 .padding(3)
                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
@@ -388,9 +383,6 @@ struct ProjectDashboardView: View {
                     RoundedRectangle(cornerRadius: Theme.Radius.panel)
                         .strokeBorder(Theme.border, lineWidth: 1)
                 )
-
-            // Last, so the tabs sit hard against the right edge.
-            areaTabs
         }
         .padding(14)
         .panel()

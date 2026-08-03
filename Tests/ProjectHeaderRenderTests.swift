@@ -11,6 +11,10 @@ import XCTest
 /// which would compress. When that exceeded the window, the whole split
 /// overflowed and the sidebar was pushed off the left edge. The sample is drawn
 /// at a deliberately tight width for that reason.
+///
+/// The launcher strip is gone from this screen entirely — it lives on the
+/// sidebar's project rows and on the worktree rows, where it can say *which*
+/// tree to start in.
 @MainActor
 final class ProjectHeaderRenderTests: XCTestCase {
     /// Mirrors the header's layout, so the arrangement can be looked at without
@@ -19,24 +23,10 @@ final class ProjectHeaderRenderTests: XCTestCase {
         let name: String
         let branch: String
         let areas: [ProjectArea]
-        let launcher: [AgentProvider]
         let width: CGFloat
 
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Spacer(minLength: 0)
-                    HStack(spacing: 4) {
-                        ForEach(launcher) { provider in
-                            ProviderMark(provider: provider, size: 11)
-                                .frame(width: 22, height: 18)
-                        }
-                    }
-                    .padding(3)
-                    .background(
-                        Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    )
-                }
                 HStack(alignment: .center, spacing: 12) {
                     ProjectIcon(project: Project(name: name, rootPath: "/tmp/\(name)"), size: 16)
                     VStack(alignment: .leading, spacing: 3) {
@@ -56,6 +46,16 @@ final class ProjectHeaderRenderTests: XCTestCase {
                     .layoutPriority(-1)
                     Spacer(minLength: 8)
                     tabs
+                    TablerIcon(name: "external-link", size: 12, color: Theme.textFaint)
+                        .frame(width: 22, height: 22)
+                        .padding(3)
+                        .background(
+                            Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
                 }
                 .padding(14)
                 .panel()
@@ -99,14 +99,12 @@ final class ProjectHeaderRenderTests: XCTestCase {
             // A fully equipped project: the worst case for the tab row.
             Sampler(
                 name: "midyanet", branch: "feat/design-kit",
-                areas: [.overview, .tasks, .run, .tests, .issues],
-                launcher: [.claude, .codex, .terminal], width: width
+                areas: [.overview, .tasks, .run, .tests, .issues], width: width
             )
             // And a bare folder, which is the common case and should be quiet.
             Sampler(
                 name: "notes", branch: "main",
-                areas: [.overview],
-                launcher: [.claude, .terminal], width: width
+                areas: [.overview], width: width
             )
         }
         .frame(width: width)
