@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Only the keys Xcode will not generate.
+
+	  GENERATE_INFOPLIST_FILE stays on and merges its keys into this file, so
+	  everything expressible as INFOPLIST_KEY_* still lives in project.yml.
+	  Sparkle's keys are not in Xcode's known list — an INFOPLIST_KEY_SUFeedURL
+	  build setting is silently dropped, which produces an app that embeds the
+	  framework and can never check for an update.
+	-->
+	<key>SUFeedURL</key>
+	<string>https://uncoil.gokhantopbas.com/appcast.xml</string>
+
+	<!--
+	  The public half of the EdDSA pair. The private half is in the login
+	  Keychain and is backed up outside this repository; it must never be
+	  committed. Losing it permanently strands every installed copy off the
+	  update feed — a new key cannot sign an update the old app will accept.
+	-->
+	<key>SUPublicEDKey</key>
+	<string>yIThUjLL1S9QuFDmgs8rOQapUTyqTv1n1CaFE9BXgRY=</string>
+
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+</dict>
+</plist>

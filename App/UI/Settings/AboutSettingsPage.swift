@@ -6,6 +6,7 @@ import SwiftUI
 struct AboutSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var updater = UpdaterService.shared
     @State private var debugBundleURL: URL?
     @State private var debugBundleError: String?
 
@@ -15,6 +16,16 @@ struct AboutSettingsPage: View {
         return "\(short) (\(build))"
     }
 
+    /// "Never checked" is the honest answer on a fresh install, and a more
+    /// useful one than an empty row.
+    private var lastCheckDescription: String {
+        guard let date = updater.lastCheckDate else {
+            return String(localized: "Has not checked for updates yet.")
+        }
+        let formatted = date.formatted(date: .abbreviated, time: .shortened)
+        return String(localized: "Last checked \(formatted).")
+    }
+
     var body: some View {
         SettingsPage(title: String(localized: "About")) {
             Section {
@@ -22,6 +33,39 @@ struct AboutSettingsPage: View {
                 LabeledContent("Bundle", value: Bundle.main.bundleIdentifier ?? "—")
             } footer: {
                 SettingsNote(String(localized: "Developed by Gökhan Topbaş"))
+            }
+
+            if updater.isAvailable {
+                Section {
+                    AdaptiveRow {
+                        SettingsLabel(
+                            title: String(localized: "Check automatically"),
+                            detail: String(localized: "Asks once a day whether a newer version has been published, and tells you only when there is one.")
+                        )
+                    } control: {
+                        Toggle("", isOn: Binding(
+                            get: { updater.automaticallyChecksForUpdates },
+                            set: { updater.automaticallyChecksForUpdates = $0 }
+                        ))
+                        .labelsHidden()
+                        .settingsID("about.automaticUpdates")
+                    }
+
+                    AdaptiveRow {
+                        SettingsLabel(
+                            title: String(localized: "Updates"),
+                            detail: lastCheckDescription
+                        )
+                    } control: {
+                        Button("Check Now") { updater.checkForUpdates() }
+                            .disabled(!updater.canCheckForUpdates)
+                            .settingsID("about.checkForUpdates")
+                    }
+                } header: {
+                    Text("Software Update")
+                } footer: {
+                    SettingsNote(String(localized: "Updates are downloaded from uncoil.gokhantopbas.com and verified against a signature before they are installed."))
+                }
             }
 
             Section {

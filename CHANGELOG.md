@@ -10,6 +10,10 @@ release notes are written once, here.
 
 ## Unreleased
 
+### Added
+
+- Uncoil updates itself. It checks `uncoil.gokhantopbas.com` once a day for a newer version, verifies what it downloads against a signature before installing it, and tells you only when there is something to install. "Check for Updates…" sits under the Uncoil menu for when you want to ask, and Settings › About can turn the automatic check off. Updates are only ever offered — nothing installs without you saying so.
+
 ## [0.1.0] - 2026-08-04
 
 First public beta. Everything Uncoil does today ships in this release — the

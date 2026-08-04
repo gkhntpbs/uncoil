@@ -181,6 +181,16 @@ struct MainWindowCommands: Commands {
         // and a plain Window gets no menu item of its own. So the app menu had
         // no Settings at all, and ⌘, did nothing: the one shortcut every Mac
         // user tries first.
+        // "Check for Updates…" belongs directly under About, where every Mac
+        // app that updates itself outside the App Store puts it.
+        CommandGroup(after: .appInfo) {
+            if UpdaterService.shared.isAvailable {
+                Button("Check for Updates…") {
+                    UpdaterService.shared.checkForUpdates()
+                }
+                .disabled(!UpdaterService.shared.canCheckForUpdates)
+            }
+        }
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") {
                 openWindow(id: "settings")

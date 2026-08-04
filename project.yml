@@ -13,6 +13,11 @@ packages:
   SwiftTerm:
     url: https://github.com/migueldeicaza/SwiftTerm
     from: 1.5.1
+  # Sparkle (MIT) — the standard macOS updater. Uncoil is not sandboxed, so the
+  # XPC installer services are not bundled; only the framework is.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.5
 
 settings:
   base:
@@ -125,6 +130,7 @@ targets:
       - path: Shared
     dependencies:
       - package: SwiftTerm
+      - package: Sparkle
       - target: uncoil-hook
         embed: false
       - target: uncoil-runtimed
@@ -170,6 +176,10 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Gökhan Topbaş"
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        # Sparkle's keys are not in Xcode's known INFOPLIST_KEY_* list — setting
+        # them that way is dropped without a warning — so they live in a real
+        # plist that the generated one is merged into. See Support/Info.plist.
+        INFOPLIST_FILE: Support/Info.plist
         ENABLE_USER_SCRIPT_SANDBOXING: false
         SWIFT_STRICT_CONCURRENCY: minimal
         # Extract every localizable literal into Localizable.xcstrings at build
