@@ -40,7 +40,7 @@ final class RuntimeClient: @unchecked Sendable {
     /// Read from the main thread by TerminalRegistry; written on `queue`.
     private(set) var phase: Phase = .idle
 
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.runtime-client")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.runtime-client")
     private var fd: Int32 = -1
     private var readSource: DispatchSourceRead?
     private var heartbeatSource: DispatchSourceTimer?

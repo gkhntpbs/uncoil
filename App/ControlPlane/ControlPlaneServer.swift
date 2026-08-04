@@ -17,7 +17,7 @@ final class ControlPlaneServer: @unchecked Sendable {
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
     private var ownsSocket = false
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.control-server")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.control-server")
 
     init(socketPath: String, router: CapabilityRouter) {
         self.socketPath = socketPath

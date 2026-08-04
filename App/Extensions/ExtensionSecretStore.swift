@@ -9,7 +9,7 @@ import Security
 /// needs a secret.
 @MainActor
 struct ExtensionSecretStore {
-    static let service = "com.gkhntpbs.uncoil.extensions.v1"
+    static let service = "com.gokhantopbas.uncoil.extensions.v1"
 
     /// Which extension a secret belongs to is part of the account name, so the
     /// UI can answer "which MCP reaches which secret?" without reading values.

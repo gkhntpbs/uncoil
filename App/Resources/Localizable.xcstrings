@@ -2511,6 +2511,9 @@
         }
       }
     },
+    "Asks once a day whether a newer version has been published, and tells you only when there is one." : {
+
+    },
     "Asleep" : {
 
     },
@@ -3275,6 +3278,9 @@
         }
       }
     },
+    "Check automatically" : {
+
+    },
     "Check for Updates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3285,6 +3291,12 @@
           }
         }
       }
+    },
+    "Check for Updates…" : {
+
+    },
+    "Check Now" : {
+
     },
     "Check the installed versions and update with one click." : {
       "extractionState" : "manual",
@@ -5885,6 +5897,9 @@
     "Has no skills directory" : {
 
     },
+    "Has not checked for updates yet." : {
+
+    },
     "Has not run yet." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6672,6 +6687,9 @@
           }
         }
       }
+    },
+    "Last checked %@." : {
+
     },
     "Last fetch: %@" : {
       "extractionState" : "manual",
@@ -12275,6 +12293,9 @@
         }
       }
     },
+    "Software Update" : {
+
+    },
     "Someone else's symlink" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14765,6 +14786,9 @@
           }
         }
       }
+    },
+    "Updates are downloaded from uncoil.gokhantopbas.com and verified against a signature before they are installed." : {
+
     },
     "Updates are staged, never applied blind: a new revision is fetched into a copy, scanned, structure-checked and smoke-tested first, and the active revision only switches once all of that passes. A failed update changes nothing." : {
 

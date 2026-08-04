@@ -144,7 +144,7 @@ func spawnPTY(shell: String, args: [String], env: [String], cwd: String, cols: I
 // MARK: - Server
 
 final class RuntimeDaemon {
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.runtimed")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.runtimed")
     private var listenFD: Int32 = -1
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]

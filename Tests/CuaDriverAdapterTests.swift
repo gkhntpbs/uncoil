@@ -48,7 +48,7 @@ final class CuaDriverAdapterTests: XCTestCase {
     func testListAppsUsesCallToolJSONContract() throws {
         let runner = Runner { _, arguments in
             XCTAssertEqual(Array(arguments.prefix(2)), ["call", "list_apps"])
-            return self.result(stdout: #"{"apps":[{"bundle_id":"com.gkhntpbs.uncoil","pid":42}]}"#)
+            return self.result(stdout: #"{"apps":[{"bundle_id":"com.gokhantopbas.uncoil","pid":42}]}"#)
         }
         let adapter = adapter(runner)
 
@@ -65,7 +65,7 @@ final class CuaDriverAdapterTests: XCTestCase {
         let runner = Runner { _, arguments in
             switch Array(arguments.prefix(2)) {
             case ["call", "list_apps"]:
-                return self.result(stdout: #"{"apps":[{"bundle_id":"com.gkhntpbs.uncoil","pid":42,"running":true}]}"#)
+                return self.result(stdout: #"{"apps":[{"bundle_id":"com.gokhantopbas.uncoil","pid":42,"running":true}]}"#)
             case ["call", "list_windows"]:
                 return self.result(stdout: #"{"windows":[{"window_id":77,"pid":42,"title":"Uncoil"}]}"#)
             case ["call", "get_window_state"]:
@@ -77,14 +77,14 @@ final class CuaDriverAdapterTests: XCTestCase {
         let adapter = adapter(runner)
 
         let output = try adapter.perform(
-            .inspectWindow(bundleID: "com.gkhntpbs.uncoil", windowID: 77),
+            .inspectWindow(bundleID: "com.gokhantopbas.uncoil", windowID: 77),
             session: "session-1"
         ).get()
 
         guard case .object(let window) = output.externalContent else {
             return XCTFail("missing window")
         }
-        XCTAssertEqual(window["bundle_id"]?.stringValue, "com.gkhntpbs.uncoil")
+        XCTAssertEqual(window["bundle_id"]?.stringValue, "com.gokhantopbas.uncoil")
         XCTAssertEqual(window["pid"]?.intValue, 42)
         XCTAssertEqual(window["window_id"]?.intValue, 77)
         XCTAssertNotNil(window["state"])
@@ -94,7 +94,7 @@ final class CuaDriverAdapterTests: XCTestCase {
         let runner = Runner { _, arguments in
             switch Array(arguments.prefix(2)) {
             case ["call", "list_apps"]:
-                return self.result(stdout: #"{"apps":[{"bundle_id":"com.gkhntpbs.uncoil","pid":42}]}"#)
+                return self.result(stdout: #"{"apps":[{"bundle_id":"com.gokhantopbas.uncoil","pid":42}]}"#)
             case ["call", "list_windows"]:
                 return self.result(stdout: #"{"windows":[{"window_id":88,"pid":42,"title":"Settings","is_on_screen":false,"bounds":{"width":660,"height":652}},{"window_id":77,"pid":42,"title":"Uncoil","is_on_screen":true,"bounds":{"width":1100,"height":720}}]}"#)
             case ["call", "get_window_state"]:
@@ -106,7 +106,7 @@ final class CuaDriverAdapterTests: XCTestCase {
         let adapter = adapter(runner)
 
         let output = try adapter.perform(
-            .inspectWindow(bundleID: "com.gkhntpbs.uncoil", windowID: nil),
+            .inspectWindow(bundleID: "com.gokhantopbas.uncoil", windowID: nil),
             session: "session-1"
         ).get()
 
@@ -172,7 +172,7 @@ final class CuaDriverAdapterTests: XCTestCase {
             return self.result(stdout: #"{"effect":"unverifiable"}"#)
         }
         let adapter = adapter(runner)
-        let window = WindowTarget(bundleID: "com.gkhntpbs.uncoil", pid: 42, windowID: 77, title: "Uncoil")
+        let window = WindowTarget(bundleID: "com.gokhantopbas.uncoil", pid: 42, windowID: 77, title: "Uncoil")
 
         _ = try adapter.perform(
             .hotkey(window: window, keys: "cmd+shift+p"),

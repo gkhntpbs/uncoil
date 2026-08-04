@@ -9,7 +9,7 @@ final class HookServer {
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.hook-server")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.hook-server")
 
     /// Called on `queue` for every decoded event.
     var onEvent: ((HookEvent) -> Void)?

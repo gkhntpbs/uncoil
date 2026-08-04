@@ -122,7 +122,7 @@ protocol ShiftEnterCapableTerminal: AnyObject {
 /// hides SwiftTerm's caret view, and a session that renders but does not take
 /// keystrokes is worse than a session drawn on the CPU. A renderer is an
 /// optimisation; typing is the feature. Turn it on with
-/// `defaults write com.gkhntpbs.uncoil TerminalMetalEnabled -bool YES`.
+/// `defaults write com.gokhantopbas.uncoil TerminalMetalEnabled -bool YES`.
 @MainActor
 enum TerminalMetal {
     static var isEnabled: Bool {

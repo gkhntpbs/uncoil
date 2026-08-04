@@ -97,7 +97,7 @@ final class NotificationAuthorization: ObservableObject {
     /// Opens the Notifications pane of System Settings, scrolled to Uncoil when
     /// macOS honours the bundle id.
     func openSystemSettings() {
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.gkhntpbs.uncoil"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.gokhantopbas.uncoil"
         let url = URL(
             string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
                 + "?id=\(bundleID)"

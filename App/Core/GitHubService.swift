@@ -274,7 +274,7 @@ enum BrowserApp: String, CaseIterable, Identifiable {
 
 /// Minimal Keychain wrapper — secrets never land in settings.json.
 enum KeychainStore {
-    private static let service = "com.gkhntpbs.uncoil.github.v2"
+    private static let service = "com.gokhantopbas.uncoil.github.v2"
 
     static func save(key: String, value: String) {
         let identity: [String: Any] = [

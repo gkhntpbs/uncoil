@@ -279,7 +279,7 @@ struct BumblebeeRunner {
 
 /// Single-scan lock. One scan at a time, whoever asks.
 final class BumblebeeScanLock: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.bumblebee.lock")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.bumblebee.lock")
     private var running: BumblebeeScanKind?
 
     var current: BumblebeeScanKind? {

@@ -5,7 +5,7 @@ import Foundation
 /// KEYS. One line per control-plane request decision.
 final class AuditLog {
     private let directory: URL
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.audit")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.audit")
 
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()

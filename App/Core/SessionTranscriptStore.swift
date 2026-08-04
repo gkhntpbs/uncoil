@@ -29,7 +29,7 @@ enum TranscriptRetentionPolicy: String, Codable, CaseIterable, Identifiable {
 
 final class SessionTranscriptStore: @unchecked Sendable {
     private let root: URL
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.transcripts")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.transcripts")
 
     init(dataDirectory: URL) {
         root = dataDirectory.appendingPathComponent("transcripts", isDirectory: true)

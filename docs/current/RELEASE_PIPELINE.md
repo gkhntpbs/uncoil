@@ -12,7 +12,7 @@ true before it runs, and the distribution decisions behind it.
 - Destination: `platform=macOS,arch=arm64`
 - DerivedData: `.build-cache/DerivedData`
 - Development team: `K3TKWWVEB9`
-- Bundle identifier: `com.gkhntpbs.uncoil`
+- Bundle identifier: `com.gokhantopbas.uncoil`
 
 ## Validation
 
@@ -68,7 +68,7 @@ Notarization needs credentials (`xcrun notarytool store-credentials`, then
 `NOTARY_PROFILE`). Without them the script does not guess; it stops.
 
 Signing team: `K3TKWWVEB9` (Apple Development: Alparslan Topbas), bundle id
-`com.gkhntpbs.uncoil`.
+`com.gokhantopbas.uncoil`.
 
 ## The update-mechanism decision
 

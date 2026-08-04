@@ -19,7 +19,7 @@ final class ExtensionSecretServer: @unchecked Sendable {
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
-    private let queue = DispatchQueue(label: "com.gkhntpbs.uncoil.extension-secrets")
+    private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.extension-secrets")
 
     init(socketPath: String, resolve: @escaping Resolver) {
         self.socketPath = socketPath

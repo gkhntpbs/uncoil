@@ -2,7 +2,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let runtimeCompatibilityError = Notification.Name(
-        "com.gkhntpbs.uncoil.runtimeCompatibilityError"
+        "com.gokhantopbas.uncoil.runtimeCompatibilityError"
     )
 }
 import AppKit

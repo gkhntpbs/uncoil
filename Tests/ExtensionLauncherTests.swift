@@ -185,7 +185,7 @@ final class ExtensionSecretStoreTests: XCTestCase {
     override func setUp() {
         super.setUp()
         store = ExtensionSecretStore(
-            service: "com.gkhntpbs.uncoil.tests.\(UUID().uuidString)"
+            service: "com.gokhantopbas.uncoil.tests.\(UUID().uuidString)"
         )
     }
 

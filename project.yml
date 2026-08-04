@@ -1,6 +1,6 @@
 name: Uncoil
 options:
-  bundleIdPrefix: com.gkhntpbs
+  bundleIdPrefix: com.gokhantopbas
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -168,7 +168,7 @@ targets:
           - $(BUILT_PRODUCTS_DIR)/uncoil-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil
+        PRODUCT_BUNDLE_IDENTIFIER: com.gokhantopbas.uncoil
         PRODUCT_NAME: Uncoil
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
@@ -205,7 +205,7 @@ targets:
       - target: Uncoil
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.gokhantopbas.uncoil.tests
         GENERATE_INFOPLIST_FILE: true
 
   UncoilUITests:
@@ -217,7 +217,7 @@ targets:
       - target: Uncoil
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gkhntpbs.uncoil.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.gokhantopbas.uncoil.uitests
         GENERATE_INFOPLIST_FILE: true
         TEST_TARGET_NAME: Uncoil
 

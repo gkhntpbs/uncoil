@@ -124,7 +124,7 @@ In order:
 3) uncoil_sessions: current, list, inspect, list_children, read_reports. If the sessions.create_children and sessions.control_children capabilities are present, create a single child from claude-worker that only calls uncoil_system status and then report_to_parent; verify it with inspect_child, wait_for_children, summarize_children and read_reports; if the child is still running, close it with stop.
 4) uncoil_artifacts: list; if a file is there, inspect, resolve_path and read_text if it is text; also inspect a name that does not exist, to verify the safe error code.
 5) uncoil_browser: status. If the CLI and the Playwright browser binary are ready, start an ephemeral_session, open only https://example.com, then call snapshot, get title, screenshot, list_tabs and stop. If either is not installed, record BROWSER_UNAVAILABLE as an expected BLOCKED; install nothing.
-6) uncoil_computer: status, permissions, list_apps; bind the com.gkhntpbs.uncoil window with inspect_window, then take a snapshot and a screenshot. Do not click, type or call bring_to_front.
+6) uncoil_computer: status, permissions, list_apps; bind the com.gokhantopbas.uncoil window with inspect_window, then take a snapshot and a screenshot. Do not click, type or call bring_to_front.
 
 If a permission is missing, write plainly which grant_key is needed and wait. When it is granted, continue from where you stopped. One failure must not stop the other stages. Do not create a worktree, do not change or delete existing files, do not send messages, do not use a persistent browser profile, and do not run a remote install.
 
