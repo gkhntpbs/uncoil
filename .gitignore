@@ -1,5 +1,6 @@
 .build-cache/
 .uncoil-worktrees/
+.claude/settings.local.json
 .DS_Store
 DerivedData/
 *.xcodeproj

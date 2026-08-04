@@ -28,7 +28,7 @@ true before it runs, and the distribution decisions behind it.
 ## Release build
 
 ```bash
-"xcodegen" generate
+xcodegen generate
 xcodebuild -project Uncoil.xcodeproj -scheme Uncoil -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
   -derivedDataPath .build-cache/DerivedData build
