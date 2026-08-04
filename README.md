@@ -34,9 +34,12 @@ later, Apple silicon.
 
 ## Install
 
-Download the latest notarized `.dmg` from the
-[Releases page](https://github.com/gkhntpbs/uncoil/releases), open it, and drag
-Uncoil to Applications. The app checks for updates on its own after that.
+Download the latest release from the
+[Releases page](https://github.com/gkhntpbs/uncoil/releases), unzip it, and drag
+Uncoil to your Applications folder. The build is signed and notarized by Apple,
+so it opens without a Gatekeeper detour. After that the app checks
+`uncoil.gokhantopbas.com` for updates once a day and installs them only when you
+say so; the check can be turned off in Settings › About.
 
 ## Build from source
 
@@ -50,8 +53,10 @@ xcodebuild -project Uncoil.xcodeproj -scheme Uncoil -configuration Debug \
   -destination 'platform=macOS,arch=arm64' build
 ```
 
-Run the tests with `test` in place of `build`. The only dependency is
-[SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT), fetched by SPM.
+Run the tests with `test` in place of `build`. There are two dependencies, both
+fetched by SPM and both permissively licensed:
+[SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT) for the terminal and
+[Sparkle](https://github.com/sparkle-project/Sparkle) (MIT) for updates.
 
 ## Layout
 
