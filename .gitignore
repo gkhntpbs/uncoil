@@ -1,6 +1,9 @@
 .build-cache/
 .uncoil-worktrees/
 .claude/settings.local.json
+# Signed, notarized build products. Never committed: they are large, they are
+# rebuilt from a tag, and a repository is not a binary distribution channel.
+exports/
 .DS_Store
 DerivedData/
 *.xcodeproj
