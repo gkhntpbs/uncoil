@@ -2,7 +2,19 @@
 
 All notable changes to Uncoil are recorded here.
 
+Uncoil follows [Semantic Versioning](https://semver.org). The `0.x` series *is*
+the beta: features bump the minor, fixes bump the patch, and `1.0.0` will be the
+statement that the app is out of beta. Each released section's body is used
+verbatim as the GitHub Release notes and as the in-app update notes, so the
+release notes are written once, here.
+
 ## Unreleased
+
+## [0.1.0] - 2026-08-04
+
+First public beta. Everything Uncoil does today ships in this release — the
+dated sections at the end of this file are development entries from before the
+project was versioned, and they are part of 0.1.0 too.
 
 ### Added
 
