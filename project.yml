@@ -25,6 +25,21 @@ settings:
     SWIFT_VERSION: "5.10"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CODE_SIGN_STYLE: Automatic
+  # Hardened runtime is set here, for every target at once, rather than on the
+  # app alone. Notarization refuses a bundle whose nested binaries lack it, and
+  # the four helpers are separate targets — setting it only on the app produced
+  # an archive that built and signed cleanly and was rejected at the last step
+  # with "uncoil-extension, uncoil-hook, uncoil-mcp and uncoil-runtimed must be
+  # rebuilt with support for the Hardened Runtime". At project level a fifth
+  # helper cannot reintroduce the same failure by being forgotten.
+  #
+  # Debug keeps it off so a local build can attach a debugger and spawn helpers
+  # without an entitlement round-trip; the helpers are ad-hoc signed there.
+  configs:
+    Debug:
+      ENABLE_HARDENED_RUNTIME: false
+    Release:
+      ENABLE_HARDENED_RUNTIME: true
 
 targets:
   uncoil-hook:
@@ -187,14 +202,6 @@ targets:
         # of silently shipping English into a Turkish window.
         SWIFT_EMIT_LOC_STRINGS: true
         LOCALIZATION_PREFERS_STRING_CATALOGS: true
-      # Debug keeps the hardened runtime off so a locally built app can attach a
-      # debugger and spawn helpers without an entitlement round-trip; Release
-      # needs it on, because notarization refuses a build without it.
-      configs:
-        Debug:
-          ENABLE_HARDENED_RUNTIME: false
-        Release:
-          ENABLE_HARDENED_RUNTIME: true
 
   UncoilTests:
     type: bundle.unit-test
