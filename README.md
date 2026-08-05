@@ -113,8 +113,7 @@ Issues and pull requests are welcome.
 **AI tools are welcome here.** Much of Uncoil was built with coding agents —
 the app is, after all, a control center for them. Use Claude Code, Codex,
 Gemini CLI or whatever makes you productive; what matters is that you review
-what you submit and that it holds up. Vibe-coded pull requests are judged the
-same way hand-written ones are: by whether they work.
+what you submit and that it holds up.
 
 Run the test suite before opening a pull request.
 
