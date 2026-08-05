@@ -420,13 +420,14 @@ struct ProjectTasksView: View {
 
     private func changeLabel(_ change: TodoSourceChange) -> String {
         switch change {
-        case .added: "eklendi"
-        case .unchanged: "unchanged"
-        case .checkboxesChanged(let ids): "\(ids.count) checkbox"
-        case .structureChanged: "the layout changed"
-        case .missing: "lost"
-        case .restored: "geri geldi"
-        case .moved(let from): "moved: \(URL(fileURLWithPath: from).lastPathComponent)"
+        case .added: String(localized: "added")
+        case .unchanged: String(localized: "unchanged")
+        case .checkboxesChanged(let ids): String(localized: "\(ids.count) checkbox")
+        case .structureChanged: String(localized: "the layout changed")
+        case .missing: String(localized: "lost")
+        case .restored: String(localized: "restored")
+        case .moved(let from):
+            String(localized: "moved: \(URL(fileURLWithPath: from).lastPathComponent)")
         }
     }
 
