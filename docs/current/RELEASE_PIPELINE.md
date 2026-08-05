@@ -69,24 +69,47 @@ Notarization needs credentials (`xcrun notarytool store-credentials`, then
 Signing team: `K3TKWWVEB9` (Apple Development: Alparslan Topbas), bundle id
 `com.gokhantopbas.uncoil`.
 
-## The update-mechanism decision
+## The update mechanism
 
-**Decision: no Sparkle; GitHub Releases and a manual download.**
+**Sparkle, with the user in charge.** The original decision here was "no
+Sparkle"; it was revisited once the first public release made a manual
+check-and-redownload loop a real cost for every installed copy. What made the
+revisit acceptable is that the original objections were answered rather than
+overruled:
 
-Why:
+- Sparkle is MIT and joined SwiftTerm as the second and last dependency.
+- Nothing installs quietly. The app checks the feed once a day, tells the user
+  only when there is something to install, and installs nothing without an
+  explicit yes. The check itself can be turned off in Settings › About.
+- Every update is verified twice before it runs: the EdDSA signature in the
+  appcast (only our Sparkle key can produce it) and the notarized Developer ID
+  signature inside the zip.
 
-- Uncoil's dependency policy is "zero new dependencies" (`CLAUDE.md`). Sparkle
-  may be MIT, but it brings a signed appcast, EdDSA key management and an
-  updater process of its own along with it.
-- Uncoil already updates the agent CLIs and the extensions. A mechanism that
-  also updated the app itself, quietly, would contradict the rule that nothing
-  happens without the user's approval.
-- Checking the version is cheap: `uncoil_system` already reports it, a new
-  release can be read from GitHub Releases, and the download happens when the
-  user clicks.
+The feed lives at `https://uncoil.gokhantopbas.com/appcast.xml` and is served
+from the landing-site repository, where every change to it is a reviewable
+commit.
 
-The decision closes no door: if the need becomes clear, a signed appcast can be
-added.
+## Publishing the update feed
+
+Order matters: the appcast must never announce a version that cannot be
+downloaded yet.
+
+1. Publish the GitHub release with the zip attached, and confirm the download
+   URL answers 200.
+2. Collect the release zips into one working directory. **Include the previous
+   releases' zips alongside the new one**: `generate_appcast` builds the feed
+   from what it sees, so a directory holding only the newest zip produces a
+   feed that lists only the newest version — and no delta updates. Keeping the
+   last few zips in the directory keeps older installs upgradeable in one hop
+   and lets Sparkle generate deltas.
+3. Put the release notes next to the zip as `Uncoil-<version>.html` (HTML, not
+   Markdown — Sparkle's update window renders what it is given, and raw
+   Markdown reads as raw Markdown).
+4. Run `generate_appcast <dir> --download-url-prefix
+   https://github.com/gkhntpbs/uncoil/releases/download/v<version>/`. It signs
+   each item with the EdDSA key from the Keychain.
+5. Commit `appcast.xml` and the notes HTML to the landing repository's
+   `public/` and push. The deploy publishes and verifies the feed.
 
 ## App update rollback policy
 
