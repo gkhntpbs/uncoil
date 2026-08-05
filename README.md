@@ -72,6 +72,12 @@ projects, sessions, artifacts, tasks, run, system, browser and computer. Child
 sessions can only be created from named presets with capabilities intersected
 against the caller, never escalated. See [`docs/current/mcp/`](docs/current/mcp/).
 
+The browser and computer capabilities are driven by two open-source tools:
+[agent-browser](https://github.com/vercel-labs/agent-browser) by Vercel Labs
+for `uncoil_browser`, and [Cua](https://github.com/trycua/cua)'s `cua-driver`
+for `uncoil_computer`. Both are optional, and neither is installed without
+your explicit approval — Uncoil asks first, every time.
+
 ### And the window itself
 
 A command palette that reaches everything, editable themes, notifications,
