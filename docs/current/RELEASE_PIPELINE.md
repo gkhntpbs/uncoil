@@ -38,7 +38,6 @@ xcodebuild -project Uncoil.xcodeproj -scheme Uncoil -configuration Release \
 
 Notarization, Developer ID signing, DMG packaging, update feeds, GitHub Releases, and CI workflows are not implemented. Do not publish a build until those steps have explicit credentials, automation, rollback instructions, and a successful clean-machine installation test.
 
-The files under `docs/history/` describe a historical third-party release system. They are not commands or configuration for Uncoil.
 
 ---
 

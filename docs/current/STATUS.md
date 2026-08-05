@@ -8,7 +8,7 @@
 
 | What the plan said | What was done | Why |
 |---|---|---|
-| Build on a fork of an existing project (§4–5) | **Our own codebase, from scratch.** The historical clean-room review is kept under `docs/history/`; GPL code is never copied | User's decision (2026-07-23): "I don't want to build on top of an existing project". The license stayed entirely ours |
+| Build on an existing codebase | **Our own codebase, from scratch.** GPL code is never copied | Decision (2026-07-23): "I don't want to build on top of an existing project". The license stayed entirely ours |
 | Ghostty terminal engine | **SwiftTerm (MIT, SPM)** | zig 0.15.2 will not link against the macOS 26.5 SDK; SwiftTerm is enough and gives no trouble |
 | GPL-3.0 distribution obligation | Does not apply — the single dependency is MIT | The fork was abandoned |
 | Xcode project by hand | **XcodeGen** (`project.yml` → generate) | Reproducibility; `Uncoil.xcodeproj` is gitignored |

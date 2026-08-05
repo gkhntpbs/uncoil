@@ -36,47 +36,26 @@ later, Apple silicon.
 
 Download the latest release from the
 [Releases page](https://github.com/gkhntpbs/uncoil/releases), unzip it, and drag
-Uncoil to your Applications folder. The build is signed and notarized by Apple,
-so it opens without a Gatekeeper detour. After that the app checks
-`uncoil.gokhantopbas.com` for updates once a day and installs them only when you
-say so; the check can be turned off in Settings › About.
+Uncoil to your Applications folder.
 
-## Build from source
-
-Requires Xcode 16+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
-(`brew install xcodegen`). `Uncoil.xcodeproj` is generated and not checked in, so
-generate it first:
-
-```bash
-xcodegen generate
-xcodebuild -project Uncoil.xcodeproj -scheme Uncoil -configuration Debug \
-  -destination 'platform=macOS,arch=arm64' build
-```
-
-Run the tests with `test` in place of `build`. There are two dependencies, both
-fetched by SPM and both permissively licensed:
+There are two dependencies, both fetched by SPM and both permissively licensed:
 [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT) for the terminal and
 [Sparkle](https://github.com/sparkle-project/Sparkle) (MIT) for updates.
 
 ## Layout
 
-| Path | What lives there |
-|---|---|
-| `App/` | The app. `Core/` models and stores, `Terminal/` the SwiftTerm host, `UI/` views, `UI/AppKit/` the `NSOutlineView`-backed lists |
-| `RuntimeHelper/` | `uncoil-runtimed`, the daemon that owns the PTYs |
-| `McpHelper/` | `uncoil-mcp`, the bundled MCP stdio server |
-| `HookHelper/`, `ExtensionHelper/` | The Claude Code hook bridge and the extension host |
-| `Shared/` | Wire protocols compiled into both the app and the helpers |
-| `docs/current/` | Product status, release process, MCP documentation |
+| Path                              | What lives there                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `App/`                            | The app. `Core/` models and stores, `Terminal/` the SwiftTerm host, `UI/` views, `UI/AppKit/` the `NSOutlineView`-backed lists |
+| `RuntimeHelper/`                  | `uncoil-runtimed`, the daemon that owns the PTYs                                                                               |
+| `McpHelper/`                      | `uncoil-mcp`, the bundled MCP stdio server                                                                                     |
+| `HookHelper/`, `ExtensionHelper/` | The Claude Code hook bridge and the extension host                                                                             |
+| `Shared/`                         | Wire protocols compiled into both the app and the helpers                                                                      |
+| `docs/current/`                   | Product status, release process, MCP documentation                                                                             |
 
 ## Contributing
 
-Issues and pull requests are welcome. Two rules matter more than style:
-
-1. **Clean room.** Uncoil is an original codebase. Never copy code from a GPL
-   project into it, whatever it looks like it would save.
-2. **No new dependencies** unless there is no reasonable alternative, and then
-   only MIT, BSD or Apache-2.0. Never GPL.
+Issues and pull requests are welcome.
 
 Run the test suite before opening a pull request.
 
