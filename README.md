@@ -68,15 +68,13 @@ fetched by SPM and both permissively licensed:
 | `HookHelper/`, `ExtensionHelper/` | The Claude Code hook bridge and the extension host |
 | `Shared/` | Wire protocols compiled into both the app and the helpers |
 | `docs/current/` | Product status, release process, MCP documentation |
-| `docs/roadmap/` | Where this is going |
 
 ## Contributing
 
 Issues and pull requests are welcome. Two rules matter more than style:
 
 1. **Clean room.** Uncoil is an original codebase. Never copy code from a GPL
-   project into it — the audit under `docs/history/` is documentation of
-   a *design*, not a source to lift from.
+   project into it, whatever it looks like it would save.
 2. **No new dependencies** unless there is no reasonable alternative, and then
    only MIT, BSD or Apache-2.0. Never GPL.
 

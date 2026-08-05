@@ -7,3 +7,16 @@ exports/
 .DS_Store
 DerivedData/
 *.xcodeproj
+
+# ── The repository is the source code, not the workshop around it. ─────────
+# Everything below exists on disk and keeps working locally, but a contributor
+# gets the app's sources, the docs that describe it, and the repo's own files
+# (README, LICENSE, NOTICE, CHANGELOG) — not this machine's operating manuals.
+CLAUDE.md
+AGENTS.md
+TODO.md
+.claude/
+.uncoil/
+scripts/
+docs/history/
+docs/roadmap/
