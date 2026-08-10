@@ -60,7 +60,12 @@ final class TodoParserTests: XCTestCase {
             document.render(), raw,
             "the real TODO.md must survive a parse untouched"
         )
-        XCTAssertGreaterThan(document.tasks.count, 500)
+        // A floor, not a measurement. The bound exists so that a parser which
+        // silently stopped early would fail here rather than round-trip an
+        // almost-empty document; the exact size is the backlog's business and
+        // changes whenever work is archived. The real guard against a dropped
+        // construct is the independent count in the next test.
+        XCTAssertGreaterThan(document.tasks.count, 100)
     }
 
     /// The real file is the fixture that matters: every line that looks like a
