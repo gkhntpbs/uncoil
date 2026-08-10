@@ -10,6 +10,7 @@ struct MainWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var usage: UsageStore
     @Environment(\.openWindow) private var openWindow
     @StateObject private var palette = PaletteModel()
     @ObservedObject private var onboarding = OnboardingPresenter.shared
@@ -652,8 +653,14 @@ struct MainWindow: View {
             )
             openWindow(id: "extensions")
         }
+        // An agent session in preference to the first one seeded. The route
+        // exists to open "a session" for inspection, and the plain terminal —
+        // which the demo fixture happens to create first — is the one with no
+        // agent, no status, no account and no usage, so it shows the least of
+        // what there is to look at.
         if config.route == "session",
-           let record = projectStore.sessions.first {
+           let record = projectStore.sessions.first(where: { $0.provider.isAgent })
+            ?? projectStore.sessions.first {
             selection = .session(record.id)
             return
         }

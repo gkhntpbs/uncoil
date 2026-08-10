@@ -14,6 +14,10 @@ struct UncoilApp: App {
     @StateObject private var sessionStore = SessionStore()
     @StateObject private var settings = SettingsStore()
     @StateObject private var theme = ThemeStore.shared
+    /// Provider usage limits. One store for the app: the figures belong to
+    /// accounts, not to windows, and a second copy would refresh the same
+    /// account twice and disagree with itself about how fresh it was.
+    @StateObject private var usage = UsageStore()
     @ObservedObject private var attention = AttentionStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
 
@@ -66,6 +70,7 @@ struct UncoilApp: App {
                     .environmentObject(projectStore)
                     .environmentObject(sessionStore)
                     .environmentObject(settings)
+                    .environmentObject(usage)
             }
                 .frame(minWidth: 940, minHeight: 600)
         }
@@ -90,6 +95,7 @@ struct UncoilApp: App {
                         .environmentObject(projectStore)
                         .environmentObject(sessionStore)
                         .environmentObject(settings)
+                        .environmentObject(usage)
                 }
                 }
         }
@@ -101,6 +107,7 @@ struct UncoilApp: App {
             // picker down mid-drag. It observes the store directly instead.
             SettingsView()
                 .environmentObject(settings)
+                .environmentObject(usage)
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
                 .environmentObject(theme)
@@ -118,6 +125,7 @@ struct UncoilApp: App {
                     .environmentObject(projectStore)
                     .environmentObject(sessionStore)
                     .environmentObject(settings)
+                    .environmentObject(usage)
             }
         }
         .defaultSize(width: 920, height: 640)
@@ -133,6 +141,7 @@ struct UncoilApp: App {
                 .environmentObject(projectStore)
                 .environmentObject(sessionStore)
                 .environmentObject(settings)
+                .environmentObject(usage)
         } label: {
             MenuBarMonitorLabel(summary: menuBarSummary, prefs: settings.menuBar)
         }

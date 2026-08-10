@@ -41,6 +41,8 @@ struct LaunchConfig {
     let codexAppServerEnabled: Bool
     let codexApprovalFixture: Bool
     let attentionFixture: Bool
+    /// Seeds synthetic usage snapshots and opens the usage card.
+    let usageFixture: Bool
     /// Checks notification authorization and delivery, prints the result, exits.
     let notificationSelfTest: Bool
 
@@ -69,6 +71,12 @@ struct LaunchConfig {
             && arguments.contains("-codex-approval-fixture")
         attentionFixture = isUITesting
             && arguments.contains("-attention-fixture")
+        // Usage figures come from the provider's own account, so on a machine
+        // with no login — or with a plan that reports nothing — the populated
+        // chip and its card cannot be reached at all. This seeds one snapshot
+        // per band so both can be looked at without a subscription, and opens
+        // the card, since a popover has no other way to be shown on demand.
+        usageFixture = isUITesting && arguments.contains("-usage-fixture")
         notificationSelfTest = arguments.contains("-notification-selftest")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
@@ -231,6 +239,49 @@ struct LaunchConfig {
             projectStore: projectStore, sessionStore: sessionStore
         )
     }
+
+}
+
+/// A usage snapshot for `-usage-fixture`, so the chip and its card can be
+/// inspected without a subscription, a login, or the network.
+///
+/// Applied by `UsageStore` as it is built, not from a view. Seeding it from
+/// `onAppear` cost a morning: mutating the store while the first window is
+/// being assembled leaves the app running with no window at all — no crash, no
+/// log, nothing to search for.
+///
+/// The account is deliberately in trouble. The state this whole feature exists
+/// for is the one hardest to reach on purpose, and a picture of a healthy
+/// account proves the least. The windows also disagree with one another — a
+/// comfortable session, a tight week, an exhausted model — because "which limit
+/// binds first" is the question the card answers, and a uniform fixture would
+/// never show it being answered.
+enum UsageFixture {
+    static func snapshot(now: Date, provider: AgentProvider = .claude) -> UsageSnapshot {
+        UsageSnapshot(
+            provider: provider,
+            identity: UsageIdentity(email: "you@example.com", plan: "Max", organization: nil),
+            primaryWindow: UsageWindow(
+                id: "fixture.session", title: "Session limit", usedPercent: 34,
+                resetsAt: now.addingTimeInterval(2 * 3600 + 14 * 60), windowMinutes: 300
+            ),
+            secondaryWindow: UsageWindow(
+                id: "fixture.week", title: "Weekly limit", usedPercent: 78,
+                resetsAt: now.addingTimeInterval(3 * 86_400), windowMinutes: 10080
+            ),
+            extraWindows: [
+                UsageWindow(
+                    id: "fixture.opus", title: "Weekly limit · Opus", usedPercent: 92,
+                    resetsAt: now.addingTimeInterval(3 * 86_400), modelID: "opus"
+                ),
+            ],
+            credits: UsageCredits(balance: 12.5, currency: "USD", summary: nil),
+            source: .claudeOAuthAPI,
+            updatedAt: now.addingTimeInterval(-140)
+        )
+    }
+
+    static let key = UsageKey(provider: .claude, accountID: nil)
 }
 
 /// Animation helper honoring -disable-animations.

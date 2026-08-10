@@ -146,6 +146,25 @@ struct SessionHeaderBar<Trailing: View>: View {
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
                     }
+                    // Beside the account and not anywhere else: a limit belongs
+                    // to the login, not to the session, and two sessions on two
+                    // accounts have two different answers.
+                    //
+                    // Shown whether or not a profile exists. Most people never
+                    // make one — they log into Claude the ordinary way and use
+                    // the provider's own default — and hanging the chip off the
+                    // profile list meant the usual case was the one that never
+                    // saw it. `nil` is that account, and the layer already
+                    // models it as such.
+                    if record.provider.isAgent {
+                        UsageChip(
+                            provider: record.provider,
+                            account: account,
+                            isWorking: status.isWorking
+                        )
+                        Text("·")
+                            .foregroundStyle(Theme.textFaint)
+                    }
                     Text(displayPath)
                         .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textFaint)

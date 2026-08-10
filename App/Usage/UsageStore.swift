@@ -65,6 +65,11 @@ final class UsageStore: ObservableObject {
         for provider in resolved {
             self.providers[provider.provider] = provider
         }
+        // Applied as the store is built rather than from a view's `onAppear`,
+        // so the fixture is in place before anything can read it.
+        if LaunchConfig.shared.usageFixture {
+            seed(UsageFixture.snapshot(now: clock()), for: UsageFixture.key)
+        }
     }
 
     // MARK: - Reading
@@ -213,6 +218,19 @@ final class UsageStore: ObservableObject {
         case .planReportsNoQuota: return .planReportsNoQuota
         default: return .allStrategiesFailed
         }
+    }
+
+    /// Places a snapshot directly, for a deterministic UI run.
+    ///
+    /// It records an attempt at the same time, so the entry does not read as
+    /// "never asked" while holding numbers — a state no real refresh can
+    /// produce, and one the card would describe wrongly.
+    func seed(_ snapshot: UsageSnapshot, for key: UsageKey) {
+        var entry = self.entry(for: key)
+        entry.snapshot = snapshot
+        entry.refresh.lastAttempt = snapshot.updatedAt
+        entry.refresh.lastSuccess = snapshot.updatedAt
+        entries[key] = entry
     }
 
     // MARK: - Diagnostics

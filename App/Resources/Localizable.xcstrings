@@ -804,6 +804,9 @@
         }
       }
     },
+    "%lld checkbox" : {
+
+    },
     "%lld comments" : {
 
     },
@@ -1816,6 +1819,9 @@
 
     },
     "Add your first project" : {
+
+    },
+    "added" : {
 
     },
     "Added %lld." : {
@@ -6931,6 +6937,9 @@
         }
       }
     },
+    "lost" : {
+
+    },
     "Low" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7483,6 +7492,9 @@
           }
         }
       }
+    },
+    "moved: %@" : {
+
     },
     "Must include ⌘ or ⌃ — ⇧ and ⌥ belong to the keyboard layout. Applies immediately." : {
       "extractionState" : "manual",
@@ -10875,6 +10887,9 @@
         }
       }
     },
+    "restored" : {
+
+    },
     "Restored" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13465,6 +13480,9 @@
     "The last shortcut cannot be removed" : {
 
     },
+    "the layout changed" : {
+
+    },
     "The package contains binary files." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14245,6 +14263,9 @@
           }
         }
       }
+    },
+    "unchanged" : {
+
     },
     "Unclassified finding" : {
       "extractionState" : "manual",
