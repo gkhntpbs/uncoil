@@ -63,12 +63,18 @@ enum CodexUsageParser {
 
         let extras = additionalWindows(root: root, container: container, now: now)
         let credits = self.credits(root)
+        // `allowed` and `limit_reached` sit beside the windows in the real
+        // response. They are the provider saying so itself, which is worth more
+        // than a percentage: an account can be refused with its windows not yet
+        // empty — a spend cap, a team policy — and no threshold would catch it.
+        let refused = UsageJSON.value(container, ["limit_reached", "limitReached"])?.boolValue == true
+            || UsageJSON.value(container, ["allowed"])?.boolValue == false
 
         // An authenticated account that reports no window at all is a real
         // state, and a different one from a failed request. Saying so here is
         // what stops the pipeline falling through to a second route to be told
         // the same thing.
-        if primary == nil, secondary == nil, extras.isEmpty {
+        if primary == nil, secondary == nil, extras.isEmpty, !refused {
             return .unavailable(
                 provider: .codex,
                 accountID: accountID,
@@ -87,6 +93,7 @@ enum CodexUsageParser {
             secondaryWindow: secondary,
             extraWindows: extras,
             credits: credits,
+            limitReached: refused,
             source: source,
             updatedAt: now
         )

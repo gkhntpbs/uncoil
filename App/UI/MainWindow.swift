@@ -47,7 +47,8 @@ struct MainWindow: View {
                 onRoute: { openInThisWindow(projectID(of: $0)) },
                 onAttention: { refreshAttention() },
                 projectStore: projectStore,
-                sessionStore: sessionStore
+                sessionStore: sessionStore,
+                usage: usage
             ))
     }
 
@@ -164,6 +165,16 @@ struct MainWindow: View {
     }
 
     private func refreshAttention() {
+        AttentionRefresher.shared.setUsage(
+            UsageAttentionCollector.snapshot(
+                usage: usage,
+                sessions: projectStore.sessions,
+                statuses: sessionStore.statuses,
+                accounts: settings.accounts,
+                threshold: settings.usageWarningThreshold,
+                isEnabled: settings.usageWarningsEnabled
+            )
+        )
         AttentionRefresher.shared.refresh(
             projectStore: projectStore,
             sessionStore: sessionStore
@@ -285,6 +296,10 @@ struct MainWindow: View {
                 applyLaunchRoute()
                 setupPalette()
                 presentOnboardingIfNeeded()
+                // Nothing else does it on the way in: every other trigger is a
+                // change, and a limit that was already low at launch is not a
+                // change.
+                refreshAttention()
             }
         }
         .onDisappear {
@@ -1143,6 +1158,7 @@ private struct MainWindowSignals: ViewModifier {
     let onAttention: () -> Void
     @ObservedObject var projectStore: ProjectStore
     @ObservedObject var sessionStore: SessionStore
+    @ObservedObject var usage: UsageStore
     @ObservedObject private var windows = WindowRegistry.shared
 
     func body(content: Content) -> some View {
@@ -1155,6 +1171,11 @@ private struct MainWindowSignals: ViewModifier {
             }
             .onChange(of: sessionStore.statuses) { _, _ in onAttention() }
             .onChange(of: sessionStore.codexAuthentication) { _, _ in onAttention() }
+            // A limit falling is a change nothing else announces: no status
+            // moves and no session ends, so without this the warning waited
+            // for an unrelated event and arrived whenever one happened to
+            // come.
+            .onChange(of: usage.entries) { _, _ in onAttention() }
             .onReceive(MainRoute.shared.$requestCounter) { _ in
                 guard let requested = MainRoute.shared.requestedSelection else { return }
                 // Every window hears this. Exactly one answers it, or a single

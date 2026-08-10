@@ -46,6 +46,8 @@ final class SettingsStore: ObservableObject {
         /// How loudly the sidebar pulses for a session that wants attention.
         /// Optional for backward compatibility; nil ⇒ subtle.
         var attentionEmphasis: AttentionEmphasis? = nil
+        var usageWarningsEnabled: Bool? = nil
+        var usageWarningThreshold: Double? = nil
         /// "Option is Meta" in the terminal. Optional for backward
         /// compatibility; nil ⇒ off, Option types the layout's character.
         var optionAsMetaKey: Bool? = nil
@@ -88,6 +90,12 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     /// How loudly the sidebar pulses for a session that wants attention.
     @Published private(set) var attentionEmphasis: AttentionEmphasis = .subtle
+    /// Whether an account running low is worth saying anything about. The
+    /// figures stay either way — this is about being told, not about knowing.
+    @Published private(set) var usageWarningsEnabled = true
+    /// Percent remaining at which an account is called low. Fifteen by default,
+    /// which on a five-hour window is roughly enough time to finish a thought.
+    @Published private(set) var usageWarningThreshold = UsageAlert.defaultThreshold
     @Published private(set) var launcher: LauncherPrefs = .default
     @Published private(set) var imagePasteMode: ImagePasteMode = .default
     /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
@@ -233,6 +241,18 @@ final class SettingsStore: ObservableObject {
 
     func resetCommandPaletteHotkey() {
         setCommandPaletteHotkey(.commandPaletteDefault)
+    }
+
+    func setUsageWarningsEnabled(_ enabled: Bool) {
+        usageWarningsEnabled = enabled
+        save()
+    }
+
+    /// Clamped rather than trusted: a threshold of 0 would only ever fire once
+    /// the account was already empty, and one of 100 would fire always.
+    func setUsageWarningThreshold(_ percent: Double) {
+        usageWarningThreshold = min(90, max(1, percent))
+        save()
     }
 
     func setAttentionEmphasis(_ emphasis: AttentionEmphasis) {
@@ -625,6 +645,8 @@ final class SettingsStore: ObservableObject {
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
+        usageWarningsEnabled = decoded.usageWarningsEnabled ?? true
+        usageWarningThreshold = decoded.usageWarningThreshold ?? UsageAlert.defaultThreshold
         launcher = decoded.launcher ?? .default
         imagePasteMode = decoded.imagePasteMode ?? .default
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
@@ -675,6 +697,9 @@ final class SettingsStore: ObservableObject {
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
                 ? nil : commandPaletteHotkey,
             attentionEmphasis: attentionEmphasis == .subtle ? nil : attentionEmphasis,
+            usageWarningsEnabled: usageWarningsEnabled ? nil : false,
+            usageWarningThreshold: usageWarningThreshold == UsageAlert.defaultThreshold
+                ? nil : usageWarningThreshold,
             optionAsMetaKey: optionAsMetaKey ? true : nil,
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
                 ? nil : sessionQuitBehavior,

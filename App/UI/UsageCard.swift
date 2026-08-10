@@ -13,6 +13,9 @@ struct UsageCard: View {
     let account: AccountProfile?
     let entry: UsageEntry
     let now: Date
+    /// The user's own "low" threshold, so the bars agree with the chip that
+    /// opened them.
+    var threshold: Double = UsageDisplay.Severity.criticalPercent
     let onRefresh: () -> Void
 
     private var snapshot: UsageSnapshot? { entry.snapshot }
@@ -95,7 +98,9 @@ struct UsageCard: View {
     private func windows(of snapshot: UsageSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(snapshot.allWindows) { window in
-                UsageWindowRow(window: window, now: now, dimmed: snapshot.stale)
+                UsageWindowRow(
+                    window: window, now: now, dimmed: snapshot.stale, threshold: threshold
+                )
             }
         }
         .padding(.horizontal, 12)
@@ -210,9 +215,10 @@ struct UsageWindowRow: View {
     let window: UsageWindow
     let now: Date
     var dimmed: Bool = false
+    var threshold: Double = UsageDisplay.Severity.criticalPercent
 
     private var severity: UsageDisplay.Severity {
-        .forRemaining(window.remainingPercent)
+        .forRemaining(window.remainingPercent, threshold: threshold)
     }
 
     var body: some View {

@@ -29,18 +29,27 @@ enum UsageDisplay {
         static let criticalPercent: Double = 15
         static let lowPercent: Double = 40
 
-        static func forRemaining(_ percent: Double?) -> Severity {
+        /// `critical` is the user's own threshold, so the colour in the header
+        /// and the row in the Attention Center agree about what "low" means.
+        /// Two definitions of the same word would have the chip go red while
+        /// nothing was reported, or the other way round.
+        static func forRemaining(_ percent: Double?, threshold: Double = criticalPercent) -> Severity {
             guard let percent else { return .unknown }
-            if percent <= criticalPercent { return .critical }
-            if percent <= lowPercent { return .low }
+            if percent <= threshold { return .critical }
+            if percent <= max(threshold, lowPercent) { return .low }
             return .healthy
         }
     }
 
     /// The band a whole snapshot sits in: whichever window binds first.
-    static func severity(of snapshot: UsageSnapshot?) -> Severity {
+    static func severity(
+        of snapshot: UsageSnapshot?, threshold: Double = Severity.criticalPercent
+    ) -> Severity {
         guard let snapshot, let window = snapshot.mostConstrainedWindow else { return .unknown }
-        return .forRemaining(window.remainingPercent)
+        // A provider that has refused the account is red whatever is left in
+        // the windows — the numbers are no longer what decides.
+        if snapshot.limitReached { return .critical }
+        return .forRemaining(window.remainingPercent, threshold: threshold)
     }
 
     /// The number the chip shows, or nil when there is none to show.

@@ -197,6 +197,14 @@ struct UsageSnapshot: Codable, Equatable {
 
     var credits: UsageCredits?
 
+    /// The provider said outright that this account is refused, whatever the
+    /// percentages say.
+    ///
+    /// Kept apart from the windows because it is not derivable from them: a
+    /// spend cap or a team policy refuses an account whose windows are not
+    /// empty, and that is precisely the case a threshold can never catch.
+    var limitReached: Bool
+
     var source: UsageSource
     var updatedAt: Date
     /// True when this is a retained earlier snapshot rather than the result of
@@ -215,6 +223,7 @@ struct UsageSnapshot: Codable, Equatable {
         secondaryWindow: UsageWindow? = nil,
         extraWindows: [UsageWindow] = [],
         credits: UsageCredits? = nil,
+        limitReached: Bool = false,
         source: UsageSource,
         updatedAt: Date,
         stale: Bool = false,
@@ -228,6 +237,7 @@ struct UsageSnapshot: Codable, Equatable {
         self.secondaryWindow = secondaryWindow
         self.extraWindows = extraWindows
         self.credits = credits
+        self.limitReached = limitReached
         self.source = source
         self.updatedAt = updatedAt
         self.stale = stale

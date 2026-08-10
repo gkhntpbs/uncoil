@@ -135,7 +135,9 @@ struct UsageChip: View {
     /// has to say which of the two it is looking at.
     private var activity: UsageActivity { isWorking ? .active : .idle }
 
-    private var severity: UsageDisplay.Severity { UsageDisplay.severity(of: snapshot) }
+    private var severity: UsageDisplay.Severity {
+        UsageDisplay.severity(of: snapshot, threshold: settings.usageWarningThreshold)
+    }
     private var remaining: Int? { UsageDisplay.headlineRemaining(snapshot) }
 
     var body: some View {
@@ -191,6 +193,7 @@ struct UsageChip: View {
                 account: account,
                 entry: entry,
                 now: now,
+                threshold: settings.usageWarningThreshold,
                 onRefresh: {
                     Task { await usage.refresh(key: key, account: context, userInitiated: true) }
                 }
