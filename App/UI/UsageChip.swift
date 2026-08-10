@@ -23,16 +23,19 @@ extension UsageDisplay.Severity {
 /// A circular gauge of what is left.
 ///
 /// A ring rather than a bar for the chip because it survives being small: at
-/// 14pt a bar is four pixels of fill and reads as a smudge, while an arc still
-/// shows its own emptiness. The track is always drawn, so the shape is stable
-/// whatever the number — a partial ring alone would change size as it drains
-/// and drag the text beside it around.
+/// this size a bar is a few pixels of fill and reads as a smudge, while an arc
+/// still shows its own emptiness. The track is always drawn, so the shape is
+/// stable whatever the number — a partial ring alone would change size as it
+/// drains and drag the text beside it around.
 struct UsageRing: View {
     /// 0...100, or nil when there is no reading.
     var remainingPercent: Double?
     var severity: UsageDisplay.Severity
-    var size: CGFloat = 14
-    var lineWidth: CGFloat = 2.5
+    /// Small enough to sit in the metadata line without competing with it: the
+    /// account and the path are what that row is for, and the figure is an
+    /// aside until it is low.
+    var size: CGFloat = 11.5
+    var lineWidth: CGFloat = 2
     /// Draws the arc hollow, for a figure that is being kept rather than
     /// refreshed.
     var stale: Bool = false
@@ -139,7 +142,7 @@ struct UsageChip: View {
         Button {
             showCard.toggle()
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 UsageRing(
                     remainingPercent: snapshot?.mostConstrainedWindow?.remainingPercent,
                     severity: severity,
@@ -147,18 +150,18 @@ struct UsageChip: View {
                 )
                 if let remaining {
                     Text("\(remaining)%")
-                        .font(Theme.mono(.body, .medium))
+                        .font(Theme.mono(.small, .medium))
                         .foregroundStyle(entry.isStale ? Theme.textFaint : severity.color)
                         .monospacedDigit()
                 } else {
                     // No number, and no placeholder pretending to be one.
                     Text(verbatim: "—")
-                        .font(Theme.mono(.body, .medium))
+                        .font(Theme.mono(.small, .medium))
                         .foregroundStyle(Theme.textFaint)
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
             .background(
                 hovering ? Theme.panelHover : Color.clear,
                 in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
