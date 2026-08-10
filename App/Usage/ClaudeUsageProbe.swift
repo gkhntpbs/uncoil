@@ -28,8 +28,13 @@ final class ClaudeUsageProbe {
         /// Read after the last byte arrives before deciding the panel is done.
         var quietPeriod: TimeInterval = 1.2
         var maxBytes = 512 * 1024
-        /// Also ask `/status`, for the account line.
-        var includeStatus = true
+        /// Also ask `/status`.
+        ///
+        /// Off, because nothing reads it: the panel `/usage` draws already
+        /// carries both windows, and the account line it would add is not
+        /// parsed. It cost eight seconds of a twenty-eight second probe to
+        /// collect something nobody looked at.
+        var includeStatus = false
     }
 
     private let configuration: Configuration

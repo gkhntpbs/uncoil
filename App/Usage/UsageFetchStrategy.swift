@@ -203,8 +203,23 @@ enum UsageFetchPipeline {
 /// know which routes exist for whom.
 protocol UsageProvider {
     var provider: AgentProvider { get }
+
     /// Ordered, preferred first.
-    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy]
+    ///
+    /// `userInitiated` is not a hint about priority — it is permission to do
+    /// things that can put a dialog in front of somebody. A refresh on a timer
+    /// gets none, so a provider whose only credential is behind a system prompt
+    /// simply reports that it cannot read one, rather than interrupting work to
+    /// ask. See `ClaudeOAuthUsageStrategy`.
+    func strategies(
+        for account: UsageAccountContext, userInitiated: Bool
+    ) -> [UsageFetchStrategy]
+}
+
+extension UsageProvider {
+    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy] {
+        strategies(for: account, userInitiated: false)
+    }
 }
 
 /// Everything a strategy needs to know about which account it is asking for.

@@ -21,6 +21,74 @@ final class CodexUsageParsingTests: XCTestCase {
         )
     }
 
+    // MARK: - The real payload
+
+    /// The shape the endpoint actually returns, taken from a live account with
+    /// every value replaced by a representative one.
+    ///
+    /// It differs from the documented shape in three ways that all cost
+    /// something, and none of which any invented fixture would have found:
+    /// the window's length is in *seconds* under a different name, the reset is
+    /// offered as `reset_after_seconds` as well as an epoch, and the account's
+    /// own email and plan sit at the top level beside the limits.
+    private static let liveShape = """
+    {
+      "account_id": "acct_1",
+      "email": "someone@example.com",
+      "plan_type": "pro",
+      "additional_rate_limits": null,
+      "rate_limit": {
+        "allowed": true,
+        "limit_reached": false,
+        "primary_window": {
+          "limit_window_seconds": 18000,
+          "reset_after_seconds": 9000,
+          "reset_at": 1700009000,
+          "used_percent": 3
+        },
+        "secondary_window": null
+      },
+      "credits": {
+        "balance": "12.50",
+        "has_credits": true,
+        "unlimited": false
+      }
+    }
+    """
+
+    func testTheLivePayloadIsReadInFull() throws {
+        let snapshot = try snapshot(Self.liveShape)
+
+        // Seconds, not minutes: five hours, and named as such.
+        XCTAssertEqual(snapshot.primaryWindow?.windowMinutes, 300)
+        XCTAssertEqual(snapshot.primaryWindow?.title, "5-hour limit")
+        XCTAssertEqual(snapshot.primaryWindow?.remainingPercent, 97)
+        XCTAssertEqual(
+            snapshot.primaryWindow?.resetsAt, Date(timeIntervalSince1970: 1_700_009_000)
+        )
+        // A null window is simply absent, not a window at zero.
+        XCTAssertNil(snapshot.secondaryWindow)
+        XCTAssertTrue(snapshot.extraWindows.isEmpty)
+        // The balance arrives as a string; a numeric string is still a number.
+        XCTAssertEqual(snapshot.credits?.balance, 12.5)
+    }
+
+    /// The account's own details are in the usage response. Throwing them away
+    /// left the card unable to say whose numbers it was showing.
+    func testTheLivePayloadCarriesTheAccountsIdentity() throws {
+        let identity = try XCTUnwrap(CodexUsageParser.identity(from: try json(Self.liveShape)))
+        XCTAssertEqual(identity.email, "someone@example.com")
+        XCTAssertEqual(identity.plan, "pro")
+    }
+
+    /// When only a relative reset is offered, it is anchored to the reading.
+    func testAResetAfterSecondsIsRead() throws {
+        let snapshot = try snapshot("""
+        {"rate_limit": {"primary_window": {"used_percent": 10, "reset_after_seconds": 600}}}
+        """)
+        XCTAssertEqual(snapshot.primaryWindow?.resetsAt, now.addingTimeInterval(600))
+    }
+
     // MARK: - The ordinary case
 
     func testBothWindowsAreRead() throws {

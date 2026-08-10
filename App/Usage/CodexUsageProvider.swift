@@ -20,7 +20,10 @@ struct CodexUsageProvider: UsageProvider {
     var locateBinary: (String) -> String? = { AgentAdapterSupport.locateBinary($0) }
     var clock: () -> Date = Date.init
 
-    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy] {
+    func strategies(
+        for account: UsageAccountContext, userInitiated: Bool
+    ) -> [UsageFetchStrategy] {
+        _ = userInitiated  // Codex's credential file needs no permission.
         let home = codexHome(for: account)
         return [
             CodexOAuthUsageStrategy(
@@ -125,10 +128,15 @@ struct CodexOAuthUsageStrategy: UsageFetchStrategy {
         )
         guard response.isSuccess else { throw response.failure() }
 
+        // The same response carries `email` and `plan_type` beside the limits.
+        // Passing nil here threw them away and left the card unable to say
+        // whose numbers it was showing — which is the first thing anyone with
+        // two logins wants to know.
+        let json = try response.json()
         return try CodexUsageParser.snapshot(
-            from: try response.json(),
+            from: json,
             accountID: accountID,
-            identity: nil,
+            identity: CodexUsageParser.identity(from: json),
             source: source,
             now: clock()
         )

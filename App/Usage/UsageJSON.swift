@@ -106,6 +106,22 @@ enum UsageJSON {
     /// Returns `nil` when the object carries no percentage at all. A window
     /// with a reset time and no number is not a window — showing it would put
     /// a countdown on screen next to nothing to count down.
+    /// How long the window is, in minutes, however the provider expressed it.
+    ///
+    /// Seconds are read as well as minutes because that is what Codex actually
+    /// sends: `limit_window_seconds`, not `window_minutes`. Missing it cost
+    /// nothing visible and everything readable — the window kept a generic name
+    /// instead of being called the five-hour limit it is.
+    static func windowMinutes(_ object: [String: JSONValue]) -> Int? {
+        if let minutes = int(object, ["window_minutes", "windowMinutes", "window_size_minutes"]) {
+            return minutes
+        }
+        guard let seconds = int(
+            object, ["limit_window_seconds", "limitWindowSeconds", "window_seconds", "windowSeconds"]
+        ), seconds > 0 else { return nil }
+        return seconds / 60
+    }
+
     static func window(
         _ object: [String: JSONValue],
         id: String,
@@ -116,10 +132,13 @@ enum UsageJSON {
         let resetsAt = date(
             object,
             absolute: ["resets_at", "resetsAt", "reset_at", "resetTime", "reset_time", "resets"],
-            relativeSeconds: ["resets_in_seconds", "resetsInSeconds", "reset_in_seconds", "secondsUntilReset"],
+            relativeSeconds: [
+                "resets_in_seconds", "resetsInSeconds", "reset_in_seconds",
+                "reset_after_seconds", "resetAfterSeconds", "secondsUntilReset",
+            ],
             now: now
         )
-        let windowMinutes = int(object, ["window_minutes", "windowMinutes", "window_size_minutes"])
+        let windowMinutes = windowMinutes(object)
 
         if let used = double(object, ["used_percent", "usedPercent", "utilization_percent", "percent_used"]) {
             return UsageWindow(

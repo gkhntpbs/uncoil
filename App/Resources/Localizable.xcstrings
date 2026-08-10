@@ -240,6 +240,16 @@
     "%@ (repository root)" : {
 
     },
+    "%@ %@ in credits, separate from the limits above" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ in credits, separate from the limits above"
+          }
+        }
+      }
+    },
     "%@ → %@" : {
       "localizations" : {
         "en" : {
@@ -281,6 +291,9 @@
           }
         }
       }
+    },
+    "%@ ago" : {
+
     },
     "%@ already exists." : {
       "extractionState" : "manual",
@@ -534,6 +547,12 @@
         }
       }
     },
+    "%@ no longer reports usage for this kind of account. Your allowance is unaffected; it just cannot be read from here." : {
+
+    },
+    "%@ refused the saved login. Signing in again will fix it." : {
+
+    },
     "%@ removed; installed extensions were left alone." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -555,6 +574,9 @@
           }
         }
       }
+    },
+    "%@ reported no windows for this account." : {
+
     },
     "%@ restored." : {
       "extractionState" : "manual",
@@ -977,6 +999,9 @@
         }
       }
     },
+    "%lld percent remaining" : {
+
+    },
     "%lld processes are running an old revision." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1218,6 +1243,12 @@
           }
         }
       }
+    },
+    "%lld%%" : {
+
+    },
+    "%lld%% remaining" : {
+
     },
     "%lldd" : {
 
@@ -3318,6 +3349,9 @@
     "checkbox" : {
 
     },
+    "Checked %@" : {
+
+    },
     "Checking the Agent Browser…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4187,6 +4221,9 @@
         }
       }
     },
+    "Could not be read" : {
+
+    },
     "Could not be saved: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4222,6 +4259,9 @@
           }
         }
       }
+    },
+    "Could not reach %@ to read usage." : {
+
     },
     "Could not read the issues" : {
 
@@ -4385,6 +4425,9 @@
           }
         }
       }
+    },
+    "Credits available" : {
+
     },
     "Cua Driver — Computer Use" : {
       "extractionState" : "manual",
@@ -5688,6 +5731,30 @@
         }
       }
     },
+    "from Codex's status panel" : {
+
+    },
+    "from Gemini Code Assist" : {
+
+    },
+    "from the Claude CLI" : {
+
+    },
+    "from the Codex app-server" : {
+
+    },
+    "from Uncoil's last reading" : {
+
+    },
+    "from your Claude account" : {
+
+    },
+    "from your claude.ai session" : {
+
+    },
+    "from your Codex account" : {
+
+    },
     "Full" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6245,6 +6312,9 @@
         }
       }
     },
+    "in %@" : {
+
+    },
     "in progress" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6556,6 +6626,9 @@
     "ISSUES" : {
 
     },
+    "just now" : {
+
+    },
     "Kanban works on a single source; pick a TODO.md above." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6708,6 +6781,9 @@
         }
       }
     },
+    "Last refresh failed (%@); showing the previous reading." : {
+
+    },
     "Last scan %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6731,6 +6807,9 @@
       }
     },
     "Latest version" : {
+
+    },
+    "left" : {
 
     },
     "Left alone: %@" : {
@@ -8054,6 +8133,9 @@
         }
       }
     },
+    "No limits on this plan" : {
+
+    },
     "No local git: the version comes from the server and is not kept in step with the repo's." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8474,6 +8556,12 @@
         }
       }
     },
+    "No usage figures" : {
+
+    },
+    "No usage figures." : {
+
+    },
     "No verified way to register a server per session yet, so Uncoil does not claim one: its sessions run without the uncoil tools rather than advertising tools that are not there." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8627,6 +8715,15 @@
     "Not installed on this machine" : {
 
     },
+    "not refreshed, %@" : {
+
+    },
+    "Not reported for this account" : {
+
+    },
+    "Not reported for this sign-in" : {
+
+    },
     "not serving" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8639,6 +8736,12 @@
       }
     },
     "Not signed in" : {
+
+    },
+    "Not signed in to %@ on this Mac." : {
+
+    },
+    "Not supported" : {
 
     },
     "not time for the daily baseline" : {
@@ -10244,6 +10347,9 @@
         }
       }
     },
+    "Read usage again now" : {
+
+    },
     "Reading and ticking tasks" : {
 
     },
@@ -10817,6 +10923,9 @@
           }
         }
       }
+    },
+    "Resets %@" : {
+
     },
     "resolves to" : {
 
@@ -14052,6 +14161,9 @@
         }
       }
     },
+    "This plan reports no usage limits. Nothing is wrong — there is simply no figure to show." : {
+
+    },
     "This project has no TODO.md. With one, Uncoil gives it a Tasks tab: assign a checkbox to an agent, watch the run, review what came back and merge it. It stays a plain Markdown file your agents and editor can own." : {
 
     },
@@ -14264,6 +14376,9 @@
         }
       }
     },
+    "unavailable" : {
+
+    },
     "unchanged" : {
 
     },
@@ -14333,6 +14448,12 @@
 
     },
     "Uncoil hands every session an MCP server of its own, so the agent can talk back: eight tools, each one gated by a capability you control." : {
+
+    },
+    "Uncoil has no way to read usage for %@." : {
+
+    },
+    "Uncoil has not read usage for this account yet." : {
 
     },
     "Uncoil in the foreground" : {
@@ -14827,6 +14948,15 @@
           }
         }
       }
+    },
+    "Usage can only be read from a signed-in %@ account, not from an API key or a Vertex AI project." : {
+
+    },
+    "Usage has not been read yet." : {
+
+    },
+    "Usage unavailable" : {
+
     },
     "Use Option as Meta" : {
       "extractionState" : "manual",

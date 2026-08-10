@@ -179,7 +179,7 @@ struct UsageCard: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let snapshot {
-                Text(UsageDisplay.provenance(snapshot, now: now))
+                Text(UsageDisplay.provenance(snapshot, accountName: account?.name, now: now))
                     .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)

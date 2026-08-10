@@ -123,7 +123,9 @@ final class UsagePresentationTests: XCTestCase {
             provider: .gemini, reason: .accountTierUnsupported,
             source: .geminiCodeAssistAPI, updatedAt: now.addingTimeInterval(-90)
         )
-        XCTAssertEqual(UsageDisplay.provenance(snapshot, now: now), "Checked 1m ago")
+        XCTAssertEqual(
+            UsageDisplay.provenance(snapshot, accountName: "Work", now: now), "Checked 1m ago"
+        )
     }
 
     func testAReadSnapshotNamesItsSource() {
@@ -133,8 +135,37 @@ final class UsagePresentationTests: XCTestCase {
             source: .codexAppServerRPC, updatedAt: now.addingTimeInterval(-300)
         )
         XCTAssertEqual(
-            UsageDisplay.provenance(snapshot, now: now),
+            UsageDisplay.provenance(snapshot, accountName: nil, now: now),
             "from the Codex app-server · 5m ago"
+        )
+    }
+
+    /// "Your Codex account" is not an answer when there is more than one of
+    /// them, and this line is the only place that says where a figure came
+    /// from.
+    func testTheAccountIsNamedBesideTheSource() {
+        let snapshot = UsageSnapshot(
+            provider: .codex,
+            primaryWindow: UsageWindow(id: "s", title: "Session", usedPercent: 10),
+            source: .codexOAuthAPI, updatedAt: now.addingTimeInterval(-60)
+        )
+        XCTAssertEqual(
+            UsageDisplay.provenance(snapshot, accountName: "Work", now: now),
+            "from your Codex account (Work) · 1m ago"
+        )
+    }
+
+    /// A profile called "Codex" adds nothing; repeating the provider back at
+    /// the reader is noise.
+    func testAnAccountNamedAfterItsProviderIsNotRepeated() {
+        let snapshot = UsageSnapshot(
+            provider: .codex,
+            primaryWindow: UsageWindow(id: "s", title: "Session", usedPercent: 10),
+            source: .codexOAuthAPI, updatedAt: now.addingTimeInterval(-60)
+        )
+        XCTAssertEqual(
+            UsageDisplay.provenance(snapshot, accountName: "codex", now: now),
+            "from your Codex account · 1m ago"
         )
     }
 

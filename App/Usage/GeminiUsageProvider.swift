@@ -21,8 +21,11 @@ struct GeminiUsageProvider: UsageProvider {
     var locateBinary: (String) -> String? = { AgentAdapterSupport.locateBinary($0) }
     var clock: () -> Date = Date.init
 
-    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy] {
-        [
+    func strategies(
+        for account: UsageAccountContext, userInitiated: Bool
+    ) -> [UsageFetchStrategy] {
+        _ = userInitiated  // Gemini's credential file needs no permission.
+        return [
             GeminiCodeAssistStrategy(
                 http: http,
                 geminiHome: geminiHome(for: account),

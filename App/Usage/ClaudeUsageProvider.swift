@@ -38,7 +38,9 @@ struct ClaudeUsageProvider: UsageProvider {
         self.webSessionKey = webSessionKey
     }
 
-    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy] {
+    func strategies(
+        for account: UsageAccountContext, userInitiated: Bool
+    ) -> [UsageFetchStrategy] {
         let configDirectory = claudeHome(for: account)
         var strategies: [UsageFetchStrategy] = [
             ClaudeOAuthUsageStrategy(
@@ -46,6 +48,7 @@ struct ClaudeUsageProvider: UsageProvider {
                 configDirectory: configDirectory,
                 usesDefaultHome: account.configDirectory == nil,
                 accountID: account.accountID,
+                allowKeychain: userInitiated,
                 clock: clock
             ),
             ClaudeCLIUsageStrategy(
@@ -103,30 +106,68 @@ struct ClaudeAuth: Equatable {
         return ClaudeAuth(accessToken: token, expiry: expiry, scopes: scopes)
     }
 
-    /// The Keychain first, then the file.
+    /// The file first, then the Keychain — and the Keychain only when asked.
     ///
-    /// Claude Code moved its credentials into the Keychain and still writes the
-    /// file on some installs, so both are read. The Keychain copy wins because
-    /// where both exist the file is the older of the two.
-    static func load(configDirectory: URL, usesDefaultHome: Bool) throws -> ClaudeAuth {
-        var lastError: UsageFetchError?
-
-        // The Keychain item is not scoped to a config directory, so it can only
-        // answer for the default account. Reading it for a named profile would
-        // report the default account's usage under another name.
-        if usesDefaultHome,
-           let raw = UsageCredentials.readKeychainString(service: "Claude Code-credentials"),
-           let data = raw.data(using: .utf8),
-           let json = try? JSONDecoder().decode(JSONValue.self, from: data) {
-            do { return try parse(json) } catch let error as UsageFetchError { lastError = error }
-        }
-
+    /// Claude Code keeps its login in the Keychain under its own name. Uncoil is
+    /// a different application, so macOS asks the user before handing it over,
+    /// and that dialog is exactly what a refresh on a timer must never raise.
+    /// Worse, "Always Allow" does not settle it during development: the answer
+    /// is recorded against the asking program's signature, and every debug
+    /// build has a new one, so the question comes back after every rebuild.
+    ///
+    /// So the Keychain is read only when the user asked for a reading, and the
+    /// answer is kept in memory for the rest of the run. Background refreshes
+    /// use the token already held, or take the CLI route, which asks nobody
+    /// anything because Claude reads its own credential.
+    static func load(
+        configDirectory: URL,
+        usesDefaultHome: Bool,
+        allowKeychain: Bool
+    ) throws -> ClaudeAuth {
         let fileURL = configDirectory.appendingPathComponent(".credentials.json")
         if UsageCredentials.fileExists(at: fileURL) {
             return try parse(try UsageCredentials.readJSONFile(at: fileURL))
         }
-        throw lastError ?? UsageFetchError(.credentialsMissing, detail: nil)
+
+        // The Keychain item is not scoped to a config directory, so it can only
+        // answer for the default account. Reading it for a named profile would
+        // report the default account's usage under another name.
+        guard usesDefaultHome else {
+            throw UsageFetchError(.credentialsMissing, detail: nil)
+        }
+        if let cached = ClaudeKeychainCache.shared.token { return cached }
+        guard allowKeychain else {
+            throw UsageFetchError(.credentialsMissing, detail: "needs the Keychain")
+        }
+        guard let raw = UsageCredentials.readKeychainString(service: "Claude Code-credentials"),
+              let data = raw.data(using: .utf8),
+              let json = try? JSONDecoder().decode(JSONValue.self, from: data) else {
+            throw UsageFetchError(.credentialsMissing, detail: nil)
+        }
+        let auth = try parse(json)
+        ClaudeKeychainCache.shared.token = auth
+        return auth
     }
+}
+
+/// Holds the Keychain answer for the life of the process.
+///
+/// In memory and nowhere else — writing it down would be Uncoil keeping a copy
+/// of a credential that belongs to another application. Its only job is to make
+/// sure the user is asked once rather than every few minutes.
+final class ClaudeKeychainCache: @unchecked Sendable {
+    static let shared = ClaudeKeychainCache()
+
+    private let lock = NSLock()
+    private var stored: ClaudeAuth?
+
+    var token: ClaudeAuth? {
+        get { lock.lock(); defer { lock.unlock() }; return stored }
+        set { lock.lock(); stored = newValue; lock.unlock() }
+    }
+
+    /// Whether a reading could be had without asking anyone.
+    var isPrimed: Bool { token != nil }
 }
 
 // MARK: - Strategy 1: the OAuth usage endpoint
@@ -141,23 +182,28 @@ struct ClaudeOAuthUsageStrategy: UsageFetchStrategy {
     var configDirectory: URL
     var usesDefaultHome: Bool
     var accountID: UUID?
+    /// Set only for a refresh the user asked for. A timer never gets it.
+    var allowKeychain: Bool
     var clock: () -> Date
 
     var source: UsageSource { .claudeOAuthAPI }
 
+    /// Availability is answered without touching the Keychain — asking whether
+    /// an item exists is enough to raise the dialog, so a check that did would
+    /// prompt even when the route was never going to be used.
     func isAvailable() -> Bool {
-        if usesDefaultHome,
-           UsageCredentials.readKeychainString(service: "Claude Code-credentials") != nil {
-            return true
-        }
-        return UsageCredentials.fileExists(
+        if UsageCredentials.fileExists(
             at: configDirectory.appendingPathComponent(".credentials.json")
-        )
+        ) { return true }
+        guard usesDefaultHome else { return false }
+        return ClaudeKeychainCache.shared.isPrimed || allowKeychain
     }
 
     func fetch() async throws -> UsageSnapshot {
         let auth = try ClaudeAuth.load(
-            configDirectory: configDirectory, usesDefaultHome: usesDefaultHome
+            configDirectory: configDirectory,
+            usesDefaultHome: usesDefaultHome,
+            allowKeychain: allowKeychain
         )
         if let expiry = auth.expiry, UsageCredentials.isExpired(expiry, now: clock()) {
             throw UsageFetchError(.credentialsExpired, detail: nil)

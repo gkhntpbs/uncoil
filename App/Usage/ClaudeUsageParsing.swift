@@ -286,21 +286,67 @@ enum ClaudeUsagePanelParser {
         return note.isEmpty ? nil : note
     }
 
-    /// Removes escape sequences so the text can be read as text.
+    /// Turns what the terminal was told to draw back into text.
     ///
-    /// Covers CSI and OSC, and the cursor-movement sequences a TUI uses to draw
-    /// in place. What survives is the characters a person would see.
+    /// Deleting the escapes is not enough, and getting this wrong is what made
+    /// the parser read nothing at all from a panel that was there. The CLI does
+    /// not print spaces or newlines: it prints a word, then jumps the cursor to
+    /// the column the next word starts at, and drops a row when the line ends.
+    /// So the real output looks like
+    ///
+    ///     Current\u{1B}[12Gsession\r\u{1B}[3C\u{1B}[1B███▌\u{1B}[55G23%\u{1B}[59Gused
+    ///
+    /// and stripping the escapes gives `Currentsession███▌23%used` — one line,
+    /// no words, nothing any pattern can find.
+    ///
+    /// What survives here is what a person would see: a movement across becomes
+    /// a space, a movement down becomes that many newlines, and a carriage
+    /// return is dropped because the row change is already carried by the
+    /// down-move that follows it.
     static func strippingANSI(_ raw: String) -> String {
         var text = raw
-        let patterns = [
-            "\u{001B}\\[[0-9;?]*[ -/]*[@-~]",   // CSI
-            "\u{001B}\\][^\u{0007}\u{001B}]*(\u{0007}|\u{001B}\\\\)", // OSC
+
+        // OSC first — its payload can contain characters the CSI pattern would
+        // otherwise chew through.
+        text = text.replacingOccurrences(
+            of: "\u{001B}\\][^\u{0007}\u{001B}]*(\u{0007}|\u{001B}\\\\)",
+            with: "", options: .regularExpression
+        )
+        // Not raw strings: these have to contain a real escape character, and
+        // `#"\u{001B}"#` is seven literal characters that match nothing.
+        // Cursor down by n: n rows.
+        text = replacing("\u{001B}\\[([0-9]*)B", in: text) { count in
+            String(repeating: "\n", count: max(1, count ?? 1))
+        }
+        // Cursor forward, and cursor to an absolute column: one space either
+        // way. The exact column does not matter — nothing here reads a layout,
+        // only words — and padding to it would make the lines mostly blanks.
+        text = replacing("\u{001B}\\[([0-9]*)[CG]", in: text) { _ in " " }
+
+        // Everything else goes.
+        for pattern in [
+            "\u{001B}\\[[0-9;?]*[ -/]*[@-~]",   // remaining CSI
             "\u{001B}[@-Z\\\\-_]",              // two-character escapes
             "\r",
-        ]
-        for pattern in patterns {
+        ] {
             text = text.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
         }
         return text
+    }
+
+    /// Regex replacement where the replacement depends on the captured number.
+    private static func replacing(
+        _ pattern: String, in text: String, with body: (Int?) -> String
+    ) -> String {
+        guard let expression = try? NSRegularExpression(pattern: pattern) else { return text }
+        let matches = expression.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        var result = text
+        // Backwards, so each replacement leaves the earlier ranges valid.
+        for match in matches.reversed() {
+            guard let range = Range(match.range, in: result) else { continue }
+            let number = Range(match.range(at: 1), in: result).flatMap { Int(result[$0]) }
+            result.replaceSubrange(range, with: body(number))
+        }
+        return result
     }
 }

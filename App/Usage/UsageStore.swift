@@ -147,7 +147,7 @@ final class UsageStore: ObservableObject {
         starting.isRefreshing = true
         entries[key] = starting
 
-        let strategies = provider.strategies(for: account)
+        let strategies = provider.strategies(for: account, userInitiated: userInitiated)
         let providerKind = key.provider
         let accountID = key.accountID
         let clock = self.clock

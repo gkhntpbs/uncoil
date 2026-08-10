@@ -43,8 +43,7 @@ enum CodexUsageParser {
                     $0,
                     id: "codex.primary",
                     title: UsageJSON.titleForWindow(
-                        minutes: UsageJSON.int($0, ["window_minutes", "windowMinutes"]),
-                        fallback: "Session limit"
+                        minutes: UsageJSON.windowMinutes($0), fallback: "Session limit"
                     ),
                     now: now
                 )
@@ -56,8 +55,7 @@ enum CodexUsageParser {
                     $0,
                     id: "codex.secondary",
                     title: UsageJSON.titleForWindow(
-                        minutes: UsageJSON.int($0, ["window_minutes", "windowMinutes"]),
-                        fallback: "Weekly limit"
+                        minutes: UsageJSON.windowMinutes($0), fallback: "Weekly limit"
                     ),
                     now: now
                 )
@@ -112,7 +110,7 @@ enum CodexUsageParser {
             guard let object = entry.objectValue else { return nil }
             let model = UsageJSON.string(object, ["model", "model_id", "modelId", "model_slug"])
             let name = UsageJSON.string(object, ["name", "label", "title", "id"])
-            let minutes = UsageJSON.int(object, ["window_minutes", "windowMinutes"])
+            let minutes = UsageJSON.windowMinutes(object)
             let title = name
                 ?? model.map { "\($0) limit" }
                 ?? UsageJSON.titleForWindow(minutes: minutes, fallback: "Additional limit")

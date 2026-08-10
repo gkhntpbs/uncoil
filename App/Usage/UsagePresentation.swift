@@ -113,18 +113,28 @@ enum UsageDisplay {
         }
     }
 
-    /// The footer line: where it came from and how old it is.
+    /// The footer line: which account, where it came from, and how old it is.
     ///
-    /// A snapshot with nothing in it gets the second half only. "From your
-    /// Claude account · 1m ago" under the words "No usage figures" claims a
-    /// reading that was never made; what actually happened is that we looked,
-    /// and that is what it should say.
-    static func provenance(_ snapshot: UsageSnapshot, now: Date) -> String {
+    /// The account is named because "your Codex account" is not an answer when
+    /// there is more than one of them, and this line is the one place that says
+    /// where a figure came from. Named only when the name adds something —
+    /// repeating the provider back at the reader would be noise.
+    ///
+    /// A snapshot with nothing in it gets the last part only. "From your Claude
+    /// account · 1m ago" under the words "No usage figures" claims a reading
+    /// that was never made; what happened is that we looked, and that is what
+    /// it should say.
+    static func provenance(_ snapshot: UsageSnapshot, accountName: String?, now: Date) -> String {
         let age = relativeAge(snapshot.updatedAt, now: now)
         guard snapshot.unavailable == nil else {
             return String(localized: "Checked \(age)")
         }
-        return "\(sourceLabel(snapshot.source)) · \(age)"
+        var source = sourceLabel(snapshot.source)
+        if let accountName, !accountName.isEmpty,
+           accountName.caseInsensitiveCompare(snapshot.provider.displayName) != .orderedSame {
+            source += " (\(accountName))"
+        }
+        return "\(source) · \(age)"
     }
 
     // MARK: - Unavailability

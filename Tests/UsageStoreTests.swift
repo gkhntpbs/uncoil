@@ -5,8 +5,31 @@ import XCTest
 private struct StubProvider: UsageProvider {
     var provider: AgentProvider
     var make: () -> [UsageFetchStrategy]
+    /// Records what the store asked for, so the promise that a timed refresh
+    /// never gets permission to raise a dialog can be asserted rather than
+    /// assumed.
+    var permissions: PermissionLog = .init()
 
-    func strategies(for account: UsageAccountContext) -> [UsageFetchStrategy] { make() }
+    final class PermissionLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var values: [Bool] = []
+
+        func record(_ userInitiated: Bool) {
+            lock.lock(); values.append(userInitiated); lock.unlock()
+        }
+
+        var asked: [Bool] {
+            lock.lock(); defer { lock.unlock() }
+            return values
+        }
+    }
+
+    func strategies(
+        for account: UsageAccountContext, userInitiated: Bool
+    ) -> [UsageFetchStrategy] {
+        permissions.record(userInitiated)
+        return make()
+    }
 }
 
 private struct ScriptedStrategy: UsageFetchStrategy {
@@ -313,5 +336,38 @@ final class UsageAccountIsolationTests: XCTestCase {
         XCTAssertNil(UsageCredentials.readKeychainString(service: "login"))
         XCTAssertNil(UsageCredentials.readKeychainString(service: "com.apple.something"))
         XCTAssertTrue(UsageCredentials.allowedKeychainServices.contains("Claude Code-credentials"))
+    }
+
+    /// Claude Code's login lives in the Keychain under its own name, so macOS
+    /// asks before handing it to Uncoil — and that dialog is exactly what a
+    /// refresh on a timer must never raise. The permission is tied to the user
+    /// having asked, not to the route being convenient.
+    func testATimedRefreshIsNeverGivenPermissionToPrompt() {
+        let provider = ClaudeUsageProvider(
+            probeDirectory: URL(fileURLWithPath: "/tmp/probe"),
+            homeDirectory: URL(fileURLWithPath: "/nonexistent")
+        )
+        let timed = provider.strategies(for: .providerDefault, userInitiated: false)
+            .compactMap { $0 as? ClaudeOAuthUsageStrategy }.first
+        XCTAssertEqual(timed?.allowKeychain, false)
+        // And with no credential file and nothing cached, it does not even
+        // offer itself — asking whether the item exists is enough to prompt.
+        XCTAssertEqual(timed?.isAvailable(), false)
+
+        let asked = provider.strategies(for: .providerDefault, userInitiated: true)
+            .compactMap { $0 as? ClaudeOAuthUsageStrategy }.first
+        XCTAssertEqual(asked?.allowKeychain, true)
+    }
+
+    /// The CLI route is what a background refresh actually uses, so it must not
+    /// be gated on anything the user has to answer.
+    func testTheCLIRouteNeedsNoPermission() {
+        let provider = ClaudeUsageProvider(
+            probeDirectory: URL(fileURLWithPath: "/tmp/probe"),
+            locateBinary: { _ in "/bin/echo" }
+        )
+        let cli = provider.strategies(for: .providerDefault, userInitiated: false)
+            .compactMap { $0 as? ClaudeCLIUsageStrategy }.first
+        XCTAssertEqual(cli?.isAvailable(), true)
     }
 }

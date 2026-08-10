@@ -164,6 +164,54 @@ final class ClaudeAuthTests: XCTestCase {
 /// section, and produces nothing rather than a guess.
 final class ClaudeUsagePanelParserTests: XCTestCase {
 
+    /// Captured from `claude` v2.1.226 on a real Max account, trimmed to the
+    /// usage rows and with the account's own details taken out.
+    ///
+    /// This is the fixture that matters, and it is the one that was missing:
+    /// every invented panel below tests a *rule*, but only this tests whether
+    /// the parser fits the thing it parses. It did not. The CLI never prints a
+    /// space or a newline — it jumps the cursor to the next column and drops a
+    /// row — so the stripper was turning a perfectly readable panel into one
+    /// long unbroken word.
+    private static let realPanel = """
+    \u{001B}[3C\u{001B}[2BCurrent\u{001B}[12Gsession\r\u{001B}[3C\u{001B}[1B\
+    ███████████▌\u{001B}[55G23%\u{001B}[59Gused\r\u{001B}[3C\u{001B}[1B\
+    Resets\u{001B}[11G8:30pm\u{001B}[18G(Europe/Istanbul)\r\u{001B}[3C\u{001B}[2B\
+    Current\u{001B}[12Gweek\u{001B}[17G(all\u{001B}[22Gmodels)\r\u{001B}[3C\u{001B}[1B\
+    ██████▌\u{001B}[55G13%\u{001B}[59Gused\r\u{001B}[3C\u{001B}[1B\
+    Resets\u{001B}[11GAug\u{001B}[15G15\u{001B}[18Gat\u{001B}[21G4am\u{001B}[25G(Europe/Istanbul)\r\
+    \u{001B}[3C\u{001B}[1B+50%\u{001B}[9Gweekly\u{001B}[16Glimits\u{001B}[23Gpromo
+    """
+
+    /// The reconstruction, spelled out: words separated, rows kept.
+    func testTheRealPanelBecomesReadableLines() {
+        let text = ClaudeUsagePanelParser.strippingANSI(Self.realPanel)
+        XCTAssertTrue(text.contains("Current session"), text)
+        XCTAssertTrue(text.contains("Current week (all models)"), text)
+        XCTAssertTrue(text.contains("23% used"), text)
+        XCTAssertTrue(text.contains("Resets 8:30pm (Europe/Istanbul)"), text)
+        // More than one line, which is the whole of what was wrong before.
+        XCTAssertGreaterThan(text.components(separatedBy: "\n").count, 4)
+    }
+
+    func testTheRealPanelIsParsed() {
+        let parsed = ClaudeUsagePanelParser.parse(Self.realPanel)
+        XCTAssertEqual(parsed.session?.usedPercent, 23)
+        XCTAssertEqual(parsed.session?.remainingPercent, 77)
+        XCTAssertEqual(parsed.session?.resetNote, "Resets 8:30pm (Europe/Istanbul)")
+        XCTAssertEqual(parsed.week?.usedPercent, 13)
+        XCTAssertEqual(parsed.week?.resetNote, "Resets Aug 15 at 4am (Europe/Istanbul)")
+        XCTAssertNil(parsed.failure)
+    }
+
+    /// The line under the week's reset is an advertisement with a percentage in
+    /// it. Reading that as the week's figure would report a limit nobody has.
+    func testAPromotionalPercentageIsNotMistakenForAWindow() {
+        let parsed = ClaudeUsagePanelParser.parse(Self.realPanel)
+        XCTAssertEqual(parsed.week?.usedPercent, 13)
+        XCTAssertTrue(parsed.extras.isEmpty)
+    }
+
     func testEscapeSequencesAreRemoved() {
         let raw = "\u{001B}[1mCurrent session\u{001B}[0m\r\n\u{001B}[38;5;33m████\u{001B}[0m 23% used"
         let parsed = ClaudeUsagePanelParser.parse(raw)
