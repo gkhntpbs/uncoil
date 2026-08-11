@@ -172,3 +172,50 @@ final class TestArtifactTests: XCTestCase {
         XCTAssertEqual(TestStepFormat.duration(423), "7:03")
     }
 }
+
+/// Reading a run as it happens. The live view and the finished record go
+/// through the same parser, so the only thing that can differ between them is
+/// how the output was cut up on the way in.
+final class TestLiveParserTests: XCTestCase {
+    /// Output arrives in whatever chunks the pipe flushed, and a chunk that
+    /// ends mid-line used to be a test nobody saw.
+    func testALineSplitAcrossChunksIsStillRead() {
+        var parser = TestLiveParser(framework: .swift)
+        XCTAssertTrue(parser.consume("Test Case 'Suite.testOne' pas").isEmpty)
+        let cases = parser.consume("sed (0.002 seconds).\n")
+        XCTAssertEqual(cases.map(\.name), ["testOne"])
+    }
+
+    func testEachTestIsReportedOnce() {
+        var parser = TestLiveParser(framework: .swift)
+        var seen: [TestCaseResult] = []
+        for chunk in [
+            "Test Case 'Suite.testOne' started.\nTest Case 'Suite.testOne' passed (0.1 seconds).\n",
+            "Test Case 'Suite.testTwo' failed (0.2 seconds).\n",
+        ] {
+            seen += parser.consume(chunk)
+        }
+        XCTAssertEqual(seen.map(\.name), ["testOne", "testTwo"])
+        XCTAssertEqual(seen.map(\.outcome), [.passed, .failed])
+    }
+
+    /// A framework whose output is not parsed reports nothing live, and the
+    /// screen falls back to showing the output itself.
+    func testAnUnparsedFrameworkStreamsNoSteps() {
+        var parser = TestLiveParser(framework: .unknown)
+        XCTAssertTrue(parser.consume("running the suite\ndone\n").isEmpty)
+    }
+
+    func testTheLiveSummaryCountsWhatHasArrived() {
+        var state = TestSuiteState(isRunning: true)
+        state.liveCases = [
+            TestCaseResult(suite: "", name: "one", outcome: .passed),
+            TestCaseResult(suite: "", name: "two", outcome: .failed),
+            TestCaseResult(suite: "", name: "three", outcome: .skipped),
+        ]
+        XCTAssertEqual(state.liveSummary.total, 3)
+        XCTAssertEqual(state.liveSummary.failed, 1)
+        XCTAssertTrue(state.liveSummary.isDetailed)
+        XCTAssertFalse(TestSuiteState().liveSummary.isDetailed)
+    }
+}

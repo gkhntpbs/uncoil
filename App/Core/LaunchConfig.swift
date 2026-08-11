@@ -7,6 +7,7 @@ import SwiftUI
 ///   -ui-testing            isolate all state under a temp directory
 ///   -reset-state           wipe that directory before start
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
+///   -tests-run <suite id>  start that suite as soon as the Tests screen opens
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
@@ -32,6 +33,9 @@ struct LaunchConfig {
     let extensionsAction: String?
     /// Project dashboard area to open (overview|tasks|run|tests).
     let projectArea: String?
+    /// A test suite to start as soon as the Tests screen appears, so the live
+    /// step stream can be watched without a click.
+    let testsRun: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
     let windowWidth: Double?
@@ -91,6 +95,7 @@ struct LaunchConfig {
         extensionsExpand = Self.value(after: "-extensions-expand", in: arguments)
         extensionsAction = Self.value(after: "-extensions-action", in: arguments)
         projectArea = Self.value(after: "-project-area", in: arguments)
+        testsRun = isUITesting ? Self.value(after: "-tests-run", in: arguments) : nil
         onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
@@ -199,12 +204,18 @@ struct LaunchConfig {
                 framework: .swift, isDefault: true
             ),
             TestSuiteConfiguration(
+                id: "stream", name: "Streaming suite", command: "sh stream-tests.sh",
+                framework: .swift,
+                notes: "prints XCTest-shaped lines slowly, so the live view has something to show"
+            ),
+            TestSuiteConfiguration(
                 id: "e2e", name: "End-to-end", command: "./run-e2e.sh", framework: .unknown,
                 notes: "the output format is not recognised",
                 artifacts: "build/screenshots"
             ),
         ], projectRoot: projectDir)
         let shot = Self.seedFixtureScreenshot(projectRoot: projectDir)
+        Self.seedFixtureStreamingSuite(projectRoot: projectDir)
         TestRegistry.saveRecord(
             TestRunRecord(
                 id: "demo-unit", suiteID: "unit",
@@ -264,6 +275,34 @@ struct LaunchConfig {
             .first(where: { $0.provider == .terminal }) {
             projectStore.togglePin(pinned.id)
         }
+    }
+
+    /// A suite that actually runs, and takes long enough to be watched.
+    ///
+    /// The Tests screen's other two fixtures are results without runs — enough
+    /// to show what a finished suite looks like, and no use at all for the part
+    /// that streams. This one prints XCTest's own line shape, one test at a
+    /// time, so pressing Run shows the steps arriving.
+    static func seedFixtureStreamingSuite(projectRoot: URL) {
+        let script = """
+        #!/bin/sh
+        for name in testTheParserReadsFrontmatter testASleepingSessionWakes \
+                    testTheQueueDrains testABranchChangeIsAnnounced \
+                    testTheCacheSurvivesRestart testNothingIsLostOnCancel; do
+          echo "Test Case 'StreamingTests.$name' started."
+          sleep 1
+          echo "Test Case 'StreamingTests.$name' passed (1.0 seconds)."
+        done
+        echo "Test Case 'StreamingTests.testTheOneThatBreaks' started."
+        sleep 1
+        echo "\(projectRoot.lastPathComponent)/Stream.swift:12: error: -[StreamingTests testTheOneThatBreaks] : XCTAssertEqual failed: (\"7\") is not equal to (\"8\")"
+        echo "Test Case 'StreamingTests.testTheOneThatBreaks' failed (1.0 seconds)."
+        exit 1
+        """
+        try? script.write(
+            to: projectRoot.appendingPathComponent("stream-tests.sh"),
+            atomically: true, encoding: .utf8
+        )
     }
 
     /// Writes one small image into the demo project, so the Tests screen has a

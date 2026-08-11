@@ -85,14 +85,7 @@ enum TestOutputParser {
     static func parse(
         _ output: String, framework: TestFramework, exitCode: Int32?
     ) -> (cases: [TestCaseResult], summary: TestRunSummary) {
-        var cases: [TestCaseResult] = switch framework {
-        case .swift, .xcodebuild: parseXCTest(output)
-        case .go: parseGoJSON(output)
-        case .cargo: parseCargo(output)
-        case .pytest: parsePytest(output)
-        case .jest: parseJest(output)
-        case .unknown: []
-        }
+        var cases = cases(in: output, framework: framework)
         // Why the failures are read in a second pass: every runner prints them
         // somewhere other than the line that announced the outcome — before it,
         // after it, or in a summary at the end.
@@ -129,6 +122,20 @@ enum TestOutputParser {
             summary.failed = 1
         }
         return (cases, summary)
+    }
+
+    /// The tests named in this output, without the second pass that reads
+    /// failure messages. Split out because the live view parses every chunk as
+    /// it arrives, and a message cannot be read from a chunk anyway.
+    static func cases(in output: String, framework: TestFramework) -> [TestCaseResult] {
+        switch framework {
+        case .swift, .xcodebuild: parseXCTest(output)
+        case .go: parseGoJSON(output)
+        case .cargo: parseCargo(output)
+        case .pytest: parsePytest(output)
+        case .jest: parseJest(output)
+        case .unknown: []
+        }
     }
 
     // MARK: - Failure messages

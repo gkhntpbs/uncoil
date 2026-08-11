@@ -57,6 +57,50 @@ struct TestSuiteState: Equatable {
     var latest: TestRunRecord?
     /// Streaming output of the run in flight.
     var logTail = ""
+    /// The tests the run in flight has reported so far, in the order they
+    /// arrived. Empty for a framework whose output is not parsed, and cleared
+    /// when the run ends and the record takes over.
+    var liveCases: [TestCaseResult] = []
+
+    var liveSummary: TestRunSummary {
+        var summary = TestRunSummary(isDetailed: !liveCases.isEmpty)
+        for result in liveCases {
+            switch result.outcome {
+            case .passed: summary.passed += 1
+            case .failed: summary.failed += 1
+            case .skipped: summary.skipped += 1
+            }
+        }
+        return summary
+    }
+}
+
+/// Feeds a runner's output to the parser as it arrives, one whole line at a
+/// time.
+///
+/// Output lands in chunks that cut wherever the pipe happened to flush, so a
+/// chunk routinely ends mid-line. Parsing a chunk as it comes would drop that
+/// line — and the parsers are all line-based, so holding the fragment back
+/// until its newline arrives is all it takes to read the same result live that
+/// the whole output yields at the end.
+struct TestLiveParser {
+    let framework: TestFramework
+    private var pending = ""
+
+    init(framework: TestFramework) {
+        self.framework = framework
+    }
+
+    /// The tests this chunk completed. Their messages are not filled in: a
+    /// failure's reason is printed somewhere other than the line announcing it,
+    /// and often after it, so it is read once at the end from the whole output.
+    mutating func consume(_ text: String) -> [TestCaseResult] {
+        pending += text
+        guard let lastNewline = pending.lastIndex(of: "\n") else { return [] }
+        let whole = String(pending[pending.startIndex...lastNewline])
+        pending = String(pending[pending.index(after: lastNewline)...])
+        return TestOutputParser.cases(in: whole, framework: framework)
+    }
 }
 
 /// Runs test suites and remembers how they went.
@@ -98,6 +142,8 @@ final class TestRegistry: ObservableObject {
     }
 
     private static let logTailLimit = 64_000
+    /// How many live rows are kept while a suite runs.
+    static let liveCaseLimit = 500
     private var handles: [Key: RunProcessHandle] = [:]
 
     func state(project: Project, suiteID: String) -> TestSuiteState {
@@ -140,13 +186,18 @@ final class TestRegistry: ObservableObject {
 
         let startedAt = Date()
         states[key] = TestSuiteState(
-            isRunning: true, startedAt: startedAt, latest: states[key]?.latest, logTail: ""
+            isRunning: true, startedAt: startedAt, latest: states[key]?.latest,
+            logTail: "", liveCases: []
         )
 
         // The whole output is kept for parsing, separately from the capped tail
         // shown live: a suite of a thousand tests would otherwise have its
         // early results trimmed away before anything read them.
         let collector = OutputCollector()
+        // Parsed as it arrives, so the steps of a long suite appear while it
+        // runs instead of all at once when it is over. The same parser reads
+        // the whole output again at the end — this is the view, not the record.
+        let live = LiveBox(framework: suite.framework)
         // The exit code arrives through the callback rather than being read off
         // the handle afterwards: `RunProcessHandle` reports only whether the
         // process is still running, and by the time it is not, the code is gone.
@@ -159,7 +210,8 @@ final class TestRegistry: ObservableObject {
                 env: suite.env,
                 onOutput: { [weak self] text in
                     collector.append(text)
-                    self?.appendTail(text, key: key)
+                    let fresh = live.consume(text)
+                    self?.appendTail(text, key: key, cases: fresh)
                 },
                 onExit: { code in exit.set(code) }
             )
@@ -237,12 +289,38 @@ final class TestRegistry: ObservableObject {
         )
     }
 
-    private func appendTail(_ text: String, key: Key) {
+    private func appendTail(_ text: String, key: Key, cases: [TestCaseResult] = []) {
         var tail = (states[key]?.logTail ?? "") + text
         if tail.count > Self.logTailLimit {
             tail = String(tail.suffix(Self.logTailLimit))
         }
         states[key, default: TestSuiteState()].logTail = tail
+        guard !cases.isEmpty else { return }
+        // Capped for the same reason the tail is: a suite of ten thousand tests
+        // should cost the window a bounded amount of memory while it runs. The
+        // record built at the end keeps every one of them.
+        var live = states[key, default: TestSuiteState()].liveCases + cases
+        if live.count > Self.liveCaseLimit {
+            live = Array(live.suffix(Self.liveCaseLimit))
+        }
+        states[key]?.liveCases = live
+    }
+
+    /// Carries the incremental parser into the launcher's callback, which is
+    /// not on the main actor and cannot hold a mutable struct of its own.
+    private final class LiveBox: @unchecked Sendable {
+        private let lock = NSLock()
+        private var parser: TestLiveParser
+
+        init(framework: TestFramework) {
+            parser = TestLiveParser(framework: framework)
+        }
+
+        func consume(_ text: String) -> [TestCaseResult] {
+            lock.lock()
+            defer { lock.unlock() }
+            return parser.consume(text)
+        }
     }
 
     /// Carries the exit code from the launcher's callback back to the caller.

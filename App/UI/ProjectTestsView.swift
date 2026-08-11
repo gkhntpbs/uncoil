@@ -53,6 +53,11 @@ struct ProjectTestsView: View {
                     }
                     .map(\.id)
             )
+            if let wanted = LaunchConfig.shared.testsRun,
+               let suite = suites.first(where: { $0.id == wanted }) {
+                expanded.insert(suite.id)
+                run(suite)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.container")
@@ -149,14 +154,8 @@ struct ProjectTestsView: View {
                     }
                 }
             }
-            if state.isRunning, !state.logTail.isEmpty {
-                // While it runs there are no steps yet — the parser only reads
-                // the output once it is whole. The live tail is what there is.
-                Text(lastLines(state.logTail, 4))
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-                    .lineLimit(4)
-                    .padding(.leading, 16)
+            if state.isRunning {
+                running(state, suite: suite)
             }
             if let record = state.latest {
                 summaryLine(record, suite: suite)
@@ -174,6 +173,55 @@ struct ProjectTestsView: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.suite.\(suite.id)")
+    }
+
+    /// What the suite is doing right now.
+    ///
+    /// The steps arrive as the runner prints them, so a long suite is watchable
+    /// rather than a spinner with a log under it. Only the last few are shown:
+    /// during a run the interesting end of the list is the recent end, and the
+    /// whole of it is there the moment the run finishes.
+    @ViewBuilder
+    private func running(_ state: TestSuiteState, suite: TestSuiteConfiguration) -> some View {
+        let live = state.liveCases
+        if live.isEmpty {
+            // Either nothing has been reported yet, or this framework's output
+            // is not parsed at all — in both cases the output is what there is.
+            if !state.logTail.isEmpty {
+                Text(lastLines(state.logTail, 4))
+                    .font(Theme.mono(.micro))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(4)
+                    .padding(.leading, 16)
+            }
+        } else {
+            let summary = state.liveSummary
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text("\(summary.total) so far")
+                        .foregroundStyle(Theme.textDim)
+                    if summary.failed > 0 {
+                        Text("\(summary.failed) failed").foregroundStyle(Theme.danger)
+                    }
+                    if let startedAt = state.startedAt {
+                        // On its own clock: the rest of this view redraws when
+                        // output arrives, and a suite that goes quiet for a
+                        // minute would otherwise show a frozen elapsed time.
+                        TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                            Text(TestStepFormat.duration(
+                                context.date.timeIntervalSince(startedAt)
+                            ))
+                            .foregroundStyle(Theme.textFaint)
+                            .monospacedDigit()
+                        }
+                    }
+                }
+                .font(Theme.mono(.micro))
+                TestStepRows(cases: Array(live.suffix(8)), suiteID: suite.id)
+            }
+            .padding(.leading, 16)
+            .accessibilityIdentifier("tests.live.\(suite.id)")
+        }
     }
 
     /// The at-a-glance answer. A suite that has never run gets a hollow ring

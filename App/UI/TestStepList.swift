@@ -130,21 +130,7 @@ struct TestStepList: View {
     // MARK: - Steps
 
     private var steps: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(visibleCases.enumerated()), id: \.element.id) { index, result in
-                if index > 0 {
-                    Rectangle().fill(Theme.border).frame(height: 1)
-                }
-                TestStepRow(result: result, suiteID: suite.id, onOpen: { preview = $0 })
-            }
-        }
-        .background(Theme.bg.opacity(0.35))
-        // Clipped, not just backed: a failed row is tinted edge to edge, and
-        // without this its square corner sits outside the rounded border.
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1)
-        )
+        TestStepRows(cases: visibleCases, suiteID: suite.id, onOpen: { preview = $0 })
     }
 
     private func tint(_ outcome: TestCaseResult.Outcome) -> Color {
@@ -191,6 +177,36 @@ struct TestStepList: View {
         }
         .accessibilityIdentifier("tests.output.\(suite.id)")
         .padding(.top, 8)
+    }
+}
+
+/// The rows themselves, in their bordered box.
+///
+/// Shared by the finished run and the one in flight: a step should not change
+/// shape the moment its suite ends.
+struct TestStepRows: View {
+    let cases: [TestCaseResult]
+    let suiteID: String
+    var onOpen: (TestArtifact) -> Void = { _ in }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Keyed by position, not by name: two packages can report a test
+            // of the same name, and a duplicated identity drops rows.
+            ForEach(cases.indices, id: \.self) { index in
+                if index > 0 {
+                    Rectangle().fill(Theme.border).frame(height: 1)
+                }
+                TestStepRow(result: cases[index], suiteID: suiteID, onOpen: onOpen)
+            }
+        }
+        .background(Theme.bg.opacity(0.35))
+        // Clipped, not just backed: a failed row is tinted edge to edge, and
+        // without this its square corner sits outside the rounded border.
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1)
+        )
     }
 }
 
