@@ -213,8 +213,10 @@ struct LaunchConfig {
                 notes: "prints XCTest-shaped lines slowly, so the live view has something to show"
             ),
             TestSuiteConfiguration(
-                id: "e2e", name: "End-to-end", command: "./run-e2e.sh", framework: .unknown,
-                notes: "the output format is not recognised",
+                id: "e2e", name: "End-to-end flows",
+                command: "maestro test .maestro --debug-output build/screenshots",
+                framework: .maestro,
+                notes: "a Maestro flow, the way a mobile or web end-to-end suite reports",
                 artifacts: "build/screenshots"
             ),
         ], projectRoot: projectDir)
@@ -261,10 +263,31 @@ struct LaunchConfig {
                 startedAt: Date(timeIntervalSinceNow: -400),
                 finishedAt: Date(timeIntervalSinceNow: -380),
                 exitCode: 0,
-                summary: TestRunSummary(isDetailed: false),
-                cases: [],
-                logTail: "all good\n",
-                artifacts: shot.map { [$0] } ?? []
+                summary: TestRunSummary(passed: 5, failed: 1, isDetailed: true),
+                cases: [
+                    TestCaseResult(
+                        suite: "smoke", name: "Launch app \"com.example.app\"", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Tap on \"Sign in\"", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Take screenshot smoke-01-home",
+                        outcome: .passed, artifacts: shot.map { [$0] } ?? []
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Assert that \"Welcome back\" is visible",
+                        outcome: .failed,
+                        message: "Assertion is false: \"Welcome back\" is visible"
+                    ),
+                    TestCaseResult(
+                        suite: "checkout", name: "Open https://example.com", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "checkout", name: "Tap on \"Buy\"", outcome: .passed
+                    ),
+                ],
+                logTail: "Running on iPhone 16 Pro\n"
             ),
             directory: TestRegistry.shared.resultsDirectory(projectID: project.id)
         )
@@ -319,7 +342,7 @@ struct LaunchConfig {
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true
         )
-        let url = directory.appendingPathComponent("e2e-checkout.png")
+        let url = directory.appendingPathComponent("smoke-01-home.png")
         let size = NSSize(width: 480, height: 300)
         let image = NSImage(size: size)
         image.lockFocus()

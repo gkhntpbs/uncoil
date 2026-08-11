@@ -94,6 +94,7 @@ enum TestOutputParser {
         case .go: goFailures(output)
         case .cargo: cargoFailures(output)
         case .pytest: pytestFailures(output)
+        case .maestro: maestroFailures(output)
         case .jest, .unknown: [:]
         }
         if !messages.isEmpty {
@@ -134,6 +135,7 @@ enum TestOutputParser {
         case .cargo: parseCargo(output)
         case .pytest: parsePytest(output)
         case .jest: parseJest(output)
+        case .maestro: parseMaestro(output)
         case .unknown: []
         }
     }
@@ -424,6 +426,95 @@ enum TestOutputParser {
             ))
         }
         return results
+    }
+
+    // MARK: - Maestro (mobile and web end-to-end flows)
+
+    /// Maestro reports a *flow* as a list of commands, each one a line marked
+    /// with its outcome — which is exactly the shape this screen wants, and the
+    /// reason it is read per command rather than per flow. The JUnit report it
+    /// can also write has one entry per flow, and would throw away every step.
+    ///
+    /// The output is drawn as a box, so each line arrives behind frame
+    /// characters and, on a terminal, colour codes. Both are stripped before
+    /// anything is read, because neither carries meaning.
+    static func parseMaestro(_ output: String) -> [TestCaseResult] {
+        var results: [TestCaseResult] = []
+        var flow = ""
+        for line in output.split(separator: "\n") {
+            let trimmed = maestroStrip(String(line))
+            if let name = maestroFlowName(trimmed) {
+                flow = name
+                continue
+            }
+            guard let (outcome, command) = maestroCommand(trimmed) else { continue }
+            results.append(
+                TestCaseResult(suite: flow, name: command, outcome: outcome)
+            )
+        }
+        return results
+    }
+
+    /// The reason a command failed is printed straight under it, so the lines
+    /// following a failed command — up to the next command or the end of the
+    /// flow — are that command's message.
+    static func maestroFailures(_ output: String) -> [String: String] {
+        var found: [String: [String]] = [:]
+        var current: String?
+        for line in output.split(separator: "\n") {
+            let trimmed = maestroStrip(String(line))
+            if maestroFlowName(trimmed) != nil { current = nil; continue }
+            if let (outcome, command) = maestroCommand(trimmed) {
+                current = outcome == .failed ? messageKey(command) : nil
+                continue
+            }
+            guard let key = current, !trimmed.isEmpty else { continue }
+            found[key, default: []].append(trimmed)
+        }
+        return found.compactMapValues { condense($0) }
+    }
+
+    /// One output line with its frame and its colours taken off.
+    static func maestroStrip(_ line: String) -> String {
+        var text = ""
+        var iterator = line.makeIterator()
+        // ANSI: ESC [ … letter. Dropped whole rather than filtered character by
+        // character, so a colour code never leaves its digits behind in a name.
+        while let character = iterator.next() {
+            if character == "\u{1B}" {
+                while let inner = iterator.next(), !inner.isLetter { _ = inner }
+                continue
+            }
+            text.append(character)
+        }
+        let frame = CharacterSet(charactersIn: "║│┃╎╏┆┇┊┋|>· \t")
+        return text.trimmingCharacters(in: frame)
+    }
+
+    /// `> Flow: login` / `Flow: login`. The flow is the step's suite, the way a
+    /// class is for XCTest.
+    static func maestroFlowName(_ trimmed: String) -> String? {
+        guard let range = trimmed.range(of: "Flow: "), trimmed.distance(
+            from: trimmed.startIndex, to: range.lowerBound
+        ) <= 2 else { return nil }
+        let name = trimmed[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    /// A command line: its marker, then what it did.
+    static func maestroCommand(_ trimmed: String) -> (TestCaseResult.Outcome, String)? {
+        let markers: [(String, TestCaseResult.Outcome)] = [
+            ("✅", .passed), ("✔", .passed), ("☑", .passed),
+            ("❌", .failed), ("✘", .failed), ("✕", .failed), ("⚠️", .failed),
+            ("⏳", .skipped), ("⭕", .skipped), ("🔲", .skipped), ("⊝", .skipped),
+        ]
+        for (marker, outcome) in markers where trimmed.hasPrefix(marker) {
+            let name = trimmed.dropFirst(marker.count)
+                .trimmingCharacters(in: CharacterSet(charactersIn: " \t\u{FE0F}"))
+            guard !name.isEmpty else { return nil }
+            return (outcome, name)
+        }
+        return nil
     }
 
     /// "12 ms" / "1.2 s" → seconds. Anything else is not a duration, and the

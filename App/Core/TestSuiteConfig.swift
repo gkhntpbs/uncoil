@@ -14,6 +14,7 @@ enum TestFramework: String, Codable, CaseIterable {
     case cargo
     case pytest
     case jest
+    case maestro
     case unknown
 
     /// Whether individual test names and outcomes can be recovered.
@@ -27,6 +28,7 @@ enum TestFramework: String, Codable, CaseIterable {
         case .cargo: "cargo test"
         case .pytest: "pytest"
         case .jest: "Jest / Vitest"
+        case .maestro: "Maestro"
         case .unknown: String(localized: "Unrecognised")
         }
     }
