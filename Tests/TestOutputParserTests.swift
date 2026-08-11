@@ -211,3 +211,75 @@ final class TestOutputParserTests: XCTestCase {
         }
     }
 }
+
+/// The failure message a runner printed, matched back to the test it belongs
+/// to. Without it a red row says only that something broke, which is the one
+/// thing the user already knew.
+final class TestFailureMessageTests: XCTestCase {
+    func testXCTestFailuresReachTheirCase() {
+        let output = """
+        Test Case '-[UncoilTests.HandoffTests testPromptIsBuilt]' started.
+        /Users/x/Tests/HandoffTests.swift:42: error: -[UncoilTests.HandoffTests testPromptIsBuilt] : XCTAssertEqual failed: ("a") is not equal to ("b")
+        Test Case '-[UncoilTests.HandoffTests testPromptIsBuilt]' failed (0.010 seconds).
+        Test Case '-[UncoilTests.HandoffTests testOther]' passed (0.001 seconds).
+        """
+        let parsed = TestOutputParser.parse(output, framework: .swift, exitCode: 1)
+        let failed = parsed.cases.first { $0.outcome == .failed }
+        XCTAssertEqual(failed?.message, #"XCTAssertEqual failed: ("a") is not equal to ("b")"#)
+        XCTAssertNil(parsed.cases.first { $0.outcome == .passed }?.message)
+    }
+
+    func testPytestShortSummaryIsUsed() {
+        let output = """
+        tests/test_cart.py::test_total FAILED                                    [ 50%]
+        tests/test_cart.py::test_empty PASSED                                    [100%]
+        =========================== short test summary info ============================
+        FAILED tests/test_cart.py::test_total - AssertionError: assert 3 == 4
+        """
+        let parsed = TestOutputParser.parse(output, framework: .pytest, exitCode: 1)
+        XCTAssertEqual(
+            parsed.cases.first { $0.outcome == .failed }?.message,
+            "AssertionError: assert 3 == 4"
+        )
+    }
+
+    /// go writes the reason in the test's own output events. The `=== RUN` and
+    /// `--- FAIL` framing carries nothing the row does not already show, and it
+    /// would be all a short message had room for.
+    func testGoFailureKeepsOnlyTheReason() {
+        let output = """
+        {"Action":"run","Test":"TestTotal"}
+        {"Action":"output","Test":"TestTotal","Output":"=== RUN   TestTotal\\n"}
+        {"Action":"output","Test":"TestTotal","Output":"    cart_test.go:12: want 4, got 3\\n"}
+        {"Action":"output","Test":"TestTotal","Output":"--- FAIL: TestTotal (0.00s)\\n"}
+        {"Action":"fail","Test":"TestTotal","Elapsed":0.001}
+        """
+        let parsed = TestOutputParser.parse(output, framework: .go, exitCode: 1)
+        XCTAssertEqual(parsed.cases.first?.message, "cart_test.go:12: want 4, got 3")
+    }
+
+    func testCargoFailureBlockIsRead() {
+        let output = """
+        test cart::total ... FAILED
+
+        failures:
+
+        ---- cart::total stdout ----
+        thread 'cart::total' panicked at src/cart.rs:12:
+        assertion failed: left == right
+        """
+        let parsed = TestOutputParser.parse(output, framework: .cargo, exitCode: 101)
+        XCTAssertEqual(
+            parsed.cases.first?.message,
+            "thread 'cart::total' panicked at src/cart.rs:12:\nassertion failed: left == right"
+        )
+    }
+
+    /// A framework whose failures are not parsed leaves the message empty
+    /// rather than showing an unrelated line that happened to be nearby.
+    func testAnUnparsedFrameworkLeavesNoMessage() {
+        let parsed = TestOutputParser.parse("✕ renders the cart\n", framework: .jest, exitCode: 1)
+        XCTAssertEqual(parsed.cases.first?.outcome, .failed)
+        XCTAssertNil(parsed.cases.first?.message)
+    }
+}

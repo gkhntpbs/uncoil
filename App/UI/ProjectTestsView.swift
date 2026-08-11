@@ -43,6 +43,16 @@ struct ProjectTestsView: View {
         .task(id: project.id) {
             reload()
             registry.loadPersistedResults(project: project)
+            // A red suite opens itself: the screen leads with the last result,
+            // and for a failure the result is the reason, not the word. Done
+            // once per project so that collapsing it again sticks.
+            expanded = Set(
+                suites
+                    .filter { registry.state(project: project, suiteID: $0.id).latest
+                        .map { !$0.summary.didPass } ?? false
+                    }
+                    .map(\.id)
+            )
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.container")
@@ -139,10 +149,20 @@ struct ProjectTestsView: View {
                     }
                 }
             }
+            if state.isRunning, !state.logTail.isEmpty {
+                // While it runs there are no steps yet — the parser only reads
+                // the output once it is whole. The live tail is what there is.
+                Text(lastLines(state.logTail, 4))
+                    .font(Theme.mono(.micro))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(4)
+                    .padding(.leading, 16)
+            }
             if let record = state.latest {
                 summaryLine(record, suite: suite)
                 if isExpanded {
-                    details(record, suite: suite)
+                    TestStepList(record: record, suite: suite)
+                        .padding(.top, 2)
                 }
             }
         }
@@ -193,7 +213,14 @@ struct ProjectTestsView: View {
                     .foregroundStyle(Theme.textFaint)
             }
             if let duration = record.duration {
-                Text(String(format: "%.1fs", duration)).foregroundStyle(Theme.textFaint)
+                Text(TestStepFormat.duration(duration)).foregroundStyle(Theme.textFaint)
+            }
+            if !record.allArtifacts.isEmpty {
+                HStack(spacing: 3) {
+                    TablerIcon(name: "photo", size: 9, color: Theme.textFaint)
+                    Text("\(record.allArtifacts.count)")
+                }
+                .foregroundStyle(Theme.textFaint)
             }
             if let finished = record.finishedAt {
                 Text(RelativeClock.short(since: finished)).foregroundStyle(Theme.textFaint)
@@ -201,43 +228,6 @@ struct ProjectTestsView: View {
         }
         .font(Theme.mono(.micro))
         .padding(.leading, 16)
-    }
-
-    @ViewBuilder
-    private func details(_ record: TestRunRecord, suite: TestSuiteConfiguration) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            // Failures first and in full; passes are a count, because a
-            // thousand green lines are what hide the one red one.
-            ForEach(record.failedCases) { result in
-                HStack(alignment: .top, spacing: 5) {
-                    TablerIcon(name: "x", size: 9, color: Theme.danger)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(result.name)
-                            .font(Theme.mono(.micro))
-                            .foregroundStyle(Theme.text)
-                        if !result.suite.isEmpty {
-                            Text(result.suite)
-                                .font(Theme.mono(.micro))
-                                .foregroundStyle(Theme.textFaint)
-                        }
-                    }
-                }
-            }
-            if record.summary.passed > 0 {
-                Text("\(record.summary.passed) tests passed")
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-            }
-            if !record.logTail.isEmpty {
-                Text(lastLines(record.logTail, record.summary.isDetailed ? 6 : 20))
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-                    .textSelection(.enabled)
-                    .padding(.top, 4)
-            }
-        }
-        .padding(.leading, 16)
-        .accessibilityIdentifier("tests.details.\(suite.id)")
     }
 
     private func lastLines(_ text: String, _ count: Int) -> String {

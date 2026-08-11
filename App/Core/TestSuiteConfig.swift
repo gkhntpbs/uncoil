@@ -50,6 +50,11 @@ struct TestSuiteConfiguration: Codable, Equatable, Identifiable {
     var isDefault: Bool
     var source: RunConfigSource
     var notes: String?
+    /// Where this suite writes screenshots, recordings and reports, relative to
+    /// the project root. Optional, and nil means the suite produces none —
+    /// nothing is guessed, because a wrong guess attaches a stale image to a
+    /// fresh failure.
+    var artifacts: String?
     /// Unknown JSON keys, preserved verbatim so an agent can annotate a suite
     /// without the app erasing it.
     var extra: [String: JSONValue]
@@ -64,6 +69,7 @@ struct TestSuiteConfiguration: Codable, Equatable, Identifiable {
         isDefault: Bool = false,
         source: RunConfigSource = .detected,
         notes: String? = nil,
+        artifacts: String? = nil,
         extra: [String: JSONValue] = [:]
     ) {
         self.id = id
@@ -75,11 +81,13 @@ struct TestSuiteConfiguration: Codable, Equatable, Identifiable {
         self.isDefault = isDefault
         self.source = source
         self.notes = notes
+        self.artifacts = artifacts
         self.extra = extra
     }
 
     static let knownKeys: Set<String> = [
         "id", "name", "command", "cwd", "env", "framework", "default", "source", "notes",
+        "artifacts",
     ]
 
     init(from decoder: Decoder) throws {
@@ -105,6 +113,7 @@ struct TestSuiteConfiguration: Codable, Equatable, Identifiable {
             source: object["source"]?.stringValue
                 .flatMap(RunConfigSource.init(rawValue:)) ?? .user,
             notes: object["notes"]?.stringValue,
+            artifacts: object["artifacts"]?.stringValue,
             extra: object.filter { !Self.knownKeys.contains($0.key) }
         )
     }
@@ -125,6 +134,7 @@ struct TestSuiteConfiguration: Codable, Equatable, Identifiable {
         if isDefault { object["default"] = .bool(true) }
         object["source"] = .string(source.rawValue)
         if let notes { object["notes"] = .string(notes) }
+        if let artifacts { object["artifacts"] = .string(artifacts) }
         return .object(object)
     }
 }

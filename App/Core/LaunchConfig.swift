@@ -43,6 +43,11 @@ struct LaunchConfig {
     let attentionFixture: Bool
     /// Seeds synthetic usage snapshots and opens the usage card.
     let usageFixture: Bool
+    /// Answers the handoff's "ask the outgoing agent" step with a stub script
+    /// instead of a real CLI, so the whole ask-and-merge path runs in a test
+    /// without a login or a quota. The path everything else takes is
+    /// unchanged; only the executable differs.
+    let handoffAgentStub: Bool
     /// Checks notification authorization and delivery, prints the result, exits.
     let notificationSelfTest: Bool
 
@@ -77,6 +82,7 @@ struct LaunchConfig {
         // per band so both can be looked at without a subscription, and opens
         // the card, since a popover has no other way to be shown on demand.
         usageFixture = isUITesting && arguments.contains("-usage-fixture")
+        handoffAgentStub = isUITesting && arguments.contains("-handoff-agent-stub")
         notificationSelfTest = arguments.contains("-notification-selftest")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
@@ -103,6 +109,34 @@ struct LaunchConfig {
             try? FileManager.default.removeItem(at: root)
         }
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        if handoffAgentStub {
+            writeHandoffStub(into: root)
+        }
+    }
+
+    /// Where the handoff's stub agent lives, when it was asked for.
+    var handoffStubPath: String? {
+        guard handoffAgentStub, let root = dataDirectoryOverride else { return nil }
+        return root.appendingPathComponent("handoff-agent-stub.sh").path
+    }
+
+    /// A script that answers exactly the way a logged-in `claude -p` does:
+    /// reads the prompt from stdin, prints an envelope whose `result` carries
+    /// the handover JSON. Everything downstream of the executable — the shell
+    /// invocation, the parsing, the merge, the wording shown to the user — is
+    /// the production path.
+    private func writeHandoffStub(into root: URL) {
+        let handover = #"{\"objective\": \"Finish the demo feature\", \"workDone\": [\"wrote the parser\"], \"decisions\": [\"kept the tolerant reader\"], \"openItems\": [\"wire the UI\"], \"knownProblems\": [\"the first approach deadlocked\"], \"suggestedNextStep\": \"run the tests\"}"#
+        let script = """
+        #!/bin/sh
+        cat - > /dev/null
+        printf '%s' '{"result": "\(handover)", "is_error": false}'
+        """
+        let url = root.appendingPathComponent("handoff-agent-stub.sh")
+        try? script.write(to: url, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: url.path
+        )
     }
 
     /// Seeds fixture data. Runs on first launch of a UI-testing session.
@@ -166,9 +200,11 @@ struct LaunchConfig {
             ),
             TestSuiteConfiguration(
                 id: "e2e", name: "End-to-end", command: "./run-e2e.sh", framework: .unknown,
-                notes: "the output format is not recognised"
+                notes: "the output format is not recognised",
+                artifacts: "build/screenshots"
             ),
         ], projectRoot: projectDir)
+        let shot = Self.seedFixtureScreenshot(projectRoot: projectDir)
         TestRegistry.saveRecord(
             TestRunRecord(
                 id: "demo-unit", suiteID: "unit",
@@ -179,11 +215,25 @@ struct LaunchConfig {
                 cases: [
                     TestCaseResult(
                         suite: "SidebarChildSessionTests", name: "testACycleLosesNoSession",
-                        outcome: .failed
+                        outcome: .failed, duration: 0.184,
+                        message: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")"
                     ),
                     TestCaseResult(
                         suite: "DockerStatusTests", name: "testEmptyOutputIsNoContainers",
-                        outcome: .failed
+                        outcome: .failed, duration: 0.021,
+                        message: "XCTAssertTrue failed — the parser read a blank line as a container"
+                    ),
+                    TestCaseResult(
+                        suite: "TodoParserTests", name: "testFrontmatterIsRead",
+                        outcome: .passed, duration: 0.003
+                    ),
+                    TestCaseResult(
+                        suite: "HandoffTests", name: "testPromptIsBuilt",
+                        outcome: .passed, duration: 0.012
+                    ),
+                    TestCaseResult(
+                        suite: "UsageAttentionTests", name: "testAnAccountIsWarnedOnce",
+                        outcome: .skipped
                     ),
                 ],
                 logTail: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")"
@@ -198,7 +248,8 @@ struct LaunchConfig {
                 exitCode: 0,
                 summary: TestRunSummary(isDetailed: false),
                 cases: [],
-                logTail: "all good\n"
+                logTail: "all good\n",
+                artifacts: shot.map { [$0] } ?? []
             ),
             directory: TestRegistry.shared.resultsDirectory(projectID: project.id)
         )
@@ -213,6 +264,35 @@ struct LaunchConfig {
             .first(where: { $0.provider == .terminal }) {
             projectStore.togglePin(pinned.id)
         }
+    }
+
+    /// Writes one small image into the demo project, so the Tests screen has a
+    /// real artifact to open rather than a row pointing at nothing.
+    ///
+    /// Drawn rather than bundled: a fixture image shipped in the app would be
+    /// weight every user carries for a screen only a UI test opens.
+    static func seedFixtureScreenshot(projectRoot: URL) -> TestArtifact? {
+        let directory = projectRoot.appendingPathComponent("build/screenshots", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true
+        )
+        let url = directory.appendingPathComponent("e2e-checkout.png")
+        let size = NSSize(width: 480, height: 300)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.11, alpha: 1).setFill()
+        NSRect(origin: .zero, size: size).fill()
+        NSColor(calibratedRed: 0.47, green: 0.34, blue: 0.85, alpha: 1).setFill()
+        NSRect(x: 24, y: 200, width: 300, height: 56).fill()
+        image.unlockFocus()
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else { return nil }
+        try? png.write(to: url, options: .atomic)
+        return TestArtifact(
+            path: url.path, name: url.lastPathComponent, kind: .image, modifiedAt: Date()
+        )
     }
 
     /// Seeds one row per Attention Center source so the panel can be driven

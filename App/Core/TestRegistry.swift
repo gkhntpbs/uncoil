@@ -11,6 +11,9 @@ struct TestRunRecord: Codable, Equatable, Identifiable {
     var cases: [TestCaseResult]
     /// Tail of the output, for a failure worth reading.
     var logTail: String
+    /// Files the run left behind that no single test claimed. Per-test ones
+    /// live on the case itself, so a step shows its own screenshot.
+    var artifacts: [TestArtifact] = []
 
     var duration: TimeInterval? {
         finishedAt.map { $0.timeIntervalSince(startedAt) }
@@ -18,6 +21,31 @@ struct TestRunRecord: Codable, Equatable, Identifiable {
 
     var failedCases: [TestCaseResult] {
         cases.filter { $0.outcome == .failed }
+    }
+
+    /// Everything the run produced, per-test files included.
+    var allArtifacts: [TestArtifact] {
+        cases.flatMap(\.artifacts) + artifacts
+    }
+}
+
+/// Decoded by hand, in an extension so the memberwise initialiser survives.
+///
+/// The point is `artifacts`: records written before it existed have no such
+/// key, and synthesised decoding would fail the whole file — losing the last
+/// result of every suite the moment the app updated.
+extension TestRunRecord {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        suiteID = try container.decode(String.self, forKey: .suiteID)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        finishedAt = try container.decodeIfPresent(Date.self, forKey: .finishedAt)
+        exitCode = try container.decodeIfPresent(Int32.self, forKey: .exitCode)
+        summary = try container.decode(TestRunSummary.self, forKey: .summary)
+        cases = try container.decode([TestCaseResult].self, forKey: .cases)
+        logTail = try container.decode(String.self, forKey: .logTail)
+        artifacts = try container.decodeIfPresent([TestArtifact].self, forKey: .artifacts) ?? []
     }
 }
 
@@ -154,15 +182,25 @@ final class TestRegistry: ObservableObject {
         let parsed = TestOutputParser.parse(
             output, framework: suite.framework, exitCode: exitCode
         )
+        let finishedAt = Date()
+        let root = project.rootURL
+        let collected = await Task.detached(priority: .userInitiated) {
+            Self.artifacts(
+                suite: suite, projectRoot: root,
+                startedAt: startedAt, finishedAt: finishedAt
+            )
+        }.value
+        let attached = TestArtifactCollector.attach(collected, to: parsed.cases)
         let record = TestRunRecord(
             id: UUID().uuidString,
             suiteID: suite.id,
             startedAt: startedAt,
-            finishedAt: Date(),
+            finishedAt: finishedAt,
             exitCode: exitCode,
             summary: parsed.summary,
-            cases: parsed.cases,
-            logTail: String(output.suffix(Self.logTailLimit))
+            cases: attached.cases,
+            logTail: String(output.suffix(Self.logTailLimit)),
+            artifacts: attached.unattached
         )
         states[key] = TestSuiteState(
             isRunning: false, startedAt: nil, latest: record, logTail: record.logTail
@@ -179,6 +217,24 @@ final class TestRegistry: ObservableObject {
     func stop(project: Project, suiteID: String) {
         let key = Key(projectID: project.id, suiteID: suiteID)
         handles[key]?.terminate()
+    }
+
+    /// The files the suite wrote while it ran, if it says where it writes them.
+    ///
+    /// The listing happens off the main actor: an artifact directory of a few
+    /// thousand screenshots is a real directory walk, and doing it here would
+    /// stall the window at the exact moment the result lands.
+    nonisolated static func artifacts(
+        suite: TestSuiteConfiguration, projectRoot: URL,
+        startedAt: Date, finishedAt: Date
+    ) -> [TestArtifact] {
+        guard let directory = TestArtifactCollector.directory(
+            for: suite, projectRoot: projectRoot
+        ) else { return [] }
+        return TestArtifactCollector.collect(
+            entries: TestArtifactCollector.scan(directory: directory),
+            startedAt: startedAt, finishedAt: finishedAt
+        )
     }
 
     private func appendTail(_ text: String, key: Key) {

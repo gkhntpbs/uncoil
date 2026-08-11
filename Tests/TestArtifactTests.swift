@@ -1,0 +1,174 @@
+import XCTest
+@testable import Uncoil
+
+/// The files a run leaves behind: which ones count as this run's, which step
+/// each belongs to, and which directory the app is willing to read at all.
+final class TestArtifactTests: XCTestCase {
+    private func entry(_ name: String, _ offset: TimeInterval, from base: Date)
+        -> TestArtifactCollector.Entry {
+        TestArtifactCollector.Entry(
+            url: URL(fileURLWithPath: "/tmp/shots/\(name)"),
+            modifiedAt: base.addingTimeInterval(offset)
+        )
+    }
+
+    // MARK: - The time window
+
+    /// A screenshot from yesterday's run is still on disk, and attaching it to
+    /// today's failure would be a lie told with a picture.
+    func testOnlyFilesWrittenDuringTheRunAreCollected() {
+        let started = Date()
+        let artifacts = TestArtifactCollector.collect(
+            entries: [
+                entry("old.png", -3600, from: started),
+                entry("during.png", 2, from: started),
+                entry("after-the-fact.png", 600, from: started),
+            ],
+            startedAt: started, finishedAt: started.addingTimeInterval(10)
+        )
+        XCTAssertEqual(artifacts.map(\.name), ["during.png"])
+    }
+
+    /// A suite that writes its first screenshot in the same instant it starts
+    /// would otherwise lose it to clock granularity.
+    func testTheWindowStartsSlightlyBeforeTheRun() {
+        let started = Date()
+        let artifacts = TestArtifactCollector.collect(
+            entries: [entry("first.png", -0.4, from: started)],
+            startedAt: started, finishedAt: started.addingTimeInterval(5)
+        )
+        XCTAssertEqual(artifacts.count, 1)
+    }
+
+    func testKindComesFromTheExtension() {
+        XCTAssertEqual(TestArtifactCollector.kind(for: URL(fileURLWithPath: "/a/b.PNG")), .image)
+        XCTAssertEqual(TestArtifactCollector.kind(for: URL(fileURLWithPath: "/a/b.mp4")), .video)
+        XCTAssertEqual(TestArtifactCollector.kind(for: URL(fileURLWithPath: "/a/b.json")), .other)
+        XCTAssertFalse(TestArtifact.Kind.video.isPreviewable)
+    }
+
+    // MARK: - Attachment
+
+    func testAnArtifactGoesToTheStepWhoseNameItCarries() {
+        let started = Date()
+        let artifacts = TestArtifactCollector.collect(
+            entries: [entry("smoke-01-anasayfa.png", 1, from: started)],
+            startedAt: started, finishedAt: nil
+        )
+        let cases = [
+            TestCaseResult(suite: "Smoke", name: "smoke 01 anasayfa", outcome: .passed),
+            TestCaseResult(suite: "Smoke", name: "checkoutFlow", outcome: .failed),
+        ]
+        let result = TestArtifactCollector.attach(artifacts, to: cases)
+        XCTAssertEqual(result.cases[0].artifacts.map(\.name), ["smoke-01-anasayfa.png"])
+        XCTAssertTrue(result.cases[1].artifacts.isEmpty)
+        XCTAssertTrue(result.unattached.isEmpty)
+    }
+
+    /// A file nobody claims is still shown — under the run rather than under a
+    /// step it has nothing to do with.
+    func testAnUnclaimedArtifactStaysWithTheRun() {
+        let started = Date()
+        let artifacts = TestArtifactCollector.collect(
+            entries: [entry("report.html", 1, from: started)],
+            startedAt: started, finishedAt: nil
+        )
+        let result = TestArtifactCollector.attach(
+            artifacts, to: [TestCaseResult(suite: "", name: "checkoutFlow", outcome: .passed)]
+        )
+        XCTAssertTrue(result.cases[0].artifacts.isEmpty)
+        XCTAssertEqual(result.unattached.map(\.name), ["report.html"])
+    }
+
+    /// A step called `test` would otherwise swallow every file in the folder.
+    func testVeryShortStepNamesClaimNothing() {
+        let started = Date()
+        let artifacts = TestArtifactCollector.collect(
+            entries: [entry("a-screenshot.png", 1, from: started)],
+            startedAt: started, finishedAt: nil
+        )
+        let result = TestArtifactCollector.attach(
+            artifacts, to: [TestCaseResult(suite: "", name: "a", outcome: .passed)]
+        )
+        XCTAssertTrue(result.cases[0].artifacts.isEmpty)
+        XCTAssertEqual(result.unattached.count, 1)
+    }
+
+    // MARK: - The directory
+
+    func testTheArtifactsPathIsResolvedAgainstTheProject() {
+        let root = URL(fileURLWithPath: "/projects/app")
+        let suite = TestSuiteConfiguration(
+            id: "e2e", command: "maestro test", artifacts: "build/screenshots"
+        )
+        XCTAssertEqual(
+            TestArtifactCollector.directory(for: suite, projectRoot: root)?.path,
+            "/projects/app/build/screenshots"
+        )
+    }
+
+    /// The field is editable by an agent, so it must not be able to point the
+    /// app at somewhere outside the project it belongs to.
+    func testAPathThatClimbsOutOfTheProjectIsRefused() {
+        let root = URL(fileURLWithPath: "/projects/app")
+        for path in ["../../etc", "/etc", "build/../../secrets"] {
+            let suite = TestSuiteConfiguration(id: "e2e", command: "true", artifacts: path)
+            XCTAssertNil(
+                TestArtifactCollector.directory(for: suite, projectRoot: root),
+                "\(path) should not resolve"
+            )
+        }
+    }
+
+    func testASuiteWithNoArtifactsPathHasNoDirectory() {
+        let suite = TestSuiteConfiguration(id: "unit", command: "swift test")
+        XCTAssertNil(
+            TestArtifactCollector.directory(
+                for: suite, projectRoot: URL(fileURLWithPath: "/projects/app")
+            )
+        )
+    }
+
+    // MARK: - Round trip
+
+    /// The field is written to `.uncoil/tests.json` and read back, and an agent
+    /// that adds it by hand has to reach the app.
+    func testTheArtifactsPathSurvivesTheConfigFile() throws {
+        let data = Data("""
+        {"version": 1, "suites": [
+          {"id": "e2e", "command": "maestro test", "artifacts": "build/shots"}
+        ]}
+        """.utf8)
+        let suite = try XCTUnwrap(TestConfigFile.parse(data).suites.first)
+        XCTAssertEqual(suite.artifacts, "build/shots")
+        let encoded = try JSONEncoder().encode(suite)
+        let decoded = try JSONDecoder().decode(TestSuiteConfiguration.self, from: encoded)
+        XCTAssertEqual(decoded.artifacts, "build/shots")
+    }
+
+    /// Results written before artifacts existed have no such key, and failing
+    /// to decode them would drop the last result of every suite on update.
+    func testAnOlderRecordStillDecodes() throws {
+        let data = Data("""
+        {
+          "id": "1", "suiteID": "unit", "startedAt": 0, "finishedAt": 1,
+          "summary": {"passed": 1, "failed": 0, "skipped": 0, "isDetailed": true},
+          "cases": [{"suite": "S", "name": "testOne", "outcome": "passed"}],
+          "logTail": ""
+        }
+        """.utf8)
+        let record = try JSONDecoder().decode(TestRunRecord.self, from: data)
+        XCTAssertTrue(record.artifacts.isEmpty)
+        XCTAssertTrue(record.cases[0].artifacts.isEmpty)
+        XCTAssertEqual(record.summary.passed, 1)
+    }
+
+    // MARK: - Formatting
+
+    func testLongDurationsAreWrittenAsMinutes() {
+        XCTAssertEqual(TestStepFormat.duration(0.003), "3ms")
+        XCTAssertEqual(TestStepFormat.duration(0.25), "250ms")
+        XCTAssertEqual(TestStepFormat.duration(42), "42.0s")
+        XCTAssertEqual(TestStepFormat.duration(423), "7:03")
+    }
+}
