@@ -8,6 +8,7 @@ import SwiftUI
 ///   -reset-state           wipe that directory before start
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
 ///   -tests-run <suite id>  start that suite as soon as the Tests screen opens
+///   -tests-step <suite id> open that suite's leading step in its detail window
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
@@ -36,6 +37,8 @@ struct LaunchConfig {
     /// A test suite to start as soon as the Tests screen appears, so the live
     /// step stream can be watched without a click.
     let testsRun: String?
+    /// A suite whose first step opens its detail window as the screen appears.
+    let testsStep: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
     let windowWidth: Double?
@@ -96,6 +99,7 @@ struct LaunchConfig {
         extensionsAction = Self.value(after: "-extensions-action", in: arguments)
         projectArea = Self.value(after: "-project-area", in: arguments)
         testsRun = isUITesting ? Self.value(after: "-tests-run", in: arguments) : nil
+        testsStep = isUITesting ? Self.value(after: "-tests-step", in: arguments) : nil
         onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)

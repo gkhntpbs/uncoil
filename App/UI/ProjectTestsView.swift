@@ -108,7 +108,7 @@ struct ProjectTestsView: View {
     private func suiteCard(_ suite: TestSuiteConfiguration) -> some View {
         let state = registry.state(project: project, suiteID: suite.id)
         let isExpanded = expanded.contains(suite.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
             HStack(spacing: 8) {
                 verdict(state)
                 VStack(alignment: .leading, spacing: 2) {
@@ -154,18 +154,24 @@ struct ProjectTestsView: View {
                     }
                 }
             }
-            if state.isRunning {
-                running(state, suite: suite)
-            }
-            if let record = state.latest {
-                summaryLine(record, suite: suite)
-                if isExpanded {
-                    TestStepList(record: record, suite: suite)
-                        .padding(.top, 2)
+            // Everything under the header lines up with the suite's name: the
+            // status dot is 8pt wide with 8pt beside it, so that column is
+            // exactly where the title starts, and nothing here should sit at a
+            // different one.
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                if state.isRunning {
+                    running(state, suite: suite)
+                }
+                if let record = state.latest {
+                    summaryLine(record)
+                    if isExpanded {
+                        TestStepList(record: record, suite: suite)
+                    }
                 }
             }
+            .padding(.leading, 16)
         }
-        .padding(12)
+        .padding(Theme.Space.snug)
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.panel)
@@ -192,7 +198,6 @@ struct ProjectTestsView: View {
                     .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(4)
-                    .padding(.leading, 16)
             }
         } else {
             let summary = state.liveSummary
@@ -219,7 +224,6 @@ struct ProjectTestsView: View {
                 .font(Theme.mono(.micro))
                 TestStepRows(cases: Array(live.suffix(8)), suiteID: suite.id)
             }
-            .padding(.leading, 16)
             .accessibilityIdentifier("tests.live.\(suite.id)")
         }
     }
@@ -241,7 +245,7 @@ struct ProjectTestsView: View {
         }
     }
 
-    private func summaryLine(_ record: TestRunRecord, suite: TestSuiteConfiguration) -> some View {
+    private func summaryLine(_ record: TestRunRecord) -> some View {
         HStack(spacing: 8) {
             if record.summary.isDetailed {
                 Text("\(record.summary.passed) passed")
@@ -257,25 +261,30 @@ struct ProjectTestsView: View {
                 // made: nothing parsed it, and all that is known is the status.
                 Text(record.summary.didPass ? "Passed" : "Failed")
                     .foregroundStyle(record.summary.didPass ? Theme.ok : Theme.danger)
-                Text("(\(suite.framework.displayName) — no per-test detail)")
+                Text("no per-test detail")
                     .foregroundStyle(Theme.textFaint)
             }
+            // What the run came to, and what it cost, are two different things
+            // — without a mark between them the line reads as one run-on
+            // number: "128 passed 2 failed 1 skipped 5.0s 1m".
+            Text("·").foregroundStyle(Theme.border)
             if let duration = record.duration {
-                Text(TestStepFormat.duration(duration)).foregroundStyle(Theme.textFaint)
-            }
-            if !record.allArtifacts.isEmpty {
-                HStack(spacing: 3) {
-                    TablerIcon(name: "photo", size: 9, color: Theme.textFaint)
-                    Text("\(record.allArtifacts.count)")
-                }
-                .foregroundStyle(Theme.textFaint)
+                Text(TestStepFormat.duration(duration))
+                    .foregroundStyle(Theme.textFaint)
+                    .monospacedDigit()
             }
             if let finished = record.finishedAt {
                 Text(RelativeClock.short(since: finished)).foregroundStyle(Theme.textFaint)
             }
+            if !record.allArtifacts.isEmpty {
+                HStack(spacing: 3) {
+                    TablerIcon(name: "photo", size: 10, color: Theme.textFaint)
+                    Text("\(record.allArtifacts.count)")
+                }
+                .foregroundStyle(Theme.textFaint)
+            }
         }
         .font(Theme.mono(.micro))
-        .padding(.leading, 16)
     }
 
     private func lastLines(_ text: String, _ count: Int) -> String {

@@ -219,3 +219,33 @@ final class TestLiveParserTests: XCTestCase {
         XCTAssertFalse(TestSuiteState().liveSummary.isDetailed)
     }
 }
+
+/// Which steps the list shows, and which filter it starts on.
+final class TestStepFilterTests: XCTestCase {
+    private let cases = [
+        TestCaseResult(suite: "S", name: "one", outcome: .passed),
+        TestCaseResult(suite: "S", name: "two", outcome: .failed),
+        TestCaseResult(suite: "S", name: "three", outcome: .skipped),
+    ]
+
+    /// A red run leads with what failed; a green one has nothing to lead with.
+    func testTheDefaultFollowsTheRun() {
+        XCTAssertEqual(
+            TestStepList.defaultFilter(for: TestRunSummary(passed: 9, failed: 1, isDetailed: true)),
+            .failed
+        )
+        XCTAssertEqual(
+            TestStepList.defaultFilter(for: TestRunSummary(passed: 9, isDetailed: true)),
+            .all
+        )
+    }
+
+    /// The regression this guards: `All` used to be indistinguishable from
+    /// "nothing chosen", so choosing it on a failed run showed the failures.
+    func testAllShowsEveryStep() {
+        XCTAssertEqual(TestStepList.visible(cases, filter: .all).count, 3)
+        XCTAssertEqual(TestStepList.visible(cases, filter: .failed).map(\.name), ["two"])
+        XCTAssertEqual(TestStepList.visible(cases, filter: .skipped).map(\.name), ["three"])
+        XCTAssertNil(TestStepList.Filter.all.outcome)
+    }
+}
