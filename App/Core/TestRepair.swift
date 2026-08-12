@@ -1,12 +1,13 @@
-import AppKit
 import Foundation
 
 /// Routes a failing test suite to a coding agent.
 ///
-/// Peer of `RunRepair`, and deliberately the same shape: a prompt that points
-/// the agent at the `uncoil_run` MCP tool, submitted to the project's most
-/// recently active agent session, falling back to the clipboard when there is
-/// no live agent to hand it to.
+/// Peer of `RunRepair`, and deliberately *not* the same in one respect: this
+/// opens a new session rather than talking into whichever agent happened to be
+/// active. A failure is its own piece of work — dropping it into a session
+/// halfway through something else buries both — and a fresh session starts on
+/// the user's default provider and settings, with nothing in its context to
+/// argue with.
 ///
 /// What differs is the instruction. A failed run is a configuration to repair;
 /// a failed test is a claim about the code, and the agent is told to find out
@@ -71,11 +72,7 @@ enum TestRepair {
                 + "or delete an assertion to make it pass; if the test is the thing that is wrong, "
                 + "explain why before changing it."
         )
-        lines.append(
-            "Re-run with the uncoil_run tool in the Uncoil MCP — "
-                + "{\"action\":\"test_run\",\"id\":\"\(suite.id)\"} — until it passes "
-                + "(at most 3 rounds), then report what you changed."
-        )
+        lines.append(mcpNote(suiteID: suite.id))
         if !record.summary.isDetailed, !record.logTail.isEmpty {
             // The only thing that explains a failure nobody parsed.
             lines.append("Last output:\n\(record.logTail.suffix(1200))")
@@ -86,8 +83,27 @@ enum TestRepair {
         return lines.joined(separator: "\n")
     }
 
-    /// Returns true when the prompt was handed to a session; false when it was
-    /// copied to the clipboard instead.
+    /// What the agent can drive this suite with.
+    ///
+    /// Spelled out rather than left to be discovered: a fresh session has no
+    /// idea Uncoil is holding its results, and an agent that does not know
+    /// about `test_run` re-runs the suite by hand and reads its own scrollback.
+    static func mcpNote(suiteID: String) -> String {
+        [
+            "Uncoil's MCP drives the tests for you, under the uncoil_run tool:",
+            "- {\"action\":\"test_run\",\"id\":\"\(suiteID)\"} runs the suite and returns its"
+                + " result: per-test failures with their messages, the files it wrote, and the"
+                + " exit code.",
+            "- {\"action\":\"test_results\",\"id\":\"\(suiteID)\"} is the last result without"
+                + " running anything.",
+            "- {\"action\":\"test_list\"} is every suite of this project,"
+                + " {\"action\":\"test_update\"} edits one in .uncoil/tests.json, and"
+                + " {\"action\":\"help\"} documents all of them.",
+            "Use test_run to check your fix — at most 3 rounds — and report what you changed.",
+        ].joined(separator: "\n")
+    }
+
+    /// Opens a session for this failure and hands it the prompt.
     @discardableResult
     static func dispatch(
         project: Project,
@@ -95,22 +111,31 @@ enum TestRepair {
         record: TestRunRecord,
         focus: TestCaseResult? = nil,
         projectStore: ProjectStore,
+        provider: AgentProvider,
         language: PromptLanguage = .english
-    ) -> Bool {
+    ) -> SessionRecord {
         let text = prompt(suite: suite, record: record, focus: focus, language: language)
-        guard let session = RunRepair.candidateSession(
-            project: project, projectStore: projectStore
-        ) else {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-            return false
-        }
+        let session = projectStore.createSession(
+            projectID: project.id,
+            provider: provider,
+            // Default account and default launch settings: the user's own
+            // defaults are what a session opened on their behalf should use.
+            accountID: nil,
+            title: title(suite: suite, focus: focus)
+        )
         MainRoute.shared.request(.session(session.id))
         Task {
             await TerminalRegistry.shared.submitText(
                 text, for: session.id, provider: session.provider, namesTheSession: false
             )
         }
-        return true
+        return session
+    }
+
+    /// What the new session is called in the sidebar. Names the thing that is
+    /// wrong, so a row full of sessions still says which failure is which.
+    static func title(suite: TestSuiteConfiguration, focus: TestCaseResult?) -> String {
+        if let focus { return "fix \(focus.name)" }
+        return "fix \(suite.name)"
     }
 }

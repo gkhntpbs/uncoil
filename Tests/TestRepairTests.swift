@@ -49,6 +49,7 @@ final class TestRepairTests: XCTestCase {
         XCTAssertTrue(text.contains("DockerStatusTests.testEmptyOutput: XCTAssertTrue failed"))
         XCTAssertFalse(text.contains("testPasses"))
         XCTAssertTrue(text.contains("{\"action\":\"test_run\",\"id\":\"unit\"}"))
+        XCTAssertTrue(text.contains("uncoil_run"))
     }
 
     /// A long list would spend the agent's context on an enumeration; what it
@@ -108,5 +109,30 @@ final class TestRepairTests: XCTestCase {
             )
         )
         XCTAssertFalse(text.contains("a thousand green lines"))
+    }
+
+    /// A fresh session knows nothing about Uncoil holding the suite's results,
+    /// so the prompt says which actions drive it — otherwise the agent re-runs
+    /// the suite by hand and reads its own scrollback.
+    func testThePromptExplainsTheMcpsTestActions() {
+        let note = TestRepair.mcpNote(suiteID: "unit")
+        for action in ["test_run", "test_results", "test_list", "test_update", "help"] {
+            XCTAssertTrue(note.contains(action), "the note should mention \(action)")
+        }
+        XCTAssertTrue(note.contains("uncoil_run"))
+        XCTAssertTrue(note.contains(".uncoil/tests.json"))
+    }
+
+    /// The session is named after what is wrong, so a sidebar full of them
+    /// still says which failure is which.
+    func testTheSessionIsNamedAfterTheFailure() {
+        XCTAssertEqual(TestRepair.title(suite: suite, focus: nil), "fix Unit tests")
+        XCTAssertEqual(
+            TestRepair.title(
+                suite: suite,
+                focus: TestCaseResult(suite: "S", name: "testOne", outcome: .failed)
+            ),
+            "fix testOne"
+        )
     }
 }

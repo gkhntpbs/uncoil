@@ -17,8 +17,6 @@ struct ProjectTestsView: View {
     @State private var expanded: Set<String> = []
     @State private var message: String?
     @State private var isDetecting = false
-    /// What became of the last hand-off, per suite.
-    @State private var repairNotes: [String: String] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -197,13 +195,11 @@ struct ProjectTestsView: View {
     ) -> some View {
         HStack(spacing: 8) {
             Button {
-                let handed = TestRepair.dispatch(
+                TestRepair.dispatch(
                     project: project, suite: suite, record: record,
-                    projectStore: projectStore, language: settings.language.resolvedAgent()
+                    projectStore: projectStore, provider: settings.defaultProvider,
+                    language: settings.language.resolvedAgent()
                 )
-                repairNotes[suite.id] = handed
-                    ? String(localized: "Sent to the agent")
-                    : String(localized: "No live agent — the prompt was copied to the clipboard")
             } label: {
                 HStack(spacing: 5) {
                     TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
@@ -216,13 +212,8 @@ struct ProjectTestsView: View {
                 .background(Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
             }
             .buttonStyle(.plain)
-            .help(String(localized: "Ask this project's agent to look at the failures"))
+            .help(String(localized: "Open a new agent session on these failures"))
             .accessibilityIdentifier("tests.repair.\(suite.id)")
-            if let note = repairNotes[suite.id] {
-                Text(note)
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-            }
             Spacer(minLength: 0)
         }
     }

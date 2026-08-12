@@ -430,7 +430,6 @@ struct TestStepDetailSheet: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
-    @State private var repairNote: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -560,13 +559,13 @@ struct TestStepDetailSheet: View {
             // be a button with nothing to say.
             if result.outcome == .failed, let project {
                 Button {
-                    let handed = TestRepair.dispatch(
+                    TestRepair.dispatch(
                         project: project, suite: suite, record: record, focus: result,
-                        projectStore: projectStore, language: settings.language.resolvedAgent()
+                        projectStore: projectStore, provider: settings.defaultProvider,
+                        language: settings.language.resolvedAgent()
                     )
-                    repairNote = handed
-                        ? String(localized: "Sent to the agent")
-                        : String(localized: "No live agent — copied to the clipboard")
+                    // The new session is what the user should be looking at.
+                    dismiss()
                 } label: {
                     HStack(spacing: 5) {
                         TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
@@ -582,11 +581,6 @@ struct TestStepDetailSheet: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("tests.stepDetail.repair")
-                if let repairNote {
-                    Text(repairNote)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
-                }
             }
             Button("Copy name") { copy(result.id) }
                 .buttonStyle(.pressable)
