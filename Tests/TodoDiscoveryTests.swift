@@ -41,14 +41,29 @@ final class TodoDiscoveryTests: XCTestCase {
         )
     }
 
-    func testSkipsGeneratedAndDependencyDirectories() throws {
+    func testSkipsDependencyTreesAndToolCaches() throws {
         try write("TODO.md")
-        for directory in [".git", "node_modules", "build", ".build", "DerivedData", "Pods", "vendor"] {
+        for directory in [".git", "node_modules", ".build", "DerivedData", "Pods", "vendor"] {
             try write("\(directory)/TODO.md")
         }
         try write("App/node_modules/deep/TODO.md")
 
         XCTAssertEqual(find().map(\.displayPath), ["TODO.md"])
+    }
+
+    /// `build`, `dist` and `target` are as often somebody's own source
+    /// directory as they are generated output, and a wrongly skipped file is
+    /// invisible rather than merely unwanted.
+    func testDirectoriesThatCouldBeSourceAreScanned() throws {
+        try write("TODO.md")
+        try write("build/TODO.md")
+        try write("dist/TODO.md")
+        try write("target/TODO.md")
+
+        XCTAssertEqual(
+            find().map(\.displayPath),
+            ["TODO.md", "build/TODO.md", "dist/TODO.md", "target/TODO.md"]
+        )
     }
 
     func testUserCanExcludeAndIncludeDirectories() throws {
@@ -58,13 +73,14 @@ final class TodoDiscoveryTests: XCTestCase {
 
         var rules = TodoDiscovery.Rules.default
         rules.excludedDirectories = ["docs"]
-        XCTAssertEqual(find(rules).map(\.displayPath), ["TODO.md"])
+        XCTAssertEqual(find(rules).map(\.displayPath), ["TODO.md", "build/TODO.md"])
 
         rules = .default
-        rules.includedDirectories = ["build"]
+        rules.includedDirectories = ["node_modules"]
+        try write("node_modules/TODO.md")
         XCTAssertEqual(
             Set(find(rules).map(\.displayPath)),
-            ["TODO.md", "build/TODO.md", "docs/TODO.md"],
+            ["TODO.md", "build/TODO.md", "docs/TODO.md", "node_modules/TODO.md"],
             "an explicit include beats the default exclusion"
         )
     }
@@ -112,6 +128,40 @@ final class TodoDiscoveryTests: XCTestCase {
     func testMissingProjectRootYieldsNothing() {
         XCTAssertTrue(
             TodoDiscovery.find(projectRoot: "/nope/does/not/exist", ignoredPaths: []).isEmpty
+        )
+    }
+
+    /// The reason this changed: a TODO list is very often kept out of the
+    /// history on purpose, and the project's own list was then the one file
+    /// Uncoil would not show.
+    func testAGitIgnoredTodoIsFound() throws {
+        try write("TODO.md")
+        try write(".gitignore", "TODO.md\ndocs/\n")
+        try write("docs/TODO.md")
+        let git = Process()
+        git.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        git.arguments = ["git", "-C", root.path, "init", "--quiet"]
+        try? git.run()
+        git.waitUntilExit()
+        try XCTSkipUnless(git.terminationStatus == 0, "git is not available")
+
+        // No `ignoredPaths` argument: this is the real path, rules and all.
+        let found = TodoDiscovery.find(projectRoot: root.path)
+        XCTAssertEqual(found.map(\.displayPath), ["TODO.md", "docs/TODO.md"])
+    }
+
+    /// A repository inside the project is still inside the project.
+    func testATodoInsideANestedRepositoryIsFound() throws {
+        try write("TODO.md")
+        try write("packages/inner/TODO.md")
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("packages/inner/.git"),
+            withIntermediateDirectories: true
+        )
+
+        XCTAssertEqual(
+            TodoDiscovery.find(projectRoot: root.path).map(\.displayPath),
+            ["TODO.md", "packages/inner/TODO.md"]
         )
     }
 

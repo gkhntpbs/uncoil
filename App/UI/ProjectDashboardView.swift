@@ -478,10 +478,11 @@ struct ProjectDashboardView: View {
 
     private func announceSwitch(to branch: String) {
         let note = String(localized: "The working tree moved to branch \(branch).")
-        for session in rootSessions where sessionStore.status(of: session.id) != .terminated {
+        for session in rootSessions where sessionStore.status(of: session.id).isKnownLive {
             Task {
                 await TerminalRegistry.shared.submitText(
-                    note, for: session.id, provider: session.provider)
+                    note, for: session.id, provider: session.provider,
+                    namesTheSession: false)
             }
         }
     }

@@ -24,6 +24,7 @@ final class TerminalRegistry {
     /// be released while the few most recent stay instantly re-openable.
     private var deadOrder: [UUID] = []
     private let deadTerminalLimit = 4
+    private weak var titleStore: ProjectStore?
 
     func hasTerminal(for recordID: UUID) -> Bool {
         terminals[recordID] != nil
@@ -54,6 +55,9 @@ final class TerminalRegistry {
         sessionStore: SessionStore,
         projectStore: ProjectStore
     ) -> TerminalView {
+        // Held so a prompt submitted through the app can name the session it
+        // went to; every terminal in the app is opened through here.
+        titleStore = projectStore
         if let existing = terminals[record.id], !deadSessions.contains(record.id) {
             return existing
         }
@@ -497,7 +501,7 @@ final class TerminalRegistry {
             cwd: record.workingDirectory(in: project)
         )
 
-        let delegate = RuntimeTerminalDelegate(recordID: record.id)
+        let delegate = RuntimeTerminalDelegate(recordID: record.id, projectStore: projectStore)
         view.terminalDelegate = delegate
         delegates[record.id] = delegate
 
@@ -642,7 +646,34 @@ final class TerminalRegistry {
         codexSessions.removeAll()
     }
 
-    func submitText(_ text: String, for recordID: UUID, provider: AgentProvider) async {
+    /// Submits a prompt into a session.
+    ///
+    /// `namesTheSession` is false for the text Uncoil sends on its own account
+    /// — a branch-change note, a repair prompt, a handoff's opening line. A
+    /// session named after something the user never asked would be worse than
+    /// one still called "new session".
+    func submitText(
+        _ text: String,
+        for recordID: UUID,
+        provider: AgentProvider,
+        namesTheSession: Bool = true
+    ) async {
+        if namesTheSession, let candidate = SessionAutoTitle.candidate(from: text) {
+            titleStore?.adoptAutomaticTitle(candidate, for: recordID)
+        }
+        await submitTextIgnoringTitle(text, for: recordID, provider: provider)
+    }
+
+    private func submitTextIgnoringTitle(
+        _ text: String, for recordID: UUID, provider: AgentProvider
+    ) async {
+        // A terminal's content is invisible to accessibility queries, so
+        // without the journal the difference between "the prompt reached the
+        // session" and "the prompt went nowhere" cannot be asserted at all —
+        // which is how a handoff that delivered nothing once passed its test.
+        if LaunchConfig.shared.isUITesting {
+            UITestJournal.append("SUBMIT", "\(recordID.uuidString)\t\(text)")
+        }
         if let session = codexSessions[recordID] {
             session.submit(text)
             return
@@ -769,13 +800,40 @@ final class TerminalRegistry {
 /// Routes terminal-view events to the runtime daemon.
 final class RuntimeTerminalDelegate: TerminalViewDelegate {
     private let recordID: UUID
+    private weak var projectStore: ProjectStore?
+    /// Watches the keys going past for the session's first prompt, and is
+    /// dropped the moment the session has a name — after that it would be
+    /// reading everything the user types for no reason at all.
+    private var typedLine: SessionAutoTitle.TypedLineBuffer?
 
-    init(recordID: UUID) {
+    @MainActor
+    init(recordID: UUID, projectStore: ProjectStore? = nil) {
         self.recordID = recordID
+        self.projectStore = projectStore
+        let record = projectStore?.sessions.first { $0.id == recordID }
+        if record?.hasPlaceholderTitle ?? false { typedLine = .init() }
     }
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
+        // Keystrokes arrive from AppKit, which is the main thread by
+        // definition; the protocol simply does not say so.
+        if typedLine != nil {
+            MainActor.assumeIsolated { watchForFirstPrompt(data) }
+        }
         RuntimeClient.shared.sendInput(Data(data), sid: recordID)
+    }
+
+    @MainActor
+    private func watchForFirstPrompt(_ data: ArraySlice<UInt8>) {
+        if let line = typedLine?.feed(data) {
+            projectStore?.adoptAutomaticTitle(line, for: recordID)
+            typedLine = nil
+        } else if projectStore?.sessions.first(where: { $0.id == recordID })?
+            .hasPlaceholderTitle == false {
+            // Named by another route — a hook, or a prompt sent through the
+            // app — so there is nothing left to watch for.
+            typedLine = nil
+        }
     }
 
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {

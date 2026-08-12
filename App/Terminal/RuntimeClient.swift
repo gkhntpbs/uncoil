@@ -544,6 +544,20 @@ final class RuntimeClient: @unchecked Sendable {
         }
     }
 
+    /// Asks the daemon again what it still has, producing another `sessions`
+    /// event.
+    ///
+    /// The handshake asks once. A session the daemon left out of that one
+    /// answer is not yet gone — it may have replied while restarting, before
+    /// re-adopting what it had — so the second look is asked for deliberately
+    /// rather than waited for.
+    func requestSessionList() {
+        queue.async { [self] in
+            guard phase == .ready, fd >= 0 else { return }
+            sendCommand(RuntimeCommand(cmd: "list"))
+        }
+    }
+
     /// Sends Ctrl-C (0x03) to a live session.
     func interrupt(sid: UUID) {
         sendInput(Data([0x03]), sid: sid)

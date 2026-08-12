@@ -109,6 +109,9 @@ struct UsageChip: View {
     let provider: AgentProvider
     let account: AccountProfile?
     let isWorking: Bool
+    /// The session the chip sits beside. The figure itself belongs to the
+    /// account either way.
+    var session: SessionRecord?
 
     @EnvironmentObject private var usage: UsageStore
     @EnvironmentObject private var settings: SettingsStore

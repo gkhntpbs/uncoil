@@ -49,7 +49,9 @@ enum SessionSleep {
         switch status {
         case .idle, .thinking, .running, .waitingForPermission, .waitingForInput, .completed:
             true
-        case .suspended, .hibernated, .terminated:
+        // Not knowing is not the same as knowing there is a process: every
+        // caller here is about to signal or kill something.
+        case .suspended, .hibernated, .terminated, .unknown:
             false
         }
     }

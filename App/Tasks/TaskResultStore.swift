@@ -80,7 +80,37 @@ final class TaskResultStore: ObservableObject {
         var merges: [TaskMergeRecord] = []
     }
 
-    @Published private(set) var document = Document()
+    @Published private(set) var document = Document() {
+        didSet { indexes = nil }
+    }
+
+    /// Results grouped by task and already in order, rebuilt only when a result
+    /// is recorded.
+    ///
+    /// A board card asks for its latest test and its latest review while it
+    /// draws, and each ask used to filter *and sort* up to five hundred stored
+    /// results. Per card. On every redraw.
+    private struct Indexes {
+        var tests: [String: [TaskTestResult]]
+        var reviews: [String: [TaskReviewResult]]
+        var merges: [String: [TaskMergeRecord]]
+    }
+
+    private var indexes: Indexes?
+
+    private var index: Indexes {
+        if let indexes { return indexes }
+        let built = Indexes(
+            tests: Dictionary(grouping: document.tests, by: \.taskID)
+                .mapValues { $0.sorted { $0.finishedAt < $1.finishedAt } },
+            reviews: Dictionary(grouping: document.reviews, by: \.taskID)
+                .mapValues { $0.sorted { $0.finishedAt < $1.finishedAt } },
+            merges: Dictionary(grouping: document.merges, by: \.taskID)
+                .mapValues { $0.sorted { $0.at < $1.at } }
+        )
+        indexes = built
+        return built
+    }
 
     /// Kept bounded: a task that is tested on every save would otherwise grow
     /// the file without limit.
@@ -101,21 +131,15 @@ final class TaskResultStore: ObservableObject {
 
     // MARK: - Reading
 
-    func tests(for taskID: String) -> [TaskTestResult] {
-        document.tests.filter { $0.taskID == taskID }.sorted { $0.finishedAt < $1.finishedAt }
-    }
+    func tests(for taskID: String) -> [TaskTestResult] { index.tests[taskID] ?? [] }
 
-    func reviews(for taskID: String) -> [TaskReviewResult] {
-        document.reviews.filter { $0.taskID == taskID }.sorted { $0.finishedAt < $1.finishedAt }
-    }
+    func reviews(for taskID: String) -> [TaskReviewResult] { index.reviews[taskID] ?? [] }
 
     func latestTest(for taskID: String) -> TaskTestResult? { tests(for: taskID).last }
 
     func latestReview(for taskID: String) -> TaskReviewResult? { reviews(for: taskID).last }
 
-    func merges(for taskID: String) -> [TaskMergeRecord] {
-        document.merges.filter { $0.taskID == taskID }.sorted { $0.at < $1.at }
-    }
+    func merges(for taskID: String) -> [TaskMergeRecord] { index.merges[taskID] ?? [] }
 
     /// Tasks whose latest review asked for changes — what the board badges.
     var tasksWithRequestedChanges: Set<String> {

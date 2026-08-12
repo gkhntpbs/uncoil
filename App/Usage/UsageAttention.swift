@@ -49,7 +49,7 @@ enum UsageAttentionCollector {
     ) -> UsageAttentionSnapshot {
         var byKey: [UsageKey: [SessionRecord]] = [:]
         for session in sessions where session.provider.isAgent {
-            guard statuses[session.id] != .terminated else { continue }
+            guard (statuses[session.id] ?? .unknown) != .terminated else { continue }
             byKey[UsageKey(provider: session.provider, accountID: session.accountID), default: []]
                 .append(session)
         }

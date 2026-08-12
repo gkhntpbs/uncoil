@@ -236,7 +236,7 @@ enum PaletteEngine {
 
             // Sessions — running/attention ranked higher.
             let sessions = ctx.sessions.map { record -> PaletteItem in
-                let status = ctx.statuses[record.id] ?? .terminated
+                let status = ctx.statuses[record.id] ?? .unknown
                 let projectName = ctx.projects.first { $0.id == record.projectID }?.name
                 return PaletteItem(
                     id: "session.\(record.id)", title: record.displayTitle,
@@ -378,7 +378,7 @@ enum PaletteEngine {
         let live = ctx.sessions
             .filter {
                 $0.projectID == pid && $0.provider != .terminal && $0.endedAt == nil
-                    && ctx.statuses[$0.id] != .terminated
+                    && (ctx.statuses[$0.id] ?? .unknown) != .terminated
             }
             .sorted { $0.lastActivityAt > $1.lastActivityAt }
 

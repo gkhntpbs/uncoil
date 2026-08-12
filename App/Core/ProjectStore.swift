@@ -394,6 +394,15 @@ final class ProjectStore: ObservableObject {
         mutate(&sessions[index])
     }
 
+    /// Names a session after its first prompt, and only then: a session whose
+    /// title says something already keeps it, whether the user typed that
+    /// title or an earlier prompt did.
+    func adoptAutomaticTitle(_ candidate: String, for id: UUID) {
+        guard let record = sessions.first(where: { $0.id == id }),
+              record.hasPlaceholderTitle else { return }
+        updateSession(id) { $0.title = candidate }
+    }
+
     func togglePin(_ id: UUID) {
         updateSession(id) { $0.isPinned = !($0.isPinned ?? false) }
     }
@@ -417,6 +426,8 @@ final class ProjectStore: ObservableObject {
         // nil when default: an empty selection must not read as "configured".
         record.launchSelection = launchSelection?.isDefault == false ? launchSelection : nil
         record.capabilities = Self.defaultSessionCapabilities
+        // Stamped at birth so the row never moves on its own afterwards.
+        record.sortIndex = nextSortIndex(inProject: projectID)
         sessions.append(record)
         save()
         return record
@@ -583,6 +594,9 @@ final class ProjectStore: ObservableObject {
 
     private func load() {
         var needsSessionSave = false
+        // A document written by a newer build is read but never rewritten:
+        // saving it back would stamp our own, lower schema onto it.
+        var sessionsAreOursToRewrite = true
         // Versioned document, falling back to the bare array an older build
         // wrote so an existing installation keeps its projects.
         if let data = try? Data(contentsOf: projectsURL),
@@ -599,6 +613,8 @@ final class ProjectStore: ObservableObject {
                 if document.schemaVersion < Self.currentSessionSchemaVersion {
                     needsSessionSave = true
                 }
+                sessionsAreOursToRewrite =
+                    document.schemaVersion <= Self.currentSessionSchemaVersion
             } else if let legacy = try? JSONDecoder().decode([SessionRecord].self, from: data) {
                 sessions = migrate(legacy, from: 1)
                 needsSessionSave = true
@@ -608,9 +624,40 @@ final class ProjectStore: ObservableObject {
            let decoded = VersionedDocument<[SessionGroup]>.decode(data, schema: .sessionGroups) {
             sessionGroups = decoded.payload
         }
+        if adoptMissingSortIndexes(), sessionsAreOursToRewrite {
+            needsSessionSave = true
+        }
         if needsSessionSave {
             saveSessions()
         }
+    }
+
+    /// Freezes the display order of every session that has never been given
+    /// one, once, at load.
+    ///
+    /// Without an index the sort falls back to `lastActivityAt`, which moves
+    /// every time an agent does anything — so the sidebar reshuffled itself
+    /// while the user watched. Stamping the order they already see keeps it,
+    /// and from then on only a drag or a nudge changes it.
+    @discardableResult
+    private func adoptMissingSortIndexes() -> Bool {
+        let projectIDs = Set(sessions.filter { $0.sortIndex == nil }.map(\.projectID))
+        guard !projectIDs.isEmpty else { return false }
+        for projectID in projectIDs {
+            for (index, record) in sessions(for: projectID).enumerated() {
+                updateSessionQuietly(record.id) { $0.sortIndex = Double(index) }
+            }
+        }
+        return true
+    }
+
+    /// The slot a newly created session takes: the end of its project's order.
+    private func nextSortIndex(inProject projectID: UUID) -> Double {
+        let highest = sessions
+            .filter { $0.projectID == projectID }
+            .compactMap(\.sortIndex)
+            .max()
+        return (highest ?? -1) + 1
     }
 
     private func save() {
@@ -707,8 +754,20 @@ final class SessionStore: ObservableObject {
     }
 
     func status(of recordID: UUID) -> AgentSessionStatus {
-        statuses[recordID] ?? .terminated
+        statuses[recordID] ?? .unknown
     }
+
+    /// Sessions the daemon did not list, counted per handshake.
+    ///
+    /// One absence is not a death. The daemon can answer `list` in the moment
+    /// between restarting and re-adopting what it had, and the old code wrote
+    /// that moment straight to disk: a daemon that hiccuped closed every
+    /// running agent in the sidebar, permanently, with no way back.
+    private var missedHandshakes: [UUID: Int] = [:]
+
+    /// How many consecutive handshakes may miss a session before it counts as
+    /// gone. Two, and the second is asked for deliberately a moment later.
+    static let handshakesBeforeEnded = 2
 
     /// Brings the sidebar back in line with what the runtime daemon actually
     /// still has, after a launch or a reconnect.
@@ -721,31 +780,59 @@ final class SessionStore: ObservableObject {
     ///
     /// Sessions the daemon has never heard of are genuinely gone: the
     /// in-process fallback dies with the app, and so does anything it ran.
+    /// - Returns: the sessions the daemon did not account for and that are not
+    ///   yet being called closed — the caller asks the daemon again, and the
+    ///   second answer is the one that decides.
+    @discardableResult
     func reconcile(
         aliveSessionIDs: Set<UUID>,
         records: [SessionRecord],
         markEnded: (UUID) -> Void
-    ) {
-        for record in records where record.endedAt == nil {
+    ) -> Set<UUID> {
+        var unaccountedFor: Set<UUID> = []
+        for record in records {
+            // The record says this session is over. A status still claiming
+            // otherwise is the stale one — the old code skipped these records
+            // entirely, so nothing ever corrected that direction.
+            guard record.endedAt == nil else {
+                if status(of: record.id).isKnownLive {
+                    setStatus(.terminated, for: record.id)
+                }
+                missedHandshakes[record.id] = nil
+                continue
+            }
             // A sleeping session is absent from the daemon on purpose — a
             // hibernated one has no process at all — so the daemon's list says
             // nothing about it. Reconciling it would answer "I put this to
             // sleep" with "this session is over".
             if let mode = record.sleepMode {
                 setStatus(SessionSleep.status(for: mode), for: record.id)
+                missedHandshakes[record.id] = nil
                 continue
             }
             if aliveSessionIDs.contains(record.id) {
+                missedHandshakes[record.id] = nil
                 // Alive, but nothing has happened in it since the app started.
                 // For an agent the hooks will refine this within a turn.
-                if statuses[record.id] == nil || statuses[record.id] == .terminated {
+                if !status(of: record.id).isKnownLive {
                     setStatus(.idle, for: record.id)
                 }
             } else {
-                setStatus(.terminated, for: record.id)
-                markEnded(record.id)
+                let misses = (missedHandshakes[record.id] ?? 0) + 1
+                missedHandshakes[record.id] = misses
+                if misses >= Self.handshakesBeforeEnded {
+                    missedHandshakes[record.id] = nil
+                    setStatus(.terminated, for: record.id)
+                    markEnded(record.id)
+                } else {
+                    // Missing once. Say so plainly instead of announcing a
+                    // death the next answer may well contradict.
+                    setStatus(.unknown, for: record.id)
+                    unaccountedFor.insert(record.id)
+                }
             }
         }
+        return unaccountedFor
     }
 
     func detail(of recordID: UUID) -> String? {
@@ -792,13 +879,28 @@ final class SessionStore: ObservableObject {
         // — so leaving terminal sessions in the pool let those guesses land on
         // a plain shell, which is how a terminal row ended up announcing that
         // Claude was waiting for input.
-        let live = projectSessions.filter {
-            $0.provider.isAgent && (statuses[$0.id] ?? .terminated) != .terminated
+        //
+        // A session that has told us its own id is matched whatever state it
+        // is in short of closed: one restored at launch reads as `unknown`
+        // until the daemon answers, and it is exactly then — the first hook of
+        // the session — that we most need to recognise it.
+        let notClosed = projectSessions.filter {
+            $0.provider.isAgent && status(of: $0.id) != .terminated
         }
 
         if let providerSessionID,
-           let bound = live.first(where: { $0.providerSessionID == providerSessionID }) {
+           let bound = notClosed.first(where: { $0.providerSessionID == providerSessionID }) {
             return bound.id
+        }
+
+        // Every branch from here is a guess, so the pool narrows to sessions
+        // that could actually have sent this: known to be alive, and running a
+        // provider that reports through hooks at all. Gemini emits nothing and
+        // never binds a provider session id, which made every unattributed
+        // Claude event land on a Gemini row and show one agent's work as
+        // another's.
+        let live = notClosed.filter {
+            status(of: $0.id).isKnownLive && $0.provider.reportsStatusThroughHooks
         }
 
         let unbound = live.filter { $0.providerSessionID == nil }

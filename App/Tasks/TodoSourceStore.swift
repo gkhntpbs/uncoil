@@ -328,10 +328,13 @@ final class TodoSourceStore: ObservableObject {
 
 /// Watches task sources and asks the store to refresh.
 ///
-/// Two mechanisms on purpose: filesystem events for immediacy, and a slow poll
-/// as the backstop. An editor or agent that replaces a file atomically swaps the
-/// inode, which kills a descriptor-based watch, so every event re-arms the watch
-/// and the poll catches whatever slipped through.
+/// Three mechanisms on purpose. Filesystem events on each known file, for
+/// immediacy; a slow poll as the backstop, because an editor or agent that
+/// replaces a file atomically swaps the inode and kills a descriptor-based
+/// watch; and one FSEvents stream over the whole project, because the first two
+/// can only watch files that already exist — a `TODO.md` written into a
+/// subdirectory that had none went unnoticed until something else forced a
+/// rescan.
 @MainActor
 final class TodoSourceWatcher {
     private var sources: [Int32: DispatchSourceFileSystemObject] = [:]
@@ -340,6 +343,8 @@ final class TodoSourceWatcher {
     private var debounceTask: Task<Void, Never>?
     /// nil until the first stat pass: "no baseline yet" is not "nothing on disk".
     private var lastStamps: [String: TodoDiscovery.FileStamp]?
+    /// Notices task files that do not exist yet, anywhere under the project.
+    private var subtree: TodoSubtreeWatcher?
     private let onChange: () -> Void
     private let pollInterval: TimeInterval
     private let debounceInterval: TimeInterval
@@ -400,8 +405,15 @@ final class TodoSourceWatcher {
         }
     }
 
-    func start(paths: [String]) {
+    /// - Parameter subtreeRoot: the project root. Watched as a whole, so a task
+    ///   file created where there was none is noticed like any other edit.
+    func start(paths: [String], subtreeRoot: String? = nil) {
         watch(paths: paths)
+        if let subtreeRoot, subtree == nil {
+            let watcher = TodoSubtreeWatcher { [weak self] in self?.scheduleChange() }
+            watcher.start(root: subtreeRoot)
+            subtree = watcher
+        }
         guard pollTask == nil else { return }
         let interval = pollInterval
         pollTask = Task { @MainActor [weak self] in
@@ -426,6 +438,8 @@ final class TodoSourceWatcher {
         pollTask = nil
         debounceTask?.cancel()
         debounceTask = nil
+        subtree?.stop()
+        subtree = nil
         stopWatching()
     }
 

@@ -37,6 +37,12 @@ struct ProjectTasksView: View {
     /// Task whose quick-commit sheet is open, and the repo it commits into.
     @State private var commitTarget: (task: ProjectTask, repoRoot: String)?
     @State private var isCreatingTask = false
+    /// What the search field holds, before it is allowed to filter anything.
+    ///
+    /// Filtering fuzzy-scores every task in the project and re-lays out the
+    /// whole screen, and it used to do both on every keystroke. The field stays
+    /// immediate; the work it causes waits for a pause in the typing.
+    @State private var queryDraft = ""
     /// Board column a card is currently hovering over.
     @State private var targetedColumn: String?
     /// Diffs of the patches this screen wrote, newest per task, so "Show Diff"
@@ -113,10 +119,25 @@ struct ProjectTasksView: View {
                 await refreshNow()
             }
             let watcher = TodoSourceWatcher { refresh() }
-            watcher.start(paths: sources.sources.map(\.path) + [project.rootPath])
+            watcher.start(
+                paths: sources.sources.map(\.path) + [project.rootPath],
+                subtreeRoot: project.rootPath
+            )
             self.watcher = watcher
         }
         .onDisappear { watcher?.stop() }
+        .task(id: queryDraft) {
+            guard queryDraft != preferences.filter.query else { return }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard !Task.isCancelled else { return }
+            metadata.preferences.filter.query = queryDraft
+        }
+        // A query restored from preferences, or cleared from elsewhere, has to
+        // reach the field too — otherwise the two drift apart.
+        .onChange(of: preferences.filter.query) { _, query in
+            if query != queryDraft { queryDraft = query }
+        }
+        .onAppear { queryDraft = preferences.filter.query }
         .sheet(
             isPresented: Binding(
                 get: { orchestratorPlan != nil },
@@ -515,7 +536,26 @@ struct ProjectTasksView: View {
     }
 
     /// Headings and tasks in the file's own order.
+    ///
+    /// Cached against the file's own content hash: the interleave is a sort
+    /// over every heading and every task, and it was redone on every redraw of
+    /// a screen that redraws for anything.
+    private static let rowCache = NSCache<NSString, RowBox>()
+
+    private final class RowBox {
+        let rows: [DocumentRow]
+        fileprivate init(_ rows: [DocumentRow]) { self.rows = rows }
+    }
+
     private func documentRows(_ document: TaskDocument) -> [DocumentRow] {
+        let key = "\(document.path)#\(document.contentHash)" as NSString
+        if let cached = Self.rowCache.object(forKey: key) { return cached.rows }
+        let rows = Self.buildRows(document)
+        Self.rowCache.setObject(RowBox(rows), forKey: key)
+        return rows
+    }
+
+    private static func buildRows(_ document: TaskDocument) -> [DocumentRow] {
         var rows: [(startByte: Int, row: DocumentRow)] = []
         for heading in document.headings {
             rows.append((
@@ -537,7 +577,7 @@ struct ProjectTasksView: View {
 
     private func taskRow(_ task: ProjectTask, in document: TaskDocument) -> some View {
         let isExpanded = preferences.expandedTaskIDs.contains(task.id)
-        let hasBody = task.rawBlock.contains("\n")
+        let hasBody = hasBody(task)
         let state = metadata.executionState(for: task.id)
         return VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .top, spacing: 8) {
@@ -563,6 +603,7 @@ struct ProjectTasksView: View {
                         .font(Theme.mono(.body))
                         .foregroundStyle(task.isDone ? Theme.textDim : Theme.text)
                         .strikethrough(task.isDone, color: Theme.textFaint)
+                        .fixedSize(horizontal: false, vertical: true)
                         .onTapGesture(count: 2) {
                             editingTaskID = task.id
                             editingText = task.text
@@ -580,10 +621,7 @@ struct ProjectTasksView: View {
 
                 if hasBody {
                     Button {
-                        var expanded = preferences.expandedTaskIDs
-                        if isExpanded { expanded.remove(task.id) } else { expanded.insert(task.id) }
-                        metadata.preferences.expandedTaskIDs = expanded
-                        metadata.savePreferences()
+                        toggleExpansion(task)
                     } label: {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 8, weight: .semibold))
@@ -606,13 +644,7 @@ struct ProjectTasksView: View {
             .padding(.leading, CGFloat(task.depth) * 16)
 
             if isExpanded, hasBody {
-                Text(task.rawBlock
-                    .components(separatedBy: "\n")
-                    .dropFirst()
-                    .joined(separator: "\n"))
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.textDim)
-                    .textSelection(.enabled)
+                taskBody(task)
                     .padding(.leading, CGFloat(task.depth) * 16 + 20)
             }
         }
@@ -648,10 +680,7 @@ struct ProjectTasksView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 TablerIcon(name: "search", size: 12, color: Theme.textFaint)
-                TextField("Search tasks…", text: Binding(
-                    get: { preferences.filter.query },
-                    set: { metadata.preferences.filter.query = $0 }
-                ))
+                TextField("Search tasks…", text: $queryDraft)
                 .textFieldStyle(.plain)
                 .font(Theme.mono(.body))
                 .foregroundStyle(Theme.text)
@@ -706,7 +735,10 @@ struct ProjectTasksView: View {
     private func listRow(_ task: ProjectTask) -> some View {
         let state = metadata.executionState(for: task.id)
         let assignments = metadata.assignments(for: task.id)
-        return HStack(alignment: .top, spacing: 9) {
+        let isExpanded = preferences.expandedTaskIDs.contains(task.id)
+        let hasBody = hasBody(task)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 9) {
             Image(systemName: task.isDone ? "checkmark.square.fill" : "square")
                 .font(.system(size: 11))
                 .foregroundStyle(task.isDone ? Theme.ok : Theme.textFaint)
@@ -715,7 +747,7 @@ struct ProjectTasksView: View {
                 Text(task.displayText)
                     .font(Theme.mono(.body))
                     .foregroundStyle(Theme.text)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 6) {
                     Text(task.headingPath.joined(separator: " › "))
                         .font(Theme.mono(.micro))
@@ -768,11 +800,57 @@ struct ProjectTasksView: View {
                 .fixedSize()
                 .accessibilityIdentifier("tasks.row.start.\(task.id)")
             }
+            if hasBody {
+                Button {
+                    toggleExpansion(task)
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .semibold))
+                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                .buttonStyle(.plain)
+                .help("Show the rest of this task")
+                .accessibilityIdentifier("tasks.row.expand.\(task.id)")
+            }
+            }
+            if isExpanded, hasBody {
+                taskBody(task)
+                    .padding(.leading, 20)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .contextMenu { cardActions(task, in: documentFor(task)) }
         .accessibilityIdentifier("tasks.row.\(task.id)")
+    }
+
+    /// Everything a task says after its first line.
+    ///
+    /// A task written across several lines is one task, and the lines after the
+    /// first are usually where the actual instruction is. They were reachable
+    /// only in the document view, only behind a chevron — so most of what a
+    /// task said simply did not appear.
+    private func taskBody(_ task: ProjectTask) -> some View {
+        Text(task.body)
+            .font(Theme.mono(.small))
+            .foregroundStyle(Theme.textDim)
+            .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Whether the task says anything beyond its own sentence. The lines that
+    /// are only the sentence wrapped are drawn as the sentence, so they are not
+    /// something to expand.
+    private func hasBody(_ task: ProjectTask) -> Bool {
+        !task.body.isEmpty
+    }
+
+    private func toggleExpansion(_ task: ProjectTask) {
+        var expanded = preferences.expandedTaskIDs
+        if expanded.contains(task.id) { expanded.remove(task.id) } else { expanded.insert(task.id) }
+        metadata.preferences.expandedTaskIDs = expanded
+        metadata.savePreferences()
     }
 
     /// The document a task belongs to, needed by actions that patch the file.
@@ -840,8 +918,10 @@ struct ProjectTasksView: View {
                     .help("Map this heading to a board state")
                 }
             }
-            ForEach(tasks) { task in
-                kanbanCard(task, in: document)
+            LazyVStack(alignment: .leading, spacing: 6) {
+                ForEach(tasks) { task in
+                    kanbanCard(task, in: document)
+                }
             }
             if tasks.isEmpty {
                 Text("empty")
@@ -970,7 +1050,7 @@ struct ProjectTasksView: View {
 
     private var sessionsView: some View {
         let grouped = Dictionary(grouping: metadata.document.assignments, by: \.sessionID)
-        return VStack(alignment: .leading, spacing: 12) {
+        return LazyVStack(alignment: .leading, spacing: 12) {
             if grouped.isEmpty {
                 Text("No session has been assigned to a task yet.")
                     .font(Theme.mono(.body))
@@ -1365,7 +1445,7 @@ struct ProjectTasksView: View {
         let provider = record.provider
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+            while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             if autoStart {

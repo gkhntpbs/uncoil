@@ -370,14 +370,70 @@ enum TodoEditor {
         return lineRange.startByte + end
     }
 
-    /// Indents a description body to sit inside the task's block.
-    private static func normalizedBody(_ body: String, indent: String) -> String {
-        let lines = body
+    /// Indents a description body to sit inside the task's block, keeping the
+    /// shape the body was written in.
+    ///
+    /// It used to strip every line's own indentation and delete every blank
+    /// line, so a description holding a code fence, a nested list or a
+    /// paragraph break came back from an edit as one flat run of lines — and
+    /// that flattening was written to the file, where the structure could not
+    /// be recovered. What a body needs is to sit *inside* the task's block;
+    /// its own inner shape is not ours to decide.
+    ///
+    /// So the body is shifted rather than reflowed: whatever indentation every
+    /// line shares is removed, the block indent is put in its place, and the
+    /// relative indentation between the lines survives untouched. Blank lines
+    /// inside the body are kept — the parser allows them as long as indented
+    /// content follows, which is exactly the paragraph-break case — while
+    /// blank lines around it are not, since they would end the block.
+    static func normalizedBody(_ body: String, indent: String) -> String {
+        var lines = body
             .components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
+            // Trailing whitespace carries no meaning and an editor may add it;
+            // a line of nothing but spaces is a blank line.
+            .map { line -> String in
+                var line = line
+                while let last = line.last, last == " " || last == "\t" { line.removeLast() }
+                return line
+            }
+        while lines.first?.isEmpty == true { lines.removeFirst() }
+        while lines.last?.isEmpty == true { lines.removeLast() }
         guard !lines.isEmpty else { return "" }
-        return lines.map { "\(indent)  \($0)" }.joined(separator: "\n") + "\n"
+
+        let shared = lines
+            .filter { !$0.isEmpty }
+            .map { $0.prefix { $0 == " " || $0 == "\t" }.count }
+            .min() ?? 0
+        let base = indent + "  "
+        return lines
+            .map { $0.isEmpty ? "" : base + String($0.dropFirst(shared)) }
+            .joined(separator: "\n") + "\n"
+    }
+
+    /// The lines a task says after its first one, as they are in the file with
+    /// the block's own indentation taken off.
+    ///
+    /// The counterpart to `normalizedBody`: read a body out with this, change
+    /// it, and write it back, and everything you did not touch is unchanged.
+    /// Reading it out any other way — trimming each line, dropping the blank
+    /// ones — means every write reflows the whole description, which is what
+    /// made an agent adding one note rewrite the lot.
+    static func body(of task: ProjectTask) -> String {
+        let lines = task.rawBlock.components(separatedBy: "\n").dropFirst()
+        var kept = Array(lines)
+        while kept.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { kept.removeLast() }
+        guard !kept.isEmpty else { return "" }
+        let shared = kept
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map { $0.prefix { $0 == " " || $0 == "\t" }.count }
+            .min() ?? 0
+        return kept
+            .map { line in
+                line.trimmingCharacters(in: .whitespaces).isEmpty
+                    ? ""
+                    : String(line.dropFirst(shared))
+            }
+            .joined(separator: "\n")
     }
 
     /// A task's block plus every nested task under it, as one contiguous range —

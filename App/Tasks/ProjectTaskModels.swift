@@ -120,10 +120,45 @@ struct ProjectTask: Identifiable, Equatable, Codable {
     /// because this is what the file says and what an agent is given.
     var text: String
 
-    /// ``text`` with Markdown's inline marks removed, for drawing in a row.
+    /// How many of the lines after the first are that same line continuing —
+    /// prose the author hard-wrapped, not a description under the task.
+    ///
+    /// A task file is written to a column width, so a sentence longer than the
+    /// line is broken across several. `text` is the first physical line and
+    /// nothing else, which is right for editing and for patching the file, and
+    /// wrong for reading: every long task appeared cut off mid-sentence.
+    var wrappedLineCount: Int = 0
+
+    /// The task as it was written to be read: its own line plus the lines that
+    /// are only that line, wrapped.
+    var fullText: String {
+        guard wrappedLineCount > 0 else { return text }
+        let continued = rawBlock
+            .components(separatedBy: "\n")
+            .dropFirst()
+            .prefix(wrappedLineCount)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        return ([text] + continued).joined(separator: " ")
+    }
+
+    /// What the task says beyond its own sentence: a nested list, a fenced
+    /// example, a second paragraph. Empty for most tasks.
+    var body: String {
+        let lines = rawBlock.components(separatedBy: "\n").dropFirst(1 + wrappedLineCount)
+        var kept = Array(lines)
+        while kept.first?.trimmingCharacters(in: .whitespaces).isEmpty == true {
+            kept.removeFirst()
+        }
+        while kept.last?.trimmingCharacters(in: .whitespaces).isEmpty == true {
+            kept.removeLast()
+        }
+        return kept.joined(separator: "\n")
+    }
+
+    /// ``fullText`` with Markdown's inline marks removed, for drawing in a row.
     /// The file keeps its `**`, backticks and links; only the interface drops
     /// them.
-    var displayText: String { MarkdownInline.plain(text) }
+    var displayText: String { MarkdownInline.plain(fullText) }
     /// Every line of the task: its own line plus indented continuation,
     /// including fenced code that belongs to it.
     var blockRange: TaskSourceRange

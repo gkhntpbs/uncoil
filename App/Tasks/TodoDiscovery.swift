@@ -2,16 +2,28 @@ import Foundation
 
 /// Finds the `TODO.md` files under a project.
 ///
-/// Scanning is bounded on purpose: build outputs and dependency trees hold
-/// thousands of files and none of their TODOs belong to the user's project, so
-/// they are skipped by name, and anything the project's own ignore rules exclude
-/// is skipped too. The user can widen or narrow that with their own rules.
+/// Everything the user wrote counts, wherever it is: a file in a subdirectory,
+/// a file inside a git repository nested in the project, and a file the
+/// project's `.gitignore` excludes. That last one is the common case rather
+/// than the exception — a TODO list is often a private note kept out of the
+/// history on purpose — and skipping it meant a project's own task list was
+/// the one thing Uncoil could not see.
+///
+/// What is still skipped is only what cannot hold the user's own tasks:
+/// dependency trees and build output, by directory name. Those hold thousands
+/// of files and any TODO in them belongs to somebody else's project.
 enum TodoDiscovery {
     /// Directory names never scanned. Matched by name at any depth.
+    ///
+    /// Dependency trees and tool caches only. Names that are as likely to be
+    /// somebody's own source directory as generated output — `build`, `dist`,
+    /// `target` — were removed from this list: a wrongly skipped directory is
+    /// invisible, and being told about a file you did not want is cheaper than
+    /// never being shown one you did.
     static let defaultExcludedDirectories: Set<String> = [
-        ".git", "node_modules", ".build", "build", "DerivedData", "Pods",
-        "vendor", ".swiftpm", ".venv", "venv", "dist", ".next", ".gradle",
-        "Carthage", ".yarn", "target", "__pycache__", ".uncoil-worktrees",
+        ".git", "node_modules", ".build", "DerivedData", "Pods",
+        "vendor", ".swiftpm", ".venv", "venv", ".next", ".gradle",
+        "Carthage", ".yarn", "__pycache__", ".uncoil-worktrees",
         ".build-cache",
     ]
 
@@ -28,10 +40,18 @@ enum TodoDiscovery {
         var additionalFileNames: [String] = []
         /// Relative paths (from the project root) to ignore outright.
         var excludedPaths: [String] = []
-        /// Honour `.gitignore`, so generated trees stay out without extra rules.
-        var respectsGitIgnore = true
-        /// Depth guard; a deeper tree is almost certainly not hand-written tasks.
-        var maximumDepth = 8
+        /// Honour `.gitignore`.
+        ///
+        /// Off by default, and this is the whole point: a TODO list is very
+        /// often deliberately untracked, and reading the project's ignore
+        /// rules meant those were the files Uncoil refused to show. It stays
+        /// available for anyone who wants a scan that matches what git sees;
+        /// nothing turns it on by itself.
+        var respectsGitIgnore = false
+        /// Depth guard. Generous rather than tight: a nested repository inside
+        /// a monorepo inside a project is an ordinary layout, and the walk is
+        /// bounded by the excluded-directory names rather than by this.
+        var maximumDepth = 24
 
         static let `default` = Rules()
 

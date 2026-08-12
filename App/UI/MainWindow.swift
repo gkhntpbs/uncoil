@@ -502,7 +502,7 @@ struct MainWindow: View {
         let sid = record.id
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+            while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             await TerminalRegistry.shared.submitText(
@@ -636,11 +636,12 @@ struct MainWindow: View {
         }
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, sessionStore.status(of: record.id) == .terminated {
+            while Date() < deadline, !sessionStore.status(of: record.id).isKnownLive {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             await TerminalRegistry.shared.submitText(
-                prompt, for: record.id, provider: record.provider)
+                prompt, for: record.id, provider: record.provider,
+                namesTheSession: false)
         }
     }
 
@@ -864,11 +865,19 @@ struct MainWindow: View {
             SessionSleepService.restoreStatuses(
                 projectStore: projectStore, sessionStore: sessionStore
             )
-            sessionStore.reconcile(
+            let unaccountedFor = sessionStore.reconcile(
                 aliveSessionIDs: alive,
                 records: projectStore.sessions,
                 markEnded: { projectStore.markSessionEnded($0, exitCode: nil) }
             )
+            // Sessions the daemon left out of this answer are shown as not yet
+            // known, and asked about once more. Only the second silence counts
+            // as a death — a daemon that answered mid-restart gets to correct
+            // itself before the app closes a running agent on disk.
+            guard !unaccountedFor.isEmpty else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                RuntimeClient.shared.requestSessionList()
+            }
         }
         startControlPlane()
         // Drop directories whose sessions are gone. Once at start rather than
@@ -984,11 +993,12 @@ struct MainWindow: View {
                 // Wait for the first hook to flip status off .terminated, else
                 // fall back to a fixed delay, then send the prompt as input.
                 let deadline = Date().addingTimeInterval(3)
-                while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+                while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
                     try? await Task.sleep(nanoseconds: 200_000_000)
                 }
                 await TerminalRegistry.shared.submitText(
-                    prompt, for: sid, provider: record.provider)
+                    prompt, for: sid, provider: record.provider,
+                    namesTheSession: false)
             }
         }
 

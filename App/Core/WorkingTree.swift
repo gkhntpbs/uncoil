@@ -37,7 +37,7 @@ extension AgentSessionStatus {
         // opposite — there is no process, and treating it as working would
         // block worktree operations forever on a session somebody parked.
         case .suspended: true
-        case .idle, .completed, .hibernated, .terminated: false
+        case .idle, .completed, .hibernated, .terminated, .unknown: false
         }
     }
 }

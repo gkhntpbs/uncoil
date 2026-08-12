@@ -190,7 +190,7 @@ enum TaskPromptBuilder {
         taskProjectID: UUID
     ) -> (sameProject: [SessionRecord], otherProjects: [SessionRecord]) {
         let live = sessions.filter { record in
-            record.provider != .terminal && statuses[record.id] != .terminated
+            record.provider != .terminal && (statuses[record.id] ?? .unknown) != .terminated
         }
         return (
             live.filter { $0.projectID == taskProjectID },

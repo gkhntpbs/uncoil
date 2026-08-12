@@ -46,6 +46,33 @@ final class HookSessionRoutingTests: XCTestCase {
         )
     }
 
+    /// Gemini emits no hooks and never binds a provider session id, so it was
+    /// the standing fallback for every Claude event nobody claimed — one
+    /// agent's work shown on another agent's row.
+    func testAProviderThatSendsNoHooksIsNeverGuessedAt() {
+        let gemini = projects.createSession(
+            projectID: project.id, provider: .gemini, accountID: nil, title: "gemini"
+        )
+        sessions.setStatus(.idle, for: gemini.id)
+
+        XCTAssertNil(resolve(providerSessionID: nil, cwd: "/tmp/demo"))
+        XCTAssertNil(resolve(providerSessionID: "prov-a", cwd: "/tmp/demo"))
+    }
+
+    /// A session restored at launch has no status until the daemon answers,
+    /// and its first hook is exactly when it says who it is.
+    func testASessionThatHasNotBeenHeardFromStillAnswersToItsOwnID() {
+        let restored = makeSession()
+        projects.updateSession(restored.id) { $0.providerSessionID = "prov-a" }
+        sessions.setStatus(.unknown, for: restored.id)
+
+        XCTAssertEqual(resolve(providerSessionID: "prov-a", cwd: "/tmp/demo"), restored.id)
+        XCTAssertNil(
+            resolve(providerSessionID: nil, cwd: "/tmp/demo"),
+            "but it is not guessed at while nothing is known about it"
+        )
+    }
+
     func testBoundSessionWinsOverTheNewestOne() {
         let first = makeSession()
         projects.updateSession(first.id) { $0.providerSessionID = "prov-a" }
@@ -183,7 +210,10 @@ final class SessionReconcileTests: XCTestCase {
 
     func testASessionTheDaemonStillHasIsLive() {
         let survivor = makeSession()
-        XCTAssertEqual(sessions.status(of: survivor.id), .terminated, "before reconciling")
+        XCTAssertEqual(
+            sessions.status(of: survivor.id), .unknown,
+            "before reconciling nobody has said anything about it"
+        )
 
         var ended: [UUID] = []
         sessions.reconcile(
@@ -196,18 +226,91 @@ final class SessionReconcileTests: XCTestCase {
         XCTAssertTrue(ended.isEmpty)
     }
 
-    func testASessionTheDaemonLostIsClosedForGood() {
-        let gone = makeSession()
+    /// One silence is not a death. The daemon can answer `list` while it is
+    /// restarting, before it has re-adopted the sessions it still owns, and
+    /// closing them on that answer is permanent and wrong.
+    func testOneMissedHandshakeSaysUnknownRatherThanClosed() {
+        let missing = makeSession()
 
         var ended: [UUID] = []
-        sessions.reconcile(
+        let unaccountedFor = sessions.reconcile(
             aliveSessionIDs: [],
             records: projects.sessions,
             markEnded: { ended.append($0) }
         )
 
+        XCTAssertEqual(sessions.status(of: missing.id), .unknown)
+        XCTAssertTrue(ended.isEmpty, "nothing is written to disk on one silence")
+        XCTAssertEqual(unaccountedFor, [missing.id], "the caller is told to ask again")
+    }
+
+    func testASessionMissingTwiceIsClosedForGood() {
+        let gone = makeSession()
+
+        var ended: [UUID] = []
+        for _ in 0..<2 {
+            sessions.reconcile(
+                aliveSessionIDs: [],
+                records: projects.sessions,
+                markEnded: { ended.append($0) }
+            )
+        }
+
         XCTAssertEqual(sessions.status(of: gone.id), .terminated)
         XCTAssertEqual(ended, [gone.id], "the record has to agree with the status")
+    }
+
+    /// The daemon hiccuping must not close a running agent: it was missing from
+    /// one answer and present in the next, so it never left.
+    func testASessionThatComesBackIsNotClosed() {
+        let flapping = makeSession()
+        sessions.setStatus(.running, for: flapping.id)
+
+        var ended: [UUID] = []
+        let markEnded: (UUID) -> Void = { ended.append($0) }
+        sessions.reconcile(
+            aliveSessionIDs: [], records: projects.sessions, markEnded: markEnded)
+        XCTAssertEqual(sessions.status(of: flapping.id), .unknown)
+
+        sessions.reconcile(
+            aliveSessionIDs: [flapping.id], records: projects.sessions, markEnded: markEnded)
+        XCTAssertEqual(sessions.status(of: flapping.id), .idle)
+
+        // And the count starts over: the next single silence is again not fatal.
+        sessions.reconcile(
+            aliveSessionIDs: [], records: projects.sessions, markEnded: markEnded)
+        XCTAssertTrue(ended.isEmpty)
+        XCTAssertEqual(sessions.status(of: flapping.id), .unknown)
+    }
+
+    /// The direction nothing used to correct: the record says the session is
+    /// over, the status still says it is working.
+    func testAnEndedRecordSilencesAStatusThatDisagrees() {
+        let stale = makeSession()
+        sessions.setStatus(.running, for: stale.id)
+        projects.markSessionEnded(stale.id, exitCode: 0)
+
+        sessions.reconcile(
+            aliveSessionIDs: [], records: projects.sessions, markEnded: { _ in })
+
+        XCTAssertEqual(sessions.status(of: stale.id), .terminated)
+    }
+
+    /// A sleeping session is absent from the daemon on purpose, so the missing
+    /// count must never start for it.
+    func testASleepingSessionIsNeverCountedAsMissing() {
+        let asleep = makeSession()
+        projects.markSessionAsleep(asleep.id, mode: .hibernated)
+
+        var ended: [UUID] = []
+        for _ in 0..<3 {
+            sessions.reconcile(
+                aliveSessionIDs: [], records: projects.sessions,
+                markEnded: { ended.append($0) })
+        }
+
+        XCTAssertEqual(sessions.status(of: asleep.id), .hibernated)
+        XCTAssertTrue(ended.isEmpty)
     }
 
     /// A reconnect must not throw away what the session is actually doing.

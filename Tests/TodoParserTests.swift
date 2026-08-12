@@ -326,6 +326,140 @@ final class TodoParserTests: XCTestCase {
         XCTAssertEqual(document.render(), raw, "the underline is part of the heading block")
     }
 
+    /// The dangerous shape: a rule written straight under a paragraph. This
+    /// parser reads one line, so it used to promote the paragraph's last line
+    /// alone and reset the heading stack — every task below changed identity
+    /// and lost what was saved against it.
+    func testARuleUnderAParagraphIsNotAHeading() {
+        let raw = """
+        # A
+
+        Bir paragrafın ilk satırı
+        ve ikinci satırı
+        ---
+
+        - [ ] görev
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.headings.map(\.text), ["A"])
+        XCTAssertEqual(document.tasks[0].headingPath, ["A"])
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    /// A `#` inside a description is a shell comment, a markdown example or an
+    /// issue number. It used to cut the task's body off at that line and become
+    /// a heading, rewriting the path of every task below it.
+    func testAHashInsideADescriptionIsNotAHeading() {
+        let raw = """
+        # A
+
+        - [ ] görev
+              # bu bir yorum, başlık değil
+              devamı
+        - [ ] diğer
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.headings.map(\.text), ["A"])
+        XCTAssertEqual(document.tasks.count, 2)
+        XCTAssertTrue(document.tasks[0].rawBlock.contains("# bu bir yorum"))
+        XCTAssertTrue(document.tasks[0].rawBlock.contains("devamı"))
+        XCTAssertEqual(document.tasks[1].headingPath, ["A"], "the path is not rewritten")
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    /// One unterminated fence used to take every task after it: they vanished
+    /// from the app while still sitting in the file.
+    func testAnUnterminatedFenceDoesNotSwallowTheRestOfTheFile() {
+        let raw = """
+        # A
+
+        ```swift
+        let x = 1
+
+        - [ ] bu görev kayboluyordu
+        - [ ] bu da
+        """
+        let document = parse(raw)
+        XCTAssertEqual(
+            document.tasks.map(\.text),
+            ["bu görev kayboluyordu", "bu da"]
+        )
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    func testAMismatchedFenceDoesNotSwallowTheRestOfTheFile() {
+        let raw = "# A\n\n```\nkod\n~~~\n\n- [ ] görev\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["görev"])
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    /// The fence that does close still means what it always meant.
+    func testAClosedFenceStillHidesWhatIsInsideIt() {
+        let raw = "# A\n\n```\n- [ ] bu bir örnek\n```\n\n- [ ] gerçek görev\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["gerçek görev"])
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    /// An unterminated fence inside a description ends the task rather than
+    /// holding it open to the end of the file.
+    func testAnUnterminatedFenceInsideADescriptionDoesNotEatTheNextTask() {
+        let raw = "- [ ] görev\n  ```\n  kod\n- [ ] diğer\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.map(\.text), ["görev", "diğer"])
+        XCTAssertEqual(document.render(), raw)
+    }
+
+    /// A task file is written to a column width, so a long task is one
+    /// sentence broken over several lines. Reading only the first line is what
+    /// made every long task appear to stop mid-sentence.
+    func testAWrappedSentenceIsOneTask() {
+        let raw = """
+        - [ ] Collect the actual failures first: which session, which provider,
+              what the sidebar said versus what the agent was doing. Three
+              concrete cases before any code.
+        - [ ] diğer
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks.count, 2)
+        XCTAssertEqual(
+            document.tasks[0].fullText,
+            "Collect the actual failures first: which session, which provider, "
+                + "what the sidebar said versus what the agent was doing. Three "
+                + "concrete cases before any code."
+        )
+        XCTAssertEqual(
+            document.tasks[0].text,
+            "Collect the actual failures first: which session, which provider,",
+            "what the file says on that line is untouched, so patches still land"
+        )
+        XCTAssertTrue(document.tasks[0].body.isEmpty, "there is nothing more to expand")
+    }
+
+    /// A description is not the sentence continuing, and must not be folded
+    /// into it.
+    func testADescriptionIsNotFoldedIntoTheSentence() {
+        let raw = """
+        - [ ] görev sarılan
+              ikinci satırı
+
+              ayrı bir paragraf
+              - bir madde
+        - [ ] diğer
+        """
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks[0].fullText, "görev sarılan ikinci satırı")
+        XCTAssertEqual(document.tasks[0].body, "      ayrı bir paragraf\n      - bir madde")
+    }
+
+    func testAListOrFenceRightUnderTheTaskStaysBody() {
+        let raw = "- [ ] görev\n  - alt madde\n  devam\n"
+        let document = parse(raw)
+        XCTAssertEqual(document.tasks[0].fullText, "görev")
+        XCTAssertEqual(document.tasks[0].body, "  - alt madde\n  devam")
+    }
+
     func testAThematicBreakStaysAThematicBreak() {
         // The `---` in this project's own TODO.md separates sections; reading it
         // as a heading would rewrite the whole heading tree.

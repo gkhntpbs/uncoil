@@ -131,9 +131,6 @@
         }
       }
     },
-    "(%@ — no per-test detail)" : {
-
-    },
     "(%@)" : {
 
     },
@@ -224,6 +221,16 @@
         }
       }
     },
+    "%@ · %lld%% remaining" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld%% remaining"
+          }
+        }
+      }
+    },
     "%@ › %@" : {
       "localizations" : {
         "en" : {
@@ -233,6 +240,9 @@
           }
         }
       }
+    },
+    "%@ (continued)" : {
+
     },
     "%@ (popped out)" : {
 
@@ -396,6 +406,12 @@
         }
       }
     },
+    "%@ has stopped accepting work" : {
+
+    },
+    "%@ has the work" : {
+
+    },
     "%@ in %@ — click to switch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -502,6 +518,9 @@
           }
         }
       }
+    },
+    "%@ is used up" : {
+
     },
     "%@ is working in this tree" : {
       "extractionState" : "manual",
@@ -1112,6 +1131,9 @@
         }
       }
     },
+    "%lld sessions are on it" : {
+
+    },
     "%lld sessions are working in this tree" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1170,6 +1192,9 @@
     "%lld skipped" : {
 
     },
+    "%lld so far" : {
+
+    },
     "%lld stars" : {
 
     },
@@ -1209,9 +1234,6 @@
         }
       }
     },
-    "%lld tests passed" : {
-
-    },
     "%lld times" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1246,6 +1268,16 @@
     },
     "%lld%%" : {
 
+    },
+    "%lld%% left of the %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% left of the %2$@"
+          }
+        }
+      }
     },
     "%lld%% remaining" : {
 
@@ -1319,6 +1351,9 @@
       }
     },
     "⌘V is passed straight through. Better when the agent reads pasted images well, and nothing at all when it does not." : {
+
+    },
+    "1 session is on it" : {
 
     },
     "7 days" : {
@@ -2263,6 +2298,9 @@
         }
       }
     },
+    "An account the provider refuses outright is always reported, whatever this is set to — some limits arrive with no warning at all." : {
+
+    },
     "An agent that finished, or that is stuck waiting for an answer, is worth knowing about without watching the window." : {
 
     },
@@ -2511,6 +2549,12 @@
           }
         }
       }
+    },
+    "Ask this agent what it was doing first" : {
+
+    },
+    "Asking %@ what it was doing…" : {
+
     },
     "Asks before it edits a file or runs a command." : {
       "extractionState" : "manual",
@@ -3282,17 +3326,6 @@
         }
       }
     },
-    "CHANGES" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DEĞİŞİKLİKLER"
-          }
-        }
-      }
-    },
     "Changes requested" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3629,17 +3662,6 @@
     },
     "Close Scratch?" : {
 
-    },
-    "Close the changes panel" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Değişiklikler panelini kapat"
-          }
-        }
-      }
     },
     "Close the pane" : {
       "extractionState" : "manual",
@@ -4116,6 +4138,9 @@
     "Continue" : {
 
     },
+    "Continue with %@" : {
+
+    },
     "Control plane" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4153,6 +4178,15 @@
       }
     },
     "Copy" : {
+
+    },
+    "Copy failure" : {
+
+    },
+    "Copy failure message" : {
+
+    },
+    "Copy name" : {
 
     },
     "Copy the code" : {
@@ -5393,6 +5427,9 @@
         }
       }
     },
+    "Exit code" : {
+
+    },
     "exit code %d" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5543,6 +5580,9 @@
         }
       }
     },
+    "Failure" : {
+
+    },
     "Featured" : {
 
     },
@@ -5561,6 +5601,9 @@
 
     },
     "Fetching the file list…" : {
+
+    },
+    "figure not refreshed" : {
 
     },
     "File" : {
@@ -5611,6 +5654,9 @@
       }
     },
     "Finish setup" : {
+
+    },
+    "Finished" : {
 
     },
     "Finished and clean" : {
@@ -5710,6 +5756,9 @@
     "Four things that make the difference on day one." : {
 
     },
+    "Framework" : {
+
+    },
     "Frequency" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5741,6 +5790,9 @@
 
     },
     "from the Codex app-server" : {
+
+    },
+    "From this run" : {
 
     },
     "from Uncoil's last reading" : {
@@ -5947,6 +5999,12 @@
         }
       }
     },
+    "Hand off" : {
+
+    },
+    "Hand off before it runs out" : {
+
+    },
     "Hand out work from a TODO.md" : {
 
     },
@@ -5964,7 +6022,13 @@
         }
       }
     },
+    "Hand the work to another agent before this account runs out" : {
+
+    },
     "Hand this issue to an agent" : {
+
+    },
+    "Hand this work to another agent" : {
 
     },
     "Has no skills directory" : {
@@ -6194,6 +6258,9 @@
       }
     },
     "How much each agent does without asking." : {
+
+    },
+    "How much of the tightest limit has to be left before Uncoil says something." : {
 
     },
     "How much should an agent do on its own?" : {
@@ -6626,6 +6693,36 @@
     "ISSUES" : {
 
     },
+    "it did not answer in time" : {
+
+    },
+    "it produced no answer" : {
+
+    },
+    "It was given the previous agent's notes, the branch, the changed files and the diff." : {
+
+    },
+    "It writes a handover file and stops. If it cannot answer, the handoff goes ahead with what Uncoil already knows." : {
+
+    },
+    "it wrote an empty handover" : {
+
+    },
+    "its answer could not be read" : {
+
+    },
+    "its answer had no result" : {
+
+    },
+    "its CLI could not be found" : {
+
+    },
+    "its CLI could not be started" : {
+
+    },
+    "its project is gone" : {
+
+    },
     "just now" : {
 
     },
@@ -6661,6 +6758,12 @@
           }
         }
       }
+    },
+    "Keep using this account" : {
+
+    },
+    "Keeps the branch, the changes and what was decided" : {
+
     },
     "Keeps watching the agents while Uncoil's window is closed." : {
       "extractionState" : "manual",
@@ -6839,6 +6942,12 @@
 
     },
     "License" : {
+
+    },
+    "Limit approaching" : {
+
+    },
+    "Limit reached" : {
 
     },
     "Line to write to the file" : {
@@ -8252,6 +8361,9 @@
         }
       }
     },
+    "no per-test detail" : {
+
+    },
     "No permission request arrives while the MCP control plane is off." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9122,6 +9234,9 @@
         }
       }
     },
+    "Open a new agent session on these failures" : {
+
+    },
     "Open Extensions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9199,6 +9314,9 @@
         }
       }
     },
+    "Open it" : {
+
+    },
     "Open on GitHub" : {
 
     },
@@ -9234,17 +9352,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sistem Ayarları’nı Aç"
-          }
-        }
-      }
-    },
-    "Open the changes panel" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Değişiklikler panelini aç"
           }
         }
       }
@@ -9484,6 +9591,9 @@
           }
         }
       }
+    },
+    "Output" : {
+
     },
     "Overview" : {
       "extractionState" : "manual",
@@ -10082,6 +10192,9 @@
         }
       }
     },
+    "Provider Limits" : {
+
+    },
     "Providers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10259,6 +10372,9 @@
         }
       }
     },
+    "Raises a row in the Attention Center when a login is close to a provider limit. The figures in each session's header are shown either way." : {
+
+    },
     "Re-audit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10335,6 +10451,9 @@
           }
         }
       }
+    },
+    "Read `%@` and continue the work it describes. It is a handover from another agent that ran out of quota; check the current state of the repository before you change anything." : {
+
     },
     "Read Only" : {
       "extractionState" : "manual",
@@ -11036,6 +11155,9 @@
       }
     },
     "Retry" : {
+
+    },
+    "Reveal in Finder" : {
 
     },
     "Review" : {
@@ -12191,6 +12313,9 @@
     "Show the details" : {
 
     },
+    "Show the rest of this task" : {
+
+    },
     "Show the results" : {
 
     },
@@ -12404,6 +12529,9 @@
 
     },
     "Skip" : {
+
+    },
+    "Skipped" : {
 
     },
     "Skipping this changes nothing about how extensions are scanned today." : {
@@ -12641,6 +12769,9 @@
         }
       }
     },
+    "Starting %@…" : {
+
+    },
     "Starting a child process." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12788,6 +12919,9 @@
         }
       }
     },
+    "Suite" : {
+
+    },
     "Support" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12872,6 +13006,9 @@
 
     },
     "Take over what you already installed" : {
+
+    },
+    "Takes up to a minute and uses a little of the remaining quota. Without it the handover still carries the branch, the changed files and the diff — but not what was decided." : {
 
     },
     "Target" : {
@@ -13486,6 +13623,9 @@
         }
       }
     },
+    "The file is no longer at %@" : {
+
+    },
     "The file was reloaded; the edit was not applied." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13592,6 +13732,9 @@
     "the layout changed" : {
 
     },
+    "The old session is still running and was not closed." : {
+
+    },
     "The package contains binary files." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13613,6 +13756,9 @@
           }
         }
       }
+    },
+    "The previous agent did not answer (%@), so the handover carries only what Uncoil knows: the branch, the changed files and the diff." : {
+
     },
     "The previous revision is kept; rollback returns to it with one click." : {
       "extractionState" : "manual",
@@ -13647,6 +13793,9 @@
         }
       }
     },
+    "The project is gone." : {
+
+    },
     "The prompt is typed in; press Enter in the session to start it." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13668,6 +13817,9 @@
           }
         }
       }
+    },
+    "The provider has stopped accepting work" : {
+
     },
     "The provider session dropped; you need to sign in again." : {
       "extractionState" : "manual",
@@ -13710,6 +13862,9 @@
           }
         }
       }
+    },
+    "The run" : {
+
     },
     "The running process is closed; the recording cannot be recovered." : {
       "extractionState" : "manual",
@@ -14083,6 +14238,9 @@
         }
       }
     },
+    "There is no other agent installed to hand this work to." : {
+
+    },
     "There is no session to grant anything to yet." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14119,6 +14277,9 @@
         }
       }
     },
+    "This account is out — hand the work to another agent" : {
+
+    },
     "This agent cannot resume a conversation, so it cannot sleep." : {
 
     },
@@ -14149,6 +14310,9 @@
           }
         }
       }
+    },
+    "This framework's failure output is not parsed, so there is no message to show — the run's own output is under the suite." : {
+
     },
     "This is the mode every new session starts in. You can change it per session at any time, and change the default later in Settings." : {
       "extractionState" : "manual",
@@ -14239,6 +14403,9 @@
           }
         }
       }
+    },
+    "Took" : {
+
     },
     "Tools" : {
       "extractionState" : "manual",
@@ -14406,6 +14573,9 @@
 
     },
     "Uncoil can look for the test setup this project already has, run it, and show what failed." : {
+
+    },
+    "Uncoil cannot ask %@ for a handover." : {
 
     },
     "Uncoil cannot tell how this was installed, so it will not guess at an update command." : {
@@ -14795,6 +14965,9 @@
         }
       }
     },
+    "unsupported provider" : {
+
+    },
     "Untitled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14956,6 +15129,9 @@
 
     },
     "Usage unavailable" : {
+
+    },
+    "usage unknown" : {
 
     },
     "Use Option as Meta" : {
@@ -15169,6 +15345,12 @@
 
     },
     "Want a second account?" : {
+
+    },
+    "Warn at" : {
+
+    },
+    "Warn before an account runs out" : {
 
     },
     "Warning" : {
