@@ -9,6 +9,7 @@ import SwiftUI
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
 ///   -tests-run <suite id>  start that suite as soon as the Tests screen opens
 ///   -tests-step <suite id> open that suite's leading step in its detail window
+///   -run-start <config id> start that run configuration when the Run screen opens
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
@@ -39,6 +40,8 @@ struct LaunchConfig {
     let testsRun: String?
     /// A suite whose first step opens its detail window as the screen appears.
     let testsStep: String?
+    /// A run configuration to start as soon as the Run screen appears.
+    let runStart: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
     let windowWidth: Double?
@@ -100,6 +103,7 @@ struct LaunchConfig {
         projectArea = Self.value(after: "-project-area", in: arguments)
         testsRun = isUITesting ? Self.value(after: "-tests-run", in: arguments) : nil
         testsStep = isUITesting ? Self.value(after: "-tests-step", in: arguments) : nil
+        runStart = isUITesting ? Self.value(after: "-run-start", in: arguments) : nil
         onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
@@ -222,6 +226,7 @@ struct LaunchConfig {
         ], projectRoot: projectDir)
         let shot = Self.seedFixtureScreenshot(projectRoot: projectDir)
         Self.seedFixtureStreamingSuite(projectRoot: projectDir)
+        Self.seedFixtureRunConfigurations(projectRoot: projectDir)
         TestRegistry.saveRecord(
             TestRunRecord(
                 id: "demo-unit", suiteID: "unit",
@@ -302,6 +307,43 @@ struct LaunchConfig {
             .first(where: { $0.provider == .terminal }) {
             projectStore.togglePin(pinned.id)
         }
+    }
+
+    /// Two run configurations, so the Run area can be looked at.
+    ///
+    /// One of them actually runs — it prints a line a second and stays up —
+    /// because a dev server that cannot be started is a card with only one of
+    /// its two states reachable.
+    static func seedFixtureRunConfigurations(projectRoot: URL) {
+        let script = """
+        #!/bin/sh
+        echo "listening on http://localhost:5173"
+        i=0
+        while true; do
+          i=$((i+1))
+          echo "[dev] rebuilt in ${i}ms"
+          sleep 1
+        done
+        """
+        try? script.write(
+            to: projectRoot.appendingPathComponent("dev-server.sh"),
+            atomically: true, encoding: .utf8
+        )
+        try? RunConfigFile.save([
+            RunConfiguration(
+                id: "web-dev", name: "Web dev server", command: "sh dev-server.sh",
+                // No ports: the fixture's script prints, it does not listen,
+                // and a port nobody opens would leave the card "starting…"
+                // forever.
+                previewURL: "http://localhost:5173",
+                isDefault: true, source: .detected, notes: "seeded by the demo fixture"
+            ),
+            RunConfiguration(
+                id: "api", name: "API", command: "sh api-server.sh",
+                ports: [8080], source: .user,
+                notes: "there is no such script — this one is here to show a failure"
+            ),
+        ], projectRoot: projectRoot)
     }
 
     /// A suite that actually runs, and takes long enough to be watched.

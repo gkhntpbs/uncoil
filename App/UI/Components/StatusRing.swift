@@ -16,8 +16,11 @@ struct StatusRing: View {
         case idle
         /// Deliberately not run — a skipped test, a disabled step.
         case skipped
-        /// In flight.
+        /// In flight — a transient, on its way to an answer.
         case running
+        /// Alive and meant to stay that way: a dev server, a watcher. Green
+        /// like a pass, but it is not a verdict, so it carries no tick.
+        case live
         case passed
         case failed
         case warned
@@ -27,7 +30,7 @@ struct StatusRing: View {
         /// verdict, and a glyph would make it look like one.
         var glyph: String? {
             switch self {
-            case .idle, .running: nil
+            case .idle, .running, .live: nil
             case .skipped: "minus"
             case .passed: "check"
             case .failed: "x"
@@ -40,7 +43,7 @@ struct StatusRing: View {
             case .idle: Theme.textFaint
             case .skipped: Theme.textDim
             case .running: Theme.textDim
-            case .passed: Theme.ok
+            case .live, .passed: Theme.ok
             case .failed: Theme.danger
             case .warned: Theme.warn
             }
