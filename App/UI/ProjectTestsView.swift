@@ -9,12 +9,16 @@ import SwiftUI
 struct ProjectTestsView: View {
     let project: Project
 
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var registry = TestRegistry.shared
     @State private var suites: [TestSuiteConfiguration] = []
     @State private var problems: [String] = []
     @State private var expanded: Set<String> = []
     @State private var message: String?
     @State private var isDetecting = false
+    /// What became of the last hand-off, per suite.
+    @State private var repairNotes: [String: String] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -164,8 +168,11 @@ struct ProjectTestsView: View {
                 }
                 if let record = state.latest {
                     summaryLine(record)
+                    if !record.summary.didPass, !state.isRunning {
+                        repairRow(record, suite: suite)
+                    }
                     if isExpanded {
-                        TestStepList(record: record, suite: suite)
+                        TestStepList(record: record, suite: suite, project: project)
                     }
                 }
             }
@@ -179,6 +186,45 @@ struct ProjectTestsView: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.suite.\(suite.id)")
+    }
+
+    /// Hands the failure to an agent, the way a failing run is handed over.
+    ///
+    /// Offered only on a red suite, and only once it has stopped: a suite that
+    /// is still running has no failure to explain yet.
+    private func repairRow(
+        _ record: TestRunRecord, suite: TestSuiteConfiguration
+    ) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                let handed = TestRepair.dispatch(
+                    project: project, suite: suite, record: record,
+                    projectStore: projectStore, language: settings.language.resolvedAgent()
+                )
+                repairNotes[suite.id] = handed
+                    ? String(localized: "Sent to the agent")
+                    : String(localized: "No live agent — the prompt was copied to the clipboard")
+            } label: {
+                HStack(spacing: 5) {
+                    TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
+                    Text("Fix with agent")
+                        .font(Theme.mono(.micro, .semibold))
+                        .foregroundStyle(Theme.textOnHighlight)
+                }
+                .padding(.horizontal, 9)
+                .frame(height: 22)
+                .background(Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Ask this project's agent to look at the failures"))
+            .accessibilityIdentifier("tests.repair.\(suite.id)")
+            if let note = repairNotes[suite.id] {
+                Text(note)
+                    .font(Theme.mono(.micro))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     /// What the suite is doing right now.

@@ -14,6 +14,9 @@ import SwiftUI
 struct TestStepList: View {
     let record: TestRunRecord
     let suite: TestSuiteConfiguration
+    /// Whose project this is — the sheet needs it to find an agent to hand a
+    /// failing test to.
+    var project: Project?
 
     /// Nil means the user has not chosen yet, not "show everything" — that
     /// distinction is what lets the default follow the run while leaving `All`
@@ -94,7 +97,7 @@ struct TestStepList: View {
         }
         .sheet(item: $opened) { result in
             TestStepDetailSheet(
-                result: result, record: record, suite: suite,
+                result: result, record: record, suite: suite, project: project,
                 onOpenArtifact: { artifact in
                     opened = nil
                     preview = artifact
@@ -421,9 +424,13 @@ struct TestStepDetailSheet: View {
     let result: TestCaseResult
     let record: TestRunRecord
     let suite: TestSuiteConfiguration
+    var project: Project?
     var onOpenArtifact: (TestArtifact) -> Void = { _ in }
 
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
+    @State private var repairNote: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -549,6 +556,38 @@ struct TestStepDetailSheet: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
+            // Only a failure can be repaired; offering it on a green test would
+            // be a button with nothing to say.
+            if result.outcome == .failed, let project {
+                Button {
+                    let handed = TestRepair.dispatch(
+                        project: project, suite: suite, record: record, focus: result,
+                        projectStore: projectStore, language: settings.language.resolvedAgent()
+                    )
+                    repairNote = handed
+                        ? String(localized: "Sent to the agent")
+                        : String(localized: "No live agent — copied to the clipboard")
+                } label: {
+                    HStack(spacing: 5) {
+                        TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
+                        Text("Fix with agent")
+                            .font(Theme.mono(.micro, .semibold))
+                            .foregroundStyle(Theme.textOnHighlight)
+                    }
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
+                    .background(
+                        Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("tests.stepDetail.repair")
+                if let repairNote {
+                    Text(repairNote)
+                        .font(Theme.mono(.micro))
+                        .foregroundStyle(Theme.textFaint)
+                }
+            }
             Button("Copy name") { copy(result.id) }
                 .buttonStyle(.pressable)
                 .font(Theme.mono(.micro))
