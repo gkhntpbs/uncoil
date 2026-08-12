@@ -17,11 +17,16 @@ struct TestStepList: View {
     /// Whose project this is — the sheet needs it to find an agent to hand a
     /// failing test to.
     var project: Project?
+    /// Owned by the card, because the chevron that toggles it sits in the
+    /// summary bar and the card decides which suites start open.
+    @Binding var isExpanded: Bool
 
     /// Nil means the user has not chosen yet, not "show everything" — that
     /// distinction is what lets the default follow the run while leaving `All`
     /// a filter the user can actually pick. Without it, choosing `All` on a
     /// failed run fell straight back to the failures.
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @State private var filter: Filter?
     @State private var preview: TestArtifact?
     @State private var opened: TestCaseResult?
@@ -73,15 +78,44 @@ struct TestStepList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            if record.summary.isDetailed, !record.cases.isEmpty {
-                filterBar
-                TestStepRows(cases: visibleCases, suiteID: suite.id) { opened = $0 }
-            }
-            if !record.artifacts.isEmpty {
-                runArtifacts
-            }
-            if !record.logTail.isEmpty {
-                outputSection
+            TestSummaryBar(
+                // Skipped tests were never run, so they are not part of what
+                // got done — only of what there was.
+                done: record.summary.passed + record.summary.failed,
+                total: record.summary.total,
+                summary: record.summary,
+                selection: record.summary.isDetailed ? $filter : nil,
+                counts: { count($0) },
+                isExpanded: $isExpanded,
+                identifierPrefix: "tests.filter.\(suite.id)",
+                trailing: { meta }
+            )
+            if isExpanded {
+                if record.summary.isDetailed, !record.cases.isEmpty {
+                    TestStepRows(
+                        cases: visibleCases,
+                        suiteID: suite.id,
+                        onOpen: { opened = $0 },
+                        onRepair: project.map { project in
+                            { result in
+                                TestRepair.dispatch(
+                                    project: project, suite: suite, record: record, focus: result,
+                                    projectStore: projectStore, provider: settings.defaultProvider,
+                                    language: settings.language.resolvedAgent()
+                                )
+                            }
+                        }
+                    )
+                }
+                if !record.summary.didPass, let project {
+                    repairButton(project)
+                }
+                if !record.artifacts.isEmpty {
+                    runArtifacts
+                }
+                if !record.logTail.isEmpty {
+                    outputSection
+                }
             }
         }
         .accessibilityIdentifier("tests.details.\(suite.id)")
@@ -89,6 +123,7 @@ struct TestStepList: View {
             // Deterministic entry for a UI test, and for looking at the window
             // without hunting for a row to click.
             if LaunchConfig.shared.testsStep == suite.id {
+                isExpanded = true
                 opened = visibleCases.first
             }
         }
@@ -106,6 +141,61 @@ struct TestStepList: View {
         }
     }
 
+    /// What the run cost and when it was: the right-hand end of the summary
+    /// bar, where a number that is not a tally belongs.
+    private var meta: some View {
+        HStack(spacing: Theme.Space.tight) {
+            if !record.summary.isDetailed {
+                // Saying "0 failures" here would be a claim the output never
+                // made: nothing parsed it, and all that is known is the status.
+                Text(record.summary.didPass ? "Passed" : "Failed")
+                    .foregroundStyle(record.summary.didPass ? Theme.ok : Theme.danger)
+                Text("no per-test detail").foregroundStyle(Theme.textFaint)
+            }
+            if !record.allArtifacts.isEmpty {
+                HStack(spacing: 3) {
+                    TablerIcon(name: "photo", size: 10, color: Theme.textFaint)
+                    Text("\(record.allArtifacts.count)")
+                }
+                .foregroundStyle(Theme.textFaint)
+            }
+            if let duration = record.duration {
+                Text(TestStepFormat.duration(duration))
+                    .foregroundStyle(Theme.textFaint)
+                    .monospacedDigit()
+            }
+            if let finished = record.finishedAt {
+                Text(RelativeClock.short(since: finished)).foregroundStyle(Theme.textFaint)
+            }
+        }
+        .font(Theme.mono(.small))
+    }
+
+    /// The whole suite handed over at once. One test at a time is offered on
+    /// the row itself, where the test is.
+    private func repairButton(_ project: Project) -> some View {
+        Button {
+            TestRepair.dispatch(
+                project: project, suite: suite, record: record,
+                projectStore: projectStore, provider: settings.defaultProvider,
+                language: settings.language.resolvedAgent()
+            )
+        } label: {
+            HStack(spacing: 5) {
+                TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
+                Text("Fix with agent")
+                    .font(Theme.mono(.small, .semibold))
+                    .foregroundStyle(Theme.textOnHighlight)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+        }
+        .buttonStyle(.pressable)
+        .help(String(localized: "Open a new agent session on these failures"))
+        .accessibilityIdentifier("tests.repair.\(suite.id)")
+    }
+
     // MARK: - Filters
 
     /// Counted from the rows themselves rather than from the run's summary.
@@ -117,47 +207,6 @@ struct TestStepList: View {
     private func count(_ filter: Filter) -> Int {
         guard let outcome = filter.outcome else { return record.cases.count }
         return record.cases.count { $0.outcome == outcome }
-    }
-
-    private var filterBar: some View {
-        HStack(spacing: 6) {
-            // A filter for a bucket that is empty is a control that can only
-            // produce an empty list, so it is not offered. `All` always is.
-            ForEach(Filter.allCases.filter { $0 == .all || count($0) > 0 }) { option in
-                chip(option)
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func chip(_ option: Filter) -> some View {
-        let isOn = activeFilter == option
-        let tint = option.outcome.map(Self.tint) ?? Theme.textDim
-        return Button {
-            filter = option
-        } label: {
-            HStack(spacing: 5) {
-                Text(option.label)
-                Text("\(count(option))")
-                    .foregroundStyle(isOn ? tint : Theme.textFaint)
-                    .monospacedDigit()
-            }
-            .font(Theme.mono(.micro, isOn ? .semibold : .regular))
-            .foregroundStyle(isOn ? tint : Theme.textDim)
-            .padding(.horizontal, 8)
-            .frame(height: 22)
-            .background(
-                isOn ? tint.opacity(0.14) : Theme.statusSurface,
-                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    .strokeBorder(isOn ? tint.opacity(0.5) : .clear, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("tests.filter.\(suite.id).\(option.rawValue)")
-        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     static func tint(_ outcome: TestCaseResult.Outcome) -> Color {
@@ -232,7 +281,7 @@ struct TestStepList: View {
     }
 }
 
-/// The rows themselves, in their bordered box.
+/// The steps of a run, as rows.
 ///
 /// Shared by the finished run and the one in flight: a step should not change
 /// shape the moment its suite ends.
@@ -240,110 +289,76 @@ struct TestStepRows: View {
     let cases: [TestCaseResult]
     let suiteID: String
     var onOpen: ((TestCaseResult) -> Void)?
+    /// Offered on a failed row when the list knows who to hand it to.
+    var onRepair: ((TestCaseResult) -> Void)?
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 4) {
             // Keyed by position, not by name: two packages can report a test
             // of the same name, and a duplicated identity drops rows.
             ForEach(cases.indices, id: \.self) { index in
-                if index > 0 {
-                    Rectangle().fill(Theme.border).frame(height: 1)
-                }
-                TestStepRow(result: cases[index], suiteID: suiteID, onOpen: onOpen)
+                row(cases[index])
             }
         }
-        .background(Theme.bg.opacity(0.35))
-        // Clipped, not just backed: a failed row is tinted edge to edge, and
-        // without this its square corner sits outside the rounded border.
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.border, lineWidth: 1)
-        )
     }
-}
 
-/// One test, as a row.
-private struct TestStepRow: View {
-    let result: TestCaseResult
-    let suiteID: String
-    let onOpen: ((TestCaseResult) -> Void)?
-
-    @State private var hovering = false
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            // Aligned to the first line's baseline rather than to the top of a
-            // box whose height depends on whether there is a message under it.
-            TablerIcon(
-                name: TestStepList.icon(result.outcome), size: 12,
-                color: TestStepList.tint(result.outcome)
-            )
-            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(result.name)
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !result.suite.isEmpty {
-                    Text(result.suite)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                if let message = result.message, !message.isEmpty {
-                    Text(message)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.danger)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+    private func row(_ result: TestCaseResult) -> some View {
+        EntityRow(
+            title: result.name,
+            subtitle: result.outcome == .failed ? nil : result.suite,
+            detail: result.outcome == .failed ? (result.message ?? result.suite) : nil,
+            detailColor: result.message == nil ? Theme.textFaint : Theme.danger,
+            ring: ring(result.outcome),
+            tint: result.outcome == .failed ? Theme.danger : nil,
+            identifier: "tests.step.\(suiteID).\(result.id)",
+            onTap: onOpen.map { open in { open(result) } }
+        ) {
+            HStack(spacing: Theme.Space.tight) {
                 if !result.artifacts.isEmpty {
-                    TestArtifactCountLabel(count: result.artifacts.count)
+                    HStack(spacing: 3) {
+                        TablerIcon(name: "photo", size: 10, color: Theme.textFaint)
+                        Text("\(result.artifacts.count)")
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.textFaint)
+                    }
                 }
-            }
-            Spacer(minLength: 8)
-            if let duration = result.duration {
-                Text(TestStepFormat.duration(duration))
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-                    .monospacedDigit()
-                    // A fixed column, so the times read as a column instead of
-                    // stepping in and out with the length of each number.
-                    .frame(width: 54, alignment: .trailing)
-            }
-            if onOpen != nil {
-                TablerIcon(
-                    name: "chevron-right", size: 11,
-                    color: hovering ? Theme.textDim : Theme.textFaint.opacity(0.4)
-                )
+                if let duration = result.duration {
+                    Text(TestStepFormat.duration(duration))
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textFaint)
+                        .monospacedDigit()
+                        // A fixed column, so the times read as a column instead
+                        // of stepping in and out with the length of each number.
+                        .frame(width: 52, alignment: .trailing)
+                }
+                if result.outcome == .failed, let onRepair {
+                    MiniActionButton(
+                        iconName: "wand",
+                        help: String(localized: "Open a new agent session on this test"),
+                        identifier: "tests.step.repair.\(result.id)"
+                    ) {
+                        onRepair(result)
+                    }
+                }
+                if onOpen != nil {
+                    TablerIcon(name: "chevron-right", size: 11, color: Theme.textFaint)
+                }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground)
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        .onTapGesture { onOpen?(result) }
         .contextMenu {
             Button("Copy name") { copy(result.id) }
             if let message = result.message, !message.isEmpty {
                 Button("Copy failure message") { copy(message) }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tests.step.\(suiteID).\(result.id)")
     }
 
-    /// A failure is tinted for the same reason it is listed first: it is what
-    /// the eye should land on. Everything else stays quiet, and only lifts
-    /// under the pointer.
-    private var rowBackground: Color {
-        if result.outcome == .failed {
-            return hovering ? Theme.danger.opacity(0.22) : Theme.dangerSurface
+    private func ring(_ outcome: TestCaseResult.Outcome) -> StatusRing.State {
+        switch outcome {
+        case .passed: .passed
+        case .failed: .failed
+        case .skipped: .skipped
         }
-        return hovering ? Theme.panelHover.opacity(0.6) : .clear
     }
 
     private func copy(_ text: String) {

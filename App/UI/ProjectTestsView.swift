@@ -107,114 +107,93 @@ struct ProjectTestsView: View {
         .panel()
     }
 
+    /// One suite: what it is, and what it did, tucked under it.
     private func suiteCard(_ suite: TestSuiteConfiguration) -> some View {
         let state = registry.state(project: project, suiteID: suite.id)
         let isExpanded = expanded.contains(suite.id)
-        return VStack(alignment: .leading, spacing: Theme.Space.tight) {
-            HStack(spacing: 8) {
-                verdict(state)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(suite.name)
-                        .font(Theme.mono(.body))
-                        .foregroundStyle(Theme.text)
-                    Text(suite.command)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                Spacer(minLength: 8)
-                if state.isRunning {
-                    ProgressView().controlSize(.small).scaleEffect(0.6)
-                    ControlButton(
-                        iconName: "player-stop",
-                        help: String(localized: "Stop"),
-                        identifier: "tests.stop.\(suite.id)",
-                        tint: Theme.danger
-                    ) {
-                        registry.stop(project: project, suiteID: suite.id)
-                    }
-                } else {
-                    ControlButton(
-                        iconName: "player-play",
-                        help: String(localized: "Run \(suite.name)"),
-                        identifier: "tests.run.\(suite.id)",
-                        tint: Theme.ok
-                    ) {
-                        run(suite)
-                    }
-                }
-                if state.latest != nil {
-                    ControlButton(
-                        iconName: isExpanded ? "chevron-up" : "chevron-down",
-                        help: isExpanded
-                            ? String(localized: "Hide the results")
-                            : String(localized: "Show the results"),
-                        identifier: "tests.expand.\(suite.id)"
-                    ) {
-                        if isExpanded { expanded.remove(suite.id) } else { expanded.insert(suite.id) }
-                    }
-                }
-            }
-            // Everything under the header lines up with the suite's name: the
-            // status dot is 8pt wide with 8pt beside it, so that column is
-            // exactly where the title starts, and nothing here should sit at a
-            // different one.
-            VStack(alignment: .leading, spacing: Theme.Space.tight) {
-                if state.isRunning {
-                    running(state, suite: suite)
-                }
-                if let record = state.latest {
-                    summaryLine(record)
-                    if !record.summary.didPass, !state.isRunning {
-                        repairRow(record, suite: suite)
-                    }
-                    if isExpanded {
-                        TestStepList(record: record, suite: suite, project: project)
-                    }
-                }
-            }
-            .padding(.leading, 16)
+        return StackedCard {
+            head(suite, state: state)
+        } drawer: {
+            drawer(suite, state: state, isExpanded: isExpanded)
         }
-        .padding(Theme.Space.snug)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.suite.\(suite.id)")
     }
 
-    /// Hands the failure to an agent, the way a failing run is handed over.
-    ///
-    /// Offered only on a red suite, and only once it has stopped: a suite that
-    /// is still running has no failure to explain yet.
-    private func repairRow(
-        _ record: TestRunRecord, suite: TestSuiteConfiguration
+    /// The head: the suite's name and the one button that acts on it. Nothing
+    /// that changes while it runs lives up here, so the card does not twitch
+    /// under the pointer as results arrive.
+    private func head(
+        _ suite: TestSuiteConfiguration, state: TestSuiteState
     ) -> some View {
-        HStack(spacing: 8) {
-            Button {
-                TestRepair.dispatch(
-                    project: project, suite: suite, record: record,
-                    projectStore: projectStore, provider: settings.defaultProvider,
-                    language: settings.language.resolvedAgent()
-                )
-            } label: {
-                HStack(spacing: 5) {
-                    TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
-                    Text("Fix with agent")
-                        .font(Theme.mono(.micro, .semibold))
-                        .foregroundStyle(Theme.textOnHighlight)
-                }
-                .padding(.horizontal, 9)
-                .frame(height: 22)
-                .background(Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+        HStack(spacing: Theme.Space.snug) {
+            StatusRing(state: ring(state), size: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(suite.name)
+                    .font(Theme.mono(.large))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(suite.command)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
-            .buttonStyle(.plain)
-            .help(String(localized: "Open a new agent session on these failures"))
-            .accessibilityIdentifier("tests.repair.\(suite.id)")
-            Spacer(minLength: 0)
+            Spacer(minLength: Theme.Space.snug)
+            if state.isRunning {
+                GlyphActionButton(
+                    iconName: "player-pause",
+                    help: String(localized: "Stop"),
+                    identifier: "tests.stop.\(suite.id)",
+                    tint: Theme.warn
+                ) {
+                    registry.stop(project: project, suiteID: suite.id)
+                }
+            } else {
+                GlyphActionButton(
+                    iconName: "player-play",
+                    help: String(localized: "Run \(suite.name)"),
+                    identifier: "tests.run.\(suite.id)",
+                    tint: Theme.ok
+                ) {
+                    run(suite)
+                }
+            }
+        }
+    }
+
+    private func ring(_ state: TestSuiteState) -> StatusRing.State {
+        if state.isRunning { return .running }
+        guard let record = state.latest else { return .idle }
+        return record.summary.didPass ? .passed : .failed
+    }
+
+    /// The drawer: the tally, and — while it is open — the steps themselves.
+    @ViewBuilder
+    private func drawer(
+        _ suite: TestSuiteConfiguration, state: TestSuiteState, isExpanded: Bool
+    ) -> some View {
+        if state.isRunning {
+            running(state, suite: suite)
+        } else if let record = state.latest {
+            TestStepList(
+                record: record, suite: suite, project: project,
+                isExpanded: Binding(
+                    get: { isExpanded },
+                    set: { open in
+                        if open { expanded.insert(suite.id) } else { expanded.remove(suite.id) }
+                    }
+                )
+            )
+        } else {
+            // Never run. The drawer still exists, so the card does not change
+            // shape the first time it is used.
+            Text("Not run yet")
+                .font(Theme.mono(.small))
+                .foregroundStyle(Theme.textFaint)
+                .padding(.horizontal, Theme.Space.hair)
+                .frame(height: 20)
         }
     }
 
@@ -227,24 +206,17 @@ struct ProjectTestsView: View {
     @ViewBuilder
     private func running(_ state: TestSuiteState, suite: TestSuiteConfiguration) -> some View {
         let live = state.liveCases
-        if live.isEmpty {
-            // Either nothing has been reported yet, or this framework's output
-            // is not parsed at all — in both cases the output is what there is.
-            if !state.logTail.isEmpty {
-                Text(lastLines(state.logTail, 4))
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-                    .lineLimit(4)
-            }
-        } else {
-            let summary = state.liveSummary
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text("\(summary.total) so far")
-                        .foregroundStyle(Theme.textDim)
-                    if summary.failed > 0 {
-                        Text("\(summary.failed) failed").foregroundStyle(Theme.danger)
-                    }
+        let summary = state.liveSummary
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            TestSummaryBar(
+                done: summary.passed + summary.failed,
+                // The total is unknown until the runner is finished, and the
+                // last run's is a different run's number. Better a count that
+                // is true than a fraction that is invented.
+                total: 0,
+                summary: summary,
+                isLive: true,
+                trailing: {
                     if let startedAt = state.startedAt {
                         // On its own clock: the rest of this view redraws when
                         // output arrives, and a suite that goes quiet for a
@@ -253,75 +225,28 @@ struct ProjectTestsView: View {
                             Text(TestStepFormat.duration(
                                 context.date.timeIntervalSince(startedAt)
                             ))
+                            .font(Theme.mono(.small))
                             .foregroundStyle(Theme.textFaint)
                             .monospacedDigit()
                         }
                     }
                 }
-                .font(Theme.mono(.micro))
-                TestStepRows(cases: Array(live.suffix(8)), suiteID: suite.id)
-            }
-            .accessibilityIdentifier("tests.live.\(suite.id)")
-        }
-    }
-
-    /// The at-a-glance answer. A suite that has never run gets a hollow ring
-    /// rather than a grey tick: "not run" is not "passed with nothing in it".
-    @ViewBuilder
-    private func verdict(_ state: TestSuiteState) -> some View {
-        if state.isRunning {
-            Circle().fill(Theme.highlight).frame(width: 8, height: 8)
-        } else if let record = state.latest {
-            Circle()
-                .fill(record.summary.didPass ? Theme.ok : Theme.danger)
-                .frame(width: 8, height: 8)
-        } else {
-            Circle()
-                .strokeBorder(Theme.textFaint, lineWidth: 1)
-                .frame(width: 8, height: 8)
-        }
-    }
-
-    private func summaryLine(_ record: TestRunRecord) -> some View {
-        HStack(spacing: 8) {
-            if record.summary.isDetailed {
-                Text("\(record.summary.passed) passed")
-                    .foregroundStyle(Theme.ok)
-                if record.summary.failed > 0 {
-                    Text("\(record.summary.failed) failed").foregroundStyle(Theme.danger)
-                }
-                if record.summary.skipped > 0 {
-                    Text("\(record.summary.skipped) skipped").foregroundStyle(Theme.textDim)
+            )
+            if live.isEmpty {
+                // Either nothing has been reported yet, or this framework's
+                // output is not parsed at all — the output is what there is.
+                if !state.logTail.isEmpty {
+                    Text(lastLines(state.logTail, 4))
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textFaint)
+                        .lineLimit(4)
+                        .padding(.horizontal, Theme.Space.hair)
                 }
             } else {
-                // Saying "0 failures" here would be a claim the output never
-                // made: nothing parsed it, and all that is known is the status.
-                Text(record.summary.didPass ? "Passed" : "Failed")
-                    .foregroundStyle(record.summary.didPass ? Theme.ok : Theme.danger)
-                Text("no per-test detail")
-                    .foregroundStyle(Theme.textFaint)
-            }
-            // What the run came to, and what it cost, are two different things
-            // — without a mark between them the line reads as one run-on
-            // number: "128 passed 2 failed 1 skipped 5.0s 1m".
-            Text("·").foregroundStyle(Theme.border)
-            if let duration = record.duration {
-                Text(TestStepFormat.duration(duration))
-                    .foregroundStyle(Theme.textFaint)
-                    .monospacedDigit()
-            }
-            if let finished = record.finishedAt {
-                Text(RelativeClock.short(since: finished)).foregroundStyle(Theme.textFaint)
-            }
-            if !record.allArtifacts.isEmpty {
-                HStack(spacing: 3) {
-                    TablerIcon(name: "photo", size: 10, color: Theme.textFaint)
-                    Text("\(record.allArtifacts.count)")
-                }
-                .foregroundStyle(Theme.textFaint)
+                TestStepRows(cases: Array(live.suffix(6)), suiteID: suite.id)
             }
         }
-        .font(Theme.mono(.micro))
+        .accessibilityIdentifier("tests.live.\(suite.id)")
     }
 
     private func lastLines(_ text: String, _ count: Int) -> String {
