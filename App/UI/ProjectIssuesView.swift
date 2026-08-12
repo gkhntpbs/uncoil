@@ -29,12 +29,21 @@ struct ProjectIssuesView: View {
         ))
     }
 
+    /// Deterministic entry for a UI test, and for looking at the drawer
+    /// without hunting for a row to click.
+    private func openRequestedIssue() {
+        guard let wanted = LaunchConfig.shared.issuesExpand,
+              let issue = store.issues.first(where: { "\($0.number)" == wanted })
+        else { return }
+        expanded.insert(issue.id)
+    }
+
     private var visible: [GitHubIssue] {
         store.issues(labelled: selectedLabel)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.snug) {
             toolbar
             if let message {
                 Text(message)
@@ -74,6 +83,10 @@ struct ProjectIssuesView: View {
                 await store.refresh()
             }
         }
+        // Both, because the fixture's issues can land before this view exists
+        // or after it: whichever happens second is the one that opens it.
+        .task { openRequestedIssue() }
+        .onChange(of: store.issues.count) { _, _ in openRequestedIssue() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("issues.container")
     }
@@ -183,97 +196,96 @@ struct ProjectIssuesView: View {
 
     private func issueCard(_ issue: GitHubIssue) -> some View {
         let isExpanded = expanded.contains(issue.id)
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 8) {
-                TablerIcon(name: "circle-dot", size: 12, color: Theme.ok)
-                    .padding(.top, 1)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(issue.title)
-                        .font(Theme.mono(.body))
-                        .foregroundStyle(Theme.text)
-                        .lineLimit(2)
-                    HStack(spacing: 6) {
-                        // The repository rides along with the number: two repos
-                        // both have a #1, and the number alone would be a lie.
-                        Text("\(issue.repository)#\(issue.number)")
-                            .font(Theme.mono(.micro))
-                            .foregroundStyle(Theme.textFaint)
-                        Text(issue.author)
-                            .font(Theme.mono(.micro))
-                            .foregroundStyle(Theme.textFaint)
-                        if issue.commentCount > 0 {
-                            Text("\(issue.commentCount) comments")
-                                .font(Theme.mono(.micro))
-                                .foregroundStyle(Theme.textFaint)
-                        }
-                        if let updated = issue.updatedAt {
-                            Text(RelativeClock.short(since: updated))
-                                .font(Theme.mono(.micro))
-                                .foregroundStyle(Theme.textFaint)
-                        }
-                    }
-                    if !issue.labels.isEmpty {
-                        HStack(spacing: 4) {
-                            ForEach(issue.labels) { label in
-                                Text(label.name)
-                                    .font(Theme.mono(.micro))
-                                    .foregroundStyle(Theme.textDim)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(
-                                        Color(hexString: label.color).opacity(0.22), in: Capsule()
-                                    )
-                            }
-                        }
-                    }
-                }
-                Spacer(minLength: 6)
-                if busyIssueID == issue.id {
-                    ProgressView().controlSize(.small).scaleEffect(0.55)
-                }
-                ControlButton(
-                    iconName: "robot",
-                    help: String(localized: "Hand this issue to an agent"),
-                    identifier: "issues.send.\(issue.number)",
-                    tint: Theme.highlight
-                ) {
-                    sendToAgent(issue)
-                }
-                if let url = issue.htmlURL {
-                    ControlButton(
-                        iconName: "external-link",
-                        help: String(localized: "Open on GitHub"),
-                        identifier: "issues.open.\(issue.number)"
-                    ) {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-                ControlButton(
-                    iconName: isExpanded ? "chevron-up" : "chevron-down",
-                    help: isExpanded
-                        ? String(localized: "Hide the details")
-                        : String(localized: "Show the details"),
-                    identifier: "issues.expand.\(issue.number)"
-                ) {
-                    if isExpanded { expanded.remove(issue.id) } else { expanded.insert(issue.id) }
-                }
-            }
-            if isExpanded {
-                details(issue)
-            }
+        return StackedCard(showsDrawer: isExpanded) {
+            head(issue, isExpanded: isExpanded)
+        } drawer: {
+            details(issue)
         }
-        .padding(12)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        )
+        .animation(Theme.Motion.standard, value: isExpanded)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("issues.issue.\(issue.number)")
     }
 
+    /// What the issue is, and the one thing this app can do about it: hand it
+    /// to an agent. Reading it, commenting on it and opening it on GitHub are
+    /// the housekeeping beside that.
+    private func head(_ issue: GitHubIssue, isExpanded: Bool) -> some View {
+        HStack(spacing: Theme.Space.snug) {
+            // Open, on someone else's server — a ring rather than a tick,
+            // because nothing here has been decided.
+            StatusRing(state: .live, size: 16)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(issue.title)
+                    .font(Theme.mono(.large))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: Theme.Space.tight) {
+                    // The repository rides along with the number: two repos
+                    // both have a #1, and the number alone would be a lie.
+                    Text("\(issue.repository)#\(issue.number)")
+                    Text(issue.author)
+                    if issue.commentCount > 0 {
+                        Text("\(issue.commentCount) comments")
+                    }
+                    if let updated = issue.updatedAt {
+                        Text(RelativeClock.short(since: updated))
+                    }
+                }
+                .font(Theme.mono(.small))
+                .foregroundStyle(Theme.textFaint)
+                if !issue.labels.isEmpty {
+                    FlowRow(spacing: 4) {
+                        ForEach(issue.labels) { label in
+                            Text(label.name)
+                                .font(Theme.mono(.micro))
+                                .foregroundStyle(Theme.textDim)
+                                .padding(.horizontal, 7)
+                                .frame(height: 18)
+                                .background(
+                                    Color(hexString: label.color).opacity(0.22), in: Capsule()
+                                )
+                        }
+                    }
+                    .padding(.top, 1)
+                }
+            }
+            Spacer(minLength: Theme.Space.snug)
+            if busyIssueID == issue.id {
+                ProgressView().controlSize(.small).scaleEffect(0.55)
+            }
+            if let url = issue.htmlURL {
+                ControlButton(
+                    iconName: "external-link",
+                    help: String(localized: "Open on GitHub"),
+                    identifier: "issues.open.\(issue.number)"
+                ) {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            ControlButton(
+                iconName: isExpanded ? "chevron-up" : "chevron-down",
+                help: isExpanded
+                    ? String(localized: "Hide the details")
+                    : String(localized: "Show the details"),
+                identifier: "issues.expand.\(issue.number)"
+            ) {
+                if isExpanded { expanded.remove(issue.id) } else { expanded.insert(issue.id) }
+            }
+            GlyphActionButton(
+                iconName: "robot",
+                help: String(localized: "Hand this issue to an agent"),
+                identifier: "issues.send.\(issue.number)",
+                tint: Theme.highlight,
+                size: 18
+            ) {
+                sendToAgent(issue)
+            }
+        }
+    }
+
     private func details(_ issue: GitHubIssue) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.snug) {
             if issue.body.isEmpty {
                 Text("No description.")
                     .font(Theme.mono(.small))

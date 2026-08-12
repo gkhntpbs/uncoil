@@ -10,6 +10,7 @@ import SwiftUI
 ///   -tests-run <suite id>  start that suite as soon as the Tests screen opens
 ///   -tests-step <suite id> open that suite's leading step in its detail window
 ///   -run-start <config id> start that run configuration when the Run screen opens
+///   -issues-expand <number> open that issue's details when the Issues screen opens
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
@@ -42,6 +43,8 @@ struct LaunchConfig {
     let testsStep: String?
     /// A run configuration to start as soon as the Run screen appears.
     let runStart: String?
+    /// An issue number whose detail drawer opens with the screen.
+    let issuesExpand: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
     let windowWidth: Double?
@@ -104,6 +107,7 @@ struct LaunchConfig {
         testsRun = isUITesting ? Self.value(after: "-tests-run", in: arguments) : nil
         testsStep = isUITesting ? Self.value(after: "-tests-step", in: arguments) : nil
         runStart = isUITesting ? Self.value(after: "-run-start", in: arguments) : nil
+        issuesExpand = isUITesting ? Self.value(after: "-issues-expand", in: arguments) : nil
         onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
@@ -227,6 +231,8 @@ struct LaunchConfig {
         let shot = Self.seedFixtureScreenshot(projectRoot: projectDir)
         Self.seedFixtureStreamingSuite(projectRoot: projectDir)
         Self.seedFixtureRunConfigurations(projectRoot: projectDir)
+        Self.seedFixtureRepository(projectRoot: projectDir)
+        seedFixtureIssues(project: project)
         TestRegistry.saveRecord(
             TestRunRecord(
                 id: "demo-unit", suiteID: "unit",
@@ -307,6 +313,68 @@ struct LaunchConfig {
             .first(where: { $0.provider == .terminal }) {
             projectStore.togglePin(pinned.id)
         }
+    }
+
+    /// Makes the demo project a repository with a GitHub remote.
+    ///
+    /// Without one the Issues area does not exist: whether the tab is offered
+    /// is decided by the remotes on disk, not by the network, so a fixture that
+    /// wants to show issues has to be a repository the way a real project is.
+    static func seedFixtureRepository(projectRoot: URL) {
+        for arguments in [
+            ["init", "--quiet"],
+            ["remote", "add", "origin", "https://github.com/uncoil/demo.git"],
+        ] {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["git"] + arguments
+            process.currentDirectoryURL = projectRoot
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+        }
+    }
+
+    /// Issues for the demo project, without the network or a GitHub account.
+    ///
+    /// The store takes its fetcher as a value precisely so this is possible:
+    /// everything downstream — sorting, the label filter, the hand-off to an
+    /// agent — is the production path, and only the round trip is replaced.
+    @MainActor
+    func seedFixtureIssues(project: Project) {
+        let store = IssueStores.store(projectID: project.id, projectRoot: project.rootPath)
+        store.discoverSlugs = { _ in ["uncoil/demo"] }
+        store.fetch = { _ in
+            .success([
+                GitHubIssue(
+                    apiID: 1, number: 42,
+                    title: "Sessions lose their scroll position when the window is resized",
+                    body: "Steps: open a session with a long history, drag the window edge, and the terminal jumps to the bottom.\n\nExpected: the view stays where it was.",
+                    author: "aylin", state: "open",
+                    labels: [
+                        GitHubIssue.Label(name: "bug", color: "d73a4a"),
+                        GitHubIssue.Label(name: "terminal", color: "5319e7"),
+                    ],
+                    assignees: ["gkhntpbs"], commentCount: 3,
+                    updatedAt: Date(timeIntervalSinceNow: -3600),
+                    htmlURL: URL(string: "https://github.com/uncoil/demo/issues/42"),
+                    repository: "uncoil/demo"
+                ),
+                GitHubIssue(
+                    apiID: 2, number: 41,
+                    title: "Add a keyboard shortcut for the command palette",
+                    body: "Cmd-K, the way every other tool does it.",
+                    author: "deniz", state: "open",
+                    labels: [GitHubIssue.Label(name: "enhancement", color: "a2eeef")],
+                    assignees: [], commentCount: 0,
+                    updatedAt: Date(timeIntervalSinceNow: -86_400),
+                    htmlURL: URL(string: "https://github.com/uncoil/demo/issues/41"),
+                    repository: "uncoil/demo"
+                ),
+            ])
+        }
+        Task { await store.refresh() }
     }
 
     /// Two run configurations, so the Run area can be looked at.
