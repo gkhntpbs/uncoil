@@ -75,8 +75,10 @@ struct TestSummaryBar<Trailing: View>: View {
                 .accessibilityIdentifier("\(identifierPrefix).expand")
             }
         }
-        .padding(.horizontal, Theme.Space.hair)
+        // No inset of its own: the chips line up with the left edge of the
+        // rows below, and the meta on the right with theirs.
         .frame(minHeight: 24)
+        .animation(Theme.Motion.quick, value: summary)
     }
 
     /// Choosing what to look at is asking to see it: picking a filter on a

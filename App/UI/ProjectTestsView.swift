@@ -19,7 +19,7 @@ struct ProjectTestsView: View {
     @State private var isDetecting = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.snug) {
             toolbar
             if let message {
                 Text(message)
@@ -40,6 +40,7 @@ struct ProjectTestsView: View {
                 ForEach(suites) { suite in
                     suiteCard(suite)
                 }
+                .animation(Theme.Motion.standard, value: suites.map(\.id))
             }
         }
         .task(id: project.id) {
@@ -116,6 +117,10 @@ struct ProjectTestsView: View {
         } drawer: {
             drawer(suite, state: state, isExpanded: isExpanded)
         }
+        // A suite that starts, finishes, or is run for the first time changes
+        // what the card is made of; without this the swap is a cut.
+        .animation(Theme.Motion.standard, value: state.isRunning)
+        .animation(Theme.Motion.standard, value: state.latest?.id)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.suite.\(suite.id)")
     }
@@ -241,6 +246,7 @@ struct ProjectTestsView: View {
                 TestStepRows(cases: Array(live.suffix(6)), suiteID: suite.id)
             }
         }
+        .animation(Theme.Motion.standard, value: live.count)
         .accessibilityIdentifier("tests.live.\(suite.id)")
     }
 

@@ -20,13 +20,18 @@ struct CountChip: View {
     private var foreground: Color { isMuted ? Theme.textFaint : tint }
 
     var body: some View {
-        if let action {
+        // A chip that would filter to nothing is not offered as a control:
+        // clicking it can only empty the list, and a button that does that is
+        // a button that looks broken.
+        if let action, count > 0 {
             Button(action: action) { chip }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(identifier ?? "")
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
         } else {
-            chip.accessibilityIdentifier(identifier ?? "")
+            chip
+                .accessibilityIdentifier(identifier ?? "")
+                .accessibilityAddTraits(action != nil ? .isStaticText : [])
         }
     }
 
@@ -51,6 +56,8 @@ struct CountChip: View {
                 .strokeBorder(isSelected ? tint.opacity(0.55) : .clear, lineWidth: 1)
         )
         .contentShape(Rectangle())
+        .animation(Theme.Motion.quick, value: isSelected)
+        .animation(Theme.Motion.quick, value: count)
     }
 }
 
@@ -105,5 +112,6 @@ struct ProgressChip: View {
                     .strokeBorder(isSelected ? Theme.textDim.opacity(0.5) : .clear, lineWidth: 1)
             )
             .contentShape(Rectangle())
+            .animation(Theme.Motion.quick, value: isSelected)
     }
 }

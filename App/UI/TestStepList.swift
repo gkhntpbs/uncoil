@@ -92,37 +92,11 @@ struct TestStepList: View {
                 trailing: { meta }
             )
             if isExpanded {
-                if showsSuiteRepair, let project {
-                    repairButton(project)
-                }
-                if record.summary.isDetailed, !record.cases.isEmpty {
-                    TestStepRows(
-                        cases: visibleCases,
-                        suiteID: suite.id,
-                        onOpen: { opened = $0 },
-                        onRepair: project.map { project in
-                            { result in
-                                TestRepair.dispatch(
-                                    project: project, suite: suite, record: record, focus: result,
-                                    projectStore: projectStore, provider: settings.defaultProvider,
-                                    language: settings.language.resolvedAgent()
-                                )
-                            }
-                        }
-                    )
-                }
-                if !record.artifacts.isEmpty {
-                    runArtifacts
-                }
-                if record.cases.isEmpty, !record.logTail.isEmpty {
-                    // The only case the raw output is still shown in: a run
-                    // with no steps has nothing else to show, and hiding it
-                    // would leave the drawer empty. Everywhere else the output
-                    // belongs to a step, and lives in the step's own window.
-                    outputSection
-                }
+                drawerContent
             }
         }
+        .animation(Theme.Motion.standard, value: isExpanded)
+        .animation(Theme.Motion.standard, value: activeFilter)
         .accessibilityIdentifier("tests.details.\(suite.id)")
         .task {
             // Deterministic entry for a UI test, and for looking at the window
@@ -144,6 +118,42 @@ struct TestStepList: View {
                 }
             )
         }
+    }
+
+    @ViewBuilder
+    private var drawerContent: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            if showsSuiteRepair, let project {
+                repairButton(project)
+            }
+            if record.summary.isDetailed, !record.cases.isEmpty {
+                TestStepRows(
+                    cases: visibleCases,
+                    suiteID: suite.id,
+                    onOpen: { opened = $0 },
+                    onRepair: project.map { project in
+                        { result in
+                            TestRepair.dispatch(
+                                project: project, suite: suite, record: record, focus: result,
+                                projectStore: projectStore, provider: settings.defaultProvider,
+                                language: settings.language.resolvedAgent()
+                            )
+                        }
+                    }
+                )
+            }
+            if !record.artifacts.isEmpty {
+                runArtifacts
+            }
+            if record.cases.isEmpty, !record.logTail.isEmpty {
+                // The only case the raw output is still shown in: a run with
+                // no steps has nothing else to show, and hiding it would leave
+                // the drawer empty. Everywhere else the output belongs to a
+                // step, and lives in the step's own window.
+                outputSection
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     /// What the run cost and when it was: the right-hand end of the summary
@@ -310,13 +320,20 @@ struct TestStepRows: View {
     var onRepair: ((TestCaseResult) -> Void)?
 
     var body: some View {
-        VStack(spacing: 4) {
-            // Keyed by position, not by name: two packages can report a test
-            // of the same name, and a duplicated identity drops rows.
+        VStack(spacing: 6) {
+            // Keyed by position *and* name: two packages can report a test of
+            // the same name, so the name alone drops rows — and the position
+            // alone makes every row change identity when the filter does,
+            // which animates as a list rewriting itself rather than filtering.
             ForEach(cases.indices, id: \.self) { index in
                 row(cases[index])
+                    .id("\(index)-\(cases[index].id)")
+                    .transition(
+                        .opacity.combined(with: .move(edge: .top))
+                    )
             }
         }
+        .animation(Theme.Motion.standard, value: cases.map(\.id))
     }
 
     private func row(_ result: TestCaseResult) -> some View {

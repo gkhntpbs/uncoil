@@ -28,7 +28,7 @@ struct StackedCard<Head: View, Drawer: View>: View {
             head()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Space.roomy)
-                .padding(.vertical, Theme.Space.snug)
+                .padding(.vertical, Theme.Space.roomy)
                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.sheet))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.sheet)
@@ -40,9 +40,11 @@ struct StackedCard<Head: View, Drawer: View>: View {
             if showsDrawer {
                 drawer()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, overlap + 4)
-                .padding(.bottom, Theme.Space.tight)
-                .padding(.horizontal, Theme.Space.tight)
+                // The tuck is dead space — the head is drawn over it — so the
+                // content's own top padding starts after it.
+                .padding(.top, overlap + Theme.Space.snug)
+                .padding(.bottom, Theme.Space.snug)
+                .padding(.horizontal, Theme.Space.snug)
                 .background(
                     Theme.bg.opacity(0.55),
                     in: RoundedRectangle(cornerRadius: Theme.Radius.sheet)
@@ -110,11 +112,12 @@ struct EntityRow<Trailing: View>: View {
             trailing()
         }
         .padding(.horizontal, Theme.Space.snug)
-        .padding(.vertical, 9)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         // The fill carries the meaning on its own; an outline in the same
         // colour only makes the row look like a control.
         .background(background, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .animation(Theme.Motion.quick, value: hovering)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { onTap?() }

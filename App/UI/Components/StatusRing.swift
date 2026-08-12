@@ -87,6 +87,8 @@ struct StatusRing: View {
             }
         }
         .frame(width: size, height: size)
+        // A suite going from running to green is a change worth seeing happen.
+        .animation(Theme.Motion.standard, value: state)
         .accessibilityHidden(true)
     }
 }
