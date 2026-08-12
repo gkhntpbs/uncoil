@@ -83,6 +83,7 @@ struct TestStepList: View {
                 // got done — only of what there was.
                 done: record.summary.passed + record.summary.failed,
                 total: record.summary.total,
+                totalIsEstimate: false,
                 summary: record.summary,
                 selection: record.summary.isDetailed ? $filter : nil,
                 counts: { count($0) },
@@ -91,6 +92,9 @@ struct TestStepList: View {
                 trailing: { meta }
             )
             if isExpanded {
+                if showsSuiteRepair, let project {
+                    repairButton(project)
+                }
                 if record.summary.isDetailed, !record.cases.isEmpty {
                     TestStepRows(
                         cases: visibleCases,
@@ -107,13 +111,14 @@ struct TestStepList: View {
                         }
                     )
                 }
-                if !record.summary.didPass, let project {
-                    repairButton(project)
-                }
                 if !record.artifacts.isEmpty {
                     runArtifacts
                 }
-                if !record.logTail.isEmpty {
+                if record.cases.isEmpty, !record.logTail.isEmpty {
+                    // The only case the raw output is still shown in: a run
+                    // with no steps has nothing else to show, and hiding it
+                    // would leave the drawer empty. Everywhere else the output
+                    // belongs to a step, and lives in the step's own window.
                     outputSection
                 }
             }
@@ -170,6 +175,18 @@ struct TestStepList: View {
         }
         .font(Theme.mono(.small))
     }
+
+    /// Offered only when there is no failing row to hand over instead: a run
+    /// that failed without naming a test, or one where every test failed and
+    /// picking one of them would be arbitrary. Anywhere else the wand on the
+    /// row is the better handle, because it says which test it means.
+    static func showsSuiteRepair(for record: TestRunRecord) -> Bool {
+        guard !record.summary.didPass else { return false }
+        let failed = record.cases.count { $0.outcome == .failed }
+        return failed == 0 || failed == record.cases.count
+    }
+
+    private var showsSuiteRepair: Bool { Self.showsSuiteRepair(for: record) }
 
     /// The whole suite handed over at once. One test at a time is offered on
     /// the row itself, where the test is.
@@ -447,110 +464,57 @@ struct TestStepDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider().overlay(Theme.border)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.roomy) {
-                    failureSection
-                    if !result.artifacts.isEmpty {
-                        section(String(localized: "Files")) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(result.artifacts) { artifact in
-                                    artifactRow(artifact)
+        VStack(spacing: 0) {
+            StackedCard(inset: 0, overlap: 12) {
+                header
+            } drawer: {
+                // One scroller, around everything. Boxes that scroll inside a
+                // window that also scrolls are two gestures for one movement,
+                // and each of them takes a fixed height whether it needs it or
+                // not — which is what left a one-line failure in a tall red
+                // block.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.snug) {
+                        failureSection
+                        if !result.artifacts.isEmpty {
+                            section(String(localized: "Files")) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    ForEach(result.artifacts) { artifact in
+                                        artifactRow(artifact)
+                                    }
                                 }
                             }
                         }
+                        runSection
+                        outputSection
                     }
-                    runSection
+                    .padding(.horizontal, Theme.Space.hair)
+                    .padding(.bottom, Theme.Space.hair)
                 }
-                .padding(Theme.Space.roomy)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .uncoilScrollers()
             }
-            .uncoilScrollers()
-            Divider().overlay(Theme.border)
-            footer
+            .padding(Theme.Space.roomy)
         }
-        .frame(width: 620, height: 520)
+        .frame(width: 640, height: 560)
         .background(Theme.bg)
         .accessibilityIdentifier("tests.stepDetail")
     }
 
-    @ViewBuilder
-    private var failureSection: some View {
-        if let message = result.message, !message.isEmpty {
-            section(String(localized: "Failure")) {
-                Text(message)
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.danger)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(Theme.dangerSurface, in: RoundedRectangle(cornerRadius: 8))
-            }
-        } else if result.outcome == .failed {
-            // Said plainly rather than left blank: the reason is missing
-            // because this framework's failures are not parsed, not because
-            // the test failed quietly.
-            section(String(localized: "Failure")) {
-                Text("This framework's failure output is not parsed, so there is no message to show — the run's own output is under the suite.")
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.textDim)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private var runSection: some View {
-        section(String(localized: "The run")) {
-            VStack(alignment: .leading, spacing: 6) {
-                detail(String(localized: "Suite"), suite.name)
-                detail(String(localized: "Command"), suite.command)
-                detail(String(localized: "Framework"), suite.framework.displayName)
-                if let finished = record.finishedAt {
-                    detail(
-                        String(localized: "Finished"),
-                        String(localized: "\(RelativeClock.short(since: finished)) ago")
-                    )
-                }
-                if let duration = record.duration {
-                    detail(String(localized: "Took"), TestStepFormat.duration(duration))
-                }
-                if let exitCode = record.exitCode {
-                    detail(String(localized: "Exit code"), "\(exitCode)")
-                }
-                detail(String(localized: "Result"), resultLine)
-            }
-        }
-    }
-
-    private var resultLine: String {
-        guard record.summary.isDetailed else {
-            return record.summary.didPass
-                ? String(localized: "Passed") : String(localized: "Failed")
-        }
-        return "\(record.summary.passed) passed · \(record.summary.failed) failed"
-            + " · \(record.summary.skipped) skipped"
-    }
-
+    /// The same head a suite card has: the ring, the name, and the one action
+    /// worth taking from here.
     private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            TablerIcon(
-                name: TestStepList.icon(result.outcome), size: 16,
-                color: TestStepList.tint(result.outcome)
-            )
-            .padding(.top, 3)
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: Theme.Space.snug) {
+            StatusRing(state: ring, size: 22, showsGlyph: true)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(result.name)
-                    .font(Theme.mono(.large, .bold))
+                    .font(Theme.mono(.large))
                     .foregroundStyle(Theme.text)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Space.tight) {
                     if !result.suite.isEmpty {
                         Text(result.suite)
-                            .foregroundStyle(Theme.textDim)
+                            .foregroundStyle(Theme.textFaint)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
@@ -560,20 +524,17 @@ struct TestStepDetailSheet: View {
                             .monospacedDigit()
                     }
                 }
-                .font(Theme.mono(.micro))
+                .font(Theme.mono(.small))
             }
-            Spacer(minLength: 8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Theme.Space.roomy)
-    }
-
-    private var footer: some View {
-        HStack(spacing: 8) {
-            // Only a failure can be repaired; offering it on a green test would
-            // be a button with nothing to say.
+            Spacer(minLength: Theme.Space.snug)
             if result.outcome == .failed, let project {
-                Button {
+                GlyphActionButton(
+                    iconName: "wand",
+                    help: String(localized: "Open a new agent session on this test"),
+                    identifier: "tests.stepDetail.repair",
+                    tint: Theme.highlight,
+                    size: 18
+                ) {
                     TestRepair.dispatch(
                         project: project, suite: suite, record: record, focus: result,
                         projectStore: projectStore, provider: settings.defaultProvider,
@@ -581,60 +542,145 @@ struct TestStepDetailSheet: View {
                     )
                     // The new session is what the user should be looking at.
                     dismiss()
-                } label: {
-                    HStack(spacing: 5) {
-                        TablerIcon(name: "wand", size: 11, color: Theme.textOnHighlight)
-                        Text("Fix with agent")
-                            .font(Theme.mono(.micro, .semibold))
-                            .foregroundStyle(Theme.textOnHighlight)
-                    }
-                    .padding(.horizontal, 9)
-                    .frame(height: 24)
-                    .background(
-                        Theme.highlight, in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    )
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("tests.stepDetail.repair")
             }
-            Button("Copy name") { copy(result.id) }
-                .buttonStyle(.pressable)
-                .font(Theme.mono(.micro))
-                .foregroundStyle(Theme.textDim)
-            if let message = result.message, !message.isEmpty {
-                Button("Copy failure") { copy(message) }
-                    .buttonStyle(.pressable)
+            GlyphActionButton(
+                iconName: "x",
+                help: String(localized: "Close"),
+                identifier: "tests.stepDetail.close",
+                tint: Theme.textDim,
+                size: 16
+            ) {
+                dismiss()
+            }
+        }
+    }
+
+    private var ring: StatusRing.State {
+        switch result.outcome {
+        case .passed: .passed
+        case .failed: .failed
+        case .skipped: .skipped
+        }
+    }
+
+    @ViewBuilder
+    private var failureSection: some View {
+        if let message = result.message, !message.isEmpty {
+            section(String(localized: "Failure")) {
+                Text(Self.clamp(message, lines: 20))
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.danger)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(Theme.Space.snug)
+                    .background(
+                        Theme.dangerSurface, in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                    )
+            }
+        } else if result.outcome == .failed {
+            // Said plainly rather than left blank: the reason is missing
+            // because this framework's failures are not parsed, not because
+            // the test failed quietly.
+            section(String(localized: "Failure")) {
+                Text("This framework's failure output is not parsed, so there is no message to show — the run's own output is below.")
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The run this step belonged to, as rows of the same shape the summary bar
+    /// uses — the tally first, because it is the thing being asked about.
+    private var runSection: some View {
+        section(String(localized: "The run")) {
+            VStack(alignment: .leading, spacing: Theme.Space.tight) {
+                TestSummaryBar(
+                    done: record.summary.passed + record.summary.failed,
+                    total: record.summary.total,
+                    summary: record.summary,
+                    identifierPrefix: "tests.stepDetail.summary"
+                )
+                VStack(alignment: .leading, spacing: 5) {
+                    detail(String(localized: "Suite"), suite.name)
+                    detail(String(localized: "Command"), suite.command)
+                    detail(String(localized: "Framework"), suite.framework.displayName)
+                    if let finished = record.finishedAt {
+                        detail(
+                            String(localized: "Finished"),
+                            String(localized: "\(RelativeClock.short(since: finished)) ago")
+                        )
+                    }
+                    if let duration = record.duration {
+                        detail(String(localized: "Took"), TestStepFormat.duration(duration))
+                    }
+                    if let exitCode = record.exitCode {
+                        detail(String(localized: "Exit code"), "\(exitCode)")
+                    }
+                }
+                .padding(.horizontal, Theme.Space.hair)
+            }
+        }
+    }
+
+    /// The run's output, in the window where a step is being read rather than
+    /// under the card where it was in everyone's way.
+    @ViewBuilder
+    private var outputSection: some View {
+        if !record.logTail.isEmpty {
+            section(String(localized: "Output")) {
+                Text(Self.clamp(record.logTail, lines: 60, fromTheEnd: true))
                     .font(Theme.mono(.micro))
                     .foregroundStyle(Theme.textDim)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(Theme.Space.snug)
+                    .background(
+                        Theme.bg.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                            .strokeBorder(Theme.border, lineWidth: 1)
+                    )
             }
-            Spacer()
-            Button("Done") { dismiss() }
-                .buttonStyle(AccentButtonStyle())
-                .keyboardShortcut(.escape, modifiers: [])
         }
-        .padding(Theme.Space.roomy)
+    }
+
+    /// A block of text kept to a readable length. The window scrolls; a box
+    /// inside it that also scrolls does not need to, and a box that takes a
+    /// fixed height leaves a one-line message sitting in an empty frame.
+    static func clamp(_ text: String, lines: Int, fromTheEnd: Bool = false) -> String {
+        let all = text.split(separator: "\n", omittingEmptySubsequences: false)
+        guard all.count > lines else {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let kept = fromTheEnd ? Array(all.suffix(lines)) : Array(all.prefix(lines))
+        return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func section(
         _ title: String, @ViewBuilder content: () -> some View
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(title.uppercased())
                 .font(Theme.mono(.micro, .semibold))
                 .foregroundStyle(Theme.textFaint)
+                .padding(.horizontal, Theme.Space.hair)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func detail(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.snug) {
             Text(label)
-                .font(Theme.mono(.micro))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textFaint)
-                .frame(width: 84, alignment: .leading)
+                .frame(width: 76, alignment: .leading)
             Text(value)
-                .font(Theme.mono(.micro))
+                .font(Theme.mono(.small))
                 .foregroundStyle(Theme.textDim)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
@@ -643,33 +689,20 @@ struct TestStepDetailSheet: View {
     }
 
     private func artifactRow(_ artifact: TestArtifact) -> some View {
-        Button {
-            if artifact.kind.isPreviewable {
-                onOpenArtifact(artifact)
-            } else {
-                NSWorkspace.shared.open(artifact.url)
-            }
-        } label: {
-            HStack(spacing: 10) {
-                thumbnail(artifact)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(artifact.name)
-                        .font(Theme.mono(.small))
-                        .foregroundStyle(Theme.text)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Text(artifact.path)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.head)
+        EntityRow(
+            title: artifact.name,
+            subtitle: artifact.path,
+            identifier: "tests.stepDetail.artifact.\(artifact.name)",
+            onTap: {
+                if artifact.kind.isPreviewable {
+                    onOpenArtifact(artifact)
+                } else {
+                    NSWorkspace.shared.open(artifact.url)
                 }
-                Spacer(minLength: 0)
             }
-            .contentShape(Rectangle())
+        ) {
+            thumbnail(artifact)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("tests.stepDetail.artifact.\(artifact.name)")
     }
 
     @ViewBuilder
@@ -678,27 +711,19 @@ struct TestStepDetailSheet: View {
             Image(nsImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 64, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .frame(width: 56, height: 36)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.border, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                        .strokeBorder(Theme.border, lineWidth: 1)
                 )
         } else {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Theme.statusSurface)
-                .frame(width: 64, height: 44)
-                .overlay(
-                    TablerIcon(
-                        name: artifact.kind == .video ? "video" : "file",
-                        size: 14, color: Theme.textFaint
-                    )
-                )
+            TablerIcon(
+                name: artifact.kind == .video ? "video" : "file",
+                size: 14, color: Theme.textFaint
+            )
+            .frame(width: 56, height: 36)
         }
-    }
-
-    private func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
     }
 }
 

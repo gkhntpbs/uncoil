@@ -140,6 +140,46 @@ enum TestOutputParser {
         }
     }
 
+    /// How many tests the runner said it was about to run.
+    ///
+    /// Several frameworks announce their plan before they start, which is the
+    /// only honest way to show progress as a fraction while a suite is in
+    /// flight — the alternative is to guess from the last run, which is a
+    /// different run's number. Frameworks that announce nothing get no
+    /// fraction, and the count stands on its own.
+    static func declaredTotal(in output: String, framework: TestFramework) -> Int? {
+        switch framework {
+        case .pytest:
+            // `collected 15 items` — also `collected 15 items / 2 deselected`,
+            // where the first number is still what will run.
+            return number(after: "collected ", in: output, endingWith: " item")
+        case .cargo:
+            // `running 15 tests`
+            return number(after: "running ", in: output, endingWith: " test")
+        case .swift, .xcodebuild:
+            // `Test Suite 'All tests' started` says nothing about how many, but
+            // `Executed 15 tests` only arrives at the end — by which point the
+            // rows have already counted themselves.
+            return nil
+        case .go, .jest, .maestro, .unknown:
+            return nil
+        }
+    }
+
+    /// The integer between two markers, on the first line that carries both.
+    private static func number(
+        after prefix: String, in output: String, endingWith suffix: String
+    ) -> Int? {
+        for line in output.split(separator: "\n") {
+            guard let start = line.range(of: prefix) else { continue }
+            let rest = line[start.upperBound...]
+            guard rest.range(of: suffix) != nil else { continue }
+            let digits = rest.prefix { $0.isNumber }
+            if let value = Int(digits), value > 0 { return value }
+        }
+        return nil
+    }
+
     // MARK: - Failure messages
 
     /// Failures are keyed by the test's own name rather than by

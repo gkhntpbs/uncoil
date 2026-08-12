@@ -111,7 +111,7 @@ struct ProjectTestsView: View {
     private func suiteCard(_ suite: TestSuiteConfiguration) -> some View {
         let state = registry.state(project: project, suiteID: suite.id)
         let isExpanded = expanded.contains(suite.id)
-        return StackedCard {
+        return StackedCard(showsDrawer: state.isRunning || state.latest != nil) {
             head(suite, state: state)
         } drawer: {
             drawer(suite, state: state, isExpanded: isExpanded)
@@ -186,15 +186,10 @@ struct ProjectTestsView: View {
                     }
                 )
             )
-        } else {
-            // Never run. The drawer still exists, so the card does not change
-            // shape the first time it is used.
-            Text("Not run yet")
-                .font(Theme.mono(.small))
-                .foregroundStyle(Theme.textFaint)
-                .padding(.horizontal, Theme.Space.hair)
-                .frame(height: 20)
         }
+        // A suite that has never run has no drawer at all: there is nothing to
+        // put in it, and an empty lip under every card is the shape of a screen
+        // waiting to be used rather than one that is.
     }
 
     /// What the suite is doing right now.
@@ -210,10 +205,10 @@ struct ProjectTestsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.tight) {
             TestSummaryBar(
                 done: summary.passed + summary.failed,
-                // The total is unknown until the runner is finished, and the
-                // last run's is a different run's number. Better a count that
-                // is true than a fraction that is invented.
-                total: 0,
+                // Either the plan the runner announced, or the last run's
+                // total as an estimate — and the chip says which.
+                total: state.expectedTotal ?? 0,
+                totalIsEstimate: state.expectedTotal != nil,
                 summary: summary,
                 isLive: true,
                 trailing: {

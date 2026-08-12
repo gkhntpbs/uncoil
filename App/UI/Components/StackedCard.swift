@@ -17,6 +17,9 @@ struct StackedCard<Head: View, Drawer: View>: View {
     /// How far it tucks under the head. Enough to overlap the corner radius,
     /// so no seam of background shows between the two.
     var overlap: CGFloat = 10
+    /// False draws the head alone. A drawer with nothing in it is a lip of
+    /// empty surface under every card that has not been used yet.
+    var showsDrawer = true
     @ViewBuilder var head: () -> Head
     @ViewBuilder var drawer: () -> Drawer
 
@@ -34,7 +37,8 @@ struct StackedCard<Head: View, Drawer: View>: View {
                 // Above the drawer, so the tucked edge is hidden by the head
                 // rather than drawn over it.
                 .zIndex(1)
-            drawer()
+            if showsDrawer {
+                drawer()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, overlap + 4)
                 .padding(.bottom, Theme.Space.tight)
@@ -49,6 +53,7 @@ struct StackedCard<Head: View, Drawer: View>: View {
                 )
                 .padding(.horizontal, inset)
                 .padding(.top, -overlap)
+            }
         }
     }
 }
@@ -79,7 +84,7 @@ struct EntityRow<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.snug) {
             if let ring {
-                StatusRing(state: ring, size: 17, showsGlyph: true)
+                StatusRing(state: ring, size: 15, showsGlyph: true)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -107,11 +112,9 @@ struct EntityRow<Trailing: View>: View {
         .padding(.horizontal, Theme.Space.snug)
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The fill carries the meaning on its own; an outline in the same
+        // colour only makes the row look like a control.
         .background(background, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(tint?.opacity(0.35) ?? .clear, lineWidth: 1)
-        )
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { onTap?() }

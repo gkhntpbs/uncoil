@@ -11,9 +11,11 @@ import SwiftUI
 struct TestSummaryBar<Trailing: View>: View {
     /// Tests that actually ran. Skipped ones are part of the total, not of it.
     let done: Int
-    /// Zero while a run is in flight: the total is not known until the runner
-    /// is finished, and the previous run's total is a different run's number.
+    /// Zero when it is not known.
     let total: Int
+    /// Set when the total is an estimate — the last run's — rather than this
+    /// run's own count or a plan the runner announced.
+    var totalIsEstimate = false
     let summary: TestRunSummary
     /// Nil draws the tallies as labels rather than as filters.
     var selection: Binding<TestStepList.Filter?>?
@@ -31,7 +33,22 @@ struct TestSummaryBar<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ProgressChip(done: done, total: total, isLive: isLive)
+            ProgressChip(
+                done: done,
+                total: total,
+                isLive: isLive,
+                isSelected: selection != nil && active == .all,
+                help: totalIsEstimate
+                    ? String(localized: "Out of \(total), which is what the last run reported")
+                    : nil,
+                action: selection.map { binding in
+                    {
+                        binding.wrappedValue = .all
+                        expand()
+                    }
+                },
+                identifier: "\(identifierPrefix).all"
+            )
             tally(.passed, count: summary.passed, tint: Theme.ok, label: "passed")
             tally(.failed, count: summary.failed, tint: Theme.danger, label: "failed")
             tally(.skipped, count: summary.skipped, tint: Theme.textDim, label: "skipped")
@@ -62,6 +79,13 @@ struct TestSummaryBar<Trailing: View>: View {
         .frame(minHeight: 24)
     }
 
+    /// Choosing what to look at is asking to see it: picking a filter on a
+    /// collapsed card used to change a list nobody could see.
+    private func expand() {
+        guard let isExpanded, !isExpanded.wrappedValue else { return }
+        withAnimation(Theme.Motion.quick) { isExpanded.wrappedValue = true }
+    }
+
     @ViewBuilder
     private func tally(
         _ filter: TestStepList.Filter, count: Int, tint: Color, label: String
@@ -80,7 +104,10 @@ struct TestSummaryBar<Trailing: View>: View {
                 tint: tint,
                 isSelected: selection != nil && active == filter,
                 action: selection.map { binding in
-                    { binding.wrappedValue = active == filter ? .all : filter }
+                    {
+                        binding.wrappedValue = active == filter ? .all : filter
+                        expand()
+                    }
                 },
                 identifier: "\(identifierPrefix).\(filter.rawValue)"
             )
@@ -92,6 +119,7 @@ extension TestSummaryBar where Trailing == EmptyView {
     init(
         done: Int,
         total: Int,
+        totalIsEstimate: Bool = false,
         summary: TestRunSummary,
         selection: Binding<TestStepList.Filter?>? = nil,
         counts: ((TestStepList.Filter) -> Int)? = nil,
@@ -100,7 +128,8 @@ extension TestSummaryBar where Trailing == EmptyView {
         identifierPrefix: String = "summary"
     ) {
         self.init(
-            done: done, total: total, summary: summary, selection: selection, counts: counts,
+            done: done, total: total, totalIsEstimate: totalIsEstimate,
+            summary: summary, selection: selection, counts: counts,
             isLive: isLive, isExpanded: isExpanded, identifierPrefix: identifierPrefix,
             trailing: { EmptyView() }
         )

@@ -54,34 +54,56 @@ struct CountChip: View {
     }
 }
 
-/// Progress as a fraction — `3/15`. Its own type because a fraction is not two
-/// counts: the pair only means anything read together, and it is the one thing
-/// on a summary bar that changes while you are looking at it.
+/// Progress as a fraction — `7/15` — and the control that shows everything.
+///
+/// Its own type because a fraction is not two counts: the pair only means
+/// anything read together, and it is the one thing on a summary bar that
+/// changes while you are looking at it. It doubles as the `all` filter, so the
+/// number of steps and the way to see all of them are the same control rather
+/// than two chips saying the same thing.
 struct ProgressChip: View {
     let done: Int
+    /// Zero when it is not known. A run in flight has no idea how many tests
+    /// it is about to report unless the runner announced a plan, and `3/0`
+    /// would be a lie where `3` is a fact.
     let total: Int
-    /// Boxed while the work is in flight, plain once it has stopped.
+    /// Boxed while the work is in flight.
     var isLive = false
+    var isSelected = false
+    /// Said out loud when the total is the last run's rather than this one's.
+    var help: String?
+    var action: (() -> Void)?
+    var identifier: String?
 
-    /// A total of zero means it is not known yet — a run in flight has no idea
-    /// how many tests it is about to report, and `3/0` would be a lie where
-    /// `3` is a fact.
     private var text: String { total > 0 ? "\(done)/\(total)" : "\(done)" }
 
     var body: some View {
+        if let action {
+            Button(action: action) { chip }
+                .buttonStyle(.plain)
+                .help(help ?? "")
+                .accessibilityIdentifier(identifier ?? "")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+        } else {
+            chip.help(help ?? "").accessibilityIdentifier(identifier ?? "")
+        }
+    }
+
+    private var chip: some View {
         Text(text)
-            .font(Theme.mono(.small, isLive ? .semibold : .regular))
+            .font(Theme.mono(.small, isSelected || isLive ? .semibold : .regular))
             .monospacedDigit()
-            .foregroundStyle(isLive ? Theme.text : Theme.textDim)
-            .padding(.horizontal, 6)
+            .foregroundStyle(isSelected || isLive ? Theme.text : Theme.textDim)
+            .padding(.horizontal, 7)
             .frame(height: 20)
             .background(
-                isLive ? Theme.panelHover : .clear,
+                isSelected ? Theme.panelActive : (isLive ? Theme.panelHover : Theme.statusSurface),
                 in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                    .strokeBorder(isLive ? Theme.border : .clear, lineWidth: 1)
+                    .strokeBorder(isSelected ? Theme.textDim.opacity(0.5) : .clear, lineWidth: 1)
             )
+            .contentShape(Rectangle())
     }
 }

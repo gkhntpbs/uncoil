@@ -61,6 +61,10 @@ struct TestSuiteState: Equatable {
     /// arrived. Empty for a framework whose output is not parsed, and cleared
     /// when the run ends and the record takes over.
     var liveCases: [TestCaseResult] = []
+    /// How many tests this run says it will report, when it says so at all.
+    /// Nil leaves the live count standing on its own rather than turning it
+    /// into a fraction of a number nobody stated.
+    var expectedTotal: Int?
 
     var liveSummary: TestRunSummary {
         var summary = TestRunSummary(isDetailed: !liveCases.isEmpty)
@@ -185,10 +189,15 @@ final class TestRegistry: ObservableObject {
         guard FileManager.default.fileExists(atPath: cwd.path) else { return nil }
 
         let startedAt = Date()
-        states[key] = TestSuiteState(
+        var starting = TestSuiteState(
             isRunning: true, startedAt: startedAt, latest: states[key]?.latest,
             logTail: "", liveCases: []
         )
+        // Until the runner announces its own plan, the last run's total is the
+        // best guess at how far this one has to go. It is a guess, and the one
+        // place it is shown says so.
+        starting.expectedTotal = states[key]?.latest?.summary.total
+        states[key] = starting
 
         // The whole output is kept for parsing, separately from the capped tail
         // shown live: a suite of a thousand tests would otherwise have its
@@ -211,7 +220,13 @@ final class TestRegistry: ObservableObject {
                 onOutput: { [weak self] text in
                     collector.append(text)
                     let fresh = live.consume(text)
-                    self?.appendTail(text, key: key, cases: fresh)
+                    // Read from the whole output rather than the chunk: the
+                    // line that announces the plan can be split like any other,
+                    // and it is looked for only until it is found.
+                    let declared = TestOutputParser.declaredTotal(
+                        in: collector.text, framework: suite.framework
+                    )
+                    self?.appendTail(text, key: key, cases: fresh, declaredTotal: declared)
                 },
                 onExit: { code in exit.set(code) }
             )
@@ -289,12 +304,17 @@ final class TestRegistry: ObservableObject {
         )
     }
 
-    private func appendTail(_ text: String, key: Key, cases: [TestCaseResult] = []) {
+    private func appendTail(
+        _ text: String, key: Key, cases: [TestCaseResult] = [], declaredTotal: Int? = nil
+    ) {
         var tail = (states[key]?.logTail ?? "") + text
         if tail.count > Self.logTailLimit {
             tail = String(tail.suffix(Self.logTailLimit))
         }
         states[key, default: TestSuiteState()].logTail = tail
+        if let declaredTotal, states[key]?.expectedTotal != declaredTotal {
+            states[key]?.expectedTotal = declaredTotal
+        }
         guard !cases.isEmpty else { return }
         // Capped for the same reason the tail is: a suite of ten thousand tests
         // should cost the window a bounded amount of memory while it runs. The

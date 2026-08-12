@@ -249,3 +249,89 @@ final class TestStepFilterTests: XCTestCase {
         XCTAssertNil(TestStepList.Filter.all.outcome)
     }
 }
+
+/// When the whole suite is offered to an agent instead of one test.
+final class TestSuiteRepairOfferTests: XCTestCase {
+    private func record(_ cases: [TestCaseResult], summary: TestRunSummary) -> TestRunRecord {
+        TestRunRecord(
+            id: "1", suiteID: "unit", startedAt: Date(), finishedAt: Date(), exitCode: 1,
+            summary: summary, cases: cases, logTail: ""
+        )
+    }
+
+    /// A green run has nothing to hand over.
+    func testAPassingRunOffersNothing() {
+        XCTAssertFalse(TestStepList.showsSuiteRepair(for: record(
+            [TestCaseResult(suite: "S", name: "one", outcome: .passed)],
+            summary: TestRunSummary(passed: 1, isDetailed: true)
+        )))
+    }
+
+    /// Some tests failed: each red row carries its own handle, and it says
+    /// which test it means — better than one button for the lot.
+    func testSomeFailuresAreHandedOverOneAtATime() {
+        XCTAssertFalse(TestStepList.showsSuiteRepair(for: record(
+            [
+                TestCaseResult(suite: "S", name: "one", outcome: .failed),
+                TestCaseResult(suite: "S", name: "two", outcome: .passed),
+            ],
+            summary: TestRunSummary(passed: 1, failed: 1, isDetailed: true)
+        )))
+    }
+
+    /// Everything failed — picking one of them would be arbitrary.
+    func testAWhollyFailedRunIsOfferedAsOne() {
+        XCTAssertTrue(TestStepList.showsSuiteRepair(for: record(
+            [
+                TestCaseResult(suite: "S", name: "one", outcome: .failed),
+                TestCaseResult(suite: "S", name: "two", outcome: .failed),
+            ],
+            summary: TestRunSummary(failed: 2, isDetailed: true)
+        )))
+    }
+
+    /// The suite failed without naming a test — an unparsed framework, or one
+    /// that died before it reported anything. There is no row to click.
+    func testARunWithNoStepsIsOfferedAsOne() {
+        XCTAssertTrue(TestStepList.showsSuiteRepair(for: record(
+            [], summary: TestRunSummary(failed: 1)
+        )))
+    }
+}
+
+/// The plan a runner announces before it starts, which is what turns a live
+/// count into a fraction.
+final class TestDeclaredTotalTests: XCTestCase {
+    func testPytestCollectionIsRead() {
+        XCTAssertEqual(
+            TestOutputParser.declaredTotal(
+                in: "collected 15 items\n\ntests/test_a.py::test_one PASSED\n",
+                framework: .pytest
+            ),
+            15
+        )
+        XCTAssertEqual(
+            TestOutputParser.declaredTotal(
+                in: "collected 15 items / 2 deselected / 13 selected\n", framework: .pytest
+            ),
+            15
+        )
+    }
+
+    func testCargoAnnouncesItsCount() {
+        XCTAssertEqual(
+            TestOutputParser.declaredTotal(in: "running 8 tests\n", framework: .cargo), 8
+        )
+    }
+
+    /// A framework that announces nothing gets no fraction, rather than one
+    /// made up from a number that was never stated.
+    func testAFrameworkThatSaysNothingGivesNothing() {
+        XCTAssertNil(
+            TestOutputParser.declaredTotal(
+                in: "Test Suite 'All tests' started at 2026-01-01\n", framework: .swift
+            )
+        )
+        XCTAssertNil(TestOutputParser.declaredTotal(in: "running tests", framework: .cargo))
+    }
+}
