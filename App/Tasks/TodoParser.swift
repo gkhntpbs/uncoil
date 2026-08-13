@@ -106,15 +106,18 @@ enum TodoParser {
         while index < lines.count {
             let line = lines[index]
 
-            // A fence opens a region the parser must not interpret at all.
-            if let fence = fenceToken(line.text) {
+            // A fence opens a region the parser must not interpret at all —
+            // but only if it closes. An unterminated or mismatched fence used
+            // to run to the end of the file and take every task after it with
+            // it: they vanished from the app while still sitting in the file,
+            // which is the worst way to be wrong. One stray or misspelt fence
+            // is a typo; silently losing the rest of somebody's list is not a
+            // reasonable answer to it. The same reading frontmatter already
+            // gets: unterminated frontmatter is not frontmatter.
+            if let fence = fenceToken(line.text),
+               let close = closingFenceIndex(after: index, token: fence, in: lines) {
                 if passthroughStart == nil { passthroughStart = line.startByte }
-                index += 1
-                while index < lines.count {
-                    let inner = lines[index]
-                    index += 1
-                    if closesFence(inner.text, token: fence) { break }
-                }
+                index = close + 1
                 continue
             }
 
@@ -127,9 +130,22 @@ enum TodoParser {
 
             // Setext: a plain paragraph line underlined with `===` or `---`. The
             // heading block covers both lines so the underline is never orphaned.
+            //
+            // The title has to be a paragraph of its own: a line preceded by a
+            // blank one, or the first line of the file. An underline takes the
+            // whole paragraph above it, and this parser reads one line — so
+            // under a paragraph of several lines it used to promote the last
+            // line alone, leaving the rest as prose, and reset the heading
+            // stack on what its author had written as a separator. Heading
+            // paths are part of a task's identity, so every task below changed
+            // id at once and lost the assignments and board placement saved
+            // against it. A rule written under a paragraph is now read as the
+            // rule it looks like.
             if index + 1 < lines.count,
                let level = setextLevel(lines[index + 1].text),
-               canBeSetextTitle(line.text) {
+               canBeSetextTitle(line.text),
+               index == 0 || lines[index - 1].text
+                   .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 flushPassthrough(upTo: line.startByte)
                 let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 emitHeading(
@@ -192,6 +208,9 @@ enum TodoParser {
                     markerRange: markerRange
                 ),
                 text: checkbox.text,
+                wrappedLineCount: wrappedContinuationCount(
+                    startingAt: index, through: blockEnd.nextIndex, in: lines
+                ),
                 blockRange: blockRange,
                 lineRange: lineRange,
                 rawBlock: rawBlock,
@@ -310,18 +329,22 @@ enum TodoParser {
             }
             // A nested task is its own block, not continuation.
             if checkboxComponents(line.text) != nil { break }
-            if headingComponents(line.text) != nil { break }
             let lineIndent = indentWidth(line.text)
             guard lineIndent > indent else { break }
+            // Deliberately no heading check here. `headingComponents` trims the
+            // line first, so a `#` written inside a description — a shell
+            // comment, a markdown example, an issue number — read as a heading
+            // however deeply it was indented. That both cut the task's body off
+            // at that line and rewrote the heading path of every task below it.
+            // Indentation decides what belongs to the task, for this line as
+            // for every other kind.
 
-            if let fence = fenceToken(line.text) {
-                cursor += 1
-                while cursor < lines.count {
-                    let inner = lines[cursor]
-                    cursor += 1
-                    endByte = inner.endByte
-                    if closesFence(inner.text, token: fence) { break }
-                }
+            // A fence inside a task's description, on the same terms as one at
+            // the top level: it holds the block open only if it closes.
+            if let fence = fenceToken(line.text),
+               let close = closingFenceIndex(after: cursor, token: fence, in: lines) {
+                cursor = close + 1
+                endByte = lines[close].endByte
                 nextIndex = cursor
                 pendingBlank = false
                 continue
@@ -334,6 +357,33 @@ enum TodoParser {
         }
         _ = pendingBlank
         return (endByte, nextIndex)
+    }
+
+    /// How many lines after a task's own are that line continuing.
+    ///
+    /// Only plain prose counts. A bullet, a fence, a quote, a table row or a
+    /// `#` line is the task saying something further, not the same sentence
+    /// wrapped — and so is anything after a blank line, which is where a
+    /// description starts.
+    private static func wrappedContinuationCount(
+        startingAt index: Int, through end: Int, in lines: [Line]
+    ) -> Int {
+        var count = 0
+        var cursor = index + 1
+        while cursor < end, cursor < lines.count {
+            let text = lines[cursor].text
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { break }
+            guard checkboxComponents(text) == nil,
+                  headingComponents(text) == nil,
+                  fenceToken(text) == nil,
+                  !isThematicBreak(text),
+                  listMarkerToken(Substring(trimmed)) == nil,
+                  let first = trimmed.first, !">|<".contains(first) else { break }
+            count += 1
+            cursor += 1
+        }
+        return count
     }
 
     // MARK: - Token recognition
@@ -439,6 +489,15 @@ enum TodoParser {
         return nil
     }
 
+    /// A `---` (or `***`, `___`) rule: never a title, and never an underline.
+    static func isThematicBreak(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard indentWidth(line) < 4, trimmed.count >= 3 else { return false }
+        return ["-", "*", "_"].contains { character in
+            trimmed.allSatisfy { String($0) == character }
+        }
+    }
+
     /// Whether a line may be underlined into a setext heading.
     ///
     /// Only a plain paragraph line qualifies. That restriction is the whole
@@ -450,7 +509,9 @@ enum TodoParser {
         guard headingComponents(line) == nil,
               checkboxComponents(line) == nil,
               fenceToken(line) == nil,
-              setextLevel(line) == nil else { return false }
+              setextLevel(line) == nil,
+              // A rule is structure of its own; it titles nothing.
+              !isThematicBreak(line) else { return false }
         // Lists, quotes, tables and HTML are structure of their own.
         guard let first = trimmed.first, !">|<".contains(first) else { return false }
         return listMarkerToken(Substring(trimmed)) == nil
@@ -477,6 +538,16 @@ enum TodoParser {
         for character in ["`", "~"] {
             let run = trimmed.prefix { String($0) == character }
             if run.count >= 3 { return String(run) }
+        }
+        return nil
+    }
+
+    /// Where the fence opened at `index` closes, or nil when it never does.
+    private static func closingFenceIndex(after index: Int, token: String, in lines: [Line]) -> Int? {
+        var cursor = index + 1
+        while cursor < lines.count {
+            if closesFence(lines[cursor].text, token: token) { return cursor }
+            cursor += 1
         }
         return nil
     }

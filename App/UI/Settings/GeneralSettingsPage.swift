@@ -88,6 +88,49 @@ struct GeneralSettingsPage: View {
                 }
             }
 
+            Section("Provider Limits") {
+                Toggle(isOn: Binding(
+                    get: { settings.usageWarningsEnabled },
+                    set: { settings.setUsageWarningsEnabled($0) }
+                )) {
+                    SettingsLabel(
+                        title: String(localized: "Warn before an account runs out"),
+                        detail: String(
+                            localized: "Raises a row in the Attention Center when a login is close to a provider limit. The figures in each session's header are shown either way."
+                        )
+                    )
+                }
+                .settingsID("usage.warningsEnabled")
+
+                if settings.usageWarningsEnabled {
+                    Picker(selection: Binding(
+                        get: { Int(settings.usageWarningThreshold.rounded()) },
+                        set: { settings.setUsageWarningThreshold(Double($0)) }
+                    )) {
+                        // A short list rather than a slider: the number only has
+                        // to be roughly right, and a slider invites fiddling
+                        // with a threshold whose exact value nobody can reason
+                        // about.
+                        ForEach([5, 10, 15, 20, 30], id: \.self) { percent in
+                            Text("\(percent)%").tag(percent)
+                        }
+                    } label: {
+                        SettingsLabel(
+                            title: String(localized: "Warn at"),
+                            detail: String(
+                                localized: "How much of the tightest limit has to be left before Uncoil says something."
+                            )
+                        )
+                    }
+                    .pickerStyle(.segmented)
+                    .settingsID("usage.warningThreshold")
+
+                    SettingsNote(String(
+                        localized: "An account the provider refuses outright is always reported, whatever this is set to — some limits arrive with no warning at all."
+                    ))
+                }
+            }
+
             Section("Quitting the App") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },

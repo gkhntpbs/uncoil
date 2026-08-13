@@ -38,6 +38,16 @@ struct ProjectRunView: View {
             }
         }
         .onAppear(perform: reload)
+        .task {
+            // Deterministic entry for a UI test, and for looking at a running
+            // configuration without a click.
+            guard let wanted = LaunchConfig.shared.runStart,
+                  RunConfigFile.load(projectRoot: project.rootURL)
+                      .configurations.contains(where: { $0.id == wanted })
+            else { return }
+            _ = await RunRegistry.shared.start(project: project, configID: wanted)
+            reload()
+        }
         .sheet(item: $editing) { config in
             RunConfigurationEditor(project: project, original: config, onSaved: reload)
         }
@@ -246,48 +256,168 @@ private struct RunConfigurationRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Circle().fill(statusColor).frame(width: 8, height: 8)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(config.name)
-                            .font(Theme.mono(.body, .semibold))
-                            .foregroundStyle(Theme.text)
-                        Text(config.id)
-                            .font(Theme.mono(.small))
-                            .foregroundStyle(Theme.textFaint)
-                        sourceBadge
-                        if config.isDefault {
-                            Text("default")
-                                .font(Theme.mono(.micro))
-                                .foregroundStyle(Theme.info)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(Theme.infoSurface, in: Capsule())
-                        }
-                    }
-                    Text("\(config.command)  ·  \(config.cwd)")
-                        .font(Theme.mono(.small))
-                        .foregroundStyle(Theme.textDim)
+        StackedCard(showsDrawer: hasDrawer) {
+            head
+        } drawer: {
+            drawer
+        }
+        .animation(Theme.Motion.standard, value: state.status)
+        .animation(Theme.Motion.standard, value: showLog)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("run.row.\(config.id)")
+    }
+
+    /// What the configuration is, and the one button that starts or stops it.
+    /// Everything that changes while it runs is in the drawer, so the head does
+    /// not move under the pointer.
+    private var head: some View {
+        HStack(spacing: Theme.Space.snug) {
+            StatusRing(state: ring, size: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(config.name)
+                        .font(Theme.mono(.large))
+                        .foregroundStyle(Theme.text)
                         .lineLimit(1)
-                        .truncationMode(.middle)
+                    if config.isDefault {
+                        Text("default")
+                            .font(Theme.mono(.micro))
+                            .foregroundStyle(Theme.info)
+                            .padding(.horizontal, 6)
+                            .frame(height: 16)
+                            .background(Theme.infoSurface, in: Capsule())
+                    }
                 }
-                Spacer()
-                statusText
-                controls
+                // The project root is where a command runs unless it says
+                // otherwise; printing "· ." for it is a dot with no meaning.
+                Text(config.cwd == "." ? config.command : "\(config.command)  ·  \(config.cwd)")
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
-            // A living 3-line pulse of the process without opening the full
-            // log — enough to see a compile tick or a crash line at a glance.
-            if !showLog, !state.logTail.isEmpty,
-               state.status != .idle {
+            Spacer(minLength: Theme.Space.snug)
+            secondaryControls
+            primaryControl
+        }
+    }
+
+    /// A run's green is not a verdict: a dev server that is up is *live*, and
+    /// the ring says so without the tick a finished, passing thing would carry.
+    private var ring: StatusRing.State {
+        switch state.status {
+        case .idle: .idle
+        case .starting: .running
+        case .running: .live
+        case .failed: .failed
+        case .exited(let code): code == 0 ? .idle : .warned
+        }
+    }
+
+    @ViewBuilder
+    private var primaryControl: some View {
+        if state.status == .running || state.status == .starting {
+            GlyphActionButton(
+                iconName: "player-pause",
+                help: String(localized: "Stop"),
+                identifier: "run.stop.\(config.id)",
+                tint: Theme.warn
+            ) {
+                busy = true
+                Task {
+                    await RunRegistry.shared.stop(project: project, configID: config.id)
+                    busy = false
+                    onReload()
+                }
+            }
+            .disabled(busy)
+        } else {
+            GlyphActionButton(
+                iconName: "player-play",
+                help: String(localized: "Start \(config.name)"),
+                identifier: "run.start.\(config.id)",
+                tint: Theme.ok
+            ) {
+                busy = true
+                Task {
+                    _ = await RunRegistry.shared.start(project: project, configID: config.id)
+                    busy = false
+                    onReload()
+                }
+            }
+            .disabled(busy)
+        }
+    }
+
+    /// Everything else the row can do, in the size those things deserve: one
+    /// action is the point of the card, the rest are housekeeping.
+    private var secondaryControls: some View {
+        HStack(spacing: 2) {
+            if state.status == .running || state.status == .starting {
+                iconButton("refresh", id: "run.restart.\(config.id)") {
+                    _ = await RunRegistry.shared.restart(project: project, configID: config.id)
+                }
+            }
+            plainIconButton("history", id: "run.history.\(config.id)") {
+                showHistory = true
+            }
+            .popover(isPresented: $showHistory, arrowEdge: .bottom) {
+                RunHistoryList(project: project, configID: config.id)
+            }
+            plainIconButton(
+                "star", tint: config.isDefault ? Theme.warn : Theme.textDim,
+                id: "run.default.\(config.id)"
+            ) {
+                try? RunConfigFile.setDefault(config.id, projectRoot: project.rootURL)
+                onReload()
+            }
+            plainIconButton("pencil", id: "run.edit.\(config.id)", action: onEdit)
+            plainIconButton("trash", id: "run.delete.\(config.id)") {
+                confirmingDelete = true
+            }
+            // A live process would orphan silently if its row vanished —
+            // stop first, same rule as the MCP `remove` action.
+            .disabled(state.status == .running || state.status == .starting)
+            .confirmationDialog(
+                "Delete the '\(config.name)' configuration?",
+                isPresented: $confirmingDelete,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    let remaining = RunConfigFile.load(projectRoot: project.rootURL)
+                        .configurations.filter { $0.id != config.id }
+                    try? RunConfigFile.save(remaining, projectRoot: project.rootURL)
+                    onReload()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Removed from .uncoil/run.json; run history and logs stop.")
+            }
+        }
+        .disabled(busy)
+    }
+
+    /// A configuration that has never been started, has nothing wrong with it
+    /// and no containers behind it has nothing to put in a drawer.
+    private var hasDrawer: Bool {
+        state.status != .idle || state.issue != nil || !state.containers.isEmpty
+            || !state.logTail.isEmpty
+    }
+
+    private var drawer: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            statusBar
+            if showLog {
+                logView
+            } else if !state.logTail.isEmpty, state.status != .idle {
+                // A living three-line pulse of the process without opening the
+                // whole log — enough to see a compile tick or a crash line.
                 Text(lastLines(state.logTail, 3))
-                    .font(Theme.mono(.micro))
+                    .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(3)
                     .truncationMode(.head)
                     .textSelection(.enabled)
-                    .padding(.leading, 16)
             }
             if let issue = state.issue {
                 issueBanner(issue)
@@ -295,28 +425,50 @@ private struct RunConfigurationRow: View {
             if !state.containers.isEmpty {
                 containerStrip
             }
+        }
+    }
+
+    /// The one line the run is judged by: what it is doing, what it is serving,
+    /// and the way into its output.
+    private var statusBar: some View {
+        HStack(spacing: 6) {
+            statusText
             if state.status == .running, let preview = config.previewURL,
                let url = URL(string: preview) {
                 Button {
                     NSWorkspace.shared.open(url)
                 } label: {
-                    HStack(spacing: 5) {
-                        TablerIcon(name: "external-link", size: 11, color: Theme.info)
+                    HStack(spacing: 4) {
+                        TablerIcon(name: "external-link", size: 10, color: Theme.info)
                         Text(preview).font(Theme.mono(.small)).foregroundStyle(Theme.info)
                     }
+                    .padding(.horizontal, 7)
+                    .frame(height: 20)
+                    .background(
+                        Theme.infoSurface, in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                    )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .accessibilityIdentifier("run.preview.\(config.id)")
             }
-            if showLog {
-                logView
+            sourceBadge
+            Spacer(minLength: Theme.Space.tight)
+            Button(action: onToggleLog) {
+                HStack(spacing: 5) {
+                    Text(showLog ? "Hide output" : "Output")
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textDim)
+                    TablerIcon(
+                        name: showLog ? "chevron-up" : "chevron-down", size: 12,
+                        color: Theme.textDim
+                    )
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("run.log.\(config.id)")
         }
-        .padding(12)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.panel).strokeBorder(Theme.border, lineWidth: 1))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("run.row.\(config.id)")
+        .frame(minHeight: 24)
     }
 
     /// The containers behind a Docker run, and what they add up to.
@@ -345,7 +497,6 @@ private struct RunConfigurationRow: View {
                 }
             }
         }
-        .padding(.leading, 16)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("run.containers.\(config.id)")
     }
@@ -454,22 +605,23 @@ private struct RunConfigurationRow: View {
             }
         } label: {
             TablerIcon(name: icon, size: 13, color: tint ?? Theme.textDim)
-                .padding(5)
-                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                .frame(width: 26, height: 26)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityIdentifier(id)
     }
 
     private func plainIconButton(
         _ icon: String, tint: Color? = nil, id: String, action: @escaping () -> Void
     ) -> some View {
+        // Bare, with the fill on hover: a row of filled boxes beside the one
+        // large glyph that matters made every control look equally important.
         Button(action: action) {
             TablerIcon(name: icon, size: 13, color: tint ?? Theme.textDim)
-                .padding(5)
-                .background(Theme.panelHover, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                .frame(width: 26, height: 26)
+                .background(.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityIdentifier(id)
     }
 

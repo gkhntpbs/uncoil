@@ -15,6 +15,7 @@ DerivedData/
 CLAUDE.md
 AGENTS.md
 TODO.md
+TODO-archive-*.md
 .claude/
 .uncoil/
 scripts/

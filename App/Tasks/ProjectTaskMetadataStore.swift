@@ -7,8 +7,18 @@ import Foundation
 /// file stays something any agent or editor can own.
 @MainActor
 final class ProjectTaskMetadataStore: ObservableObject {
-    @Published private(set) var document = ProjectTaskMetadataDocument()
+    @Published private(set) var document = ProjectTaskMetadataDocument() {
+        didSet { assignmentIndex = nil }
+    }
     @Published var preferences = ProjectTaskViewPreferences.default
+
+    /// Assignments grouped by task, rebuilt only when something changes them.
+    ///
+    /// Every task row asks about its own assignments twice while it draws, and
+    /// each ask used to scan the whole list — so the cost of drawing a screen
+    /// grew with the number of assignments in the project rather than with the
+    /// number of rows on it.
+    private var assignmentIndex: [String: [TaskSessionAssignment]]?
 
     private let fileURL: URL
     private let preferencesURL: URL
@@ -27,11 +37,14 @@ final class ProjectTaskMetadataStore: ObservableObject {
 
     /// Assignments grouped by task id, which is what the views need.
     var assignmentsByTask: [String: [TaskSessionAssignment]] {
-        Dictionary(grouping: document.assignments, by: \.taskID)
+        if let assignmentIndex { return assignmentIndex }
+        let built = Dictionary(grouping: document.assignments, by: \.taskID)
+        assignmentIndex = built
+        return built
     }
 
     func assignments(for taskID: String) -> [TaskSessionAssignment] {
-        document.assignments.filter { $0.taskID == taskID }
+        assignmentsByTask[taskID] ?? []
     }
 
     func assignments(forSession sessionID: UUID) -> [TaskSessionAssignment] {

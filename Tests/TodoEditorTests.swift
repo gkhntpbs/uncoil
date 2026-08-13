@@ -147,6 +147,101 @@ final class TodoEditorTests: XCTestCase {
         )
     }
 
+    /// The body is the user's, and the writer's job is to place it inside the
+    /// task's block — not to reflow it. Flattening it here wrote the loss to
+    /// the file, where nothing could recover the structure.
+    func testAFencedBlockKeepsItsShapeThroughAnEdit() throws {
+        let raw = "- [ ] görev\n  eski\n- [ ] diğer\n"
+        let (_, document) = try file(raw)
+        let body = """
+        şöyle çalıştır:
+
+        ```bash
+        swift build \\
+          --configuration release
+        ```
+        """
+        let patch = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: document.tasks[0], to: body)
+        )
+        XCTAssertEqual(
+            try TodoEditor.apply([patch], to: raw),
+            """
+            - [ ] görev
+              şöyle çalıştır:
+
+              ```bash
+              swift build \\
+                --configuration release
+              ```
+            - [ ] diğer
+
+            """
+        )
+    }
+
+    func testANestedListKeepsItsLevelsThroughAnEdit() throws {
+        let raw = "- [ ] görev\n  eski\n"
+        let (_, document) = try file(raw)
+        let body = "başlık:\n  - bir\n    - bir-a\n  - iki"
+        let patch = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: document.tasks[0], to: body)
+        )
+        XCTAssertEqual(
+            try TodoEditor.apply([patch], to: raw),
+            "- [ ] görev\n  başlık:\n    - bir\n      - bir-a\n    - iki\n"
+        )
+    }
+
+    /// A body written flush left and one written already indented have to land
+    /// in the same place: what is shared by every line is the block's business,
+    /// what differs between them is the body's.
+    func testAnAlreadyIndentedBodyIsNotIndentedTwice() throws {
+        let raw = "- [ ] görev\n"
+        let (_, document) = try file(raw)
+        let patch = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: document.tasks[0], to: "    bir\n      iki")
+        )
+        XCTAssertEqual(
+            try TodoEditor.apply([patch], to: raw),
+            "- [ ] görev\n  bir\n    iki\n"
+        )
+    }
+
+    /// Reading the body out and writing it straight back must be a no-op — it
+    /// is what every "add a note" does before it appends anything.
+    func testReadingABodyAndWritingItBackChangesNothing() throws {
+        let raw = """
+        - [ ] görev
+          şöyle çalıştır:
+
+          ```bash
+          swift build
+          ```
+        - [ ] diğer
+
+        """
+        let (_, document) = try file(raw)
+        let task = document.tasks[0]
+        let patch = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: task, to: TodoEditor.body(of: task))
+        )
+        XCTAssertEqual(try TodoEditor.apply([patch], to: raw), raw)
+    }
+
+    func testAppendingALineToABodyLeavesTheRestAlone() throws {
+        let raw = "- [ ] görev\n  bir\n\n  - iki\n"
+        let (_, document) = try file(raw)
+        let task = document.tasks[0]
+        let patch = try XCTUnwrap(
+            TodoEditor.descriptionPatch(for: task, to: TodoEditor.body(of: task) + "\n  not")
+        )
+        XCTAssertEqual(
+            try TodoEditor.apply([patch], to: raw),
+            "- [ ] görev\n  bir\n\n  - iki\n    not\n"
+        )
+    }
+
     // MARK: - Move
 
     func testMovingATaskCarriesItsChildrenAndDescription() throws {

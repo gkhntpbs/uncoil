@@ -600,13 +600,11 @@ extension CapabilityRouter {
             return .failure(request, code: .invalidArgument, message: "'task_id' and 'note' are required")
         }
         // A note is appended to the task's own description, keeping whatever is
-        // already there.
-        let existing = found.task.rawBlock
-            .components(separatedBy: "\n")
-            .dropFirst()
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let body = (existing + [note]).joined(separator: "\n")
+        // already there exactly as it is. Reading the existing body back out
+        // line-trimmed is what made one added note rewrite the whole
+        // description in flattened form.
+        let existing = TodoEditor.body(of: found.task)
+        let body = existing.isEmpty ? note : existing + "\n" + note
         guard let patch = TodoEditor.descriptionPatch(for: found.task, to: body) else {
             return .failure(request, code: .invalidArgument, message: "note could not be applied")
         }

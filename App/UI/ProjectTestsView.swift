@@ -9,6 +9,8 @@ import SwiftUI
 struct ProjectTestsView: View {
     let project: Project
 
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var registry = TestRegistry.shared
     @State private var suites: [TestSuiteConfiguration] = []
     @State private var problems: [String] = []
@@ -17,7 +19,7 @@ struct ProjectTestsView: View {
     @State private var isDetecting = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.snug) {
             toolbar
             if let message {
                 Text(message)
@@ -38,11 +40,27 @@ struct ProjectTestsView: View {
                 ForEach(suites) { suite in
                     suiteCard(suite)
                 }
+                .animation(Theme.Motion.standard, value: suites.map(\.id))
             }
         }
         .task(id: project.id) {
             reload()
             registry.loadPersistedResults(project: project)
+            // A red suite opens itself: the screen leads with the last result,
+            // and for a failure the result is the reason, not the word. Done
+            // once per project so that collapsing it again sticks.
+            expanded = Set(
+                suites
+                    .filter { registry.state(project: project, suiteID: $0.id).latest
+                        .map { !$0.summary.didPass } ?? false
+                    }
+                    .map(\.id)
+            )
+            if let wanted = LaunchConfig.shared.testsRun,
+               let suite = suites.first(where: { $0.id == wanted }) {
+                expanded.insert(suite.id)
+                run(suite)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.container")
@@ -90,154 +108,146 @@ struct ProjectTestsView: View {
         .panel()
     }
 
+    /// One suite: what it is, and what it did, tucked under it.
     private func suiteCard(_ suite: TestSuiteConfiguration) -> some View {
         let state = registry.state(project: project, suiteID: suite.id)
         let isExpanded = expanded.contains(suite.id)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                verdict(state)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(suite.name)
-                        .font(Theme.mono(.body))
-                        .foregroundStyle(Theme.text)
-                    Text(suite.command)
-                        .font(Theme.mono(.micro))
-                        .foregroundStyle(Theme.textFaint)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                Spacer(minLength: 8)
-                if state.isRunning {
-                    ProgressView().controlSize(.small).scaleEffect(0.6)
-                    ControlButton(
-                        iconName: "player-stop",
-                        help: String(localized: "Stop"),
-                        identifier: "tests.stop.\(suite.id)",
-                        tint: Theme.danger
-                    ) {
-                        registry.stop(project: project, suiteID: suite.id)
-                    }
-                } else {
-                    ControlButton(
-                        iconName: "player-play",
-                        help: String(localized: "Run \(suite.name)"),
-                        identifier: "tests.run.\(suite.id)",
-                        tint: Theme.ok
-                    ) {
-                        run(suite)
-                    }
-                }
-                if state.latest != nil {
-                    ControlButton(
-                        iconName: isExpanded ? "chevron-up" : "chevron-down",
-                        help: isExpanded
-                            ? String(localized: "Hide the results")
-                            : String(localized: "Show the results"),
-                        identifier: "tests.expand.\(suite.id)"
-                    ) {
-                        if isExpanded { expanded.remove(suite.id) } else { expanded.insert(suite.id) }
-                    }
-                }
-            }
-            if let record = state.latest {
-                summaryLine(record, suite: suite)
-                if isExpanded {
-                    details(record, suite: suite)
-                }
-            }
+        return StackedCard(showsDrawer: state.isRunning || state.latest != nil) {
+            head(suite, state: state)
+        } drawer: {
+            drawer(suite, state: state, isExpanded: isExpanded)
         }
-        .padding(12)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.border, lineWidth: 1)
-        )
+        // A suite that starts, finishes, or is run for the first time changes
+        // what the card is made of; without this the swap is a cut.
+        .animation(Theme.Motion.standard, value: state.isRunning)
+        .animation(Theme.Motion.standard, value: state.latest?.id)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tests.suite.\(suite.id)")
     }
 
-    /// The at-a-glance answer. A suite that has never run gets a hollow ring
-    /// rather than a grey tick: "not run" is not "passed with nothing in it".
-    @ViewBuilder
-    private func verdict(_ state: TestSuiteState) -> some View {
-        if state.isRunning {
-            Circle().fill(Theme.highlight).frame(width: 8, height: 8)
-        } else if let record = state.latest {
-            Circle()
-                .fill(record.summary.didPass ? Theme.ok : Theme.danger)
-                .frame(width: 8, height: 8)
-        } else {
-            Circle()
-                .strokeBorder(Theme.textFaint, lineWidth: 1)
-                .frame(width: 8, height: 8)
-        }
-    }
-
-    private func summaryLine(_ record: TestRunRecord, suite: TestSuiteConfiguration) -> some View {
-        HStack(spacing: 8) {
-            if record.summary.isDetailed {
-                Text("\(record.summary.passed) passed")
-                    .foregroundStyle(Theme.ok)
-                if record.summary.failed > 0 {
-                    Text("\(record.summary.failed) failed").foregroundStyle(Theme.danger)
-                }
-                if record.summary.skipped > 0 {
-                    Text("\(record.summary.skipped) skipped").foregroundStyle(Theme.textDim)
+    /// The head: the suite's name and the one button that acts on it. Nothing
+    /// that changes while it runs lives up here, so the card does not twitch
+    /// under the pointer as results arrive.
+    private func head(
+        _ suite: TestSuiteConfiguration, state: TestSuiteState
+    ) -> some View {
+        HStack(spacing: Theme.Space.snug) {
+            StatusRing(state: ring(state), size: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(suite.name)
+                    .font(Theme.mono(.large))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(suite.command)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textFaint)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer(minLength: Theme.Space.snug)
+            if state.isRunning {
+                GlyphActionButton(
+                    iconName: "player-pause",
+                    help: String(localized: "Stop"),
+                    identifier: "tests.stop.\(suite.id)",
+                    tint: Theme.warn
+                ) {
+                    registry.stop(project: project, suiteID: suite.id)
                 }
             } else {
-                // Saying "0 failures" here would be a claim the output never
-                // made: nothing parsed it, and all that is known is the status.
-                Text(record.summary.didPass ? "Passed" : "Failed")
-                    .foregroundStyle(record.summary.didPass ? Theme.ok : Theme.danger)
-                Text("(\(suite.framework.displayName) — no per-test detail)")
-                    .foregroundStyle(Theme.textFaint)
-            }
-            if let duration = record.duration {
-                Text(String(format: "%.1fs", duration)).foregroundStyle(Theme.textFaint)
-            }
-            if let finished = record.finishedAt {
-                Text(RelativeClock.short(since: finished)).foregroundStyle(Theme.textFaint)
+                GlyphActionButton(
+                    iconName: "player-play",
+                    help: String(localized: "Run \(suite.name)"),
+                    identifier: "tests.run.\(suite.id)",
+                    tint: Theme.ok
+                ) {
+                    run(suite)
+                }
             }
         }
-        .font(Theme.mono(.micro))
-        .padding(.leading, 16)
     }
 
+    private func ring(_ state: TestSuiteState) -> StatusRing.State {
+        if state.isRunning { return .running }
+        guard let record = state.latest else { return .idle }
+        return record.summary.didPass ? .passed : .failed
+    }
+
+    /// The drawer: the tally, and — while it is open — the steps themselves.
     @ViewBuilder
-    private func details(_ record: TestRunRecord, suite: TestSuiteConfiguration) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            // Failures first and in full; passes are a count, because a
-            // thousand green lines are what hide the one red one.
-            ForEach(record.failedCases) { result in
-                HStack(alignment: .top, spacing: 5) {
-                    TablerIcon(name: "x", size: 9, color: Theme.danger)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(result.name)
-                            .font(Theme.mono(.micro))
-                            .foregroundStyle(Theme.text)
-                        if !result.suite.isEmpty {
-                            Text(result.suite)
-                                .font(Theme.mono(.micro))
-                                .foregroundStyle(Theme.textFaint)
+    private func drawer(
+        _ suite: TestSuiteConfiguration, state: TestSuiteState, isExpanded: Bool
+    ) -> some View {
+        if state.isRunning {
+            running(state, suite: suite)
+        } else if let record = state.latest {
+            TestStepList(
+                record: record, suite: suite, project: project,
+                isExpanded: Binding(
+                    get: { isExpanded },
+                    set: { open in
+                        if open { expanded.insert(suite.id) } else { expanded.remove(suite.id) }
+                    }
+                )
+            )
+        }
+        // A suite that has never run has no drawer at all: there is nothing to
+        // put in it, and an empty lip under every card is the shape of a screen
+        // waiting to be used rather than one that is.
+    }
+
+    /// What the suite is doing right now.
+    ///
+    /// The steps arrive as the runner prints them, so a long suite is watchable
+    /// rather than a spinner with a log under it. Only the last few are shown:
+    /// during a run the interesting end of the list is the recent end, and the
+    /// whole of it is there the moment the run finishes.
+    @ViewBuilder
+    private func running(_ state: TestSuiteState, suite: TestSuiteConfiguration) -> some View {
+        let live = state.liveCases
+        let summary = state.liveSummary
+        VStack(alignment: .leading, spacing: Theme.Space.tight) {
+            TestSummaryBar(
+                done: summary.passed + summary.failed,
+                // Either the plan the runner announced, or the last run's
+                // total as an estimate — and the chip says which.
+                total: state.expectedTotal ?? 0,
+                totalIsEstimate: state.expectedTotal != nil,
+                summary: summary,
+                isLive: true,
+                trailing: {
+                    if let startedAt = state.startedAt {
+                        // On its own clock: the rest of this view redraws when
+                        // output arrives, and a suite that goes quiet for a
+                        // minute would otherwise show a frozen elapsed time.
+                        TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                            Text(TestStepFormat.duration(
+                                context.date.timeIntervalSince(startedAt)
+                            ))
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.textFaint)
+                            .monospacedDigit()
                         }
                     }
                 }
-            }
-            if record.summary.passed > 0 {
-                Text("\(record.summary.passed) tests passed")
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-            }
-            if !record.logTail.isEmpty {
-                Text(lastLines(record.logTail, record.summary.isDetailed ? 6 : 20))
-                    .font(Theme.mono(.micro))
-                    .foregroundStyle(Theme.textFaint)
-                    .textSelection(.enabled)
-                    .padding(.top, 4)
+            )
+            if live.isEmpty {
+                // Either nothing has been reported yet, or this framework's
+                // output is not parsed at all — the output is what there is.
+                if !state.logTail.isEmpty {
+                    Text(lastLines(state.logTail, 4))
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textFaint)
+                        .lineLimit(4)
+                        .padding(.horizontal, Theme.Space.hair)
+                }
+            } else {
+                TestStepRows(cases: Array(live.suffix(6)), suiteID: suite.id)
             }
         }
-        .padding(.leading, 16)
-        .accessibilityIdentifier("tests.details.\(suite.id)")
+        .animation(Theme.Motion.standard, value: live.count)
+        .accessibilityIdentifier("tests.live.\(suite.id)")
     }
 
     private func lastLines(_ text: String, _ count: Int) -> String {

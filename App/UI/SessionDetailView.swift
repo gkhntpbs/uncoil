@@ -8,7 +8,6 @@ struct SessionDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
-    @State private var showChangesPanel = false
     @State private var restartToken = 0
     /// Something is being dragged over the session, so the drop is shown as
     /// possible before it happens.
@@ -17,7 +16,6 @@ struct SessionDetailView: View {
     /// rather than local: a drop is answered here, a paste by the app-wide key
     /// monitor, and both belong in the same place on screen.
     @ObservedObject private var dropReporter = SessionDropReporter.shared
-    @State private var git = GitService.Snapshot()
 
     private var status: AgentSessionStatus {
         sessionStore.status(of: record.id)
@@ -32,8 +30,7 @@ struct SessionDetailView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            VStack(spacing: 0) {
+        VStack(spacing: 0) {
                 header
                     .padding(.horizontal, 16)
                     // Tighter than the sides: the bar sits under the title bar,
@@ -88,17 +85,6 @@ struct SessionDetailView: View {
                         .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
                         .padding(.horizontal, 10)
                         .padding(.bottom, 10)
-                }
-            }
-
-            if showChangesPanel {
-                ChangesPanel(
-                    workingDirectory: workingDirectory,
-                    git: $git,
-                    onClose: { toggleChangesPanel(false) }
-                )
-                .frame(width: 320)
-                .transition(.move(edge: .trailing))
             }
         }
         .accessibilityElement(children: .contain)
@@ -169,24 +155,7 @@ struct SessionDetailView: View {
             onLeading: { selection = .project(project.id) },
             onRestart: { restart() },
             onOpenProject: { selection = .project(project.id) }
-        ) {
-            Rectangle().fill(Theme.border).frame(width: 1, height: 16)
-
-            // The button opens the right-hand panel, so it says so: a chevron
-            // only told you a direction, not what was going to happen.
-            ControlButton(
-                iconName: showChangesPanel
-                    ? "layout-sidebar-right-collapse"
-                    : "layout-sidebar-right-expand",
-                help: showChangesPanel
-                    ? String(localized: "Close the changes panel")
-                    : String(localized: "Open the changes panel"),
-                identifier: "session.changesButton",
-                tint: showChangesPanel ? Theme.highlight : nil
-            ) {
-                toggleChangesPanel(!showChangesPanel)
-            }
-        }
+        )
     }
 
     private var displayPath: String {
@@ -203,12 +172,6 @@ struct SessionDetailView: View {
         TerminalRegistry.shared.closeTerminal(for: record.id)
         projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
         restartToken += 1
-    }
-
-    private func toggleChangesPanel(_ show: Bool) {
-        withAnimation(Theme.Motion.standard) {
-            showChangesPanel = show
-        }
     }
 }
 
@@ -274,137 +237,6 @@ private struct CodexAuthenticationBanner: View {
     }
 }
 
-// MARK: - Changes panel
-
-/// Right-side sliding panel: uncommitted changes + recent commits for the
-/// session's working directory.
-private struct ChangesPanel: View {
-    let workingDirectory: String
-    @Binding var git: GitService.Snapshot
-    let onClose: () -> Void
-    @EnvironmentObject private var settings: SettingsStore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("CHANGES")
-                    .font(Theme.mono(.body, .semibold))
-                    .foregroundStyle(Theme.textDim)
-                    .kerning(0.6)
-                if let branch = git.branch {
-                    Text(branch)
-                        .font(Theme.mono(.small))
-                        .foregroundStyle(Theme.textFaint)
-                }
-                Spacer()
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Theme.textFaint)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-
-            Divider().overlay(Theme.border)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if !git.isRepo {
-                        Text("This folder is not a git repository.")
-                            .font(Theme.mono(.body))
-                            .foregroundStyle(Theme.textFaint)
-                    } else {
-                        if git.changedFiles.isEmpty {
-                            Text("Worktree clean")
-                                .font(Theme.mono(.body))
-                                .foregroundStyle(Theme.ok)
-                        } else {
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(git.changedFiles) { file in
-                                    ChangedFileRow(file: file, workingDirectory: workingDirectory)
-                                }
-                            }
-                        }
-
-                        if !git.recentCommits.isEmpty {
-                            Divider().overlay(Theme.border)
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(git.recentCommits) { commit in
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(commit.subject)
-                                            .font(Theme.mono(.body))
-                                            .foregroundStyle(Theme.textDim)
-                                            .lineLimit(1)
-                                        HStack(spacing: 6) {
-                                            Text(commit.hash)
-                                                .font(Theme.mono(.micro))
-                                                .foregroundStyle(Theme.highlight)
-                                            Text(commit.relativeDate)
-                                                .font(Theme.mono(.micro))
-                                                .foregroundStyle(Theme.textFaint)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(14)
-                .uncoilScrollers()
-            }
-        }
-        .background(Theme.panel)
-        .overlay(
-            Rectangle().fill(Theme.border).frame(width: 1),
-            alignment: .leading
-        )
-        .task(id: workingDirectory) { await refresh() }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("session.changesPanel")
-    }
-
-    private func refresh() async {
-        let dir = workingDirectory
-        git = await Task.detached(priority: .utility) {
-            GitService.snapshot(repoPath: dir)
-        }.value
-    }
-}
-
-private struct ChangedFileRow: View {
-    let file: GitService.ChangedFile
-    let workingDirectory: String
-    @EnvironmentObject private var settings: SettingsStore
-    @State private var hovering = false
-
-    var body: some View {
-        Button {
-            let url = URL(fileURLWithPath: workingDirectory).appendingPathComponent(file.path)
-            settings.preferredEditor.open(url)
-        } label: {
-            HStack(spacing: 8) {
-                Text(file.status)
-                    .font(Theme.mono(.small, .bold))
-                    .foregroundStyle(file.status == "??" ? Theme.textFaint : Theme.warn)
-                    .frame(width: 20, alignment: .leading)
-                Text(file.path)
-                    .font(Theme.mono(.body))
-                    .foregroundStyle(hovering ? Theme.text : Theme.textDim)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer()
-            }
-            .padding(.vertical, 2)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .help("Open with \(settings.preferredEditor.displayName)")
-    }
-}
-
 struct EmptyDetailView: View {
     @Binding var showFolderPicker: Bool
 
@@ -449,8 +281,7 @@ struct SplitSessionPane: View {
                 leadingIcon: "xmark",
                 leadingHelp: String(localized: "Close the pane"),
                 onLeading: onClose,
-                onRestart: { restart() },
-                trailing: { EmptyView() }
+                onRestart: { restart() }
             )
             .padding(.horizontal, 10)
             .padding(.top, 8)

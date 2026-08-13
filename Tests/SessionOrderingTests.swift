@@ -24,11 +24,6 @@ final class SessionOrderingTests: XCTestCase {
                 projectID: projectID, provider: .terminal, accountID: nil, title: title
             )
         }
-        // Without a sort index sessions fall back to newest-activity-first, so
-        // they start as three, two, one. Freeze a known order into indexes first
-        // and the assertions are then about moves rather than timestamps.
-        store.moveSessions(titles(["one"]), toGroup: nil, inProject: projectID, at: 0)
-        store.moveSessions(titles(["two"]), toGroup: nil, inProject: projectID, at: 1)
     }
 
     override func tearDownWithError() throws {
@@ -49,9 +44,10 @@ final class SessionOrderingTests: XCTestCase {
         XCTAssertEqual(titles, ["one", "two", "three"])
     }
 
-    /// The fallback before anyone reorders anything: the most recently active
-    /// session sits at the top.
-    func testWithoutAManualOrderTheNewestSessionComesFirst() throws {
+    /// Before anyone reorders anything: creation order, and activity does not
+    /// disturb it. A session that jumps to the top the moment its agent says
+    /// something is the sidebar reshuffling itself under the user's cursor.
+    func testActivityDoesNotReorderSessions() throws {
         let path = root.appendingPathComponent("fresh", isDirectory: true)
         try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
         store.addProject(at: path)
@@ -61,7 +57,35 @@ final class SessionOrderingTests: XCTestCase {
                 projectID: fresh, provider: .terminal, accountID: nil, title: title
             )
         }
-        XCTAssertEqual(store.sessions(for: fresh).map(\.title), ["newer", "older"])
+        XCTAssertEqual(store.sessions(for: fresh).map(\.title), ["older", "newer"])
+
+        let older = try XCTUnwrap(store.sessions.first { $0.title == "older" }).id
+        store.updateSession(older) { $0.lastActivityAt = .now.addingTimeInterval(60) }
+        XCTAssertEqual(store.sessions(for: fresh).map(\.title), ["older", "newer"])
+    }
+
+    /// A record restored from an installation that predates the stamped order
+    /// keeps the order it was last displayed in, and keeps it from then on.
+    func testSessionsWithoutAnIndexAdoptTheirDisplayOrderOnce() throws {
+        let path = root.appendingPathComponent("legacy", isDirectory: true)
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
+        store.addProject(at: path)
+        let legacy = try XCTUnwrap(store.projects.first { $0.name == "legacy" }).id
+        for (offset, title) in ["first", "second"].enumerated() {
+            let record = store.createSession(
+                projectID: legacy, provider: .terminal, accountID: nil, title: title
+            )
+            store.updateSession(record.id) {
+                $0.sortIndex = nil
+                $0.lastActivityAt = .now.addingTimeInterval(Double(offset) * -60)
+            }
+        }
+
+        let reloaded = ProjectStore(directory: root)
+        XCTAssertEqual(reloaded.sessions(for: legacy).map(\.title), ["first", "second"])
+        XCTAssertEqual(
+            reloaded.sessions.filter { $0.projectID == legacy }.compactMap(\.sortIndex).count, 2
+        )
     }
 
     func testNudgingASessionMovesItOneStepAmongItsSiblings() {

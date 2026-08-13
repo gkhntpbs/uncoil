@@ -385,6 +385,26 @@ final class TodoSourceWatcherTests: XCTestCase {
         XCTAssertEqual(fired, afterStop)
     }
 
+    /// The gap the subtree watch exists for: a task file created where there
+    /// was none has no descriptor to watch and no stamp to poll.
+    func testANewTaskFileInAnUnwatchedSubdirectoryIsNoticed() async throws {
+        let existing = root.appendingPathComponent("TODO.md")
+        try Data("- [ ] bir\n".utf8).write(to: existing)
+
+        var fired = 0
+        let watcher = TodoSourceWatcher(pollInterval: 3600) { fired += 1 }
+        watcher.start(paths: [existing.path], subtreeRoot: root.path)
+        defer { watcher.stop() }
+
+        let deep = root.appendingPathComponent("packages/inner/docs", isDirectory: true)
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try Data("- [ ] derinde\n".utf8)
+            .write(to: deep.appendingPathComponent("TODO.md"))
+
+        try await waitUntil(timeout: 10) { fired > 0 }
+        XCTAssertGreaterThan(fired, 0)
+    }
+
     private func waitUntil(
         timeout: TimeInterval = 3,
         _ condition: () -> Bool

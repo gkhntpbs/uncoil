@@ -91,7 +91,8 @@ extension CapabilityRouter {
                 } else {
                     let parts = RuntimeClient.submissionParts(text, provider: target.provider)
                     await TerminalRegistry.shared.submitText(
-                        text, for: target.id, provider: target.provider)
+                        text, for: target.id, provider: target.provider,
+                        namesTheSession: false)
                     sentBytes = parts.reduce(0) { $0 + $1.count }
                 }
                 return .success(request, data: .object(["sent_bytes": .int(sentBytes)]),

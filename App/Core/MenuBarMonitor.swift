@@ -125,7 +125,9 @@ enum MenuBarMonitorEngine {
                 summary.completed += 1
             // A sleeping session is not doing anything and is not waiting for
             // anyone, so it belongs in no count.
-            case .idle, .suspended, .hibernated, .terminated:
+            // Nor does a session nobody has heard from yet: counting it as
+            // anything would put a number on a guess.
+            case .idle, .suspended, .hibernated, .terminated, .unknown:
                 break
             }
         }

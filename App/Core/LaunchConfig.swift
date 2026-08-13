@@ -7,6 +7,10 @@ import SwiftUI
 ///   -ui-testing            isolate all state under a temp directory
 ///   -reset-state           wipe that directory before start
 ///   -fixture <name>        seed data ("demo" is the only fixture today)
+///   -tests-run <suite id>  start that suite as soon as the Tests screen opens
+///   -tests-step <suite id> open that suite's leading step in its detail window
+///   -run-start <config id> start that run configuration when the Run screen opens
+///   -issues-expand <number> open that issue's details when the Issues screen opens
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
@@ -32,6 +36,15 @@ struct LaunchConfig {
     let extensionsAction: String?
     /// Project dashboard area to open (overview|tasks|run|tests).
     let projectArea: String?
+    /// A test suite to start as soon as the Tests screen appears, so the live
+    /// step stream can be watched without a click.
+    let testsRun: String?
+    /// A suite whose first step opens its detail window as the screen appears.
+    let testsStep: String?
+    /// A run configuration to start as soon as the Run screen appears.
+    let runStart: String?
+    /// An issue number whose detail drawer opens with the screen.
+    let issuesExpand: String?
     /// Onboarding step the first-run window opens on, by step id.
     let onboardingStep: String?
     let windowWidth: Double?
@@ -41,6 +54,13 @@ struct LaunchConfig {
     let codexAppServerEnabled: Bool
     let codexApprovalFixture: Bool
     let attentionFixture: Bool
+    /// Seeds synthetic usage snapshots and opens the usage card.
+    let usageFixture: Bool
+    /// Answers the handoff's "ask the outgoing agent" step with a stub script
+    /// instead of a real CLI, so the whole ask-and-merge path runs in a test
+    /// without a login or a quota. The path everything else takes is
+    /// unchanged; only the executable differs.
+    let handoffAgentStub: Bool
     /// Checks notification authorization and delivery, prints the result, exits.
     let notificationSelfTest: Bool
 
@@ -69,6 +89,13 @@ struct LaunchConfig {
             && arguments.contains("-codex-approval-fixture")
         attentionFixture = isUITesting
             && arguments.contains("-attention-fixture")
+        // Usage figures come from the provider's own account, so on a machine
+        // with no login — or with a plan that reports nothing — the populated
+        // chip and its card cannot be reached at all. This seeds one snapshot
+        // per band so both can be looked at without a subscription, and opens
+        // the card, since a popover has no other way to be shown on demand.
+        usageFixture = isUITesting && arguments.contains("-usage-fixture")
+        handoffAgentStub = isUITesting && arguments.contains("-handoff-agent-stub")
         notificationSelfTest = arguments.contains("-notification-selftest")
         fixture = Self.value(after: "-fixture", in: arguments)
         route = Self.value(after: "-route", in: arguments)
@@ -77,6 +104,10 @@ struct LaunchConfig {
         extensionsExpand = Self.value(after: "-extensions-expand", in: arguments)
         extensionsAction = Self.value(after: "-extensions-action", in: arguments)
         projectArea = Self.value(after: "-project-area", in: arguments)
+        testsRun = isUITesting ? Self.value(after: "-tests-run", in: arguments) : nil
+        testsStep = isUITesting ? Self.value(after: "-tests-step", in: arguments) : nil
+        runStart = isUITesting ? Self.value(after: "-run-start", in: arguments) : nil
+        issuesExpand = isUITesting ? Self.value(after: "-issues-expand", in: arguments) : nil
         onboardingStep = Self.value(after: "-onboarding-step", in: arguments)
         windowWidth = Self.value(after: "-window-width", in: arguments).flatMap(Double.init)
         windowHeight = Self.value(after: "-window-height", in: arguments).flatMap(Double.init)
@@ -95,6 +126,34 @@ struct LaunchConfig {
             try? FileManager.default.removeItem(at: root)
         }
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        if handoffAgentStub {
+            writeHandoffStub(into: root)
+        }
+    }
+
+    /// Where the handoff's stub agent lives, when it was asked for.
+    var handoffStubPath: String? {
+        guard handoffAgentStub, let root = dataDirectoryOverride else { return nil }
+        return root.appendingPathComponent("handoff-agent-stub.sh").path
+    }
+
+    /// A script that answers exactly the way a logged-in `claude -p` does:
+    /// reads the prompt from stdin, prints an envelope whose `result` carries
+    /// the handover JSON. Everything downstream of the executable — the shell
+    /// invocation, the parsing, the merge, the wording shown to the user — is
+    /// the production path.
+    private func writeHandoffStub(into root: URL) {
+        let handover = #"{\"objective\": \"Finish the demo feature\", \"workDone\": [\"wrote the parser\"], \"decisions\": [\"kept the tolerant reader\"], \"openItems\": [\"wire the UI\"], \"knownProblems\": [\"the first approach deadlocked\"], \"suggestedNextStep\": \"run the tests\"}"#
+        let script = """
+        #!/bin/sh
+        cat - > /dev/null
+        printf '%s' '{"result": "\(handover)", "is_error": false}'
+        """
+        let url = root.appendingPathComponent("handoff-agent-stub.sh")
+        try? script.write(to: url, atomically: true, encoding: .utf8)
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: url.path
+        )
     }
 
     /// Seeds fixture data. Runs on first launch of a UI-testing session.
@@ -157,10 +216,23 @@ struct LaunchConfig {
                 framework: .swift, isDefault: true
             ),
             TestSuiteConfiguration(
-                id: "e2e", name: "End-to-end", command: "./run-e2e.sh", framework: .unknown,
-                notes: "the output format is not recognised"
+                id: "stream", name: "Streaming suite", command: "sh stream-tests.sh",
+                framework: .swift,
+                notes: "prints XCTest-shaped lines slowly, so the live view has something to show"
+            ),
+            TestSuiteConfiguration(
+                id: "e2e", name: "End-to-end flows",
+                command: "maestro test .maestro --debug-output build/screenshots",
+                framework: .maestro,
+                notes: "a Maestro flow, the way a mobile or web end-to-end suite reports",
+                artifacts: "build/screenshots"
             ),
         ], projectRoot: projectDir)
+        let shot = Self.seedFixtureScreenshot(projectRoot: projectDir)
+        Self.seedFixtureStreamingSuite(projectRoot: projectDir)
+        Self.seedFixtureRunConfigurations(projectRoot: projectDir)
+        Self.seedFixtureRepository(projectRoot: projectDir)
+        seedFixtureIssues(project: project)
         TestRegistry.saveRecord(
             TestRunRecord(
                 id: "demo-unit", suiteID: "unit",
@@ -171,11 +243,25 @@ struct LaunchConfig {
                 cases: [
                     TestCaseResult(
                         suite: "SidebarChildSessionTests", name: "testACycleLosesNoSession",
-                        outcome: .failed
+                        outcome: .failed, duration: 0.184,
+                        message: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")"
                     ),
                     TestCaseResult(
                         suite: "DockerStatusTests", name: "testEmptyOutputIsNoContainers",
-                        outcome: .failed
+                        outcome: .failed, duration: 0.021,
+                        message: "XCTAssertTrue failed — the parser read a blank line as a container"
+                    ),
+                    TestCaseResult(
+                        suite: "TodoParserTests", name: "testFrontmatterIsRead",
+                        outcome: .passed, duration: 0.003
+                    ),
+                    TestCaseResult(
+                        suite: "HandoffTests", name: "testPromptIsBuilt",
+                        outcome: .passed, duration: 0.012
+                    ),
+                    TestCaseResult(
+                        suite: "UsageAttentionTests", name: "testAnAccountIsWarnedOnce",
+                        outcome: .skipped
                     ),
                 ],
                 logTail: "XCTAssertEqual failed: (\"2\") is not equal to (\"3\")"
@@ -188,9 +274,31 @@ struct LaunchConfig {
                 startedAt: Date(timeIntervalSinceNow: -400),
                 finishedAt: Date(timeIntervalSinceNow: -380),
                 exitCode: 0,
-                summary: TestRunSummary(isDetailed: false),
-                cases: [],
-                logTail: "all good\n"
+                summary: TestRunSummary(passed: 5, failed: 1, isDetailed: true),
+                cases: [
+                    TestCaseResult(
+                        suite: "smoke", name: "Launch app \"com.example.app\"", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Tap on \"Sign in\"", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Take screenshot smoke-01-home",
+                        outcome: .passed, artifacts: shot.map { [$0] } ?? []
+                    ),
+                    TestCaseResult(
+                        suite: "smoke", name: "Assert that \"Welcome back\" is visible",
+                        outcome: .failed,
+                        message: "Assertion is false: \"Welcome back\" is visible"
+                    ),
+                    TestCaseResult(
+                        suite: "checkout", name: "Open https://example.com", outcome: .passed
+                    ),
+                    TestCaseResult(
+                        suite: "checkout", name: "Tap on \"Buy\"", outcome: .passed
+                    ),
+                ],
+                logTail: "Running on iPhone 16 Pro\n"
             ),
             directory: TestRegistry.shared.resultsDirectory(projectID: project.id)
         )
@@ -205,6 +313,162 @@ struct LaunchConfig {
             .first(where: { $0.provider == .terminal }) {
             projectStore.togglePin(pinned.id)
         }
+    }
+
+    /// Makes the demo project a repository with a GitHub remote.
+    ///
+    /// Without one the Issues area does not exist: whether the tab is offered
+    /// is decided by the remotes on disk, not by the network, so a fixture that
+    /// wants to show issues has to be a repository the way a real project is.
+    static func seedFixtureRepository(projectRoot: URL) {
+        for arguments in [
+            ["init", "--quiet"],
+            ["remote", "add", "origin", "https://github.com/uncoil/demo.git"],
+        ] {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["git"] + arguments
+            process.currentDirectoryURL = projectRoot
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+        }
+    }
+
+    /// Issues for the demo project, without the network or a GitHub account.
+    ///
+    /// The store takes its fetcher as a value precisely so this is possible:
+    /// everything downstream — sorting, the label filter, the hand-off to an
+    /// agent — is the production path, and only the round trip is replaced.
+    @MainActor
+    func seedFixtureIssues(project: Project) {
+        let store = IssueStores.store(projectID: project.id, projectRoot: project.rootPath)
+        store.discoverSlugs = { _ in ["uncoil/demo"] }
+        store.fetch = { _ in
+            .success([
+                GitHubIssue(
+                    apiID: 1, number: 42,
+                    title: "Sessions lose their scroll position when the window is resized",
+                    body: "Steps: open a session with a long history, drag the window edge, and the terminal jumps to the bottom.\n\nExpected: the view stays where it was.",
+                    author: "aylin", state: "open",
+                    labels: [
+                        GitHubIssue.Label(name: "bug", color: "d73a4a"),
+                        GitHubIssue.Label(name: "terminal", color: "5319e7"),
+                    ],
+                    assignees: ["gkhntpbs"], commentCount: 3,
+                    updatedAt: Date(timeIntervalSinceNow: -3600),
+                    htmlURL: URL(string: "https://github.com/uncoil/demo/issues/42"),
+                    repository: "uncoil/demo"
+                ),
+                GitHubIssue(
+                    apiID: 2, number: 41,
+                    title: "Add a keyboard shortcut for the command palette",
+                    body: "Cmd-K, the way every other tool does it.",
+                    author: "deniz", state: "open",
+                    labels: [GitHubIssue.Label(name: "enhancement", color: "a2eeef")],
+                    assignees: [], commentCount: 0,
+                    updatedAt: Date(timeIntervalSinceNow: -86_400),
+                    htmlURL: URL(string: "https://github.com/uncoil/demo/issues/41"),
+                    repository: "uncoil/demo"
+                ),
+            ])
+        }
+        Task { await store.refresh() }
+    }
+
+    /// Two run configurations, so the Run area can be looked at.
+    ///
+    /// One of them actually runs — it prints a line a second and stays up —
+    /// because a dev server that cannot be started is a card with only one of
+    /// its two states reachable.
+    static func seedFixtureRunConfigurations(projectRoot: URL) {
+        let script = """
+        #!/bin/sh
+        echo "listening on http://localhost:5173"
+        i=0
+        while true; do
+          i=$((i+1))
+          echo "[dev] rebuilt in ${i}ms"
+          sleep 1
+        done
+        """
+        try? script.write(
+            to: projectRoot.appendingPathComponent("dev-server.sh"),
+            atomically: true, encoding: .utf8
+        )
+        try? RunConfigFile.save([
+            RunConfiguration(
+                id: "web-dev", name: "Web dev server", command: "sh dev-server.sh",
+                // No ports: the fixture's script prints, it does not listen,
+                // and a port nobody opens would leave the card "starting…"
+                // forever.
+                previewURL: "http://localhost:5173",
+                isDefault: true, source: .detected, notes: "seeded by the demo fixture"
+            ),
+            RunConfiguration(
+                id: "api", name: "API", command: "sh api-server.sh",
+                ports: [8080], source: .user,
+                notes: "there is no such script — this one is here to show a failure"
+            ),
+        ], projectRoot: projectRoot)
+    }
+
+    /// A suite that actually runs, and takes long enough to be watched.
+    ///
+    /// The Tests screen's other two fixtures are results without runs — enough
+    /// to show what a finished suite looks like, and no use at all for the part
+    /// that streams. This one prints XCTest's own line shape, one test at a
+    /// time, so pressing Run shows the steps arriving.
+    static func seedFixtureStreamingSuite(projectRoot: URL) {
+        let script = """
+        #!/bin/sh
+        for name in testTheParserReadsFrontmatter testASleepingSessionWakes \
+                    testTheQueueDrains testABranchChangeIsAnnounced \
+                    testTheCacheSurvivesRestart testNothingIsLostOnCancel; do
+          echo "Test Case 'StreamingTests.$name' started."
+          sleep 1
+          echo "Test Case 'StreamingTests.$name' passed (1.0 seconds)."
+        done
+        echo "Test Case 'StreamingTests.testTheOneThatBreaks' started."
+        sleep 1
+        echo "\(projectRoot.lastPathComponent)/Stream.swift:12: error: -[StreamingTests testTheOneThatBreaks] : XCTAssertEqual failed: (\"7\") is not equal to (\"8\")"
+        echo "Test Case 'StreamingTests.testTheOneThatBreaks' failed (1.0 seconds)."
+        exit 1
+        """
+        try? script.write(
+            to: projectRoot.appendingPathComponent("stream-tests.sh"),
+            atomically: true, encoding: .utf8
+        )
+    }
+
+    /// Writes one small image into the demo project, so the Tests screen has a
+    /// real artifact to open rather than a row pointing at nothing.
+    ///
+    /// Drawn rather than bundled: a fixture image shipped in the app would be
+    /// weight every user carries for a screen only a UI test opens.
+    static func seedFixtureScreenshot(projectRoot: URL) -> TestArtifact? {
+        let directory = projectRoot.appendingPathComponent("build/screenshots", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true
+        )
+        let url = directory.appendingPathComponent("smoke-01-home.png")
+        let size = NSSize(width: 480, height: 300)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor(calibratedRed: 0.09, green: 0.09, blue: 0.11, alpha: 1).setFill()
+        NSRect(origin: .zero, size: size).fill()
+        NSColor(calibratedRed: 0.47, green: 0.34, blue: 0.85, alpha: 1).setFill()
+        NSRect(x: 24, y: 200, width: 300, height: 56).fill()
+        image.unlockFocus()
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else { return nil }
+        try? png.write(to: url, options: .atomic)
+        return TestArtifact(
+            path: url.path, name: url.lastPathComponent, kind: .image, modifiedAt: Date()
+        )
     }
 
     /// Seeds one row per Attention Center source so the panel can be driven
@@ -231,6 +495,49 @@ struct LaunchConfig {
             projectStore: projectStore, sessionStore: sessionStore
         )
     }
+
+}
+
+/// A usage snapshot for `-usage-fixture`, so the chip and its card can be
+/// inspected without a subscription, a login, or the network.
+///
+/// Applied by `UsageStore` as it is built, not from a view. Seeding it from
+/// `onAppear` cost a morning: mutating the store while the first window is
+/// being assembled leaves the app running with no window at all — no crash, no
+/// log, nothing to search for.
+///
+/// The account is deliberately in trouble. The state this whole feature exists
+/// for is the one hardest to reach on purpose, and a picture of a healthy
+/// account proves the least. The windows also disagree with one another — a
+/// comfortable session, a tight week, an exhausted model — because "which limit
+/// binds first" is the question the card answers, and a uniform fixture would
+/// never show it being answered.
+enum UsageFixture {
+    static func snapshot(now: Date, provider: AgentProvider = .claude) -> UsageSnapshot {
+        UsageSnapshot(
+            provider: provider,
+            identity: UsageIdentity(email: "you@example.com", plan: "Max", organization: nil),
+            primaryWindow: UsageWindow(
+                id: "fixture.session", title: "Session limit", usedPercent: 34,
+                resetsAt: now.addingTimeInterval(2 * 3600 + 14 * 60), windowMinutes: 300
+            ),
+            secondaryWindow: UsageWindow(
+                id: "fixture.week", title: "Weekly limit", usedPercent: 78,
+                resetsAt: now.addingTimeInterval(3 * 86_400), windowMinutes: 10080
+            ),
+            extraWindows: [
+                UsageWindow(
+                    id: "fixture.opus", title: "Weekly limit · Opus", usedPercent: 92,
+                    resetsAt: now.addingTimeInterval(3 * 86_400), modelID: "opus"
+                ),
+            ],
+            credits: UsageCredits(balance: 12.5, currency: "USD", summary: nil),
+            source: .claudeOAuthAPI,
+            updatedAt: now.addingTimeInterval(-140)
+        )
+    }
+
+    static let key = UsageKey(provider: .claude, accountID: nil)
 }
 
 /// Animation helper honoring -disable-animations.

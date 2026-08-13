@@ -45,7 +45,7 @@ struct StatusOrb: View {
                 .strokeBorder(status.color.opacity(0.8), lineWidth: 1)
                 .frame(width: size * 0.62, height: size * 0.62)
                 .frame(width: size, height: size)
-        case .idle, .terminated:
+        case .idle, .terminated, .unknown:
             Circle()
                 .fill(status.color.opacity(0.7))
                 .frame(width: size * 0.42, height: size * 0.42)

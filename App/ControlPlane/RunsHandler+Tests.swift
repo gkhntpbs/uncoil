@@ -85,12 +85,7 @@ extension CapabilityRouter {
                 "detailed": .bool(record.summary.isDetailed),
                 "framework": .string(suite.framework.rawValue),
                 "finished_at": .string(record.finishedAt.map(Self.iso) ?? ""),
-                "failures": .array(record.failedCases.prefix(50).map { result in
-                    .object([
-                        "suite": .string(result.suite),
-                        "name": .string(result.name),
-                    ])
-                }),
+                "failures": .array(record.failedCases.prefix(50).map(Self.failure)),
             ])
         }
         return .success(request, data: .object([
@@ -213,8 +208,12 @@ extension CapabilityRouter {
             "skipped": .int(record.summary.skipped),
             "detailed": .bool(record.summary.isDetailed),
             "exit_code": record.exitCode.map { JSONValue.int(Int($0)) } ?? .null,
-            "failures": .array(record.failedCases.prefix(50).map { result in
-                .object(["suite": .string(result.suite), "name": .string(result.name)])
+            "failures": .array(record.failedCases.prefix(50).map(Self.failure)),
+            // Files the suite wrote, when it declares an `artifacts` directory.
+            // Paths, not contents: an agent that wants the image opens it.
+            "artifacts": .array(record.allArtifacts.prefix(50).map {
+                .object(["name": .string($0.name), "path": .string($0.path),
+                         "kind": .string($0.kind.rawValue)])
             }),
             // The tail is the only thing that explains a failure an
             // unrecognised framework reported, so it travels with the result.
@@ -224,5 +223,25 @@ extension CapabilityRouter {
                "the output format of this suite is not recognised, so only the overall "
                    + "pass/fail is reported; individual test results are not available",
            ])
+    }
+
+    /// One failed test, as an agent reads it.
+    ///
+    /// The message is the reason the runner printed, and it is what makes the
+    /// difference between an agent that fixes the test and one that runs it
+    /// again to see what happened. It is absent for a framework whose failures
+    /// are not parsed, rather than filled with a guess.
+    static func failure(_ result: TestCaseResult) -> JSONValue {
+        var object: [String: JSONValue] = [
+            "suite": .string(result.suite),
+            "name": .string(result.name),
+        ]
+        if let message = result.message, !message.isEmpty {
+            object["message"] = .string(String(message.prefix(2000)))
+        }
+        if !result.artifacts.isEmpty {
+            object["artifacts"] = .array(result.artifacts.map { .string($0.path) })
+        }
+        return .object(object)
     }
 }

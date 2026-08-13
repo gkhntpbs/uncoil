@@ -58,7 +58,8 @@ enum RunRepair {
         }
         MainRoute.shared.request(.session(session.id))
         Task {
-            await TerminalRegistry.shared.submitText(text, for: session.id, provider: session.provider)
+            await TerminalRegistry.shared.submitText(
+                text, for: session.id, provider: session.provider, namesTheSession: false)
         }
         return true
     }

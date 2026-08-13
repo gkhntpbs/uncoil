@@ -258,13 +258,7 @@ extension SessionStore {
     /// First line of the first prompt, tightened for the sidebar.
     nonisolated static func titleCandidate(from event: HookEvent) -> String? {
         guard event.kind == .userPromptSubmit, let prompt = event.prompt else { return nil }
-        let firstLine = prompt
-            .split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true)
-            .first
-            .map(String.init)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !firstLine.isEmpty else { return nil }
-        return firstLine.count > 42 ? String(firstLine.prefix(41)) + "…" : firstLine
+        return SessionAutoTitle.candidate(from: prompt)
     }
 
 }

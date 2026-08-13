@@ -17,8 +17,42 @@ struct TestCaseResult: Equatable, Identifiable, Codable {
     var duration: Double?
     /// The failure message, for a test that failed.
     var message: String?
+    /// Files this test left behind — a screenshot, a recording. Empty unless
+    /// the suite declares an `artifacts` directory in `.uncoil/tests.json`.
+    var artifacts: [TestArtifact] = []
 
     var id: String { suite.isEmpty ? name : "\(suite).\(name)" }
+
+    /// Records written before artifacts existed decode without the key.
+    enum CodingKeys: String, CodingKey {
+        case suite, name, outcome, duration, message, artifacts
+    }
+
+    init(
+        suite: String,
+        name: String,
+        outcome: Outcome,
+        duration: Double? = nil,
+        message: String? = nil,
+        artifacts: [TestArtifact] = []
+    ) {
+        self.suite = suite
+        self.name = name
+        self.outcome = outcome
+        self.duration = duration
+        self.message = message
+        self.artifacts = artifacts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        suite = try container.decode(String.self, forKey: .suite)
+        name = try container.decode(String.self, forKey: .name)
+        outcome = try container.decode(Outcome.self, forKey: .outcome)
+        duration = try container.decodeIfPresent(Double.self, forKey: .duration)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+        artifacts = try container.decodeIfPresent([TestArtifact].self, forKey: .artifacts) ?? []
+    }
 }
 
 /// What a whole run came to.
@@ -51,13 +85,22 @@ enum TestOutputParser {
     static func parse(
         _ output: String, framework: TestFramework, exitCode: Int32?
     ) -> (cases: [TestCaseResult], summary: TestRunSummary) {
-        let cases: [TestCaseResult] = switch framework {
-        case .swift, .xcodebuild: parseXCTest(output)
-        case .go: parseGoJSON(output)
-        case .cargo: parseCargo(output)
-        case .pytest: parsePytest(output)
-        case .jest: parseJest(output)
-        case .unknown: []
+        var cases = cases(in: output, framework: framework)
+        // Why the failures are read in a second pass: every runner prints them
+        // somewhere other than the line that announced the outcome — before it,
+        // after it, or in a summary at the end.
+        let messages: [String: String] = switch framework {
+        case .swift, .xcodebuild: xctestFailures(output)
+        case .go: goFailures(output)
+        case .cargo: cargoFailures(output)
+        case .pytest: pytestFailures(output)
+        case .maestro: maestroFailures(output)
+        case .jest, .unknown: [:]
+        }
+        if !messages.isEmpty {
+            for index in cases.indices where cases[index].outcome == .failed {
+                cases[index].message = messages[messageKey(cases[index].name)]
+            }
         }
         guard !cases.isEmpty else {
             // Nothing recognised. The exit code is all there is, and saying so
@@ -80,6 +123,181 @@ enum TestOutputParser {
             summary.failed = 1
         }
         return (cases, summary)
+    }
+
+    /// The tests named in this output, without the second pass that reads
+    /// failure messages. Split out because the live view parses every chunk as
+    /// it arrives, and a message cannot be read from a chunk anyway.
+    static func cases(in output: String, framework: TestFramework) -> [TestCaseResult] {
+        switch framework {
+        case .swift, .xcodebuild: parseXCTest(output)
+        case .go: parseGoJSON(output)
+        case .cargo: parseCargo(output)
+        case .pytest: parsePytest(output)
+        case .jest: parseJest(output)
+        case .maestro: parseMaestro(output)
+        case .unknown: []
+        }
+    }
+
+    /// How many tests the runner said it was about to run.
+    ///
+    /// Several frameworks announce their plan before they start, which is the
+    /// only honest way to show progress as a fraction while a suite is in
+    /// flight — the alternative is to guess from the last run, which is a
+    /// different run's number. Frameworks that announce nothing get no
+    /// fraction, and the count stands on its own.
+    static func declaredTotal(in output: String, framework: TestFramework) -> Int? {
+        switch framework {
+        case .pytest:
+            // `collected 15 items` — also `collected 15 items / 2 deselected`,
+            // where the first number is still what will run.
+            return number(after: "collected ", in: output, endingWith: " item")
+        case .cargo:
+            // `running 15 tests`
+            return number(after: "running ", in: output, endingWith: " test")
+        case .swift, .xcodebuild:
+            // `Test Suite 'All tests' started` says nothing about how many, but
+            // `Executed 15 tests` only arrives at the end — by which point the
+            // rows have already counted themselves.
+            return nil
+        case .go, .jest, .maestro, .unknown:
+            return nil
+        }
+    }
+
+    /// The integer between two markers, on the first line that carries both.
+    private static func number(
+        after prefix: String, in output: String, endingWith suffix: String
+    ) -> Int? {
+        for line in output.split(separator: "\n") {
+            guard let start = line.range(of: prefix) else { continue }
+            let rest = line[start.upperBound...]
+            guard rest.range(of: suffix) != nil else { continue }
+            let digits = rest.prefix { $0.isNumber }
+            if let value = Int(digits), value > 0 { return value }
+        }
+        return nil
+    }
+
+    // MARK: - Failure messages
+
+    /// Failures are keyed by the test's own name rather than by
+    /// `suite.name`, because the two passes do not always spell the suite the
+    /// same way — `-[UncoilTests.HandoffTests testX]` in one line and
+    /// `HandoffTests.testX` in another. The method name is the part every
+    /// runner agrees on.
+    static func messageKey(_ name: String) -> String {
+        name.trimmingCharacters(in: CharacterSet(charactersIn: "-[]() ")).lowercased()
+    }
+
+    /// Keeps a message readable in a row: the first few lines, trimmed.
+    private static func condense(_ lines: [String], limit: Int = 8) -> String? {
+        let kept = lines
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .prefix(limit)
+        return kept.isEmpty ? nil : kept.joined(separator: "\n")
+    }
+
+    /// `/path/File.swift:42: error: -[Suite testX] : XCTAssertEqual failed: …`
+    /// swift-testing writes `✘ Test testX() recorded an issue … : message`, and
+    /// both put the reason after the last `: ` on the line.
+    static func xctestFailures(_ output: String) -> [String: String] {
+        var found: [String: [String]] = [:]
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.contains(" error: ") || trimmed.hasPrefix("✘") else { continue }
+            let identifier: Substring
+            if let open = trimmed.firstIndex(of: "[") {
+                // `-[Suite method]` — the suite and the method are separated by
+                // a space inside the brackets, and it is the method that the
+                // other pass will have recorded.
+                let rest = trimmed[trimmed.index(after: open)...]
+                identifier = rest.prefix { $0 != "]" }
+            } else if let start = trimmed.range(of: "Test ")?.upperBound {
+                identifier = trimmed[start...].prefix { $0 != "(" && $0 != " " }
+            } else {
+                continue
+            }
+            let name = identifier
+                .split(whereSeparator: { $0 == " " || $0 == "." })
+                .last.map(String.init) ?? String(identifier)
+            guard !name.isEmpty else { continue }
+            let reason = trimmed.range(of: " : ").map { String(trimmed[$0.upperBound...]) }
+                ?? trimmed.range(of: " error: ").map { String(trimmed[$0.upperBound...]) }
+                ?? trimmed
+            found[messageKey(name), default: []].append(reason)
+        }
+        return found.compactMapValues { condense($0) }
+    }
+
+    /// `go test -json` puts the failure in the test's own `Output` events, so
+    /// the lines are gathered per test and kept only for the ones that failed.
+    static func goFailures(_ output: String) -> [String: String] {
+        var lines: [String: [String]] = [:]
+        var failed = Set<String>()
+        for line in output.split(separator: "\n") {
+            guard let data = line.data(using: .utf8),
+                  let object = (try? JSONDecoder().decode(JSONValue.self, from: data))?.objectValue,
+                  let test = object["Test"]?.stringValue, !test.isEmpty,
+                  let action = object["Action"]?.stringValue
+            else { continue }
+            let key = messageKey(test)
+            if action == "fail" { failed.insert(key) }
+            guard action == "output", let text = object["Output"]?.stringValue else { continue }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            // The framing lines carry no information the row does not already
+            // show, and they would be all a short message has room for.
+            guard !trimmed.isEmpty,
+                  !trimmed.hasPrefix("=== RUN"), !trimmed.hasPrefix("=== PAUSE"),
+                  !trimmed.hasPrefix("=== CONT"), !trimmed.hasPrefix("--- FAIL"),
+                  !trimmed.hasPrefix("--- PASS"), trimmed != "PASS", trimmed != "FAIL"
+            else { continue }
+            lines[key, default: []].append(trimmed)
+        }
+        return lines.filter { failed.contains($0.key) }.compactMapValues { condense($0) }
+    }
+
+    /// cargo prints a `failures:` section of `---- module::name stdout ----`
+    /// blocks, each running until the next block or a blank line.
+    static func cargoFailures(_ output: String) -> [String: String] {
+        var found: [String: [String]] = [:]
+        var current: String?
+        for line in output.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("---- "), trimmed.hasSuffix(" ----") {
+                let identifier = trimmed.dropFirst(5).dropLast(5)
+                    .replacingOccurrences(of: " stdout", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                current = messageKey(identifier.components(separatedBy: "::").last ?? identifier)
+                continue
+            }
+            guard let key = current else { continue }
+            if trimmed.isEmpty || trimmed.hasPrefix("failures:") { current = nil; continue }
+            found[key, default: []].append(trimmed)
+        }
+        return found.compactMapValues { condense($0) }
+    }
+
+    /// pytest's short summary: `FAILED tests/test_x.py::test_name - AssertionError: …`.
+    static func pytestFailures(_ output: String) -> [String: String] {
+        var found: [String: String] = [:]
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("FAILED ") || trimmed.hasPrefix("ERROR "),
+                  let separator = trimmed.range(of: "::")
+            else { continue }
+            let rest = trimmed[separator.upperBound...]
+            let name = rest.prefix { !$0.isWhitespace }
+            guard !name.isEmpty else { continue }
+            let reason = rest.range(of: " - ").map {
+                String(rest[$0.upperBound...]).trimmingCharacters(in: .whitespaces)
+            }
+            guard let reason, !reason.isEmpty else { continue }
+            found[messageKey(String(name))] = reason
+        }
+        return found
     }
 
     // MARK: - XCTest (swift test, xcodebuild)
@@ -248,6 +466,95 @@ enum TestOutputParser {
             ))
         }
         return results
+    }
+
+    // MARK: - Maestro (mobile and web end-to-end flows)
+
+    /// Maestro reports a *flow* as a list of commands, each one a line marked
+    /// with its outcome — which is exactly the shape this screen wants, and the
+    /// reason it is read per command rather than per flow. The JUnit report it
+    /// can also write has one entry per flow, and would throw away every step.
+    ///
+    /// The output is drawn as a box, so each line arrives behind frame
+    /// characters and, on a terminal, colour codes. Both are stripped before
+    /// anything is read, because neither carries meaning.
+    static func parseMaestro(_ output: String) -> [TestCaseResult] {
+        var results: [TestCaseResult] = []
+        var flow = ""
+        for line in output.split(separator: "\n") {
+            let trimmed = maestroStrip(String(line))
+            if let name = maestroFlowName(trimmed) {
+                flow = name
+                continue
+            }
+            guard let (outcome, command) = maestroCommand(trimmed) else { continue }
+            results.append(
+                TestCaseResult(suite: flow, name: command, outcome: outcome)
+            )
+        }
+        return results
+    }
+
+    /// The reason a command failed is printed straight under it, so the lines
+    /// following a failed command — up to the next command or the end of the
+    /// flow — are that command's message.
+    static func maestroFailures(_ output: String) -> [String: String] {
+        var found: [String: [String]] = [:]
+        var current: String?
+        for line in output.split(separator: "\n") {
+            let trimmed = maestroStrip(String(line))
+            if maestroFlowName(trimmed) != nil { current = nil; continue }
+            if let (outcome, command) = maestroCommand(trimmed) {
+                current = outcome == .failed ? messageKey(command) : nil
+                continue
+            }
+            guard let key = current, !trimmed.isEmpty else { continue }
+            found[key, default: []].append(trimmed)
+        }
+        return found.compactMapValues { condense($0) }
+    }
+
+    /// One output line with its frame and its colours taken off.
+    static func maestroStrip(_ line: String) -> String {
+        var text = ""
+        var iterator = line.makeIterator()
+        // ANSI: ESC [ … letter. Dropped whole rather than filtered character by
+        // character, so a colour code never leaves its digits behind in a name.
+        while let character = iterator.next() {
+            if character == "\u{1B}" {
+                while let inner = iterator.next(), !inner.isLetter { _ = inner }
+                continue
+            }
+            text.append(character)
+        }
+        let frame = CharacterSet(charactersIn: "║│┃╎╏┆┇┊┋|>· \t")
+        return text.trimmingCharacters(in: frame)
+    }
+
+    /// `> Flow: login` / `Flow: login`. The flow is the step's suite, the way a
+    /// class is for XCTest.
+    static func maestroFlowName(_ trimmed: String) -> String? {
+        guard let range = trimmed.range(of: "Flow: "), trimmed.distance(
+            from: trimmed.startIndex, to: range.lowerBound
+        ) <= 2 else { return nil }
+        let name = trimmed[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    /// A command line: its marker, then what it did.
+    static func maestroCommand(_ trimmed: String) -> (TestCaseResult.Outcome, String)? {
+        let markers: [(String, TestCaseResult.Outcome)] = [
+            ("✅", .passed), ("✔", .passed), ("☑", .passed),
+            ("❌", .failed), ("✘", .failed), ("✕", .failed), ("⚠️", .failed),
+            ("⏳", .skipped), ("⭕", .skipped), ("🔲", .skipped), ("⊝", .skipped),
+        ]
+        for (marker, outcome) in markers where trimmed.hasPrefix(marker) {
+            let name = trimmed.dropFirst(marker.count)
+                .trimmingCharacters(in: CharacterSet(charactersIn: " \t\u{FE0F}"))
+            guard !name.isEmpty else { return nil }
+            return (outcome, name)
+        }
+        return nil
     }
 
     /// "12 ms" / "1.2 s" → seconds. Anything else is not a duration, and the

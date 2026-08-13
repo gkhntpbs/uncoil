@@ -21,6 +21,11 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     case relinkNeeded
     /// An agent's process ended on its own, badly.
     case agentCrashed
+    // MARK: Usage rows
+    /// An account is close to a provider limit.
+    case usageLow
+    /// An account is out — either a window is empty or the provider refused it.
+    case usageExhausted
 
     var id: String { rawValue }
 
@@ -42,6 +47,8 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .mergeReady: String(localized: "Ready to merge")
         case .relinkNeeded: String(localized: "Task link lost")
         case .agentCrashed: String(localized: "Agent crashed")
+        case .usageLow: String(localized: "Limit approaching")
+        case .usageExhausted: String(localized: "Limit reached")
         }
     }
 
@@ -63,6 +70,8 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .mergeReady: "git-pull-request"
         case .relinkNeeded: "unlink"
         case .agentCrashed: "skull"
+        case .usageLow: "gauge"
+        case .usageExhausted: "gauge-off"
         }
     }
 
@@ -77,6 +86,8 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .completed, .taskCompleted, .mergeReady: Theme.highlight
         case .taskAssigned: Theme.textDim
         case .reviewRequested, .changesRequested, .taskBlocked, .relinkNeeded: Theme.warn
+        case .usageLow: Theme.warn
+        case .usageExhausted: Theme.danger
         }
     }
 
@@ -92,6 +103,11 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .taskBlocked, .changesRequested, .reviewRequested, .relinkNeeded: 3
         case .mergeReady: 2
         case .completed, .taskCompleted, .taskAssigned: 1
+        // Above a wait, below a failure. An account running out stops work
+        // that has not stopped yet, so it is worth seeing before the things
+        // merely waiting on an answer — but a crash has already happened.
+        case .usageExhausted: 5
+        case .usageLow: 4
         }
     }
 
@@ -102,7 +118,7 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
              .taskFailed, .taskCompleted, .mergeReady, .relinkNeeded:
             true
         case .permission, .input, .testFailure, .mergeConflict, .authentication,
-             .runtime, .completed, .agentCrashed:
+             .runtime, .completed, .agentCrashed, .usageLow, .usageExhausted:
             false
         }
     }
@@ -112,10 +128,13 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
     var isProblem: Bool {
         switch self {
         case .runtime, .testFailure, .mergeConflict, .authentication,
-             .taskFailed, .taskBlocked, .relinkNeeded, .agentCrashed:
+             .taskFailed, .taskBlocked, .relinkNeeded, .agentCrashed, .usageExhausted:
             true
+        // Approaching is not yet a problem — that is the whole point of the
+        // warning. Escalating the menu-bar icon for it would make the icon
+        // mean "something needs you" when nothing does yet.
         case .permission, .input, .completed, .taskAssigned, .reviewRequested,
-             .changesRequested, .taskCompleted, .mergeReady:
+             .changesRequested, .taskCompleted, .mergeReady, .usageLow:
             false
         }
     }
@@ -131,8 +150,12 @@ enum AttentionKind: String, CaseIterable, Identifiable, Codable {
         case .taskCompleted: .taskCompleted
         case .mergeReady: .mergeReady
         case .runtime, .testFailure, .mergeConflict, .taskFailed, .taskBlocked,
-             .relinkNeeded, .agentCrashed:
+             .relinkNeeded, .agentCrashed, .usageExhausted:
             .problem
+        // A banner for "approaching" would interrupt to say that nothing has
+        // happened yet. The row and the chip are enough until it has.
+        case .usageLow:
+            nil
         case .permission, .input, .completed, .taskAssigned, .reviewRequested, .changesRequested:
             nil
         }
@@ -174,6 +197,8 @@ struct AttentionSnapshot {
     var conflicts: [UUID: [String]] = [:]
     /// Task-side rows, derived by `TaskAttentionEngine`.
     var tasks = TaskAttentionSnapshot()
+    /// Usage rows, derived by `UsageAttentionEngine`.
+    var usage = UsageAttentionSnapshot()
 }
 
 /// Derives attention rows from live app state. Pure and synchronous so the
@@ -268,6 +293,7 @@ enum AttentionEngine {
         }
 
         items.append(contentsOf: TaskAttentionEngine.items(snapshot.tasks, now: now))
+        items.append(contentsOf: UsageAttentionEngine.items(snapshot.usage, now: now))
         return items
     }
 
@@ -513,6 +539,18 @@ final class AttentionRefresher {
     private var scanning = false
     private var scanningTasks = false
     private var taskSnapshot = TaskAttentionSnapshot()
+    /// Held rather than passed in, for the same reason the task snapshot is:
+    /// `refresh` is called from several places, and a caller that did not have
+    /// the usage store to hand would rebuild the whole snapshot without it and
+    /// silently erase every usage row. The twenty-second task scan did exactly
+    /// that, which is why the warning never appeared.
+    private var usageSnapshot = UsageAttentionSnapshot()
+
+    /// Records the usage side. Called when the figures change; every later
+    /// refresh, from wherever, keeps what was recorded here.
+    func setUsage(_ snapshot: UsageAttentionSnapshot) {
+        usageSnapshot = snapshot
+    }
 
     func refresh(projectStore: ProjectStore, sessionStore: SessionStore) {
         AttentionStore.shared.refresh(
@@ -534,6 +572,7 @@ final class AttentionRefresher {
         snapshot.conflicts = conflicts
         snapshot.tasks = taskSnapshot
         snapshot.tasks.projectNames = snapshot.projectNames
+        snapshot.usage = usageSnapshot
         return snapshot
     }
 

@@ -39,6 +39,7 @@ enum TestDetection {
         suites += cargoSuites(dir: dir, prefix: prefix, entries: entries)
         suites += nodeSuites(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         suites += pythonSuites(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
+        suites += maestroSuites(dir: dir, prefix: prefix, entries: entries, fs: fileSystem)
         return suites
     }
 
@@ -164,6 +165,54 @@ enum TestDetection {
                     + "is not recognised, so only the overall result is reported"
                 : "Detected from the package.json 'test' script: \(body)"
         )]
+    }
+
+    // MARK: - Maestro (mobile and web end-to-end flows)
+
+    /// Where Maestro flows are kept. `.maestro` is Maestro's own convention and
+    /// is taken at its word; the others are only accepted once a file in them
+    /// actually looks like a flow, because `e2e/` and `flows/` are ordinary
+    /// names that any project might use for something else.
+    static let maestroDirectories = [".maestro", "maestro", "e2e", "flows"]
+
+    /// Where the detected suite is told to write its screenshots and video.
+    ///
+    /// Inside the project on purpose: Maestro's own default is a timestamped
+    /// directory under the home folder, which no project can show and Uncoil
+    /// refuses to read.
+    static let maestroOutputDirectory = ".maestro-output"
+
+    private static func maestroSuites(
+        dir: String, prefix: String, entries: Set<String>, fs: RunDetectionFileSystem
+    ) -> [TestSuiteConfiguration] {
+        for name in maestroDirectories {
+            let flows = path(dir, name)
+            guard entries.contains(name), fs.isDirectory(flows) else { continue }
+            let files = fs.list(flows).filter {
+                $0.hasSuffix(".yaml") || $0.hasSuffix(".yml")
+            }
+            guard !files.isEmpty else { continue }
+            let bodies = files.sorted().prefix(20).compactMap { fs.read(path(flows, $0)) }
+            let isMobile = bodies.contains { $0.contains("appId:") }
+            let isWeb = bodies.contains { $0.contains("url:") }
+            // `.maestro` is Maestro's own directory, so its contents need no
+            // further proof; anything else has to declare an app or a URL.
+            guard name == ".maestro" || isMobile || isWeb else { continue }
+            let target = isWeb && !isMobile
+                ? "web" : (isMobile && isWeb ? "mobile and web" : "mobile")
+            return [TestSuiteConfiguration(
+                id: prefix + "maestro",
+                name: dir == "." ? "Maestro flows" : "\(dir) Maestro flows",
+                command: "maestro test \(name) --debug-output \(maestroOutputDirectory)",
+                cwd: dir,
+                framework: .maestro,
+                notes: "Detected \(files.count) flow(s) in \(name)/ — \(target). "
+                    + "Needs the maestro CLI on PATH and a device or browser it can reach; "
+                    + "pass --device to pick one.",
+                artifacts: maestroOutputDirectory
+            )]
+        }
+        return []
     }
 
     // MARK: - Python

@@ -10,6 +10,7 @@ struct MainWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var usage: UsageStore
     @Environment(\.openWindow) private var openWindow
     @StateObject private var palette = PaletteModel()
     @ObservedObject private var onboarding = OnboardingPresenter.shared
@@ -46,7 +47,8 @@ struct MainWindow: View {
                 onRoute: { openInThisWindow(projectID(of: $0)) },
                 onAttention: { refreshAttention() },
                 projectStore: projectStore,
-                sessionStore: sessionStore
+                sessionStore: sessionStore,
+                usage: usage
             ))
     }
 
@@ -163,6 +165,16 @@ struct MainWindow: View {
     }
 
     private func refreshAttention() {
+        AttentionRefresher.shared.setUsage(
+            UsageAttentionCollector.snapshot(
+                usage: usage,
+                sessions: projectStore.sessions,
+                statuses: sessionStore.statuses,
+                accounts: settings.accounts,
+                threshold: settings.usageWarningThreshold,
+                isEnabled: settings.usageWarningsEnabled
+            )
+        )
         AttentionRefresher.shared.refresh(
             projectStore: projectStore,
             sessionStore: sessionStore
@@ -284,6 +296,10 @@ struct MainWindow: View {
                 applyLaunchRoute()
                 setupPalette()
                 presentOnboardingIfNeeded()
+                // Nothing else does it on the way in: every other trigger is a
+                // change, and a limit that was already low at launch is not a
+                // change.
+                refreshAttention()
             }
         }
         .onDisappear {
@@ -486,7 +502,7 @@ struct MainWindow: View {
         let sid = record.id
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+            while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             await TerminalRegistry.shared.submitText(
@@ -620,11 +636,12 @@ struct MainWindow: View {
         }
         Task { @MainActor in
             let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, sessionStore.status(of: record.id) == .terminated {
+            while Date() < deadline, !sessionStore.status(of: record.id).isKnownLive {
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             await TerminalRegistry.shared.submitText(
-                prompt, for: record.id, provider: record.provider)
+                prompt, for: record.id, provider: record.provider,
+                namesTheSession: false)
         }
     }
 
@@ -652,8 +669,14 @@ struct MainWindow: View {
             )
             openWindow(id: "extensions")
         }
+        // An agent session in preference to the first one seeded. The route
+        // exists to open "a session" for inspection, and the plain terminal —
+        // which the demo fixture happens to create first — is the one with no
+        // agent, no status, no account and no usage, so it shows the least of
+        // what there is to look at.
         if config.route == "session",
-           let record = projectStore.sessions.first {
+           let record = projectStore.sessions.first(where: { $0.provider.isAgent })
+            ?? projectStore.sessions.first {
             selection = .session(record.id)
             return
         }
@@ -842,11 +865,19 @@ struct MainWindow: View {
             SessionSleepService.restoreStatuses(
                 projectStore: projectStore, sessionStore: sessionStore
             )
-            sessionStore.reconcile(
+            let unaccountedFor = sessionStore.reconcile(
                 aliveSessionIDs: alive,
                 records: projectStore.sessions,
                 markEnded: { projectStore.markSessionEnded($0, exitCode: nil) }
             )
+            // Sessions the daemon left out of this answer are shown as not yet
+            // known, and asked about once more. Only the second silence counts
+            // as a death — a daemon that answered mid-restart gets to correct
+            // itself before the app closes a running agent on disk.
+            guard !unaccountedFor.isEmpty else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                RuntimeClient.shared.requestSessionList()
+            }
         }
         startControlPlane()
         // Drop directories whose sessions are gone. Once at start rather than
@@ -962,11 +993,12 @@ struct MainWindow: View {
                 // Wait for the first hook to flip status off .terminated, else
                 // fall back to a fixed delay, then send the prompt as input.
                 let deadline = Date().addingTimeInterval(3)
-                while Date() < deadline, sessionStore.status(of: sid) == .terminated {
+                while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
                     try? await Task.sleep(nanoseconds: 200_000_000)
                 }
                 await TerminalRegistry.shared.submitText(
-                    prompt, for: sid, provider: record.provider)
+                    prompt, for: sid, provider: record.provider,
+                    namesTheSession: false)
             }
         }
 
@@ -1136,6 +1168,7 @@ private struct MainWindowSignals: ViewModifier {
     let onAttention: () -> Void
     @ObservedObject var projectStore: ProjectStore
     @ObservedObject var sessionStore: SessionStore
+    @ObservedObject var usage: UsageStore
     @ObservedObject private var windows = WindowRegistry.shared
 
     func body(content: Content) -> some View {
@@ -1148,6 +1181,11 @@ private struct MainWindowSignals: ViewModifier {
             }
             .onChange(of: sessionStore.statuses) { _, _ in onAttention() }
             .onChange(of: sessionStore.codexAuthentication) { _, _ in onAttention() }
+            // A limit falling is a change nothing else announces: no status
+            // moves and no session ends, so without this the warning waited
+            // for an unrelated event and arrived whenever one happened to
+            // come.
+            .onChange(of: usage.entries) { _, _ in onAttention() }
             .onReceive(MainRoute.shared.$requestCounter) { _ in
                 guard let requested = MainRoute.shared.requestedSelection else { return }
                 // Every window hears this. Exactly one answers it, or a single

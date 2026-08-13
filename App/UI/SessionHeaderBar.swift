@@ -5,10 +5,10 @@ import SwiftUI
 ///
 /// Shared rather than duplicated, because the pane a session is dragged into is
 /// the same session — it was only missing its header, which made the split half
-/// look like a lesser thing than the one it was dragged from. `trailing` is what
-/// genuinely differs: the full detail view has a changes panel to toggle, the
-/// split pane has nothing extra.
-struct SessionHeaderBar<Trailing: View>: View {
+/// look like a lesser thing than the one it was dragged from. The two draw the
+/// same controls; only the leading button differs, which is what closes a pane
+/// in one and goes back to the project in the other.
+struct SessionHeaderBar: View {
     let record: SessionRecord
     let project: Project
     let leadingIcon: String
@@ -19,11 +19,11 @@ struct SessionHeaderBar<Trailing: View>: View {
     /// split pane closes the pane rather than going anywhere — routing the
     /// logs shortcut through it would close the pane instead.
     var onOpenProject: (() -> Void)?
-    @ViewBuilder var trailing: Trailing
 
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var usage: UsageStore
     @State private var branch: String?
     /// Only for `defaultModelDetail` — what "default" resolves to when the user
     /// picked nothing. Detected rather than assumed: Codex writes its model
@@ -50,7 +50,7 @@ struct SessionHeaderBar<Trailing: View>: View {
         let change = SessionAccountChange.classify(
             current: record.accountID,
             chosen: id,
-            isRunning: sessionStore.status(of: record.id) != .terminated
+            isRunning: sessionStore.status(of: record.id).isKnownLive
         )
         guard change != .unchanged else { return }
         projectStore.updateSession(record.id) { $0.accountID = id }
@@ -146,6 +146,26 @@ struct SessionHeaderBar<Trailing: View>: View {
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
                     }
+                    // Beside the account and not anywhere else: a limit belongs
+                    // to the login, not to the session, and two sessions on two
+                    // accounts have two different answers.
+                    //
+                    // Shown whether or not a profile exists. Most people never
+                    // make one — they log into Claude the ordinary way and use
+                    // the provider's own default — and hanging the chip off the
+                    // profile list meant the usual case was the one that never
+                    // saw it. `nil` is that account, and the layer already
+                    // models it as such.
+                    if record.provider.isAgent {
+                        UsageChip(
+                            provider: record.provider,
+                            account: account,
+                            isWorking: status.isWorking,
+                            session: record
+                        )
+                        Text("·")
+                            .foregroundStyle(Theme.textFaint)
+                    }
                     Text(displayPath)
                         .font(Theme.mono(.body))
                         .foregroundStyle(Theme.textFaint)
@@ -229,8 +249,6 @@ struct SessionHeaderBar<Trailing: View>: View {
                     identifier: "session.restartButton",
                     action: onRestart
                 )
-
-                trailing
             }
             .padding(3)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
@@ -308,10 +326,11 @@ struct SessionHeaderBar<Trailing: View>: View {
     private func announceSwitch(to branch: String) {
         refreshBranch()
         let note = String(localized: "The working tree moved to branch \(branch).")
-        for session in treeSessions where sessionStore.status(of: session.id) != .terminated {
+        for session in treeSessions where sessionStore.status(of: session.id).isKnownLive {
             Task {
                 await TerminalRegistry.shared.submitText(
-                    note, for: session.id, provider: session.provider)
+                    note, for: session.id, provider: session.provider,
+                    namesTheSession: false)
             }
         }
     }

@@ -81,6 +81,20 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Whether this provider reports what it is doing through Uncoil's hooks.
+    ///
+    /// Only Claude Code does. Codex reports through its own app-server events
+    /// and Gemini reports nothing at all, so neither can be the answer to
+    /// "which session did this hook event come from" — and a provider that
+    /// never binds a session id would otherwise be the standing fallback for
+    /// every event nobody claimed.
+    var reportsStatusThroughHooks: Bool {
+        switch self {
+        case .claude: true
+        case .codex, .gemini, .terminal: false
+        }
+    }
+
     /// Whether Uncoil actually registers its MCP server for this provider.
     ///
     /// Registration is provider-specific — `--mcp-config` for Claude Code,
@@ -202,6 +216,28 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             "Codex runs without approval prompts or sandbox limits."
         default:
             "The CLI starts with its own default behaviour."
+        }
+    }
+
+    /// The mode for a process Uncoil runs on its own, with nobody watching.
+    ///
+    /// Only for the short-lived run that produces a handover: it resumes a
+    /// conversation, prints JSON and exits, and an approval prompt there would
+    /// hang against a terminal nobody can see. A session the *user* works in —
+    /// including the one that takes the work over — starts in the provider's
+    /// default mode, because it is doing their ordinary work and should ask
+    /// before acting.
+    ///
+    /// Worth knowing what each gives up: Claude's skips every permission check,
+    /// Codex's drops the workspace sandbox as well.
+    static func unattended(for provider: AgentProvider) -> AgentWorkingMode {
+        switch provider {
+        case .claude: .dangerouslySkipPermissions
+        case .codex: .fullAccess
+        // Gemini's approval flags are unverified, and Uncoil adds no flag it
+        // has not checked: an invented one is a launch failure, not a
+        // permissive session.
+        case .gemini, .terminal: .providerDefault
         }
     }
 
@@ -361,6 +397,15 @@ struct SessionGroup: Identifiable, Codable, Equatable {
 // MARK: - Session
 
 enum AgentSessionStatus: String, Codable {
+    /// Nobody has said yet what this session is doing.
+    ///
+    /// Statuses live in memory and agents live in the daemon, so every session
+    /// restored at launch is in this state until the daemon answers for it.
+    /// It used to read as `terminated`, which meant the app spent the first
+    /// moment of every launch telling the user that their running agents had
+    /// closed — and said the same thing forever if the daemon never connected.
+    /// Not knowing is not the same as knowing it is over.
+    case unknown
     case idle
     case thinking
     case running
@@ -377,6 +422,7 @@ enum AgentSessionStatus: String, Codable {
 
     var label: String {
         switch self {
+        case .unknown: String(localized: "Checking…")
         case .idle: String(localized: "Ready")
         case .thinking: String(localized: "Thinking")
         case .running: String(localized: "Running")
@@ -402,6 +448,9 @@ enum AgentSessionStatus: String, Codable {
         // back, and reading it as dead is the whole confusion to avoid.
         case .suspended, .hibernated: Theme.textDim
         case .terminated: Theme.textFaint
+        // Not the closed grey either: it is the colour of a question, and the
+        // answer arrives within a second of the daemon replying.
+        case .unknown: Theme.textDim
         }
     }
 
@@ -411,7 +460,7 @@ enum AgentSessionStatus: String, Codable {
     var needsAttention: Bool {
         switch self {
         case .waitingForPermission, .waitingForInput: true
-        case .idle, .thinking, .running, .completed, .terminated: false
+        case .idle, .thinking, .running, .completed, .terminated, .unknown: false
         // Asleep on purpose. Nothing to answer, so nothing to nag about.
         case .suspended, .hibernated: false
         }
@@ -427,7 +476,20 @@ enum AgentSessionStatus: String, Codable {
         case .completed: 2
         case .idle: 1
         case .suspended, .hibernated: 0
-        case .terminated: 0
+        case .terminated, .unknown: 0
+        }
+    }
+
+    /// Whether Uncoil knows this session to be alive, as opposed to knowing it
+    /// is over or not knowing at all. Every "is it running" question in the app
+    /// asks this rather than comparing against `terminated`, because the two
+    /// were the same value until `unknown` existed and the comparison read a
+    /// missing answer as a closed session.
+    var isKnownLive: Bool {
+        switch self {
+        case .unknown, .terminated: false
+        case .idle, .thinking, .running, .waitingForPermission, .waitingForInput,
+             .completed, .suspended, .hibernated: true
         }
     }
 }
@@ -614,6 +676,13 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
     }
 
     /// The app's real icon from disk, for the session control cluster.
+    ///
+    /// Which rendering this is — light, dark or tinted — is macOS's decision,
+    /// not ours: the system's icon style is one setting for the whole machine
+    /// (System Settings › Appearance › Icon & widget style), and it is what the
+    /// Dock follows too. Asking for the icon here already gets the answer that
+    /// setting gives, so Uncoil never picks a variant of its own; drawing one
+    /// under a named appearance was tried and changes nothing.
     var appIcon: NSImage? {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
             return nil
@@ -622,6 +691,7 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
         icon.size = NSSize(width: 16, height: 16)
         return icon
     }
+
 
     func open(_ fileURL: URL) {
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
