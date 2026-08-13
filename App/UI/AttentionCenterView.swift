@@ -125,6 +125,30 @@ private struct AttentionRow: View {
                 }
             }
 
+            // A usage row is the one kind with something to *do* beyond going
+            // there, and burying that action inside a popover on the session
+            // header put it where neither a hurried user nor a test could
+            // reach it.
+            if item.kind == .usageLow || item.kind == .usageExhausted,
+               let sessionID = item.sessionID {
+                Button {
+                    HandoffRoute.shared.request(sessionID: sessionID)
+                    onOpen()
+                } label: {
+                    Text(String(localized: "Hand off"))
+                        .font(Theme.mono(.small, .medium))
+                        .foregroundStyle(item.kind.color)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(
+                            item.kind.color.opacity(0.14),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.pressable)
+                .accessibilityIdentifier("attention.handoff")
+            }
+
             Button(action: onResolve) {
                 TablerIcon(
                     name: "check",

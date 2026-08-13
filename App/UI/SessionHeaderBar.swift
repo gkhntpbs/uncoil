@@ -31,6 +31,10 @@ struct SessionHeaderBar: View {
     @State private var capabilities: AgentLaunchCapabilities?
     /// What the last account change did, shown until it is dismissed.
     @State private var accountNote: String?
+    /// Non-nil while the handoff sheet is up. Held here rather than in the chip
+    /// because the chip's card is a popover, and a sheet raised from a view that
+    /// is closing never appears.
+    @State private var handoff: UsageAlert.Evaluation?
 
     private var status: AgentSessionStatus { sessionStore.status(of: record.id) }
     private var account: AccountProfile? { settings.account(id: record.accountID) }
@@ -55,6 +59,16 @@ struct SessionHeaderBar: View {
         guard change != .unchanged else { return }
         projectStore.updateSession(record.id) { $0.accountID = id }
         accountNote = change.note
+    }
+
+    /// How this session's account is doing, when it is worth acting on.
+    private var usageAlert: UsageAlert.Evaluation? {
+        guard record.provider.isAgent else { return nil }
+        let evaluation = UsageAlert.evaluate(
+            usage.snapshot(for: UsageKey(provider: record.provider, accountID: record.accountID)),
+            threshold: settings.usageWarningThreshold
+        )
+        return evaluation.state.isAlerting ? evaluation : nil
     }
 
     private var runtimeInfo: SessionRuntimeInfo {
@@ -161,7 +175,8 @@ struct SessionHeaderBar: View {
                             provider: record.provider,
                             account: account,
                             isWorking: status.isWorking,
-                            session: record
+                            session: record,
+                            onRequestHandoff: { handoff = $0 }
                         )
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
@@ -240,6 +255,25 @@ struct SessionHeaderBar: View {
 
                 EditorOpenControl(directory: workingDirectory)
 
+                // In the control cluster, not only inside the usage card. A
+                // popover is its own window and its contents are outside the
+                // app's accessibility tree, so anything that lives only in one
+                // is unreachable to a UI test — and, more to the point, one
+                // click further away for the user at the moment the limit is
+                // about to stop their work.
+                if let usageAlert, usageAlert.state.isAlerting {
+                    ControlButton(
+                        iconName: "arrow-move-right",
+                        help: usageAlert.state == .reached
+                            ? String(localized: "This account is out — hand the work to another agent")
+                            : String(localized: "Hand the work to another agent before this account runs out"),
+                        identifier: "session.handoffButton",
+                        tint: usageAlert.state == .reached ? Theme.danger : Theme.warn
+                    ) {
+                        handoff = usageAlert
+                    }
+                }
+
                 Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 
                 ControlButton(
@@ -259,6 +293,32 @@ struct SessionHeaderBar: View {
         }
         .padding(14)
         .panel()
+        .sheet(item: Binding(
+            get: { handoff.map { HandoffRequest(evaluation: $0) } },
+            set: { if $0 == nil { handoff = nil } }
+        )) { request in
+            HandoffSheet(
+                session: record,
+                accountName: account?.name,
+                evaluation: request.evaluation,
+                projectStore: projectStore,
+                sessionStore: sessionStore,
+                settings: settings,
+                onOpenSession: { MainRoute.shared.request(.session($0)) }
+            )
+            .environmentObject(projectStore)
+            .environmentObject(sessionStore)
+            .environmentObject(settings)
+            .environmentObject(usage)
+        }
+        .onReceive(HandoffRoute.shared.$counter) { _ in
+            guard HandoffRoute.shared.requestedSessionID == record.id else { return }
+            HandoffRoute.shared.requestedSessionID = nil
+            handoff = UsageAlert.evaluate(
+                usage.snapshot(for: UsageKey(provider: record.provider, accountID: record.accountID)),
+                threshold: settings.usageWarningThreshold
+            )
+        }
         .alert(
             String(localized: "Account changed"),
             isPresented: Binding(
@@ -379,4 +439,12 @@ struct ControlButton: View {
         .accessibilityIdentifier(identifier)
         .help(help)
     }
+}
+
+
+/// `sheet(item:)` needs something identifiable; the evaluation itself is a
+/// value with no identity of its own.
+private struct HandoffRequest: Identifiable {
+    let id = UUID()
+    let evaluation: UsageAlert.Evaluation
 }
