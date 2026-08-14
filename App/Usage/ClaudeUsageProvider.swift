@@ -2,14 +2,16 @@ import Foundation
 
 /// Claude's usage routes, preferred first.
 ///
-/// 1. The OAuth usage endpoint, using the credential Claude Code already holds.
-/// 2. The installed CLI's own `/usage` panel, read in a pseudo-terminal.
+/// 1. The installed CLI's own `/usage` panel, read in a pseudo-terminal.
+/// 2. The OAuth usage endpoint, using the credential Claude Code already holds.
 /// 3. A `claude.ai` session cookie — off unless the user turns it on.
 ///
-/// The order is by how invasive each is, not by how convenient. The first
-/// reuses a credential the agent already put on this machine; the second
-/// spawns the agent's own binary with everything switched off; the third
-/// reaches into a browser's cookie store, which is why it is opt-in and last.
+/// The order is by whose credential each one uses, not by how fast it is. The
+/// CLI uses its own: it is already logged in, it needs nothing from Uncoil, and
+/// the account it answers for is by construction the one the user is working
+/// with. The endpoint needs a credential Uncoil has to go and find, and looking
+/// in the Keychain for it is a dialog raised at whatever moment the timer came
+/// round. The cookie belongs to a browser, which is why it is opt-in and last.
 struct ClaudeUsageProvider: UsageProvider {
     var provider: AgentProvider { .claude }
 
@@ -42,20 +44,33 @@ struct ClaudeUsageProvider: UsageProvider {
         for account: UsageAccountContext, userInitiated: Bool
     ) -> [UsageFetchStrategy] {
         let configDirectory = claudeHome(for: account)
+        // The CLI first, and the API only when it cannot answer.
+        //
+        // Claude Code reads its own login, so this route asks nobody for
+        // anything: no Keychain dialog, no token Uncoil has to hold, and no
+        // second guess about which account is being reported — it is whichever
+        // one the CLI itself would use, which is the one the user is working
+        // with. The API route needs a credential Uncoil has to go and find, and
+        // finding it is what raised the password prompt on every refresh and
+        // what reported an identity the user did not recognise.
+        //
+        // The CLI costs a spawned process where the API costs a request, and
+        // that is the trade being made deliberately: a slower reading nobody is
+        // interrupted for beats a faster one behind a dialog.
         var strategies: [UsageFetchStrategy] = [
+            ClaudeCLIUsageStrategy(
+                executable: locateBinary("claude"),
+                probeDirectory: probeDirectory,
+                configDirectory: account.configDirectory,
+                accountID: account.accountID,
+                clock: clock
+            ),
             ClaudeOAuthUsageStrategy(
                 http: http,
                 configDirectory: configDirectory,
                 usesDefaultHome: account.configDirectory == nil,
                 accountID: account.accountID,
                 allowKeychain: userInitiated,
-                clock: clock
-            ),
-            ClaudeCLIUsageStrategy(
-                executable: locateBinary("claude"),
-                probeDirectory: probeDirectory,
-                configDirectory: account.configDirectory,
-                accountID: account.accountID,
                 clock: clock
             ),
         ]

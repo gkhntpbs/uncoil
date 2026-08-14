@@ -311,6 +311,30 @@ final class UsageAccountIsolationTests: XCTestCase {
         )
     }
 
+    /// The CLI is asked before the API, and this is the assertion that keeps it
+    /// that way.
+    ///
+    /// Order is the whole of the fix: the API route is the one that goes
+    /// looking for a credential, and looking is what raised a password prompt
+    /// on a timer and reported an identity from whatever it found. The CLI
+    /// reads its own login and asks nobody.
+    func testTheClaudeCLIIsAskedBeforeTheAPI() {
+        let provider = ClaudeUsageProvider(
+            probeDirectory: URL(fileURLWithPath: "/tmp/probe"),
+            homeDirectory: URL(fileURLWithPath: "/Users/x"),
+            webSessionKey: { "cookie" }
+        )
+        for userInitiated in [true, false] {
+            let sources = provider
+                .strategies(for: .providerDefault, userInitiated: userInitiated)
+                .map(\.source)
+            XCTAssertEqual(
+                sources, [.claudeCLIProbe, .claudeOAuthAPI, .claudeWebSession],
+                "userInitiated: \(userInitiated)"
+            )
+        }
+    }
+
     /// The Keychain item is not scoped to a config directory, so it can only
     /// answer for the default account. Reading it for a named profile would
     /// report the default account's usage under another name.

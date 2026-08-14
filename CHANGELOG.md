@@ -28,6 +28,8 @@ release notes are written once, here.
 
 ### Fixed
 
+- Reading a Claude account's limit asks the CLI first, and stops asking for your password. Uncoil went to Anthropic's API first, which meant finding a credential of its own — and when the one on disk was not there it went to the Keychain, where macOS asks before handing another application's login over. On a five-minute timer that is a password prompt five minutes apart, and it never settles during development because the answer is recorded against a signature every rebuild changes. The installed `claude` reads its own login, so it asks nobody anything, and the account it answers for is by construction the one you are working with rather than whatever the found credential belonged to. The API is still there, behind it, for a machine with no CLI installed.
+
 - Uncoil no longer crashes after hours of being left open. Reading Claude's usage panel waits on a file descriptor, and the bit that marks which one to wait on was written in a way that trapped whenever the number the system handed out was 31, 63, 95 and so on — reachable only after enough files had been opened and closed, which is why it took an afternoon of ordinary use to arrive. Descriptors past the end of the set are now refused instead of written past it.
 
 - Picking a filter on a collapsed suite opens it. Choosing what to look at was changing a list nobody could see.

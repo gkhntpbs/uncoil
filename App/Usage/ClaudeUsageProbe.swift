@@ -4,8 +4,9 @@ import Foundation
 ///
 /// A PTY rather than a pipe because the panel is a TUI: with pipes on its
 /// standard streams the CLI takes itself to be non-interactive and prints
-/// nothing worth parsing. This is the fallback route, used when the usage
-/// endpoint cannot be reached, and it is deliberately hemmed in:
+/// nothing worth parsing. This is the route Uncoil takes first — the CLI reads
+/// its own login, so nobody is asked for a credential — and it is deliberately
+/// hemmed in:
 ///
 /// - **No tools.** `--allowed-tools ""` means the probe cannot read a file,
 ///   run a command or reach the network on the user's behalf. A monitor should
