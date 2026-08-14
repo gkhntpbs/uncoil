@@ -253,18 +253,28 @@ final class ClaudeUsageProbe {
 
 /// `fd_set` is a C bitfield with no Swift-visible API, so the two operations
 /// this file needs are written out rather than reached for.
-private func fdZero(_ set: inout fd_set) {
+func fdZero(_ set: inout fd_set) {
     withUnsafeMutableBytes(of: &set) { raw in
         for index in raw.indices { raw[index] = 0 }
     }
 }
 
-private func fdSet(_ fd: Int32, _ set: inout fd_set) {
+func fdSet(_ fd: Int32, _ set: inout fd_set) {
+    // An `fd_set` holds exactly FD_SETSIZE bits and no more. A descriptor above
+    // that is not representable, and writing its bit anyway would run off the
+    // end of the struct and corrupt whatever followed it — a process that has
+    // been open long enough to reach fd 1024 is precisely the one that cannot
+    // afford that.
+    guard fd >= 0, fd < Int32(FD_SETSIZE) else { return }
     let intOffset = Int(fd) / 32
-    let bitOffset = Int(fd) % 32
+    let bitOffset = UInt32(Int(fd) % 32)
     withUnsafeMutableBytes(of: &set.fds_bits) { raw in
         guard let base = raw.baseAddress?.assumingMemoryBound(to: Int32.self) else { return }
-        base[intOffset] |= Int32(1 << bitOffset)
+        // Shifted as unsigned and reinterpreted, not converted. Bit 31 is the
+        // sign bit: `Int32(1 << 31)` is 2_147_483_648, one past `Int32.max`,
+        // and the conversion traps rather than wrapping. The bitfield wants
+        // that bit set, not that number, so the pattern is what is written.
+        base[intOffset] |= Int32(bitPattern: UInt32(1) << bitOffset)
     }
 }
 

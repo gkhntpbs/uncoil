@@ -28,6 +28,8 @@ release notes are written once, here.
 
 ### Fixed
 
+- Uncoil no longer crashes after hours of being left open. Reading Claude's usage panel waits on a file descriptor, and the bit that marks which one to wait on was written in a way that trapped whenever the number the system handed out was 31, 63, 95 and so on — reachable only after enough files had been opened and closed, which is why it took an afternoon of ordinary use to arrive. Descriptors past the end of the set are now refused instead of written past it.
+
 - Picking a filter on a collapsed suite opens it. Choosing what to look at was changing a list nobody could see.
 - The Tests screen's `All` filter shows every step again. On a run with failures it fell straight back to the failures, because "the user chose All" and "the user has chosen nothing yet" were the same state internally, and the second one means "lead with what failed".
 
