@@ -17,6 +17,14 @@ enum RuntimeProtocol {
     /// Per-session replay buffer cap inside the daemon.
     static let replayBufferLimit = 512 * 1024
     static let replayDiskLimit = 16 * 1024 * 1024
+    /// How far behind a client's socket may fall before the daemon stops
+    /// keeping its backlog and drops it.
+    ///
+    /// The daemon writes without blocking, so a client that has stopped reading
+    /// costs memory rather than the whole daemon. That memory still has to have
+    /// an end: past this, the client is not slow, it is gone, and the app can
+    /// reconnect and be sent the replay.
+    static let clientBacklogLimit = 8 * 1024 * 1024
     static let logFileLimit = 1024 * 1024
     static let logGenerations = 3
     static let sessionIdleThreshold: TimeInterval = 60 * 60

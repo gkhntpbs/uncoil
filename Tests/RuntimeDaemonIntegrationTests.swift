@@ -178,6 +178,14 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
 
             let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
             let replayURL = root.appendingPathComponent("replays/\(sid).log")
+            // The replay reaches disk on a timer rather than on every read, so
+            // it is waited for. What is asserted here is the cap, not the
+            // moment: writing half a megabyte per chunk is what put the daemon
+            // on the disk instead of on the sessions it exists to serve.
+            XCTAssertTrue(
+                waitUntil(timeout: 8) { FileManager.default.fileExists(atPath: replayURL.path) },
+                "the replay should reach disk within a few seconds"
+            )
             let replaySize = try replayURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             XCTAssertLessThanOrEqual(replaySize, RuntimeProtocol.replayBufferLimit)
             let files = try FileManager.default.contentsOfDirectory(
@@ -532,6 +540,47 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
             for sid in sids {
                 try send(RuntimeCommand(cmd: "kill", sid: sid), to: fd)
             }
+        }
+    }
+
+    /// A client that stops reading must cost that client, and nothing else.
+    ///
+    /// This is the shape of a real freeze: the app's main thread gets busy —
+    /// scrolling a long buffer is enough — the socket fills, and the daemon,
+    /// which wrote with a plain blocking `write` on its one serial queue, parked
+    /// inside it. Every session stopped, and so did every command, including the
+    /// restart the user was pressing to escape. The session looked dead, the
+    /// restart did nothing, and the only way out was Activity Monitor.
+    func testAClientThatStopsReadingDoesNotFreezeTheDaemon() throws {
+        try withDaemon { socketPath, _ in
+            let stalled = try connect(to: socketPath)
+            defer { close(stalled) }
+            try send(RuntimeCommand.hello(), to: stalled)
+            _ = try receive(from: stalled)
+
+            // Far more output than a socket buffer will hold, and then nobody
+            // reads it.
+            let sid = UUID().uuidString
+            try send(RuntimeCommand(
+                cmd: "launch", sid: sid, shell: "/bin/sh",
+                args: ["-c", "for i in $(seq 1 2000); do head -c 4096 /dev/zero | tr '\\0' 'x'; echo; done; sleep 30"],
+                env: [], cwd: NSTemporaryDirectory(), cols: 80, rows: 24
+            ), to: stalled)
+            usleep(500_000)
+
+            // The daemon still answers somebody else, promptly.
+            let second = try connect(to: socketPath)
+            defer { close(second) }
+            let asked = Date()
+            try send(RuntimeCommand.hello(), to: second)
+            let reply = try receive(from: second)
+            XCTAssertEqual(reply.ev, "hello")
+            XCTAssertLessThan(
+                Date().timeIntervalSince(asked), 2,
+                "the daemon answered, but only after the stalled client let it go"
+            )
+
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: second)
         }
     }
 

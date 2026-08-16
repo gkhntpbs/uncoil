@@ -87,6 +87,15 @@ final class PTYSession {
     /// CPU and writes nothing, which is indistinguishable from an abandoned one
     /// — so the reaper has to be told the difference.
     var isSuspended = false
+    /// Set when the buffer has changed since it was last written to disk.
+    ///
+    /// The replay exists so a session survives the app being quit, which is a
+    /// thing that happens seconds apart at worst — it does not have to be
+    /// current to the byte. Writing it on every read instead cost 8.5 GB of
+    /// disk in half an hour on an ordinary agent session, all of it on the
+    /// daemon's one serial queue, which is the queue that also carries every
+    /// session's output and every command the app sends.
+    var replayIsDirty = false
     /// fd of the single attached client, if any.
     var attachedFD: Int32? {
         didSet { unattachedSince = attachedFD == nil ? Date() : nil }
@@ -149,6 +158,12 @@ final class RuntimeDaemon {
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
+    /// What has been queued for a client and not yet accepted by its socket.
+    private var outboxes: [Int32: Data] = [:]
+    private var writeSources: [Int32: DispatchSourceWrite] = [:]
+    /// Which write sources are currently suspended. Tracked because suspending
+    /// a suspended source deadlocks it and releasing one traps.
+    private var writeSourcesPaused: Set<Int32> = []
     private var clientVerified: Set<Int32> = []
     private var sessions: [String: PTYSession] = [:]
     /// Live task claims, keyed "<project>|<task>". The daemon arbitrates because
@@ -157,6 +172,7 @@ final class RuntimeDaemon {
     private var taskClaims: [String: RuntimeTaskClaim] = [:]
     private var lockFD: Int32 = -1
     private var healthSource: DispatchSourceTimer?
+    private var replaySource: DispatchSourceTimer?
     private var replayDirectory: URL?
     private var isDrainingForUpgrade = false
     /// Scheduled scan, if the app asked for one. The daemon keeps it running after
@@ -241,6 +257,10 @@ final class RuntimeDaemon {
             close(fd)
             return
         }
+        // Non-blocking from here on: the daemon queues what a client cannot
+        // take yet rather than waiting on it.
+        let flags = fcntl(fd, F_GETFL, 0)
+        _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
         clientBuffers[fd] = Data()
         let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
         source.setEventHandler { [weak self] in self?.readClient(fd) }
@@ -261,6 +281,11 @@ final class RuntimeDaemon {
     private func readClient(_ fd: Int32) {
         var chunk = [UInt8](repeating: 0, count: 64 * 1024)
         let count = read(fd, &chunk, chunk.count)
+        // On a non-blocking socket "nothing to read yet" is a -1, and it is not
+        // a disconnect: only a 0 is the peer closing.
+        if count < 0, errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR {
+            return
+        }
         if count > 0 {
             clientBuffers[fd, default: Data()].append(contentsOf: chunk[0..<count])
             if let size = clientBuffers[fd]?.count, size > 8 * 1024 * 1024 {
@@ -287,6 +312,8 @@ final class RuntimeDaemon {
     }
 
     private func dropClient(_ fd: Int32) {
+        teardownWriteSource(for: fd)
+        outboxes[fd] = nil
         clientSources[fd]?.cancel()
         clientSources[fd] = nil
         clientBuffers[fd] = nil
@@ -297,16 +324,91 @@ final class RuntimeDaemon {
         runtimeLog.write("client disconnected")
     }
 
+    /// Queues a message for a client and writes what the socket will take.
+    ///
+    /// Never blocks, and that is the whole point. This ran as a plain blocking
+    /// `write` in a loop, on the one serial queue that also drains every PTY
+    /// and handles every command — so a client that stopped reading for a
+    /// moment (a busy main thread is enough) filled the socket, parked the
+    /// daemon inside `write`, and stopped *everything*: other sessions'
+    /// output, the health checks, and the "restart this session" the user was
+    /// pressing to get out of it. The freeze looked like the session had died,
+    /// and nothing could be done about it because the command to do something
+    /// was queued behind the write that was stuck.
     private func send<T: Encodable>(_ message: T, to fd: Int32) {
         guard let data = Data.runtimeLine(message) else { return }
-        data.withUnsafeBytes { raw in
-            var offset = 0
-            while offset < raw.count {
-                let written = write(fd, raw.baseAddress!.advanced(by: offset), raw.count - offset)
-                if written <= 0 { return }
-                offset += written
-            }
+        guard clientSources[fd] != nil else { return }
+        outboxes[fd, default: Data()].append(data)
+        drainOutbox(fd)
+    }
+
+    /// Writes as much of a client's backlog as the socket will accept.
+    ///
+    /// What cannot go now is kept and a write source is armed to finish it when
+    /// there is room. A client that never catches up is dropped rather than
+    /// held: an unbounded backlog for a reader that has stopped reading is a
+    /// leak with a socket attached, and the app reconnects.
+    private func drainOutbox(_ fd: Int32) {
+        guard var pending = outboxes[fd], !pending.isEmpty else {
+            suspendWriteSource(for: fd)
+            return
         }
+        while !pending.isEmpty {
+            let written = pending.withUnsafeBytes { raw -> Int in
+                write(fd, raw.baseAddress!, raw.count)
+            }
+            if written > 0 {
+                pending.removeFirst(written)
+                continue
+            }
+            // EAGAIN is the socket being full, which is the ordinary case here
+            // and is what the write source exists for. Anything else is a
+            // client that is gone.
+            if written < 0, errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR {
+                break
+            }
+            outboxes[fd] = nil
+            dropClient(fd)
+            return
+        }
+        outboxes[fd] = pending
+        if pending.isEmpty {
+            suspendWriteSource(for: fd)
+        } else if pending.count > RuntimeProtocol.clientBacklogLimit {
+            runtimeLog.write("client backlog exceeded; dropping")
+            outboxes[fd] = nil
+            dropClient(fd)
+        } else {
+            resumeWriteSource(for: fd)
+        }
+    }
+
+    private func resumeWriteSource(for fd: Int32) {
+        if let source = writeSources[fd] {
+            if writeSourcesPaused.remove(fd) != nil { source.resume() }
+            return
+        }
+        let source = DispatchSource.makeWriteSource(fileDescriptor: fd, queue: queue)
+        source.setEventHandler { [weak self] in self?.drainOutbox(fd) }
+        writeSources[fd] = source
+        source.resume()
+    }
+
+    /// A write source that stays armed with nothing to write wakes the process
+    /// every time the socket is writable, which is constantly.
+    private func suspendWriteSource(for fd: Int32) {
+        guard let source = writeSources[fd], !writeSourcesPaused.contains(fd) else { return }
+        writeSourcesPaused.insert(fd)
+        source.suspend()
+    }
+
+    /// A suspended dispatch source cannot be released, so it is resumed on the
+    /// way out; cancelling it while suspended would trap.
+    private func teardownWriteSource(for fd: Int32) {
+        guard let source = writeSources[fd] else { return }
+        if writeSourcesPaused.remove(fd) != nil { source.resume() }
+        source.cancel()
+        writeSources[fd] = nil
     }
 
     // MARK: Command handling
@@ -484,7 +586,7 @@ final class RuntimeDaemon {
                 if session.buffer.count > RuntimeProtocol.replayBufferLimit {
                     session.buffer.removeFirst(session.buffer.count - RuntimeProtocol.replayBufferLimit)
                 }
-                self.persistReplay(session)
+                session.replayIsDirty = true
                 if let fd = session.attachedFD {
                     self.send(RuntimeEventMessage(ev: "data", sid: session.sid, b64: data.base64EncodedString()), to: fd)
                 }
@@ -570,6 +672,24 @@ final class RuntimeDaemon {
         exitIfUpgradeIsDrained()
     }
 
+    /// Writes every session whose buffer moved since the last pass.
+    ///
+    /// Coalesced onto a timer rather than done per read. A replay only has to
+    /// be good enough to restore a session after the app goes away, so seconds
+    /// of granularity costs nothing that matters — where a write per chunk cost
+    /// the whole daemon: an atomic write is a temp file, half a megabyte of
+    /// copying and a rename, and it ran on the one queue that also drains every
+    /// PTY and answers every command. A session producing steady output kept
+    /// that queue busy enough that "restart this session" waited behind a
+    /// backlog of disk writes, which is what a frozen app looks like from the
+    /// outside.
+    private func flushReplays() {
+        for session in sessions.values where session.replayIsDirty {
+            session.replayIsDirty = false
+            persistReplay(session)
+        }
+    }
+
     private func persistReplay(_ session: PTYSession) {
         guard let replayDirectory else { return }
         let manager = FileManager.default
@@ -600,6 +720,17 @@ final class RuntimeDaemon {
         source.setEventHandler { [weak self] in self?.checkSessionHealth() }
         source.resume()
         healthSource = source
+
+        // Loose leeway on purpose: this timer exists to bound how much of a
+        // replay a sudden death could cost, not to hit a deadline, and letting
+        // the system fold it into a wakeup it was making anyway is the whole
+        // difference between a timer that idles free and one that keeps a core
+        // awake for nothing.
+        let replay = DispatchSource.makeTimerSource(queue: queue)
+        replay.schedule(deadline: .now() + 2, repeating: 2, leeway: .seconds(1))
+        replay.setEventHandler { [weak self] in self?.flushReplays() }
+        replay.resume()
+        replaySource = replay
     }
 
     private func checkSessionHealth() {
