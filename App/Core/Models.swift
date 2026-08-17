@@ -7,6 +7,9 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     case claude
     case codex
     case gemini
+    case opencode
+    case grok
+    case cursor
     case terminal
 
     var id: String { rawValue }
@@ -29,6 +32,9 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .claude: "Claude"
         case .codex: "Codex"
         case .gemini: "Gemini"
+        case .opencode: "OpenCode"
+        case .grok: "Grok"
+        case .cursor: "Cursor"
         case .terminal: "Terminal"
         }
     }
@@ -39,6 +45,9 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .claude: Theme.claude
         case .codex: Theme.codex
         case .gemini: Theme.gemini
+        case .opencode: Theme.opencode
+        case .grok: Theme.grok
+        case .cursor: Theme.cursor
         case .terminal: Theme.terminal
         }
     }
@@ -49,6 +58,10 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .claude: "claude"
         case .codex: "codex"
         case .gemini: "gemini"
+        case .opencode: "opencode"
+        case .grok: "grok"
+        // The agent CLI, not the editor's `cursor` command.
+        case .cursor: "cursor-agent"
         case .terminal: nil  // plain login shell
         }
     }
@@ -63,6 +76,12 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         // terminal that types a guessed command would be worse than not
         // offering one.
         case .gemini: nil
+        // Verified against the CLI's own help: `providers login` is the
+        // documented sign-in, and it drives a browser flow in a terminal.
+        case .opencode: "opencode providers login"
+        // `grok login` is its own documented subcommand.
+        case .grok: "grok login"
+        case .cursor: "cursor-agent login"
         case .terminal: nil
         }
     }
@@ -76,7 +95,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// status, no hooks and no control plane.
     var isAgent: Bool {
         switch self {
-        case .claude, .codex, .gemini: true
+        case .claude, .codex, .gemini, .opencode, .grok, .cursor: true
         case .terminal: false
         }
     }
@@ -91,23 +110,51 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     var reportsStatusThroughHooks: Bool {
         switch self {
         case .claude: true
-        case .codex, .gemini, .terminal: false
+        case .codex, .gemini, .opencode, .grok, .cursor, .terminal: false
         }
     }
 
     /// Whether Uncoil actually registers its MCP server for this provider.
     ///
     /// Registration is provider-specific — `--mcp-config` for Claude Code,
-    /// `-c mcp_servers.uncoil.*` for Codex — so it is not enough for a session
-    /// to be an agent's. Gemini has no verified per-session equivalent yet, and
-    /// handing a session the control socket in its environment while nothing
-    /// serves it would advertise a control plane that is not there: the agent
-    /// would read the variables, find no tools, and the failure would look like
-    /// a broken socket rather than a missing feature.
+    /// `-c mcp_servers.uncoil.*` for Codex, `OPENCODE_CONFIG_CONTENT` for
+    /// OpenCode — so it is not enough for a session to be an agent's. Gemini
+    /// has no verified per-session equivalent yet, and handing a session the
+    /// control socket in its environment while nothing serves it would
+    /// advertise a control plane that is not there: the agent would read the
+    /// variables, find no tools, and the failure would look like a broken
+    /// socket rather than a missing feature.
+    ///
+    /// OpenCode's mechanism was verified against the installed CLI before it
+    /// was claimed here: `opencode debug config` shows the inline content
+    /// *merged* over the user's own file, so the server arrives without any
+    /// write to `~/.config/opencode`.
     var wiresControlPlane: Bool {
         switch self {
-        case .claude, .codex: true
-        case .gemini, .terminal: false
+        case .claude, .codex, .opencode: true
+        // Grok registers MCP servers only in its own config.toml, and the one
+        // entry Uncoil would write carries a session id — which would be the
+        // same stale id for every session, so every tool call would arrive
+        // from a caller the app cannot find. Verified against the CLI: there
+        // is no per-session equivalent of `--mcp-config`, and `GROK_HOME`
+        // redirects the whole home (credentials included) rather than one file.
+        // Cursor is the same story: `CURSOR_CONFIG_DIR` moves the whole
+        // config root, credentials included, so a per-session copy would
+        // start every session logged out.
+        case .grok, .cursor, .gemini, .terminal: false
+        }
+    }
+
+    /// Whether the CLI updates itself through its own subcommand rather than
+    /// through a package manager.
+    ///
+    /// These four install outside any package manager's tree — into
+    /// `~/.local/share`, `~/.grok`, `~/.opencode` — and each documents an
+    /// `update` (or `upgrade`) subcommand of its own.
+    var hasBuiltInUpdater: Bool {
+        switch self {
+        case .claude, .cursor, .grok, .opencode: true
+        case .codex, .gemini, .terminal: false
         }
     }
 
@@ -121,9 +168,11 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     ///
     /// Gemini has no verified resume flag, and guessing one is a launch failure
     /// rather than a cosmetic bug. A plain shell has no conversation at all.
+    /// OpenCode documents `--session <id>` in its own `--help`.
     var resumesConversation: Bool {
         switch self {
-        case .claude, .codex: true
+        // Grok documents both `--resume <id>` and `--session-id`.
+        case .claude, .codex, .opencode, .grok, .cursor: true
         case .gemini, .terminal: false
         }
     }
@@ -140,6 +189,11 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         // understand it would put a stray backslash in the message. Off until
         // it is checked; the setting is there for anyone who has.
         case .gemini: false
+        // Unverified for OpenCode's TUI, same rule as Gemini.
+        case .opencode: false
+        // Unverified for Grok's TUI, same rule.
+        case .grok: false
+        case .cursor: false
         case .terminal: false
         }
     }
@@ -172,6 +226,18 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         // for. An unverified flag on a real CLI is a launch failure.
         case .gemini:
             [.providerDefault]
+        // `--auto` is documented in OpenCode's own `--help`, so it is offered;
+        // nothing beyond it is, for the same reason Gemini offers nothing.
+        case .opencode:
+            [.providerDefault, .auto]
+        // Read straight off `--permission-mode`'s own possible values:
+        // default, acceptEdits, auto, dontAsk, bypassPermissions, plan.
+        case .grok:
+            [.providerDefault, .plan, .acceptEdits, .auto, .dontAsk, .dangerouslySkipPermissions]
+        // `--mode` lists plan and ask; `--auto-review` and `--force` are its
+        // two documented booleans. Nothing else is offered.
+        case .cursor:
+            [.providerDefault, .plan, .readOnly, .auto, .dangerouslySkipPermissions]
         case .terminal:
             [.providerDefault]
         }
@@ -234,6 +300,9 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         switch provider {
         case .claude: .dangerouslySkipPermissions
         case .codex: .fullAccess
+        case .opencode: .auto
+        case .grok: .dangerouslySkipPermissions
+        case .cursor: .dangerouslySkipPermissions
         // Gemini's approval flags are unverified, and Uncoil adds no flag it
         // has not checked: an invented one is a launch failure, not a
         // permissive session.
@@ -261,6 +330,28 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
         case (.codex, .fullAccess):
             ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
+        // The only approval flag OpenCode documents: "auto-approve permissions
+        // that are not explicitly denied".
+        case (.opencode, .auto):
+            ["--auto"]
+        case (.grok, .plan):
+            ["--permission-mode", "plan"]
+        case (.grok, .acceptEdits):
+            ["--permission-mode", "acceptEdits"]
+        case (.grok, .auto):
+            ["--permission-mode", "auto"]
+        case (.grok, .dontAsk):
+            ["--permission-mode", "dontAsk"]
+        case (.grok, .dangerouslySkipPermissions):
+            ["--permission-mode", "bypassPermissions"]
+        case (.cursor, .plan):
+            ["--mode", "plan"]
+        case (.cursor, .readOnly):
+            ["--mode", "ask"]
+        case (.cursor, .auto):
+            ["--auto-review"]
+        case (.cursor, .dangerouslySkipPermissions):
+            ["--force"]
         default:
             []
         }
@@ -327,6 +418,17 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         // does not claim to isolate one: profiles for it would share the
         // CLI's own home and quietly overwrite each other.
         case .gemini: nil
+        // `OPENCODE_CONFIG_DIR` looks like the variable for this and is not:
+        // set to a fresh directory, `opencode debug paths` still reports
+        // ~/.config/opencode. Claiming isolation off a variable the CLI
+        // ignores would let two profiles quietly share one config.
+        case .opencode: nil
+        // Verified: `GROK_HOME=<dir> grok mcp add …` wrote into that directory
+        // and left ~/.grok untouched, so it really does move the config root.
+        case .grok: "GROK_HOME"
+        // Verified: with `CURSOR_CONFIG_DIR` set, `cursor-agent status` wrote
+        // its `cli-config.json` into that directory instead of ~/.cursor.
+        case .cursor: "CURSOR_CONFIG_DIR"
         case .terminal: nil
         }
     }

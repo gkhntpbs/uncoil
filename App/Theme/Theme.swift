@@ -52,7 +52,15 @@ enum Theme {
     /// themselves stay unmistakable — Gemini's is the only one in four colours
     /// — and taking the brand's own colour away to buy contrast in a caption
     /// seemed the worse trade. Both are palette fields if it turns out wrong.
-    static var gemini: Color { Color(hex: p.gemini ?? 0x3186FF) }
+    static var gemini: Color { Color(hex: p.gemini ?? ThemePalette.defaultGemini) }
+    /// The monochrome marks. Palette-backed like every other brand colour, and
+    /// for a sharper reason than taste: a brand whose own value is white has
+    /// nothing left to dim on a white panel, so the light preset inverts these
+    /// rather than darkening them.
+    static var opencode: Color { Color(hex: p.opencode ?? ThemePalette.defaultOpenCode) }
+    static var grok: Color { Color(hex: p.grok ?? ThemePalette.defaultGrok) }
+    static var cursor: Color { Color(hex: p.cursor ?? ThemePalette.defaultCursor) }
+    static var amp: Color { Color(hex: p.amp ?? ThemePalette.defaultAmp) }
     static let terminal = Color(hex: 0x8A8A93)
 
     // Meanings. Read from the palette rather than fixed: the green that reads on

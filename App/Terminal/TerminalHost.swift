@@ -208,7 +208,41 @@ final class TerminalRegistry {
             env.append("UNCOIL_PROJECT_ID=\(record.projectID.uuidString)")
             env.append("UNCOIL_CONTROL_SOCKET=\(ControlPlaneServer.defaultSocketPath())")
         }
+        // OpenCode has no per-session config flag, but it merges the JSON in
+        // `OPENCODE_CONFIG_CONTENT` over the user's own file. That is what
+        // makes registering the server possible without ever writing to
+        // ~/.config/opencode — the user's providers and keys stay untouched.
+        if record.provider == .opencode,
+           let binary = bundledMCPBinaryPath(),
+           let content = Self.openCodeConfigContent(for: record, binaryPath: binary) {
+            env.append("OPENCODE_CONFIG_CONTENT=\(content)")
+        }
         return env
+    }
+
+    /// The inline OpenCode config registering `uncoil-mcp` for one session.
+    /// Static and pure so a test can assert the exact shape OpenCode expects
+    /// (`mcp.<name>.type/command/environment`) without launching anything.
+    nonisolated static func openCodeConfigContent(
+        for record: SessionRecord,
+        binaryPath: String
+    ) -> String? {
+        let config: [String: Any] = [
+            "mcp": [
+                "uncoil": [
+                    "type": "local",
+                    "command": [binaryPath],
+                    "enabled": true,
+                    "environment": [
+                        "UNCOIL_SESSION_ID": record.id.uuidString,
+                        "UNCOIL_PROJECT_ID": record.projectID.uuidString,
+                        "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
+                    ],
+                ],
+            ],
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: config) else { return nil }
+        return String(decoding: data, as: UTF8.self)
     }
 
     private func environmentDictionary(
@@ -750,6 +784,15 @@ final class TerminalRegistry {
         }
         if record.provider == .codex, let sid = record.providerSessionID {
             command += " resume \(shellQuote(sid))"
+        }
+        if record.provider == .opencode, let sid = record.providerSessionID {
+            command += " --session \(shellQuote(sid))"
+        }
+        if record.provider == .grok, let sid = record.providerSessionID {
+            command += " --resume \(shellQuote(sid))"
+        }
+        if record.provider == .cursor, let sid = record.providerSessionID {
+            command += " --resume \(shellQuote(sid))"
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""

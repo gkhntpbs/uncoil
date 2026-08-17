@@ -90,6 +90,24 @@ enum AgentLaunchCatalog {
             // would be handed to `--model` and fail the launch, and there is
             // no `--help` line to read them from the way Claude's efforts are.
             break
+        case .opencode:
+            // Same reasoning, and more so: OpenCode's model ids are
+            // `provider/model` and come from whatever providers the user
+            // configured, so no list can be right for two machines. Its
+            // `--variant` (reasoning effort) is documented on `run`, not on
+            // the TUI Uncoil launches, so no effort picker is offered either.
+            break
+        case .grok:
+            // `--model` and `--reasoning-effort` are both documented, but
+            // neither lists its values in `--help`: models come from the
+            // account (`grok models`) and the effort levels are named only in
+            // config. A picker here would be a guess, so selections made
+            // elsewhere are passed through and nothing is offered.
+            break
+        case .cursor:
+            // `--list-models` is an account query, not a help line, so the
+            // names cannot be known without running the CLI. Same rule.
+            break
         case .terminal:
             break
         }
@@ -151,6 +169,20 @@ enum AgentLaunchCatalog {
         case .gemini:
             // `--model` is documented, so it is passed when the user picked
             // one; there is no verified effort flag, so none is invented.
+            if let model = selection.model { arguments += ["--model", model] }
+        case .opencode:
+            // `--model` is on the TUI's own help; `--variant` is not, so an
+            // effort picked elsewhere is deliberately not passed here.
+            if let model = selection.model { arguments += ["--model", model] }
+        case .grok:
+            if let model = selection.model { arguments += ["--model", model] }
+            if let effort = selection.effort {
+                arguments += ["--reasoning-effort", effort]
+            }
+        case .cursor:
+            // `--model` is documented; Cursor carries effort inside the model
+            // id (`claude-opus-4-8[effort=high]`) rather than as a flag, so
+            // there is nothing separate to pass.
             if let model = selection.model { arguments += ["--model", model] }
         case .terminal:
             break

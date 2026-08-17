@@ -528,7 +528,7 @@ private struct StatTile: View {
     }
 }
 
-private struct SectionCard<Content: View>: View {
+struct SectionCard<Content: View>: View {
     let title: String
     var detail: String?
     @ViewBuilder var content: () -> Content
@@ -551,7 +551,7 @@ private struct SectionCard<Content: View>: View {
     }
 }
 
-private struct KeyValueRow: View {
+struct KeyValueRow: View {
     let key: String
     let value: String
     var tint: Color?
@@ -613,7 +613,7 @@ private struct HealthRow: View {
     }
 }
 
-private struct EmptyRow: View {
+struct EmptyRow: View {
     let text: String
 
     var body: some View {
@@ -765,6 +765,9 @@ private struct AgentsScreen: View {
     @ObservedObject var registry: ExtensionRegistry
     @Binding var message: String?
     @EnvironmentObject private var settings: SettingsStore
+    /// The shared instance, not a private one: the Settings page observes the
+    /// same object, so connecting an agent in either place updates both.
+    @ObservedObject private var hookup = AgentHookupService.shared
     @State private var versions: [ExtensionAgentID: String] = [:]
     /// A planned config change awaiting the user's word, with the changes it was
     /// built from so a stale config can be re-planned on top of the user's edit.
@@ -778,9 +781,14 @@ private struct AgentsScreen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
+            // Leads the screen: it answers "what did Uncoil find, and how well
+            // can it work with it" for every agent at once, including the ones
+            // that are not installed.
+            AgentHookupCard(hookup: hookup, message: $message)
+
             if registry.installations.isEmpty {
                 SectionCard(title: String(localized: "Agent not found")) {
-                    EmptyRow(text: String(localized: "Neither Claude Code nor Codex is installed."))
+                    EmptyRow(text: String(localized: "No agent CLI was found in any of the usual install locations."))
                 }
             }
 
@@ -801,22 +809,22 @@ private struct AgentsScreen: View {
                             ?? "not asked"
                     )
                     Divider().overlay(Theme.border)
-                    KeyValueRow(key: "Aktif profil", value: activeProfile(installation.agent))
+                    KeyValueRow(key: "Active profile", value: activeProfile(installation.agent))
                     Divider().overlay(Theme.border)
                     KeyValueRow(
-                        key: "Update durumu",
+                        key: "Update status",
                         value: updateStatus(installation.agent),
                         tint: registry.updateCandidates.isEmpty ? nil : Theme.highlight
                     )
                     Divider().overlay(Theme.border)
                     KeyValueRow(
-                        key: "Login durumu",
+                        key: "Login status",
                         value: installation.isAuthenticated
                             .map { $0 ? "Signed in" : "Login required" } ?? "unknown",
                         tint: installation.isAuthenticated == false ? Theme.warn : nil
                     )
                     Divider().overlay(Theme.border)
-                    KeyValueRow(key: "Config dizini", value: installation.configDirectory)
+                    KeyValueRow(key: "Config directory", value: installation.configDirectory)
                     Divider().overlay(Theme.border)
                     KeyValueRow(
                         key: "MCP config",
@@ -824,7 +832,7 @@ private struct AgentsScreen: View {
                     )
                     Divider().overlay(Theme.border)
                     KeyValueRow(
-                        key: "Skill dizini",
+                        key: "Skills directory",
                         value: installation.skillsDirectory ?? "none"
                     )
                     Divider().overlay(Theme.border)
@@ -963,7 +971,7 @@ private struct AgentsScreen: View {
             if !unmanagedAgents.isEmpty {
                 SectionCard(
                     title: String(localized: "Agents not managed yet"),
-                    detail: String(localized: "They will show up here once an adapter exists.")
+                    detail: String(localized: "Uncoil detects these but does not manage their configuration; each moves up once an adapter for its config format lands.")
                 ) {
                     ForEach(unmanagedAgents) { agent in
                         KeyValueRow(key: agent.displayName, value: "no adapter")
@@ -1024,7 +1032,7 @@ private struct AgentsScreen: View {
         let pending = registry.updateCandidates.filter { ids.contains($0.extensionID) }
         if pending.isEmpty {
             return registry.lastDiscoveryAt == nil
-                ? "kontrol edilmedi"
+                ? "not checked yet"
                 : "extensions are up to date"
         }
         return "\(pending.count) extensions can be updated"
@@ -1714,7 +1722,7 @@ private struct PackageCard: View {
             }
             Divider().overlay(Theme.border)
             KeyValueRow(
-                key: "Security durumu",
+                key: "Security status",
                 value: findings.isEmpty
                     ? "No findings (scan reach was limited)"
                     : findings.map { "\($0.severity.label): \($0.rule)" }.joined(separator: ", "),

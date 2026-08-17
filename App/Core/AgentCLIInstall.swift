@@ -47,6 +47,10 @@ enum AgentCLIInstall {
         case .claude: "claude-code"
         case .codex: "codex"
         case .gemini: "gemini-cli"
+        case .opencode: "opencode"
+        // Grok ships its own installer and updater; there is no formula.
+        case .grok: ""
+        case .cursor: ""
         case .terminal: ""
         }
     }
@@ -56,6 +60,11 @@ enum AgentCLIInstall {
         case .claude: "@anthropic-ai/claude-code"
         case .codex: "@openai/codex"
         case .gemini: "@google/gemini-cli"
+        case .opencode: "opencode-ai"
+        // Grok and Cursor are not published on npm; both install and update
+        // themselves.
+        case .grok: ""
+        case .cursor: ""
         case .terminal: ""
         }
     }
@@ -116,11 +125,32 @@ enum AgentCLIInstall {
             return .nativeInstaller
         }
 
-        if path.hasPrefix("/opt/homebrew/") || path.hasPrefix("/usr/local/") {
-            return .homebrew(formula: brewFormula(for: provider))
+        // Cursor, Grok and OpenCode all ship their own installer and updater
+        // and land outside any package manager's tree. Without this they were
+        // reported as "unknown", which turns off the update button for tools
+        // that each document an `update` subcommand.
+        if provider == .cursor, resolved.contains("/.local/share/cursor-agent/") {
+            return .nativeInstaller
+        }
+        if provider == .grok, resolved.contains("/.grok/") {
+            return .nativeInstaller
+        }
+        if provider == .opencode, resolved.contains("/.opencode/") {
+            return .nativeInstaller
         }
 
-        return .unknown
+        if path.hasPrefix("/opt/homebrew/") || path.hasPrefix("/usr/local/") {
+            // Only when Homebrew actually packages it. `/usr/local/bin` is a
+            // directory Uncoil searches anyway, so a self-installing CLI that
+            // put itself there was being called a Homebrew install with no
+            // formula — which reads to the user as "Homebrew has no package
+            // for this" instead of offering the tool's own updater.
+            let formula = brewFormula(for: provider)
+            if !formula.isEmpty { return .homebrew(formula: formula) }
+            return provider.hasBuiltInUpdater ? .nativeInstaller : .unknown
+        }
+
+        return provider.hasBuiltInUpdater ? .nativeInstaller : .unknown
     }
 
     private static let nodeManagerMarkers = [
@@ -185,9 +215,15 @@ extension AgentCLIInstall {
             return .run("volta install \(package)@latest")
 
         case .nativeInstaller:
-            return provider == .claude
-                ? .run("claude update")
-                : .cannot(String(localized: "This tool has no updater Uncoil knows how to run."))
+            // Each of these documents the subcommand as its own updater.
+            switch provider {
+            case .claude: return .run("claude update")
+            case .cursor: return .run("cursor-agent update")
+            case .grok: return .run("grok update")
+            case .opencode: return .run("opencode upgrade")
+            case .codex, .gemini, .terminal:
+                return .cannot(String(localized: "This tool has no updater Uncoil knows how to run."))
+            }
 
         case .unknown:
             // Claude's own updater works wherever it was installed from.

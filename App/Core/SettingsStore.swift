@@ -211,6 +211,9 @@ final class SettingsStore: ObservableObject {
         case .claude: .manual
         case .codex: .askForApproval
         case .gemini: .providerDefault
+        case .opencode: .providerDefault
+        case .grok: .providerDefault
+        case .cursor: .providerDefault
         case .terminal: .providerDefault
         }
         let mode = (providerBehaviors[provider.rawValue]?.workingMode ?? fallback)
@@ -416,10 +419,12 @@ final class SettingsStore: ObservableObject {
             }
             return "linked"  // auth file exists but no readable identity
 
-        // Nothing is read for Gemini: where its CLI keeps its identity, and in
-        // what shape, is not verified here. Reporting "linked" off a file whose
+        // Nothing is read for Gemini or OpenCode: where their CLIs keep an
+        // identity, and in what shape, is not verified here. OpenCode's
+        // credentials live outside its config root entirely
+        // (~/.local/share/opencode), and reporting "linked" off a file whose
         // meaning is a guess would be worse than reporting nothing.
-        case .gemini, .terminal:
+        case .gemini, .opencode, .grok, .cursor, .terminal:
             return nil
         }
     }
@@ -523,43 +528,77 @@ final class SettingsStore: ObservableObject {
         )
     }
 
-    /// Resolves a CLI by name using well-known install locations and an
-    /// interactive login shell. Reused by the control-plane adapters to locate
-    /// optional external drivers (agent-browser / cua-driver).
+    /// Resolves a CLI by name using well-known install locations and, failing
+    /// those, the login shell's own PATH. Reused by the control-plane adapters
+    /// to locate optional external drivers (agent-browser / cua-driver).
     nonisolated static func which(_ command: String) -> String? {
         // 1) Well-known install locations first: GUI apps start with a
         //    minimal PATH, and users often extend PATH only in ~/.zshrc.
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let knownLocations = [
-            "\(home)/.local/bin/\(command)",
-            "\(home)/.claude/local/\(command)",
-            "/opt/homebrew/bin/\(command)",
-            "/usr/local/bin/\(command)",
-            "\(home)/.npm-global/bin/\(command)",
-            "\(home)/.bun/bin/\(command)",
-        ]
-        for candidate in knownLocations where FileManager.default.isExecutableFile(atPath: candidate) {
-            return candidate
-        }
+        //    Shared with the Extensions adapters through `BinarySearchPath`, so
+        //    both answer "installed?" the same way.
+        if let path = BinarySearchPath.locate(command) { return path }
 
-        // 2) Interactive login shell (-l -i sources both zprofile and zshrc).
+        // 2) Anywhere else the login shell would look. This used to run
+        //    `command -v <name>` in a fresh `zsh -l -i` per lookup, which is
+        //    one shell spawn per *miss* — and a miss is the common case, since
+        //    a machine has a couple of these CLIs and is asked about all of
+        //    them. Asking once for the whole PATH and then testing files makes
+        //    the seventh lookup free.
+        for directory in loginShellPATH {
+            let candidate = "\(directory)/\(command)"
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+
+    /// The directories on an interactive login shell's PATH, minus the ones
+    /// `BinarySearchPath` already covers.
+    ///
+    /// Resolved once per process — `static let` is lazy and its initialiser
+    /// runs exactly once even under concurrent access — because sourcing a
+    /// user's shell profile is expensive and its answer does not change while
+    /// the app is open. Never call this from the main actor: the first caller
+    /// pays for the spawn.
+    nonisolated static let loginShellPATH: [String] = {
         let process = Process()
         process.executableURL = URL(
             fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         )
-        process.arguments = ["-l", "-i", "-c", "command -v \(command)"]
+        // -l -i sources both zprofile and zshrc, which is where a user's PATH
+        // additions actually live.
+        process.arguments = ["-l", "-i", "-c", "printf %s \"$PATH\""]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        // Discarded rather than piped: an unread pipe fills at 64 KB and the
+        // shell blocks writing into it forever, taking `waitUntilExit` — and
+        // whatever was waiting on this — down with it. A chatty ~/.zshrc is
+        // enough to do that.
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return [] }
+
+        // A profile that prompts, or waits on a network mount, must not hang
+        // the app: read on a worker, give it a few seconds, then kill it.
+        let output = DispatchGroup()
+        output.enter()
+        var data = Data()
+        DispatchQueue.global(qos: .utility).async {
+            data = pipe.fileHandleForReading.readDataToEndOfFile()
+            output.leave()
+        }
+        if output.wait(timeout: .now() + 5) == .timedOut {
+            process.terminate()
+            return []
+        }
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-        let path = String(data: data, encoding: .utf8)?
+        guard process.terminationStatus == 0 else { return [] }
+
+        let known = Set(BinarySearchPath.directories())
+        return String(decoding: data, as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .split(separator: "\n").last.map(String.init)
-        return path?.isEmpty == false ? path : nil
-    }
+            .split(separator: ":")
+            .map(String.init)
+            .filter { !$0.isEmpty && !known.contains($0) }
+    }()
 
     // MARK: - Onboarding
 

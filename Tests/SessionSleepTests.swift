@@ -150,17 +150,25 @@ final class SessionSleepTests: XCTestCase {
             var record = SessionRecord(
                 projectID: UUID(), provider: provider, accountID: nil, title: "s"
             )
+            let withoutID = TerminalRegistry.launchCommand(for: record, extraArguments: nil)
             record.providerSessionID = "prov-1"
-            guard let command = TerminalRegistry.launchCommand(
+            guard let withID = TerminalRegistry.launchCommand(
                 for: record, extraArguments: nil
             ) else {
                 XCTAssertFalse(provider.resumesConversation, provider.rawValue)
                 continue
             }
+            // Asks the question directly rather than grepping for the word
+            // "resume": each CLI spells the flag its own way (`--resume`,
+            // `resume`, `--session`), and a proxy that only knew two of them
+            // would pass a provider that silently dropped the stored id.
             XCTAssertEqual(
-                command.contains("resume"), provider.resumesConversation,
-                "\(provider.rawValue): \(command)"
+                withID != withoutID, provider.resumesConversation,
+                "\(provider.rawValue): \(withID)"
             )
+            if provider.resumesConversation {
+                XCTAssertTrue(withID.contains("prov-1"), withID)
+            }
         }
     }
 }

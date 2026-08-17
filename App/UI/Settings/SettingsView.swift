@@ -73,6 +73,7 @@ struct SettingsView: View {
         case general
         case input
 
+        case installedAgents
         case accounts
         case cliTools
         case launchArgs
@@ -103,7 +104,7 @@ struct SettingsView: View {
         var category: Category {
             switch self {
             case .general, .input: .general
-            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
+            case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours,
                  .projectNotifications: .notifications
             // How Uncoil looks and what it puts in front of you.
@@ -125,6 +126,7 @@ struct SettingsView: View {
             switch self {
             case .general: String(localized: "General")
             case .input: String(localized: "Keyboard and Input")
+            case .installedAgents: String(localized: "Installed Agents")
             case .accounts: String(localized: "Accounts")
             case .cliTools: String(localized: "CLI Tools")
             case .launchArgs: String(localized: "Run Parameters")
@@ -152,6 +154,7 @@ struct SettingsView: View {
             switch self {
             case .general: "gearshape"
             case .input: "keyboard"
+            case .installedAgents: "point.3.connected.trianglepath.dotted"
             case .accounts: "person.2"
             case .cliTools: "terminal"
             case .launchArgs: "command"
@@ -183,6 +186,7 @@ struct SettingsView: View {
             case .general:
                 "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette"
             case .input: "klavye keyboard shift enter newline satır line yapıştır paste görsel image ⌘v pano clipboard giriş input option meta alt değiştirici modifier"
+            case .installedAgents: "agent ajan bağla connect hook kanca algıla detect tara scan claude codex gemini cursor amp opencode grok seviye level"
             case .accounts: "hesap account claude codex login giriş profil profile e-posta email"
             case .cliTools: "cli güncelle update sürüm version brew npm kurulum install"
             case .launchArgs: "parametre argüman argument model flag bayrak"
@@ -314,6 +318,7 @@ struct SettingsView: View {
         switch pane {
         case .general: GeneralSettingsPage()
         case .input: InputSettingsPage()
+        case .installedAgents: AgentsSettingsPage()
         case .accounts: AccountsSettingsPage()
         case .cliTools: CLIToolsSettingsPage()
         case .launchArgs: LaunchArgumentsSettingsPage()

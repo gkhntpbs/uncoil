@@ -56,6 +56,22 @@ struct ThemePalette: Codable, Equatable, Hashable {
     var codex: UInt32 = 0x3B82F6
     /// Optional so a palette written before Gemini existed still decodes.
     var gemini: UInt32? = nil
+    /// Optional for the same reason. These four brands are monochrome or
+    /// near-monochrome, so their marks are the colours most at risk on a light
+    /// background: white-on-white is not a low-contrast mark, it is no mark.
+    var opencode: UInt32? = nil
+    var grok: UInt32? = nil
+    var cursor: UInt32? = nil
+    var amp: UInt32? = nil
+
+    /// What a palette that predates a mark falls back to — the dark preset's
+    /// value, which is also each brand's own. Named once so `Theme` and the
+    /// contrast requirements cannot disagree about them.
+    static let defaultGemini: UInt32 = 0x3186FF
+    static let defaultOpenCode: UInt32 = 0xE0DED4
+    static let defaultGrok: UInt32 = 0xFFFFFF
+    static let defaultCursor: UInt32 = 0xC9C9CF
+    static let defaultAmp: UInt32 = 0x81AE7A
 
     var terminalBg: UInt32 = 0x0F0F11
     var terminalFg: UInt32 = 0xE9E9EC
@@ -90,6 +106,20 @@ struct ThemePalette: Codable, Equatable, Hashable {
         // both under the 3:1 floor `ThemeContrastTests` holds them to.
         claude: 0xB85A38,
         codex: 0x2563EB,
+        // Gemini's blue was never given a light value, and nothing checked it
+        // until the marks were added to `contrastRequirements`: the shipped
+        // 0x3186FF measures 2.92:1 on the hovered panel, under the same 3:1
+        // floor the other two were darkened for.
+        gemini: 0x1A73E8,
+        // Monochrome brands, inverted for a light background rather than
+        // dimmed: on white, Grok's own white measures 1.00:1 — the mark is
+        // simply absent — and the other three sit between 1.03 and 2.54 on the
+        // pressed panel. xAI ships a black variant of its mark for exactly
+        // this case; the rest follow it.
+        opencode: 0x3A382F,
+        grok: 0x1C1C1E,
+        cursor: 0x2C2C2E,
+        amp: 0x3E5A38,
         terminalBg: 0xFFFFFF,
         terminalFg: 0x1C1C1E
     )
@@ -247,6 +277,20 @@ extension ThemePalette {
                 label: "codex on \(name)", foreground: codex, background: surface,
                 minimum: Self.minimumSecondaryTextContrast
             ))
+            // Every other agent mark, held to the same bar. Without these the
+            // contrast test could not see the marks that needed it most.
+            for (markName, mark) in [
+                ("gemini", gemini ?? Self.defaultGemini),
+                ("opencode", opencode ?? Self.defaultOpenCode),
+                ("grok", grok ?? Self.defaultGrok),
+                ("cursor", cursor ?? Self.defaultCursor),
+                ("amp", amp ?? Self.defaultAmp),
+            ] {
+                pairs.append(.init(
+                    label: "\(markName) on \(name)", foreground: mark, background: surface,
+                    minimum: Self.minimumSecondaryTextContrast
+                ))
+            }
             // The highlight and the four meanings are used as text and as icons
             // on every surface, so they are held to the same bar as the marks.
             for (meaning, color) in [

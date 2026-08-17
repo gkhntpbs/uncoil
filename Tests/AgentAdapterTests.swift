@@ -488,16 +488,25 @@ final class AgentAdapterRegistryTests: XCTestCase {
     func testShipsAnAdapterForEveryListedAgent() {
         let registry = AgentAdapterRegistry()
         XCTAssertEqual(
-            registry.adapters.map(\.agent), [.claudeCode, .codex, .geminiCLI, .cursor, .amp]
+            registry.adapters.map(\.agent),
+            [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok]
         )
-        for agent in ExtensionAgentID.allCases {
+        for agent in ExtensionAgentID.supported {
             XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
         }
-        XCTAssertTrue(registry.unmanagedAgents.isEmpty)
+        // Every listed agent has an adapter now; anything appearing here is
+        // an agent added to the enum without one.
+        XCTAssertTrue(
+            registry.unmanagedAgents.isEmpty,
+            "unmanaged: \(registry.unmanagedAgents)"
+        )
         // Managed is not the same as launchable: Uncoil edits Cursor and Amp
         // configs but does not run their sessions. Gemini moved across when it
         // became a session provider, which is what `launchable` is derived from.
-        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex, .geminiCLI])
+        XCTAssertEqual(
+            ExtensionAgentID.launchable,
+            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok]
+        )
     }
 
     func testSupportedAgentsMatchTheAdaptersWeShip() {
