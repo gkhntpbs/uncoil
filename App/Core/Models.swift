@@ -541,6 +541,14 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Control-plane parentage: the session that spawned this one (for the
     /// relationship calculator). Optional & backward-compatible.
     var parentSessionID: UUID?
+    /// The session this one took over from when its account ran low.
+    ///
+    /// Separate from `parentSessionID` because it is a different relation: a
+    /// child is work delegated downwards and running alongside its parent, a
+    /// handoff is the same work continuing after the previous agent stopped.
+    /// Folding the two together would nest a successor under a session it
+    /// replaced.
+    var handoffFromSessionID: UUID?
     /// Control-plane capability grants for this session. `nil` = the default
     /// grant set (see PolicyEngine.defaultGrants). Backward-compatible.
     var capabilities: [String]?

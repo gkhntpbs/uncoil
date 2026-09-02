@@ -16,6 +16,9 @@ struct UsageCard: View {
     /// The user's own "low" threshold, so the bars agree with the chip that
     /// opened them.
     var threshold: Double = UsageDisplay.Severity.criticalPercent
+    /// Offered only when there is a session to hand over and an account worth
+    /// handing it away from.
+    var onHandOff: (() -> Void)?
     let onRefresh: () -> Void
 
     private var snapshot: UsageSnapshot? { entry.snapshot }
@@ -33,6 +36,11 @@ struct UsageCard: View {
                 }
             } else {
                 unavailable
+            }
+
+            if let onHandOff, alert.state.isAlerting {
+                Divider().overlay(Theme.border)
+                handoffRow(onHandOff)
             }
 
             Divider().overlay(Theme.border)
@@ -177,6 +185,44 @@ struct UsageCard: View {
         case .planReportsNoQuota: "infinity"
         case .allStrategiesFailed, .none: "cloud-off"
         }
+    }
+
+    private var alert: UsageAlert.Evaluation {
+        UsageAlert.evaluate(snapshot, threshold: threshold)
+    }
+
+    /// The way out of the card and into the choice.
+    ///
+    /// Shown only when the account is actually low: a handoff button on a
+    /// comfortable account is an invitation to move work for no reason, and the
+    /// point of this feature is that the moving is what a limit forces.
+    private func handoffRow(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                TablerIcon(
+                    name: "arrow-move-right", size: 13,
+                    color: alert.state == .reached ? Theme.danger : Theme.warn
+                )
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(alert.state == .reached
+                         ? String(localized: "Hand this work to another agent")
+                         : String(localized: "Hand off before it runs out"))
+                        .font(Theme.mono(.body, .medium))
+                        .foregroundStyle(Theme.text)
+                    Text(String(localized: "Keeps the branch, the changes and what was decided"))
+                        .font(Theme.mono(.small))
+                        .foregroundStyle(Theme.textFaint)
+                }
+                Spacer(minLength: 0)
+                TablerIcon(name: "chevron-right", size: 11, color: Theme.textFaint)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityIdentifier("session.usageHandoff")
     }
 
     // MARK: - Footer

@@ -109,9 +109,14 @@ struct UsageChip: View {
     let provider: AgentProvider
     let account: AccountProfile?
     let isWorking: Bool
-    /// The session the chip sits beside. The figure itself belongs to the
-    /// account either way.
+    /// The session the chip sits beside. Present means a handoff can be
+    /// offered; the figure itself belongs to the account either way.
     var session: SessionRecord?
+    /// Asked for rather than presented here. A sheet put up from inside a
+    /// popover that is closing in the same breath never appears: the popover's
+    /// dismissal tears down the view the presentation was attached to. The
+    /// header owns it instead, because the header is still there afterwards.
+    var onRequestHandoff: ((UsageAlert.Evaluation) -> Void)?
 
     @EnvironmentObject private var usage: UsageStore
     @EnvironmentObject private var settings: SettingsStore
@@ -197,6 +202,12 @@ struct UsageChip: View {
                 entry: entry,
                 now: now,
                 threshold: settings.usageWarningThreshold,
+                onHandOff: (session == nil || onRequestHandoff == nil) ? nil : {
+                    showCard = false
+                    onRequestHandoff?(UsageAlert.evaluate(
+                        snapshot, threshold: settings.usageWarningThreshold
+                    ))
+                },
                 onRefresh: {
                     Task { await usage.refresh(key: key, account: context, userInitiated: true) }
                 }
