@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// User-customizable palette. Every color the UI uses funnels through this;
@@ -56,6 +57,22 @@ struct ThemePalette: Codable, Equatable, Hashable {
     var codex: UInt32 = 0x3B82F6
     /// Optional so a palette written before Gemini existed still decodes.
     var gemini: UInt32? = nil
+    /// Optional for the same reason. These four brands are monochrome or
+    /// near-monochrome, so their marks are the colours most at risk on a light
+    /// background: white-on-white is not a low-contrast mark, it is no mark.
+    var opencode: UInt32? = nil
+    var grok: UInt32? = nil
+    var cursor: UInt32? = nil
+    var amp: UInt32? = nil
+
+    /// What a palette that predates a mark falls back to — the dark preset's
+    /// value, which is also each brand's own. Named once so `Theme` and the
+    /// contrast requirements cannot disagree about them.
+    static let defaultGemini: UInt32 = 0x3186FF
+    static let defaultOpenCode: UInt32 = 0xE0DED4
+    static let defaultGrok: UInt32 = 0xFFFFFF
+    static let defaultCursor: UInt32 = 0xC9C9CF
+    static let defaultAmp: UInt32 = 0x81AE7A
 
     var terminalBg: UInt32 = 0x0F0F11
     var terminalFg: UInt32 = 0xE9E9EC
@@ -90,6 +107,20 @@ struct ThemePalette: Codable, Equatable, Hashable {
         // both under the 3:1 floor `ThemeContrastTests` holds them to.
         claude: 0xB85A38,
         codex: 0x2563EB,
+        // Gemini's blue was never given a light value, and nothing checked it
+        // until the marks were added to `contrastRequirements`: the shipped
+        // 0x3186FF measures 2.92:1 on the hovered panel, under the same 3:1
+        // floor the other two were darkened for.
+        gemini: 0x1A73E8,
+        // Monochrome brands, inverted for a light background rather than
+        // dimmed: on white, Grok's own white measures 1.00:1 — the mark is
+        // simply absent — and the other three sit between 1.03 and 2.54 on the
+        // pressed panel. xAI ships a black variant of its mark for exactly
+        // this case; the rest follow it.
+        opencode: 0x3A382F,
+        grok: 0x1C1C1E,
+        cursor: 0x2C2C2E,
+        amp: 0x3E5A38,
         terminalBg: 0xFFFFFF,
         terminalFg: 0x1C1C1E
     )
@@ -115,6 +146,23 @@ struct ThemePalette: Codable, Equatable, Hashable {
     }
 }
 
+/// Which of the two presets the app wears, or that it follows the Mac.
+enum ThemeAppearance: String, Codable, CaseIterable, Identifiable, Sendable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: String(localized: "System")
+        case .light: String(localized: "Light")
+        case .dark: String(localized: "Dark")
+        }
+    }
+}
+
 @MainActor
 final class ThemeStore: ObservableObject {
     static let shared = ThemeStore()
@@ -129,27 +177,136 @@ final class ThemeStore: ObservableObject {
         }
     }
 
-    private var fileURL: URL {
+    /// Dark, light, or whatever the Mac is doing. Separate from `palette`
+    /// because "follow the system" is not a colour — a palette can only ever
+    /// record which one it currently *is*, not that it was asked to keep up.
+    @Published private(set) var appearance: ThemeAppearance = .system {
+        didSet {
+            guard appearance != oldValue else { return }
+            save()
+        }
+    }
+
+    private var fileURL: URL { Self.fileURL }
+
+    private static var fileURL: URL {
         ProjectStore.defaultDirectory().appendingPathComponent("theme.json")
     }
 
-    private init() {
-        palette = ThemePalette.dark
-        guard let data = try? Data(contentsOf: fileURL),
-              let decoded = try? JSONDecoder().decode(ThemePalette.self, from: data)
-        else { return }
-        // A palette saved before the tokens changed is migrated to the current
-        // preset of its own mode. Keeping it would leave the app half in one
-        // palette and half in another, with the new tokens at their defaults.
-        palette = decoded.version < ThemePalette.currentVersion ? decoded.preset : decoded
+    /// theme.json used to be a bare `ThemePalette`. It is now a wrapper so the
+    /// appearance can live beside it, and the bare form is still decoded — a
+    /// file written by an older build holds the palette somebody chose, and
+    /// throwing it away on upgrade is not a migration, it is a reset.
+    struct Stored: Codable {
+        var palette: ThemePalette
+        var appearance: ThemeAppearance?
     }
 
-    func apply(preset: ThemePalette) {
-        palette = preset
+    private var systemObservation: NSKeyValueObservation?
+    private var systemNotification: (any NSObjectProtocol)?
+
+    private init() {
+        let restored = Self.restore(from: try? Data(contentsOf: Self.fileURL))
+        palette = restored.palette
+        appearance = restored.appearance
+        observeSystemAppearance()
+        if appearance == .system { syncWithSystem(animated: false) }
+    }
+
+    /// Pure, so the one piece of logic that could silently reset every user's
+    /// theme on upgrade is unit-tested rather than trusted.
+    static func restore(from data: Data?) -> (palette: ThemePalette, appearance: ThemeAppearance) {
+        guard let data else { return (.dark, .system) }
+        let decoder = JSONDecoder()
+        if let wrapped = try? decoder.decode(Stored.self, from: data) {
+            let palette = migrated(wrapped.palette)
+            // A file with no appearance in it was written before the choice
+            // existed. Whatever palette it holds is what that user picked by
+            // hand, so it becomes an explicit light or dark rather than
+            // silently starting to follow the Mac and changing under them.
+            return (palette, wrapped.appearance ?? (palette.isLight ? .light : .dark))
+        }
+        if let bare = try? decoder.decode(ThemePalette.self, from: data) {
+            let palette = migrated(bare)
+            return (palette, palette.isLight ? .light : .dark)
+        }
+        // Unreadable: the shipped default, and `system` because a fresh install
+        // has expressed no preference.
+        return (.dark, .system)
+    }
+
+    /// A palette saved before the tokens changed is migrated to the current
+    /// preset of its own mode. Keeping it would leave the app half in one
+    /// palette and half in another, with the new tokens at their defaults.
+    static func migrated(_ palette: ThemePalette) -> ThemePalette {
+        palette.version < ThemePalette.currentVersion ? palette.preset : palette
+    }
+
+    // MARK: - Choosing
+
+    /// The user picking Dark, Light or System.
+    ///
+    /// Cross-fades, because every colour in every window changes at once and an
+    /// instantaneous swap of the whole interface reads as a glitch rather than
+    /// as a setting taking effect.
+    func setAppearance(_ next: ThemeAppearance) {
+        guard next != appearance else { return }
+        ThemeTransition.fade {
+            self.appearance = next
+            switch next {
+            case .system: self.syncWithSystem(animated: false)
+            case .light: self.palette = .light
+            case .dark: self.palette = .dark
+            }
+        }
+    }
+
+
+    // MARK: - Following the Mac
+
+    var systemIsLight: Bool {
+        NSApp?.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) != .darkAqua
+    }
+
+    private func observeSystemAppearance() {
+        // KVO on the application's own effective appearance is the accurate
+        // source: the `AppleInterfaceThemeChanged` distributed notification
+        // fires *before* `effectiveAppearance` has caught up, so reading it
+        // from there gives the value that is on its way out.
+        systemObservation = NSApp?.observe(\.effectiveAppearance) { [weak self] _, _ in
+            Task { @MainActor in self?.systemAppearanceChanged() }
+        }
+        // Belt and braces. The notification is unreliable about *when*, not
+        // about *whether*, and `syncWithSystem` reads the appearance itself and
+        // does nothing when it already matches — so a second, later trigger
+        // costs nothing and covers the case where KVO does not fire at all.
+        systemNotification = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.systemAppearanceChanged() }
+        }
+    }
+
+    private func systemAppearanceChanged() {
+        guard appearance == .system else { return }
+        syncWithSystem(animated: true)
+    }
+
+    private func syncWithSystem(animated: Bool) {
+        let wanted: ThemePalette = systemIsLight ? .light : .dark
+        guard palette.isLight != wanted.isLight else { return }
+        if animated {
+            ThemeTransition.fade { self.palette = wanted }
+        } else {
+            palette = wanted
+        }
     }
 
     private func save() {
-        if let data = try? JSONEncoder().encode(palette) {
+        let stored = Stored(palette: palette, appearance: appearance)
+        if let data = try? JSONEncoder().encode(stored) {
             try? data.write(to: fileURL, options: .atomic)
         }
     }
@@ -247,6 +404,20 @@ extension ThemePalette {
                 label: "codex on \(name)", foreground: codex, background: surface,
                 minimum: Self.minimumSecondaryTextContrast
             ))
+            // Every other agent mark, held to the same bar. Without these the
+            // contrast test could not see the marks that needed it most.
+            for (markName, mark) in [
+                ("gemini", gemini ?? Self.defaultGemini),
+                ("opencode", opencode ?? Self.defaultOpenCode),
+                ("grok", grok ?? Self.defaultGrok),
+                ("cursor", cursor ?? Self.defaultCursor),
+                ("amp", amp ?? Self.defaultAmp),
+            ] {
+                pairs.append(.init(
+                    label: "\(markName) on \(name)", foreground: mark, background: surface,
+                    minimum: Self.minimumSecondaryTextContrast
+                ))
+            }
             // The highlight and the four meanings are used as text and as icons
             // on every surface, so they are held to the same bar as the marks.
             for (meaning, color) in [

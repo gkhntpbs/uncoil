@@ -221,6 +221,18 @@ final class ProjectStoreTests: XCTestCase {
             store.sessions.first(where: { $0.id == first.id })?.providerSessionID,
             "codex-session"
         )
+
+        // A bound record is not a candidate for binding, so one still holding a
+        // conversation the provider has lost could never learn the id of the
+        // session that started in its place — every later launch would ask for
+        // the same dead id again.
+        store.clearProviderSessionID(first.id)
+        XCTAssertNil(store.sessions.first(where: { $0.id == first.id })?.providerSessionID)
+        XCTAssertTrue(store.claimProviderSessionID("codex-session-2", for: first.id))
+        XCTAssertEqual(
+            store.sessions.first(where: { $0.id == first.id })?.providerSessionID,
+            "codex-session-2"
+        )
     }
 
     func testCodexSessionLocatorFindsMatchingRecentMetadata() throws {
@@ -238,14 +250,15 @@ final class ProjectStoreTests: XCTestCase {
             at: sessionDir,
             withIntermediateDirectories: true
         )
+        let now = CodexSessionLocator.timestampFormatter.string(from: .now)
         let matching = sessionDir.appendingPathComponent("matching.jsonl")
         let other = sessionDir.appendingPathComponent("other.jsonl")
         let matchingLine = """
-        {"type":"session_meta","payload":{"id":"match-id","cwd":"/repo/worktree"}}
+        {"type":"session_meta","payload":{"id":"match-id","cwd":"/repo/worktree","timestamp":"\(now)"}}
         {"type":"event_msg","payload":{"type":"task_started"}}
         """
         let otherLine = """
-        {"type":"session_meta","payload":{"id":"other-id","cwd":"/repo/other"}}
+        {"type":"session_meta","payload":{"id":"other-id","cwd":"/repo/other","timestamp":"\(now)"}}
         """
         try matchingLine.write(to: matching, atomically: true, encoding: .utf8)
         try otherLine.write(to: other, atomically: true, encoding: .utf8)
@@ -253,10 +266,83 @@ final class ProjectStoreTests: XCTestCase {
         let candidates = CodexSessionLocator.candidates(
             codexHome: codexHome,
             cwd: "/repo/worktree",
-            modifiedAfter: Date().addingTimeInterval(-5)
+            startedAfter: Date().addingTimeInterval(-5)
         )
 
         XCTAssertEqual(candidates.map(\.id), ["match-id"])
+    }
+
+    /// The bug this ordering exists for. A thread that another agent is still
+    /// writing to in the same directory is modified constantly, so the file
+    /// times say nothing about which thread belongs to the session that just
+    /// started. Only the thread's own start time does.
+    func testTheNewestThreadIsPreferredHoweverTheFilesWereTouched() throws {
+        let codexHome = tempDir.appendingPathComponent("codex", isDirectory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let parts = calendar.dateComponents([.year, .month, .day], from: .now)
+        let sessionDir = codexHome
+            .appendingPathComponent("sessions", isDirectory: true)
+            .appendingPathComponent(String(format: "%04d", parts.year!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.month!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.day!), isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: sessionDir, withIntermediateDirectories: true
+        )
+        let format = CodexSessionLocator.timestampFormatter
+        let older = format.string(from: Date().addingTimeInterval(-3))
+        let newer = format.string(from: Date().addingTimeInterval(-1))
+        let olderURL = sessionDir.appendingPathComponent("older.jsonl")
+        let newerURL = sessionDir.appendingPathComponent("newer.jsonl")
+        try """
+        {"type":"session_meta","payload":{"id":"older","cwd":"/repo","timestamp":"\(older)"}}
+        """.write(to: olderURL, atomically: true, encoding: .utf8)
+        try """
+        {"type":"session_meta","payload":{"id":"newer","cwd":"/repo","timestamp":"\(newer)"}}
+        """.write(to: newerURL, atomically: true, encoding: .utf8)
+        // The long-running one is the most recently *written* file.
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()], ofItemAtPath: olderURL.path
+        )
+
+        let candidates = CodexSessionLocator.candidates(
+            codexHome: codexHome,
+            cwd: "/repo",
+            startedAfter: Date().addingTimeInterval(-10)
+        )
+        XCTAssertEqual(candidates.map(\.id), ["newer", "older"])
+    }
+
+    /// A thread begun before the launch is not this session's, however busy
+    /// its file is.
+    func testAThreadBegunBeforeTheLaunchIsNotACandidate() throws {
+        let codexHome = tempDir.appendingPathComponent("codex", isDirectory: true)
+        let calendar = Calendar(identifier: .gregorian)
+        let parts = calendar.dateComponents([.year, .month, .day], from: .now)
+        let sessionDir = codexHome
+            .appendingPathComponent("sessions", isDirectory: true)
+            .appendingPathComponent(String(format: "%04d", parts.year!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.month!), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", parts.day!), isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: sessionDir, withIntermediateDirectories: true
+        )
+        let old = CodexSessionLocator.timestampFormatter
+            .string(from: Date().addingTimeInterval(-3600))
+        let url = sessionDir.appendingPathComponent("live.jsonl")
+        try """
+        {"type":"session_meta","payload":{"id":"live","cwd":"/repo","timestamp":"\(old)"}}
+        """.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()], ofItemAtPath: url.path
+        )
+
+        XCTAssertTrue(
+            CodexSessionLocator.candidates(
+                codexHome: codexHome,
+                cwd: "/repo",
+                startedAfter: Date().addingTimeInterval(-5)
+            ).isEmpty
+        )
     }
 
     func testWorktreePorcelainParsing() {
@@ -283,20 +369,39 @@ final class ProjectStoreTests: XCTestCase {
 
     func testLaunchCommandComposition() {
         var record = SessionRecord(projectID: UUID(), provider: .claude, accountID: nil, title: "t")
-        XCTAssertEqual(TerminalRegistry.launchCommand(for: record, extraArguments: nil), "claude")
         XCTAssertEqual(
-            TerminalRegistry.launchCommand(for: record, extraArguments: "--model opus"),
+            TerminalRegistry.launchCommand(
+                for: record, resume: .fresh(nil), extraArguments: nil
+            ),
+            "claude"
+        )
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: record, resume: .fresh(nil), extraArguments: "--model opus"
+            ),
             "claude --model opus"
         )
         record.providerSessionID = "abc-1"
         XCTAssertEqual(
-            TerminalRegistry.launchCommand(for: record, extraArguments: " --model opus "),
+            TerminalRegistry.launchCommand(
+                for: record, resume: .resume("abc-1"), extraArguments: " --model opus "
+            ),
             "claude --resume 'abc-1' --model opus"
+        )
+        // The record still carries the id; the decision is what decides. A
+        // conversation the provider no longer has must not put a flag on the
+        // command line that only ends the session on its first line.
+        XCTAssertEqual(
+            TerminalRegistry.launchCommand(
+                for: record, resume: .fresh(.gone), extraArguments: nil
+            ),
+            "claude"
         )
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
                 for: record,
                 binaryPath: "/Users/x/.local/bin/claude",
+                resume: .resume("abc-1"),
                 extraArguments: nil,
                 presetArguments: ["--model", "sonnet"],
                 modeArguments: ["--permission-mode", "auto"]
@@ -306,6 +411,7 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
                 for: record,
+                resume: .resume("abc-1"),
                 extraArguments: nil,
                 presetArguments: ["--label", "review'; touch /tmp/unsafe; echo '"]
             ),
@@ -315,6 +421,7 @@ final class ProjectStoreTests: XCTestCase {
             TerminalRegistry.launchCommand(
                 for: record,
                 binaryPath: "/Users/x/.local/bin/claude",
+                resume: .resume("abc-1"),
                 extraArguments: nil
             ),
             "\"/Users/x/.local/bin/claude\" --resume 'abc-1'"
@@ -326,6 +433,7 @@ final class ProjectStoreTests: XCTestCase {
             TerminalRegistry.launchCommand(
                 for: resumedCodex,
                 binaryPath: "/opt/homebrew/bin/codex",
+                resume: .resume("019efe2f-5276-77c2-bd90-5191ecd4b7a0"),
                 extraArguments: nil
             ),
             "\"/opt/homebrew/bin/codex\" resume '019efe2f-5276-77c2-bd90-5191ecd4b7a0'"
@@ -334,6 +442,7 @@ final class ProjectStoreTests: XCTestCase {
             TerminalRegistry.launchCommand(
                 for: codex,
                 binaryPath: "/opt/homebrew/bin/codex",
+                resume: .fresh(nil),
                 mcpBinaryPath: "/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp",
                 mcpEnvironment: [
                     "UNCOIL_SESSION_ID": "session-1",
@@ -345,7 +454,11 @@ final class ProjectStoreTests: XCTestCase {
             "\"/opt/homebrew/bin/codex\" -c 'mcp_servers.uncoil.command=\"/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp\"' -c 'mcp_servers.uncoil.env.UNCOIL_CONTROL_SOCKET=\"/tmp/uncoil.sock\"' -c 'mcp_servers.uncoil.env.UNCOIL_PROJECT_ID=\"project-1\"' -c 'mcp_servers.uncoil.env.UNCOIL_SESSION_ID=\"session-1\"'"
         )
         let shell = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "sh")
-        XCTAssertNil(TerminalRegistry.launchCommand(for: shell, extraArguments: "x"))
+        XCTAssertNil(
+            TerminalRegistry.launchCommand(
+                for: shell, resume: .fresh(nil), extraArguments: "x"
+            )
+        )
     }
 
     func testGitHubRepoSlugParsing() {
@@ -421,8 +534,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.accounts(for: .claude).count, 1)
         XCTAssertEqual(store.accounts(for: .codex).count, 1)
         XCTAssertNil(store.accounts(for: .claude)[0].directoryName)
-        XCTAssertEqual(store.workingMode(for: .claude), .manual)
-        XCTAssertEqual(store.workingMode(for: .codex), .askForApproval)
+        XCTAssertEqual(store.workingMode(for: .claude), .providerDefault)
+        XCTAssertEqual(store.workingMode(for: .codex), .providerDefault)
     }
 
     func testAddedAccountGetsIsolatedConfigDirAndPersists() {
@@ -563,18 +676,65 @@ final class SettingsStoreTests: XCTestCase {
     func testUnsupportedWorkingModeIsIgnored() {
         let store = SettingsStore(directory: tempDir)
         store.setWorkingMode(.plan, for: .codex)
-        XCTAssertEqual(store.workingMode(for: .codex), .askForApproval)
+        XCTAssertEqual(store.workingMode(for: .codex), .providerDefault)
+    }
+
+    /// Uncoil adds no flag it was not asked for, and that has to include the
+    /// flags nobody asked for by default. Before this, every Codex launch
+    /// carried `--sandbox` and `--ask-for-approval` whether or not the user
+    /// had ever opened the setting, so whatever they had configured in
+    /// `~/.codex/config.toml` was overruled on every launch.
+    func testAnUntouchedProviderAddsNoModeFlags() {
+        let store = SettingsStore(directory: tempDir)
+        for provider in AgentProvider.agents {
+            XCTAssertEqual(
+                store.workingMode(for: provider), .providerDefault, provider.rawValue
+            )
+            XCTAssertTrue(
+                store.workingModeArguments(for: provider).isEmpty, provider.rawValue
+            )
+        }
+    }
+
+    func testAChosenModeIsKeptAndUsed() {
+        let store = SettingsStore(directory: tempDir)
+        store.setWorkingMode(.readOnly, for: .codex)
+        XCTAssertEqual(store.workingMode(for: .codex), .readOnly)
+        XCTAssertEqual(
+            store.workingModeArguments(for: .codex),
+            ["--sandbox", "read-only", "--ask-for-approval", "on-request"]
+        )
     }
 
     func testWorkingModeOptionsAndArgumentsMatchProviders() {
         XCTAssertEqual(
             AgentWorkingMode.options(for: .claude),
-            [.manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
+            [.providerDefault, .manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
         )
         XCTAssertEqual(
             AgentWorkingMode.options(for: .codex),
-            [.askForApproval, .approveForMe, .fullAccess]
+            [.providerDefault, .readOnly, .askForApproval, .approveForMe, .fullAccess]
         )
+        // Read-only used to be normalised into Codex's workspace-write, which
+        // is to say the one mode that promises not to write was the one that
+        // could. It is its own mode now, and it is not mapped onto anything.
+        XCTAssertEqual(AgentWorkingMode.readOnly.normalized(for: .codex), .readOnly)
+        XCTAssertEqual(
+            AgentWorkingMode.readOnly.launchArguments(for: .codex),
+            ["--sandbox", "read-only", "--ask-for-approval", "on-request"]
+        )
+        // The provider's own default adds nothing, for every provider.
+        for provider in AgentProvider.allCases {
+            XCTAssertEqual(
+                AgentWorkingMode.providerDefault.normalized(for: provider),
+                .providerDefault,
+                provider.rawValue
+            )
+            XCTAssertTrue(
+                AgentWorkingMode.providerDefault.launchArguments(for: provider).isEmpty,
+                provider.rawValue
+            )
+        }
         XCTAssertEqual(
             AgentWorkingMode.dangerouslySkipPermissions.launchArguments(for: .claude),
             ["--dangerously-skip-permissions"]

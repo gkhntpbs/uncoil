@@ -11,6 +11,9 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
     case geminiCLI
     case cursor
     case amp
+    case opencode
+    case grok
+    case hermes
 
     var id: String { rawValue }
 
@@ -21,6 +24,9 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .geminiCLI: "Gemini CLI"
         case .cursor: "Cursor"
         case .amp: "Amp"
+        case .opencode: "OpenCode"
+        case .grok: "Grok CLI"
+        case .hermes: "Hermes"
         }
     }
 
@@ -30,17 +36,58 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .claudeCode: .claude
         case .codex: .codex
         case .geminiCLI: .gemini
-        case .cursor, .amp: nil
+        case .opencode: .opencode
+        case .grok: .grok
+        case .hermes: .hermes
+        case .cursor: .cursor
+        case .amp: nil
+        }
+    }
+
+    /// The executable looked up on the search path when detecting an install.
+    ///
+    /// Lives on the enum rather than in each adapter because detection has to
+    /// work for agents that have no adapter yet — finding a CLI is a fact
+    /// about the machine, not about how much of the agent Uncoil manages.
+    var cliBinaryName: String {
+        switch self {
+        case .claudeCode: "claude"
+        case .codex: "codex"
+        case .geminiCLI: "gemini"
+        case .cursor: "cursor-agent"
+        case .amp: "amp"
+        case .opencode: "opencode"
+        case .grok: "grok"
+        case .hermes: "hermes"
+        }
+    }
+
+    /// The agent's documented default config root, relative to home. Display
+    /// and detection only — reading or writing anything inside it is adapter
+    /// work, and an agent without an adapter gets neither.
+    var defaultConfigDirectory: String {
+        switch self {
+        case .claudeCode: ".claude"
+        case .codex: ".codex"
+        case .geminiCLI: ".gemini"
+        case .cursor: ".cursor"
+        case .amp: ".config/amp"
+        case .opencode: ".config/opencode"
+        case .grok: ".grok"
+        // `HERMES_HOME` moves this root wholesale; `HermesAdapter` resolves it.
+        case .hermes: ".hermes"
         }
     }
 
     /// Agents with an adapter today; the rest are listed but not managed.
     ///
-    /// Gemini CLI, Cursor and Amp are managed through the shared JSON adapter:
-    /// their MCP servers are read and written, but neither skills nor
-    /// authentication are, so they are not equals of Claude Code and Codex.
+    /// Gemini CLI, Cursor and Amp are managed through the shared JSON adapter,
+    /// OpenCode through its own (same JSON surgery, different shape): their
+    /// MCP servers are read and written, but neither skills nor authentication
+    /// are, so they are not equals of Claude Code and Codex. Grok CLI has its
+    /// own adapter over the same TOML tables Codex uses.
     static var supported: [ExtensionAgentID] {
-        [.claudeCode, .codex, .geminiCLI, .cursor, .amp]
+        [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok, .hermes]
     }
 
     /// Agents Uncoil can also launch a session for.

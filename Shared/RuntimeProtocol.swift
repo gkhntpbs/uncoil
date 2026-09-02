@@ -14,6 +14,10 @@ enum RuntimeProtocol {
     /// agent that dies stops holding the task.
     static let taskLeaseDuration: TimeInterval = 15 * 60
     static let socketName = "runtime.sock"
+    /// Appended to the socket path. The daemon takes an exclusive `flock` on it
+    /// and writes its pid there, so the app can end a daemon that has stopped
+    /// answering instead of leaving one behind that only a reboot clears.
+    static let lockSuffix = ".lock"
     /// Per-session replay buffer cap inside the daemon.
     static let replayBufferLimit = 512 * 1024
     static let replayDiskLimit = 16 * 1024 * 1024
@@ -25,6 +29,15 @@ enum RuntimeProtocol {
     /// an end: past this, the client is not slow, it is gone, and the app can
     /// reconnect and be sent the replay.
     static let clientBacklogLimit = 8 * 1024 * 1024
+    /// How much unsent keyboard input the daemon holds for one session before
+    /// it gives up on it.
+    ///
+    /// A PTY's input queue is a few kilobytes deep, and a child that has
+    /// stopped reading stdin fills it. The daemon queues the rest rather than
+    /// waiting inside `write(2)` — see `drainInput(_:)` in uncoil-runtimed —
+    /// and past this much the child is not busy, it is wedged, and holding
+    /// more only costs memory.
+    static let sessionInputLimit = 1024 * 1024
     static let logFileLimit = 1024 * 1024
     static let logGenerations = 3
     static let sessionIdleThreshold: TimeInterval = 60 * 60

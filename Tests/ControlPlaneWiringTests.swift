@@ -35,6 +35,7 @@ final class ControlPlaneWiringTests: XCTestCase {
         )
         let command = try XCTUnwrap(TerminalRegistry.launchCommand(
             for: record,
+            resume: .fresh(nil),
             mcpConfigPath: "/tmp/should-not-be-used.json",
             mcpBinaryPath: "/tmp/uncoil-mcp",
             mcpEnvironment: ["UNCOIL_SESSION_ID": record.id.uuidString],
@@ -49,6 +50,7 @@ final class ControlPlaneWiringTests: XCTestCase {
         )
         let command = try XCTUnwrap(TerminalRegistry.launchCommand(
             for: record,
+            resume: .fresh(nil),
             mcpConfigPath: "/tmp/session.json",
             mcpBinaryPath: "/tmp/uncoil-mcp",
             extraArguments: nil

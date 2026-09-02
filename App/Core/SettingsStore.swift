@@ -72,12 +72,20 @@ final class SettingsStore: ObservableObject {
         /// Capabilities stamped onto newly created sessions; nil ⇒ the control
         /// plane's own default grant set.
         var sessionCapabilityDefaults: [String]? = nil
+        /// Where the user told Uncoil to look for a CLI, keyed by command name
+        /// (`hermes`, `cursor-agent`, …) rather than by agent, because that is
+        /// what `BinarySearchPath` searches by and what session launch and the
+        /// Extensions screen both ask it for. nil ⇒ nobody has had to.
+        var agentBinaryLocations: [String: String]? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
     @Published var defaultProvider: AgentProvider = .claude
     @Published private(set) var defaultAccountByProvider: [String: UUID] = [:]
     @Published private(set) var resolvedBinaries: [String: String] = [:]
+    /// User-chosen CLI locations, keyed by command name. Mirrored into
+    /// `BinarySearchPath` on every change so the two can never disagree.
+    @Published private(set) var agentBinaryLocations: [String: String] = [:]
     /// Extra CLI arguments appended to the agent launch command, per provider.
     @Published var extraArguments: [String: String] = [:]
     @Published var preferredEditor: PreferredEditor = .vscode
@@ -152,6 +160,7 @@ final class SettingsStore: ObservableObject {
         // is no settings.json — on a first launch that left the global holding
         // whatever the last store had put there.
         AttentionMotion.shared.emphasis = attentionEmphasis
+        BinarySearchPath.setUserLocations(agentBinaryLocations)
         ensureDefaultAccounts()
     }
 
@@ -206,13 +215,17 @@ final class SettingsStore: ObservableObject {
         save()
     }
 
+    /// The mode a session launches with when nobody picked one.
+    ///
+    /// The provider's own, for every provider. It used to be `manual` for
+    /// Claude and `askForApproval` for Codex, which meant Uncoil put
+    /// `--permission-mode` and `--sandbox`/`--ask-for-approval` on the command
+    /// line of a user who had never asked for either — overruling what they
+    /// had set in the CLI's own configuration, every launch, with no way to
+    /// stop it. Uncoil adds no flag it was not asked for; that has to include
+    /// the flags it was not asked for by default.
     func workingMode(for provider: AgentProvider) -> AgentWorkingMode {
-        let fallback: AgentWorkingMode = switch provider {
-        case .claude: .manual
-        case .codex: .askForApproval
-        case .gemini: .providerDefault
-        case .terminal: .providerDefault
-        }
+        let fallback: AgentWorkingMode = .providerDefault
         let mode = (providerBehaviors[provider.rawValue]?.workingMode ?? fallback)
             .normalized(for: provider)
         return AgentWorkingMode.options(for: provider).contains(mode)
@@ -416,10 +429,18 @@ final class SettingsStore: ObservableObject {
             }
             return "linked"  // auth file exists but no readable identity
 
-        // Nothing is read for Gemini: where its CLI keeps its identity, and in
-        // what shape, is not verified here. Reporting "linked" off a file whose
+        // Nothing is read for Gemini or OpenCode: where their CLIs keep an
+        // identity, and in what shape, is not verified here. OpenCode's
+        // credentials live outside its config root entirely
+        // (~/.local/share/opencode), and reporting "linked" off a file whose
         // meaning is a guess would be worse than reporting nothing.
-        case .gemini, .terminal:
+        //
+        // Hermes is the same: `~/.hermes/auth.json` holds per-provider
+        // credential state, and whether an identity is in it depends on
+        // which provider the user signed in to. `HermesAdapter` still
+        // reports the file's presence as "somebody signed in", which is
+        // all it can honestly say.
+        case .gemini, .opencode, .grok, .cursor, .hermes, .terminal:
             return nil
         }
     }
@@ -428,6 +449,60 @@ final class SettingsStore: ObservableObject {
 
     func binaryPath(for provider: AgentProvider) -> String? {
         resolvedBinaries[provider.rawValue]
+    }
+
+    // MARK: - User-chosen CLI locations
+
+    /// What came of pointing Uncoil at a location, so the UI can say something
+    /// specific instead of leaving the row unchanged and the user guessing.
+    enum AgentLocationOutcome: Equatable {
+        case resolved(String)
+        /// The path is fine; there is just no `command` under it.
+        case nothingExecutableThere
+    }
+
+    /// Points Uncoil at a location for one CLI. The path may be the executable
+    /// itself or a directory holding it.
+    ///
+    /// Refuses a location that finds nothing rather than storing it: a setting
+    /// that visibly did nothing is how "I told it where the agent is and it
+    /// still says not found" happens, and the caller can only explain that if
+    /// this says so.
+    @discardableResult
+    func setAgentBinaryLocation(
+        _ path: String, forCommand command: String
+    ) -> AgentLocationOutcome {
+        guard let resolved = BinarySearchPath.resolveUserLocation(path, command: command) else {
+            return .nothingExecutableThere
+        }
+        agentBinaryLocations[command] = (path as NSString).expandingTildeInPath
+        applyAgentBinaryLocations(invalidating: command)
+        return .resolved(resolved)
+    }
+
+    func clearAgentBinaryLocation(forCommand command: String) {
+        guard agentBinaryLocations.removeValue(forKey: command) != nil else { return }
+        applyAgentBinaryLocations(invalidating: command)
+    }
+
+    func agentBinaryLocation(forCommand command: String) -> String? {
+        agentBinaryLocations[command]
+    }
+
+    /// Mirrors the locations into the search path and drops the cached
+    /// resolution for whichever providers run `command`.
+    ///
+    /// Dropping the cache is the part that is easy to forget and impossible to
+    /// diagnose: `resolveBinaries()` only re-resolves an entry once its old path
+    /// stops being executable, so without this a chosen location would be
+    /// obeyed by the Extensions screen and ignored by session launch until the
+    /// old copy was deleted.
+    private func applyAgentBinaryLocations(invalidating command: String) {
+        BinarySearchPath.setUserLocations(agentBinaryLocations)
+        for provider in AgentProvider.agents where provider.launchCommand == command {
+            resolvedBinaries[provider.rawValue] = nil
+        }
+        save()
     }
 
     /// Resolves the provider CLI through the user's login shell once and caches it.
@@ -464,20 +539,56 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    func updateAvailable(for provider: AgentProvider) -> Bool {
-        CLIToolService.isNewer(
-            cliLatest[provider.rawValue],
-            than: cliVersions[provider.rawValue]
+    /// What the Agents screen says about one agent, and whether it offers a
+    /// button. One computation, so the row, the badge and the update action can
+    /// never disagree about whether there is something to do.
+    func updateAvailability(for provider: AgentProvider) -> AgentUpdateAvailability {
+        let source = installSource(for: provider)
+        return AgentUpdateCheck.availability(
+            installed: binaryPath(for: provider) == nil
+                ? nil
+                : cliVersions[provider.rawValue],
+            latest: cliLatest[provider.rawValue],
+            plan: updatePlan(for: provider),
+            versionSource: AgentUpdateCheck.versionSource(provider: provider, source: source),
+            isNewer: CLIToolService.isNewer
         )
     }
 
-    /// Refreshes installed versions and checks the registry for updates.
+    func updateAvailable(for provider: AgentProvider) -> Bool {
+        updateAvailability(for: provider).isPending
+    }
+
+    /// Agents with a newer version waiting. What the badge counts.
+    var pendingCLIUpdates: [AgentProvider] {
+        AgentProvider.agents.filter { updateAvailability(for: $0).isPending }
+    }
+
+    /// Refreshes installed versions and asks each install's own channel
+    /// whether there is anything newer.
     func checkCLIUpdates() async {
         cliChecking = true
         await refreshCLIVersions()
+        // Homebrew is asked once for everything rather than once per agent:
+        // `brew outdated` is a second of work and two agents can come from it.
+        let brew = await Task.detached(priority: .utility) {
+            CLIToolService.brewOutdated()
+        }.value
         for provider in AgentProvider.agents {
-            if let latest = await CLIToolService.latestVersion(provider: provider) {
+            let source = installSource(for: provider)
+            if let latest = await CLIToolService.latestVersion(
+                provider: provider,
+                source: source,
+                binaryPath: binaryPath(for: provider),
+                installed: cliVersions[provider.rawValue],
+                brewOutdated: brew
+            ) {
                 cliLatest[provider.rawValue] = latest
+            } else {
+                // A channel that cannot answer must clear the last answer it
+                // gave, or a tool that moves from npm to Homebrew keeps
+                // advertising the npm version forever.
+                cliLatest[provider.rawValue] = nil
             }
         }
         cliChecking = false
@@ -523,43 +634,88 @@ final class SettingsStore: ObservableObject {
         )
     }
 
-    /// Resolves a CLI by name using well-known install locations and an
-    /// interactive login shell. Reused by the control-plane adapters to locate
-    /// optional external drivers (agent-browser / cua-driver).
+    /// Resolves a CLI by name using well-known install locations and, failing
+    /// those, the login shell's own PATH. Reused by the control-plane adapters
+    /// to locate optional external drivers (agent-browser / cua-driver).
     nonisolated static func which(_ command: String) -> String? {
         // 1) Well-known install locations first: GUI apps start with a
         //    minimal PATH, and users often extend PATH only in ~/.zshrc.
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let knownLocations = [
-            "\(home)/.local/bin/\(command)",
-            "\(home)/.claude/local/\(command)",
-            "/opt/homebrew/bin/\(command)",
-            "/usr/local/bin/\(command)",
-            "\(home)/.npm-global/bin/\(command)",
-            "\(home)/.bun/bin/\(command)",
-        ]
-        for candidate in knownLocations where FileManager.default.isExecutableFile(atPath: candidate) {
-            return candidate
-        }
+        //    Shared with the Extensions adapters through `BinarySearchPath`, so
+        //    both answer "installed?" the same way.
+        if let path = BinarySearchPath.locate(command) { return path }
 
-        // 2) Interactive login shell (-l -i sources both zprofile and zshrc).
+        // 2) Anywhere else the login shell would look. This used to run
+        //    `command -v <name>` in a fresh `zsh -l -i` per lookup, which is
+        //    one shell spawn per *miss* — and a miss is the common case, since
+        //    a machine has a couple of these CLIs and is asked about all of
+        //    them. Asking once for the whole PATH and then testing files makes
+        //    the seventh lookup free.
+        for directory in loginShellPATH {
+            let candidate = "\(directory)/\(command)"
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+
+    /// The directories on an interactive login shell's PATH, minus the ones
+    /// `BinarySearchPath` already covers.
+    nonisolated static var loginShellPATH: [String] {
+        let known = Set(BinarySearchPath.directories())
+        return interactivePATH.filter { !known.contains($0) }
+    }
+
+    /// Exactly what an interactive login shell has on its PATH, in its order.
+    ///
+    /// The order is the part that matters and the part that used to be lost.
+    /// A machine can have two Node installations — Homebrew's and nvm's — and
+    /// which one a command resolves to is decided by which directory comes
+    /// first. Anything that runs a tool on the user's behalf has to run it
+    /// with *this* PATH, or it runs a different program with the same name.
+    ///
+    /// Resolved once per process — `static let` is lazy and its initialiser
+    /// runs exactly once even under concurrent access — because sourcing a
+    /// user's shell profile is expensive and its answer does not change while
+    /// the app is open. Never call this from the main actor: the first caller
+    /// pays for the spawn.
+    nonisolated static let interactivePATH: [String] = {
         let process = Process()
         process.executableURL = URL(
             fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         )
-        process.arguments = ["-l", "-i", "-c", "command -v \(command)"]
+        // -l -i sources both zprofile and zshrc, which is where a user's PATH
+        // additions actually live.
+        process.arguments = ["-l", "-i", "-c", "printf %s \"$PATH\""]
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = Pipe()
-        guard (try? process.run()) != nil else { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        // Discarded rather than piped: an unread pipe fills at 64 KB and the
+        // shell blocks writing into it forever, taking `waitUntilExit` — and
+        // whatever was waiting on this — down with it. A chatty ~/.zshrc is
+        // enough to do that.
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return [] }
+
+        // A profile that prompts, or waits on a network mount, must not hang
+        // the app: read on a worker, give it a few seconds, then kill it.
+        let output = DispatchGroup()
+        output.enter()
+        var data = Data()
+        DispatchQueue.global(qos: .utility).async {
+            data = pipe.fileHandleForReading.readDataToEndOfFile()
+            output.leave()
+        }
+        if output.wait(timeout: .now() + 5) == .timedOut {
+            process.terminate()
+            return []
+        }
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-        let path = String(data: data, encoding: .utf8)?
+        guard process.terminationStatus == 0 else { return [] }
+
+        return String(decoding: data, as: UTF8.self)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .split(separator: "\n").last.map(String.init)
-        return path?.isEmpty == false ? path : nil
-    }
+            .split(separator: ":")
+            .map(String.init)
+            .filter { !$0.isEmpty }
+    }()
 
     // MARK: - Onboarding
 
@@ -638,6 +794,7 @@ final class SettingsStore: ObservableObject {
         defaultAccountByProvider = decoded.defaultAccountByProvider
         defaultProvider = decoded.defaultProvider
         resolvedBinaries = decoded.resolvedBinaries
+        agentBinaryLocations = decoded.agentBinaryLocations ?? [:]
         extraArguments = decoded.extraArguments
         preferredEditor = decoded.preferredEditor
         notifications = decoded.notifications
@@ -714,7 +871,8 @@ final class SettingsStore: ObservableObject {
             onboardingVersion: onboardingVersion,
             onboardingCompletedSteps: onboardingCompletedSteps.isEmpty
                 ? nil : onboardingCompletedSteps.sorted(),
-            sessionCapabilityDefaults: sessionCapabilityDefaults
+            sessionCapabilityDefaults: sessionCapabilityDefaults,
+            agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

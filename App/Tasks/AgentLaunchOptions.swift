@@ -90,6 +90,35 @@ enum AgentLaunchCatalog {
             // would be handed to `--model` and fail the launch, and there is
             // no `--help` line to read them from the way Claude's efforts are.
             break
+        case .opencode:
+            // Same reasoning, and more so: OpenCode's model ids are
+            // `provider/model` and come from whatever providers the user
+            // configured, so no list can be right for two machines. Its
+            // `--variant` (reasoning effort) is documented on `run`, not on
+            // the TUI Uncoil launches, so no effort picker is offered either.
+            break
+        case .grok:
+            // `--model` and `--reasoning-effort` are both documented, but
+            // neither lists its values in `--help`: models come from the
+            // account (`grok models`) and the effort levels are named only in
+            // config. A picker here would be a guess, so selections made
+            // elsewhere are passed through and nothing is offered.
+            break
+        case .cursor:
+            // `--list-models` is an account query, not a help line, so the
+            // names cannot be known without running the CLI. Same rule.
+            break
+        case .hermes:
+            // No model list: Hermes' ids are `provider/model` drawn from
+            // whatever providers the account has configured, so no fixed list
+            // could be right on two machines. The reasoning levels are
+            // different — `--reasoning` names its own values in `--help`, so
+            // they are read from there rather than hard-coded, exactly as
+            // Claude's `--effort` levels are.
+            if let helpText, helpText.contains("--reasoning") {
+                result.efforts = reasoningLevels(fromHelp: helpText)
+                    .map { AgentLaunchCapabilities.Option(id: $0, label: $0) }
+            }
         case .terminal:
             break
         }
@@ -111,6 +140,34 @@ enum AgentLaunchCatalog {
         return levels.isEmpty ? ["low", "medium", "high"] : levels
     }
 
+    /// Hermes names its reasoning levels in prose rather than in parentheses:
+    /// "Reasoning effort for this invocation: none, minimal, low, medium, high,
+    /// xhigh, max, or ultra. Overrides …". So the list is the comma-separated
+    /// run after the colon, stopping at the sentence that follows it — and a
+    /// build that adds or drops a level is followed automatically, which is the
+    /// whole reason this is read rather than typed out.
+    ///
+    /// Returns empty rather than a guess when the line cannot be read: no
+    /// picker is better than one offering a level the CLI would reject.
+    static func reasoningLevels(fromHelp helpText: String) -> [String] {
+        guard let flag = helpText.range(of: "--reasoning") else { return [] }
+        let after = helpText[flag.upperBound...]
+        guard let colon = after.firstIndex(of: ":") else { return [] }
+        // The description is wrapped across lines by argparse, so the sentence
+        // has to be rejoined before it can be split on commas.
+        let sentence = after[after.index(after: colon)...]
+            .prefix { $0 != "." }
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        return sentence
+            .split(separator: ",")
+            .map {
+                $0.replacingOccurrences(of: "or ", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty && !$0.contains(" ") }
+    }
+
     /// `model = "gpt-…"` from a TOML the CLI wrote. Line-based on purpose: a
     /// full TOML parser for one key is more code than the key deserves.
     static func codexConfigValue(_ config: String?, key: String) -> String? {
@@ -127,6 +184,33 @@ enum AgentLaunchCatalog {
             return value.isEmpty ? nil : value
         }
         return nil
+    }
+
+    /// Codex's two axes as the app server wants them, rather than as flags.
+    ///
+    /// The app server takes no command line, so the same choice has to arrive
+    /// as two protocol fields — and that second mapping had drifted from the
+    /// first: everything it did not name fell through to workspace-write, so
+    /// Read Only could write, and "the provider's own settings" was Uncoil's
+    /// settings. Kept beside the flag mapping so the two cannot part again.
+    static func codexApproval(
+        mode: AgentWorkingMode,
+        config: String?
+    ) -> (approvalPolicy: String, sandbox: String) {
+        switch mode.normalized(for: .codex) {
+        case .readOnly: ("on-request", "read-only")
+        case .askForApproval: ("on-request", "workspace-write")
+        case .approveForMe: ("never", "workspace-write")
+        case .fullAccess: ("never", "danger-full-access")
+        default:
+            // What the user set in `~/.codex/config.toml`, which is what
+            // "provider default" means. The fallbacks are the pair Uncoil sent
+            // before there was any way to ask it to leave the choice alone.
+            (
+                codexConfigValue(config, key: "approval_policy") ?? "on-request",
+                codexConfigValue(config, key: "sandbox_mode") ?? "workspace-write"
+            )
+        }
     }
 
     // MARK: - Arguments
@@ -152,6 +236,25 @@ enum AgentLaunchCatalog {
             // `--model` is documented, so it is passed when the user picked
             // one; there is no verified effort flag, so none is invented.
             if let model = selection.model { arguments += ["--model", model] }
+        case .opencode:
+            // `--model` is on the TUI's own help; `--variant` is not, so an
+            // effort picked elsewhere is deliberately not passed here.
+            if let model = selection.model { arguments += ["--model", model] }
+        case .grok:
+            if let model = selection.model { arguments += ["--model", model] }
+            if let effort = selection.effort {
+                arguments += ["--reasoning-effort", effort]
+            }
+        case .cursor:
+            // `--model` is documented; Cursor carries effort inside the model
+            // id (`claude-opus-4-8[effort=high]`) rather than as a flag, so
+            // there is nothing separate to pass.
+            if let model = selection.model { arguments += ["--model", model] }
+        case .hermes:
+            // Both documented on the top-level parser: `-m/--model` and
+            // `--reasoning LEVEL`.
+            if let model = selection.model { arguments += ["-m", model] }
+            if let effort = selection.effort { arguments += ["--reasoning", effort] }
         case .terminal:
             break
         }

@@ -73,6 +73,7 @@ struct SettingsView: View {
         case general
         case input
 
+        case installedAgents
         case accounts
         case cliTools
         case launchArgs
@@ -103,7 +104,7 @@ struct SettingsView: View {
         var category: Category {
             switch self {
             case .general, .input: .general
-            case .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
+            case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours,
                  .projectNotifications: .notifications
             // How Uncoil looks and what it puts in front of you.
@@ -125,6 +126,7 @@ struct SettingsView: View {
             switch self {
             case .general: String(localized: "General")
             case .input: String(localized: "Keyboard and Input")
+            case .installedAgents: String(localized: "Installed Agents")
             case .accounts: String(localized: "Accounts")
             case .cliTools: String(localized: "CLI Tools")
             case .launchArgs: String(localized: "Run Parameters")
@@ -152,6 +154,7 @@ struct SettingsView: View {
             switch self {
             case .general: "gearshape"
             case .input: "keyboard"
+            case .installedAgents: "point.3.connected.trianglepath.dotted"
             case .accounts: "person.2"
             case .cliTools: "terminal"
             case .launchArgs: "command"
@@ -183,6 +186,7 @@ struct SettingsView: View {
             case .general:
                 "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette"
             case .input: "klavye keyboard shift enter newline satır line yapıştır paste görsel image ⌘v pano clipboard giriş input option meta alt değiştirici modifier"
+            case .installedAgents: "agent ajan bağla connect hook kanca algıla detect tara scan claude codex gemini cursor amp opencode grok hermes seviye level konum location bul locate yol path import içe aktar kurulum install bulunamadı not found"
             case .accounts: "hesap account claude codex login giriş profil profile e-posta email"
             case .cliTools: "cli güncelle update sürüm version brew npm kurulum install"
             case .launchArgs: "parametre argüman argument model flag bayrak"
@@ -230,8 +234,8 @@ struct SettingsView: View {
 
     private var isSearching: Bool { !matches.isEmpty || !search.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// See the `.id` on the body for why this exists and why the Tema pane is
-    /// the exception.
+    /// See the `.id` on the detail pane for why this exists and why the Theme
+    /// pane is the exception.
     private var paletteIdentity: AnyHashable {
         pane == .theme ? AnyHashable(theme.palette.isLight) : AnyHashable(theme.palette)
     }
@@ -244,6 +248,14 @@ struct SettingsView: View {
                 .navigationSplitViewColumnWidth(min: 186, ideal: 208, max: 260)
         } detail: {
             detail
+                // Scoped to the detail pane rather than to the whole split
+                // view. `.id` rebuilds what it is attached to, and attached to
+                // the window it rebuilt the sidebar as well — which threw the
+                // source list back to the top every time the theme changed,
+                // right when the user was in Theme and Colours looking at it.
+                // The sidebar does not need it: it is drawn by this view's own
+                // body, which re-evaluates when `theme` publishes.
+                .id(paletteIdentity)
         }
         .navigationTitle(pane.title)
         .navigationSubtitle(pane.category.title)
@@ -252,12 +264,6 @@ struct SettingsView: View {
         .tint(Theme.highlight)
         .foregroundStyle(Theme.text)
         .background(Theme.bg)
-        // `Theme.*` are static reads SwiftUI cannot track, so a palette edit
-        // has to re-identify the view to reach them. Everywhere except the Tema
-        // pane that key is the whole palette; there it is the mode alone,
-        // because re-identifying while a colour picker is open tears the picker
-        // out from under the drag.
-        .id(paletteIdentity)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.container")
         .onAppear { applyRequestedPane() }
@@ -314,6 +320,7 @@ struct SettingsView: View {
         switch pane {
         case .general: GeneralSettingsPage()
         case .input: InputSettingsPage()
+        case .installedAgents: AgentsSettingsPage()
         case .accounts: AccountsSettingsPage()
         case .cliTools: CLIToolsSettingsPage()
         case .launchArgs: LaunchArgumentsSettingsPage()

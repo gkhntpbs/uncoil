@@ -15,6 +15,14 @@ struct SidebarView: View {
     let openProject: (UUID) -> Void
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @Environment(\.openWindow) private var openWindow
+
+    /// Agent CLIs with a newer version waiting, which is what the badge on the
+    /// settings button counts. Only versions Uncoil has actually seen: a tool
+    /// that can only be asked by running its own updater is not evidence of
+    /// anything, and a badge counting those would show a number that never
+    /// went down.
+    private var pendingUpdates: [AgentProvider] { settings.pendingCLIUpdates }
+
     @State private var showCreateGroup = false
     @State private var showBulkDelete = false
     @State private var groupName = ""
@@ -135,9 +143,18 @@ struct SidebarView: View {
             OnboardingResumeRow()
 
             HStack(spacing: 2) {
-                RailButton(iconName: "settings", help: String(localized: "Settings")) {
+                RailButton(
+                    iconName: "settings",
+                    help: pendingUpdates.isEmpty
+                        ? String(localized: "Settings")
+                        : String(localized: "Settings — \(pendingUpdates.count) agent updates waiting")
+                ) {
                     openWindow(id: "settings")
                 }
+                .countBadge(
+                    pendingUpdates.count,
+                    label: String(localized: "\(pendingUpdates.count) updates waiting")
+                )
                 .accessibilityIdentifier("sidebar.settingsButton")
                 RailButton(iconName: "plus", help: String(localized: "Add a project")) {
                     showFolderPicker = true

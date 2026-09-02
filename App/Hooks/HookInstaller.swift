@@ -127,6 +127,19 @@ enum HookInstaller {
         }
     }
 
+    /// Everything a status check needs, from one read of the settings file.
+    ///
+    /// `stale` is false when the bundle has no helper at all — there is
+    /// nothing to compare against, and `helperMissing` is a different problem
+    /// with its own message.
+    static func inspect() -> (status: Status, hasStaleCommands: Bool) {
+        guard let root = try? loadSettings() else { return (.notInstalled, false) }
+        let stale = helperURL.map {
+            !staleCommands(in: root, helperPath: $0.path).isEmpty
+        } ?? false
+        return (status(in: root), stale)
+    }
+
     /// Re-points existing Uncoil entries at the running bundle's helper.
     /// Only rewrites commands that are already there — a stale path makes
     /// every Claude tool call log a hook failure, but a hook the user removed
@@ -169,10 +182,14 @@ enum HookInstaller {
     }
 
     static func status() -> Status {
-        guard
-            let root = try? loadSettings(),
-            let hooks = root["hooks"] as? [String: Any]
-        else { return .notInstalled }
+        guard let root = try? loadSettings() else { return .notInstalled }
+        return status(in: root)
+    }
+
+    /// Pure counterpart of `status()`, for callers that already hold the
+    /// parsed settings root and must not read the file a second time.
+    static func status(in root: [String: Any]) -> Status {
+        guard let hooks = root["hooks"] as? [String: Any] else { return .notInstalled }
 
         let missing = managedEvents.filter { event in
             let entries = hooks[event] as? [[String: Any]] ?? []

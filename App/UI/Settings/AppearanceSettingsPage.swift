@@ -8,18 +8,27 @@ struct AppearanceSettingsPage: View {
 
     var body: some View {
         SettingsPage(title: String(localized: "Theme and Colours")) {
-            Section("Built-in Themes") {
+            Section {
                 Picker(selection: Binding(
-                    get: { theme.palette.isLight },
-                    set: { theme.apply(preset: $0 ? .light : .dark) }
+                    get: { theme.appearance },
+                    set: { theme.setAppearance($0) }
                 )) {
-                    Text("Dark").tag(false)
-                    Text("On").tag(true)
+                    ForEach(ThemeAppearance.allCases) { appearance in
+                        Text(appearance.title).tag(appearance)
+                    }
                 } label: {
                     SettingsLabel(title: String(localized: "Appearance"))
                 }
                 .pickerStyle(.segmented)
                 .settingsID("theme.preset")
+            } header: {
+                Text("Built-in Themes")
+            } footer: {
+                SettingsNote(
+                    theme.appearance == .system
+                        ? String(localized: "Uncoil follows this Mac's appearance, and switches with it. Changing appearance restores that theme's own colours, so any colours you have set below are replaced.")
+                        : String(localized: "Changing appearance restores that theme's own colours, so any colours you have set below are replaced.")
+                )
             }
 
             Section("Attention") {

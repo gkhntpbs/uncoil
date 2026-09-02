@@ -31,10 +31,43 @@ enum CLIToolService {
         AgentCLIInstall.npmPackage(for: provider)
     }
 
-    /// Latest published version from the npm registry (both CLIs publish
-    /// there regardless of how they were installed locally).
-    static func latestVersion(provider: AgentProvider) async -> String? {
-        let package = npmPackage(for: provider)
+    /// The newest version, asked of the channel this install came from.
+    ///
+    /// `brewOutdated` is passed in rather than read here so the whole set of
+    /// Homebrew packages is fetched once per check instead of once per agent.
+    static func latestVersion(
+        provider: AgentProvider,
+        source: AgentInstallSource,
+        binaryPath: String?,
+        installed: String?,
+        brewOutdated: [String: String]
+    ) async -> String? {
+        switch AgentUpdateCheck.versionSource(provider: provider, source: source) {
+        case .npm(let package):
+            return await npmLatestVersion(package: package)
+        case .selfReport(let arguments):
+            guard let binaryPath else { return nil }
+            return await Task.detached(priority: .utility) {
+                run(binaryPath, arguments, timeout: 20).flatMap(SelfReportedUpdate.latestVersion)
+            }.value
+        case .homebrew(let name):
+            // Absent from `brew outdated` means Homebrew has nothing newer,
+            // which is the answer "you are up to date" — handed back as the
+            // installed version rather than as nil, because nil means "not
+            // known yet" and would leave the row checking forever.
+            //
+            // The installed version comes from the tool itself rather than
+            // from a second `brew list --versions`: that command does not list
+            // casks, so asking it about Codex — which is a cask — answered
+            // nothing at all.
+            return brewOutdated[name] ?? installed
+        case .none:
+            return nil
+        }
+    }
+
+    /// Latest published version from the npm registry.
+    static func npmLatestVersion(package: String) async -> String? {
         guard !package.isEmpty,
               let url = URL(string: "https://registry.npmjs.org/\(package)/latest") else {
             return nil
@@ -72,14 +105,48 @@ enum CLIToolService {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Runs the update command through the user's login shell.
+    /// What Homebrew has that is newer than what is installed, for everything
+    /// at once. Empty when Homebrew is not on this machine.
+    ///
+    /// Blocking; call from a background task.
+    static func brewOutdated() -> [String: String] {
+        guard let brew = brewPath else { return [:] }
+        guard let data = run(brew, ["outdated", "--json=v2"], timeout: 60) else { return [:] }
+        return HomebrewOutdated.parse(data)
+    }
+
+    static var brewPath: String? {
+        BinarySearchPath.locate("brew")
+            ?? ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
+                .first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    /// The PATH anything Uncoil runs on the user's behalf must run with.
+    ///
+    /// An update is only correct if it runs the same programs the user's own
+    /// terminal would. A login shell is not enough for that: `zsh -l` sources
+    /// `.zprofile` but not `.zshrc`, and a version manager — nvm, above all —
+    /// is initialised in `.zshrc`. Under `zsh -l -c`, nvm's npm therefore runs
+    /// under Homebrew's node and installs into Homebrew's tree, which is an
+    /// update that succeeds and changes nothing. Handing the interactive
+    /// shell's own PATH to a plain `zsh -c` is what makes the two agree.
+    static func shellEnvironment(prepending directories: [String] = []) -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        let existing = (environment["PATH"] ?? "").split(separator: ":").map(String.init)
+        var seen = Set<String>()
+        let ordered = (directories + SettingsStore.interactivePATH + existing)
+            .filter { !$0.isEmpty && seen.insert($0).inserted }
+        if !ordered.isEmpty { environment["PATH"] = ordered.joined(separator: ":") }
+        return environment
+    }
+
+    /// Runs the update command with the user's own PATH.
     /// Blocking (can take minutes); call from a background task.
     static func runUpdate(command: String) -> (success: Bool, output: String) {
         let process = Process()
-        process.executableURL = URL(
-            fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        )
-        process.arguments = ["-l", "-c", command]
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-c", command]
+        process.environment = shellEnvironment()
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
@@ -103,22 +170,44 @@ enum CLIToolService {
     }
 
     private static func runLoginShell(_ command: String, timeout: TimeInterval) -> String? {
+        run("/bin/zsh", ["-c", command], timeout: timeout)
+            .flatMap { String(data: $0, encoding: .utf8) }
+    }
+
+    /// Runs a tool with the user's own PATH and gives back its stdout, or nil
+    /// if it failed or ran out of time.
+    ///
+    /// stderr is discarded into a pipe nobody reads only up to the point where
+    /// that is safe: it is drained alongside stdout, because a tool that
+    /// writes more than a pipe will hold and is never read blocks forever, and
+    /// takes the wait with it.
+    static func run(
+        _ executable: String,
+        _ arguments: [String],
+        timeout: TimeInterval
+    ) -> Data? {
         let process = Process()
-        process.executableURL = URL(
-            fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
-        )
-        process.arguments = ["-l", "-c", command]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.environment = shellEnvironment()
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
         guard (try? process.run()) != nil else { return nil }
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline {
-            usleep(100_000)
+
+        let done = DispatchGroup()
+        done.enter()
+        var data = Data()
+        DispatchQueue.global(qos: .utility).async {
+            data = output.fileHandleForReading.readDataToEndOfFile()
+            done.leave()
         }
-        if process.isRunning { process.terminate() }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        if done.wait(timeout: .now() + timeout) == .timedOut {
+            process.terminate()
+            return nil
+        }
+        process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
-        return String(data: data, encoding: .utf8)
+        return data
     }
 }

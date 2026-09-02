@@ -219,6 +219,10 @@ struct OnboardingCLIStep: View {
         case .claude: URL(string: "https://docs.claude.com/en/docs/claude-code/setup")
         case .codex: URL(string: "https://developers.openai.com/codex/cli/")
         case .gemini: URL(string: "https://github.com/google-gemini/gemini-cli")
+        case .opencode: URL(string: "https://opencode.ai/docs/")
+        case .grok: URL(string: "https://docs.x.ai/docs/grok-cli")
+        case .hermes: URL(string: "https://hermes-agent.nousresearch.com/docs")
+        case .cursor: URL(string: "https://cursor.com/docs/cli")
         case .terminal: nil
         }
     }

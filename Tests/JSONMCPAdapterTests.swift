@@ -47,16 +47,19 @@ final class JSONMCPAdapterTests: XCTestCase {
         XCTAssertEqual(JSONMCPConfigLayout.amp.serversKeyPath, ["amp.mcpServers"])
     }
 
-    func testTheRegistryCoversEveryListedAgent() {
+    func testTheRegistryCoversEverySupportedAgent() {
         let registry = AgentAdapterRegistry()
         XCTAssertTrue(
             registry.unmanagedAgents.isEmpty,
-            "every listed agent has an adapter now: \(registry.unmanagedAgents)"
+            "an agent in `supported` lost its adapter: \(registry.unmanagedAgents)"
         )
         for agent in ExtensionAgentID.supported {
             XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
         }
-        XCTAssertEqual(ExtensionAgentID.launchable, [.claudeCode, .codex, .geminiCLI])
+        XCTAssertEqual(
+            ExtensionAgentID.launchable,
+            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok, .hermes]
+        )
     }
 
     // MARK: - Reading

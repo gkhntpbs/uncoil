@@ -37,7 +37,10 @@ struct JSONMCPConfigLayout: Equatable {
         directoryRelativePath: ".cursor",
         skillsRelativePath: ".cursor/rules",
         serversKeyPath: ["mcpServers"],
-        binaryName: "cursor",
+        // The agent CLI, not the editor's `cursor` file-opening command: the
+        // latter is often absent on a machine where the agent is installed,
+        // which reported Cursor as missing while `cursor-agent` was on PATH.
+        binaryName: "cursor-agent",
         reload: "Cursor reloads its MCP list from its own interface; the change shows up there."
     )
 
@@ -194,6 +197,19 @@ struct JSONMCPAdapter: AgentAdapter {
     }
 
     func apply(_ transaction: ConfigurationTransaction) throws -> ConfigurationTransaction {
+        Self.performApply(transaction)
+    }
+
+    func rollback(_ transaction: ConfigurationTransaction) throws -> ConfigurationTransaction {
+        Self.performRollback(transaction)
+    }
+
+    /// The write path every JSON-config adapter shares: stale check against the
+    /// planned hash, timestamped backup, atomic write. Static so adapters with
+    /// a different JSON *shape* (OpenCode) reuse the identical safety contract.
+    nonisolated static func performApply(
+        _ transaction: ConfigurationTransaction
+    ) -> ConfigurationTransaction {
         var result = transaction
         guard !transaction.diff.isEmpty else {
             result.status = .applied
@@ -231,7 +247,9 @@ struct JSONMCPAdapter: AgentAdapter {
         return result
     }
 
-    func rollback(_ transaction: ConfigurationTransaction) throws -> ConfigurationTransaction {
+    nonisolated static func performRollback(
+        _ transaction: ConfigurationTransaction
+    ) -> ConfigurationTransaction {
         var result = transaction
         guard let backupPath = transaction.backupPath,
               let data = FileManager.default.contents(atPath: backupPath) else {

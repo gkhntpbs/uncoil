@@ -52,7 +52,23 @@ enum Theme {
     /// themselves stay unmistakable — Gemini's is the only one in four colours
     /// — and taking the brand's own colour away to buy contrast in a caption
     /// seemed the worse trade. Both are palette fields if it turns out wrong.
-    static var gemini: Color { Color(hex: p.gemini ?? 0x3186FF) }
+    static var gemini: Color { Color(hex: p.gemini ?? ThemePalette.defaultGemini) }
+    /// The monochrome marks. Palette-backed like every other brand colour, and
+    /// for a sharper reason than taste: a brand whose own value is white has
+    /// nothing left to dim on a white panel, so the light preset inverts these
+    /// rather than darkening them.
+    static var opencode: Color { Color(hex: p.opencode ?? ThemePalette.defaultOpenCode) }
+    static var grok: Color { Color(hex: p.grok ?? ThemePalette.defaultGrok) }
+    static var cursor: Color { Color(hex: p.cursor ?? ThemePalette.defaultCursor) }
+    static var amp: Color { Color(hex: p.amp ?? ThemePalette.defaultAmp) }
+    /// Hermes ships its mark with `fill="currentColor"` — it has no colour of
+    /// its own, it takes whatever it is drawn in. So this is the interface's
+    /// own text colour rather than a palette entry: light on the dark theme,
+    /// dark on the light one, legible on both by construction. Nous' published
+    /// blue (`0000F2`) is not used, because a fully saturated blue that dark
+    /// measures under 2:1 against this app's dark panels — the mark would not
+    /// be dim, it would be a silhouette.
+    static var hermes: Color { text }
     static let terminal = Color(hex: 0x8A8A93)
 
     // Meanings. Read from the palette rather than fixed: the green that reads on
@@ -77,6 +93,22 @@ enum Theme {
     static func surface(for tint: Color) -> Color {
         tint.opacity(0.15)
     }
+
+    /// Legible text on top of a *filled* meaning colour.
+    ///
+    /// The four meanings flip between presets — the dark theme's danger is a
+    /// light rose, the light theme's a deep crimson — so anything that draws
+    /// text on one of them cannot pick a side once and be right on both.
+    /// `textOnHighlight` is the palette's answer for the accent; the meanings
+    /// have no such entry, so the answer is read off the fill itself.
+    static func textOn(_ hex: UInt32) -> Color {
+        ThemePalette.relativeLuminance(hex) > 0.45 ? Color(hex: p.bg) : .white
+    }
+
+    static var textOnDanger: Color { textOn(p.danger) }
+    static var textOnWarn: Color { textOn(p.warn) }
+    static var textOnOk: Color { textOn(p.ok) }
+    static var textOnInfo: Color { textOn(p.info) }
 
     // Type — mono carries the product's voice.
 

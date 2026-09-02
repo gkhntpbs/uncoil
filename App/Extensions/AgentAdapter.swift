@@ -176,21 +176,12 @@ enum AgentAdapterSupport {
 
     /// First executable match for `name` in the usual install locations, so
     /// detection works without the login shell's PATH.
+    ///
+    /// The locations come from `BinarySearchPath`, which session launch resolves
+    /// against too: the Extensions screen and the session launcher have to agree
+    /// on whether a CLI is installed.
     static func locateBinary(_ name: String, extraDirectories: [String] = []) -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let candidates = extraDirectories + [
-            "\(home)/.local/bin",
-            "\(home)/.bun/bin",
-            "\(home)/.volta/bin",
-            "/opt/homebrew/bin",
-            "/usr/local/bin",
-            "/usr/bin",
-        ]
-        for directory in candidates {
-            let path = "\(directory)/\(name)"
-            if FileManager.default.isExecutableFile(atPath: path) { return path }
-        }
-        return nil
+        BinarySearchPath.locate(name, extraDirectories: extraDirectories)
     }
 
     /// Environment variable names that look like secrets, so their values are
