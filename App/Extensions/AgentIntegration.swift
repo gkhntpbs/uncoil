@@ -130,6 +130,25 @@ struct AgentIntegrationSupport: Equatable, Sendable {
                 isAutomatic: true,
                 ceilingReason: "Grok has neither a hook system nor a per-session way to load Uncoil's tools, so Uncoil only reads its terminal."
             )
+        case .hermes:
+            // The one agent besides Claude Code with a real hook system:
+            // `on_session_start`, `pre_tool_call`, `on_session_end` and
+            // `subagent_stop`, each handed a JSON payload on stdin carrying a
+            // `session_id`, each able to block a call or inject context from
+            // what it writes back. So the ceiling is `.hooks` and saying
+            // anything lower would understate the agent.
+            //
+            // Uncoil can reach that ceiling on its own: `HermesHookInstaller`
+            // writes the entries into config.yaml and records the same
+            // (event, command) approvals Hermes would otherwise ask for on a
+            // TTY — the user clicking Connect is that decision. What it never
+            // does is set `hooks_auto_accept`, which would approve every future
+            // hook from anyone.
+            Self(
+                ceiling: .hooks,
+                isAutomatic: true,
+                ceilingReason: nil
+            )
         }
     }
 }

@@ -13,6 +13,7 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
     case amp
     case opencode
     case grok
+    case hermes
 
     var id: String { rawValue }
 
@@ -25,6 +26,7 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .amp: "Amp"
         case .opencode: "OpenCode"
         case .grok: "Grok CLI"
+        case .hermes: "Hermes"
         }
     }
 
@@ -36,6 +38,7 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .geminiCLI: .gemini
         case .opencode: .opencode
         case .grok: .grok
+        case .hermes: .hermes
         case .cursor: .cursor
         case .amp: nil
         }
@@ -55,6 +58,7 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .amp: "amp"
         case .opencode: "opencode"
         case .grok: "grok"
+        case .hermes: "hermes"
         }
     }
 
@@ -70,6 +74,8 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .amp: ".config/amp"
         case .opencode: ".config/opencode"
         case .grok: ".grok"
+        // `HERMES_HOME` moves this root wholesale; `HermesAdapter` resolves it.
+        case .hermes: ".hermes"
         }
     }
 
@@ -81,7 +87,7 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
     /// are, so they are not equals of Claude Code and Codex. Grok CLI has its
     /// own adapter over the same TOML tables Codex uses.
     static var supported: [ExtensionAgentID] {
-        [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok]
+        [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok, .hermes]
     }
 
     /// Agents Uncoil can also launch a session for.

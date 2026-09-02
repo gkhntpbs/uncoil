@@ -36,6 +36,7 @@ extension ExtensionAgentID {
         case .amp: Theme.amp
         case .opencode: Theme.opencode
         case .grok: Theme.grok
+        case .hermes: Theme.hermes
         }
     }
 }
@@ -75,6 +76,12 @@ struct AgentMark: View {
         case .opencode: ("ProviderMarkOpenCode", true, 1, 1)
         case .amp: ("ProviderMarkAmp", true, 281.0 / 144.0, 0.78)
         case .grok: ("ProviderMarkGrok", true, 1, 1)
+        // Drawn here rather than taken from the product: Nous ships no
+        // vector mark for Hermes — its favicon is a text glyph and its
+        // logo is a 1772px illustration that is unreadable at 13pt. This
+        // is an original winged-staff glyph standing in until there is a
+        // real mark to replace it with.
+        case .hermes: ("ProviderMarkHermes", true, 1, 1)
         }
     }
 
@@ -103,6 +110,7 @@ struct ProviderMark: View {
         case .gemini: ("ProviderMarkGemini", false)
         case .opencode: ("ProviderMarkOpenCode", true)
         case .grok: ("ProviderMarkGrok", true)
+        case .hermes: ("ProviderMarkHermes", true)
         case .cursor: ("ProviderMarkCursor", true)
         // A shell has no logo; the icon font's chevron-and-underscore says it.
         case .terminal: nil

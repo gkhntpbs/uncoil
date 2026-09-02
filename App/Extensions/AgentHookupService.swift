@@ -82,15 +82,16 @@ final class AgentHookupService: ObservableObject {
         // Off the main actor: the hook-file read (one read serves both
         // questions) and the login-shell fallback for CLIs the fixed search
         // path misses (asdf, mise, a PATH built in ~/.zshrc).
-        let (hookState, shellFound) = await Task.detached(priority: .utility) {
+        let (hookState, hermesHookState, shellFound) = await Task.detached(priority: .utility) {
             let hookState = HookInstaller.inspect()
+            let hermesHookState = HermesHookInstaller.inspect()
             var shellFound: [ExtensionAgentID: String] = [:]
             for entry in missingCommands {
                 if let path = SettingsStore.which(entry.command) {
                     shellFound[entry.agent] = path
                 }
             }
-            return (hookState, shellFound)
+            return (hookState, hermesHookState, shellFound)
         }.value
 
         states = ExtensionAgentID.allCases.map { agent in
@@ -103,6 +104,16 @@ final class AgentHookupService: ObservableObject {
                     installation: installation,
                     hookStatus: hookState.status,
                     hasStaleCommands: hookState.hasStaleCommands
+                )
+            case .hermes:
+                // Same decision table as Claude Code's, over a different file:
+                // `HermesHookInstaller` reads and writes `~/.hermes/config.yaml`
+                // and reports the same three states.
+                return .forHookCapableAgent(
+                    agent,
+                    installation: installation,
+                    hookStatus: hermesHookState.status,
+                    hasStaleCommands: hermesHookState.hasStaleCommands
                 )
             case .codex, .geminiCLI, .cursor, .amp, .opencode, .grok:
                 return .forHooklessAgent(
@@ -168,13 +179,17 @@ final class AgentHookupService: ObservableObject {
               let action = state.pendingAction else { return }
         lastError = nil
         do {
-            switch action {
-            // A partial install is repaired the same way as a fresh one:
-            // `install()` removes Uncoil's existing entries before writing, so
-            // it converges rather than duplicating what is already there.
-            case .installHooks, .completeHooks:
+            switch (agent, action) {
+            // A partial install is repaired the same way as a fresh one: both
+            // installers remove Uncoil's existing entries before writing, so
+            // they converge rather than duplicating what is already there.
+            case (.hermes, .installHooks), (.hermes, .completeHooks):
+                try HermesHookInstaller.install()
+            case (.hermes, .repairHooks):
+                try HermesHookInstaller.repairStalePaths()
+            case (_, .installHooks), (_, .completeHooks):
                 try HookInstaller.install()
-            case .repairHooks:
+            case (_, .repairHooks):
                 try HookInstaller.repairStalePaths()
             }
         } catch {
@@ -197,10 +212,14 @@ final class AgentHookupService: ObservableObject {
 
     /// Removes Uncoil's hooks from the agents that have them.
     func disconnect(_ agent: ExtensionAgentID) async {
-        guard agent == .claudeCode else { return }
+        guard agent == .claudeCode || agent == .hermes else { return }
         lastError = nil
         do {
-            try HookInstaller.uninstall()
+            if agent == .hermes {
+                try HermesHookInstaller.uninstall()
+            } else {
+                try HookInstaller.uninstall()
+            }
         } catch {
             lastError = error.localizedDescription
         }

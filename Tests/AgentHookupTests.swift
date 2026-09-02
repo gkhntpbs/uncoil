@@ -58,6 +58,141 @@ final class BinarySearchPathTests: XCTestCase {
     }
 }
 
+// MARK: - Locations the user chose
+
+/// A fixed list of eight directories cannot cover every way a CLI gets onto a
+/// Mac — nix, pipx, mise, a company image, an install kept on an external disk
+/// — so a user can point Uncoil at one. These pin what that promise means.
+final class BinarySearchPathUserLocationTests: XCTestCase {
+    private let home = "/Users/tester"
+
+    /// Picking the launcher itself is the "I know exactly where it is" answer.
+    func testAChosenExecutableIsUsedDirectly() {
+        let resolved = BinarySearchPath.resolveUserLocation(
+            "/Volumes/Disk/hermes",
+            command: "hermes",
+            isDirectory: { _ in false },
+            isExecutable: { $0 == "/Volumes/Disk/hermes" }
+        )
+        XCTAssertEqual(resolved, "/Volumes/Disk/hermes")
+    }
+
+    func testAChosenDirectoryIsSearchedForTheCommand() {
+        let resolved = BinarySearchPath.resolveUserLocation(
+            "/Volumes/Disk/tools",
+            command: "hermes",
+            isDirectory: { $0 == "/Volumes/Disk/tools" },
+            isExecutable: { $0 == "/Volumes/Disk/tools/hermes" }
+        )
+        XCTAssertEqual(resolved, "/Volumes/Disk/tools/hermes")
+    }
+
+    /// Pointing at an install root rather than at its `bin` is the mistake
+    /// everybody makes once, and it is cheap to forgive.
+    func testABinSubdirectoryIsTriedToo() {
+        let resolved = BinarySearchPath.resolveUserLocation(
+            "/opt/hermes",
+            command: "hermes",
+            isDirectory: { $0 == "/opt/hermes" },
+            isExecutable: { $0 == "/opt/hermes/bin/hermes" }
+        )
+        XCTAssertEqual(resolved, "/opt/hermes/bin/hermes")
+    }
+
+    /// Every directory carries the executable bit, so a folder must never be
+    /// mistaken for the binary just because it is named after it.
+    func testADirectoryIsNeverItselfTheBinary() {
+        XCTAssertNil(
+            BinarySearchPath.resolveUserLocation(
+                "/opt/hermes",
+                command: "hermes",
+                isDirectory: { $0 == "/opt/hermes" },
+                // The folder itself reads as executable, as every folder does;
+                // nothing inside it does.
+                isExecutable: { $0 == "/opt/hermes" }
+            )
+        )
+    }
+
+    func testAnEmptyDirectoryResolvesToNothing() {
+        XCTAssertNil(
+            BinarySearchPath.resolveUserLocation(
+                "/opt/empty",
+                command: "hermes",
+                isDirectory: { $0 == "/opt/empty" },
+                isExecutable: { _ in false }
+            )
+        )
+    }
+
+    func testTildeIsExpanded() {
+        let resolved = BinarySearchPath.resolveUserLocation(
+            "~/tools/hermes",
+            command: "hermes",
+            isDirectory: { _ in false },
+            isExecutable: { !$0.hasPrefix("~") && $0.hasSuffix("/tools/hermes") }
+        )
+        XCTAssertNotNil(resolved)
+        XCTAssertFalse(resolved!.hasPrefix("~"))
+    }
+
+    /// They were explicit. An override that lost to whatever happened to be in
+    /// `/usr/local/bin` would be a setting that appears to do nothing.
+    func testAChosenLocationWinsOverTheFixedList() {
+        let path = BinarySearchPath.locate(
+            "hermes",
+            home: home,
+            userLocation: "/Volumes/Disk/hermes",
+            isDirectory: { _ in false },
+            isExecutable: { _ in true }
+        )
+        XCTAssertEqual(path, "/Volumes/Disk/hermes")
+    }
+
+    /// Ejecting a drive must not make an agent that is also installed normally
+    /// disappear from every screen.
+    func testAnUnreachableChosenLocationFallsBackToTheUsualSearch() {
+        let path = BinarySearchPath.locate(
+            "hermes",
+            home: home,
+            userLocation: "/Volumes/Ejected/hermes",
+            isDirectory: { _ in false },
+            isExecutable: { $0 == "\(self.home)/.local/bin/hermes" }
+        )
+        XCTAssertEqual(path, "\(home)/.local/bin/hermes")
+    }
+
+    func testTheRegisteredLocationsAreWhatLocateConsults() {
+        defer { BinarySearchPath.setUserLocations([:]) }
+        BinarySearchPath.setUserLocations(["hermes": "/Volumes/Disk/hermes"])
+        XCTAssertEqual(BinarySearchPath.userLocation(for: "hermes"), "/Volumes/Disk/hermes")
+        XCTAssertNil(BinarySearchPath.userLocation(for: "codex"))
+        XCTAssertEqual(
+            BinarySearchPath.locate(
+                "hermes", home: home, isDirectory: { _ in false }, isExecutable: { _ in true }
+            ),
+            "/Volumes/Disk/hermes"
+        )
+        BinarySearchPath.setUserLocations([:])
+        XCTAssertNil(BinarySearchPath.userLocation(for: "hermes"))
+    }
+
+    /// Nothing chosen is trivially reachable; the question only bites once
+    /// somebody has answered it.
+    func testReachabilityIsTrueWhenNothingWasChosen() {
+        BinarySearchPath.setUserLocations([:])
+        XCTAssertTrue(BinarySearchPath.userLocationIsReachable(for: "hermes"))
+    }
+
+    func testReachabilityIsFalseForALocationThatWentAway() {
+        defer { BinarySearchPath.setUserLocations([:]) }
+        BinarySearchPath.setUserLocations(
+            ["hermes": "/Volumes/NoSuchDisk-\(UUID().uuidString)/hermes"]
+        )
+        XCTAssertFalse(BinarySearchPath.userLocationIsReachable(for: "hermes"))
+    }
+}
+
 // MARK: - Integration levels
 
 final class AgentIntegrationLevelTests: XCTestCase {
@@ -67,14 +202,41 @@ final class AgentIntegrationLevelTests: XCTestCase {
         XCTAssertLessThan(AgentIntegrationLevel.controlPlane, .hooks)
     }
 
-    func testOnlyClaudeCodeReachesLiveEvents() {
-        XCTAssertEqual(AgentIntegrationSupport.forAgent(.claudeCode).ceiling, .hooks)
-        for agent in ExtensionAgentID.allCases where agent != .claudeCode {
-            XCTAssertLessThan(
-                AgentIntegrationSupport.forAgent(agent).ceiling,
-                .hooks,
-                "\(agent.displayName) claims a hook system it does not have"
+    /// The two agents that actually publish a hook system, and nobody else.
+    ///
+    /// This started out as "only Claude Code", which was true until Hermes was
+    /// read: it fires `on_session_start`, `pre_tool_call`, `on_session_end` and
+    /// `subagent_stop`, each handed a JSON payload on stdin carrying a
+    /// `session_id`, each able to block the call or inject context from what it
+    /// writes back. That is the same capability, so the ceiling says so. What
+    /// separates the two is `isAutomatic`, which the next test pins.
+    func testOnlyAgentsWithARealHookSystemReachLiveEvents() {
+        let hookCapable: Set<ExtensionAgentID> = [.claudeCode, .hermes]
+        for agent in ExtensionAgentID.allCases {
+            let ceiling = AgentIntegrationSupport.forAgent(agent).ceiling
+            if hookCapable.contains(agent) {
+                XCTAssertEqual(ceiling, .hooks, "\(agent.displayName) has a hook system")
+            } else {
+                XCTAssertLessThan(
+                    ceiling, .hooks,
+                    "\(agent.displayName) claims a hook system it does not have"
+                )
+            }
+        }
+    }
+
+    /// Both hook-capable agents are wired by Uncoil rather than by hand, and an
+    /// agent that reaches `.hooks` but cannot be connected would be a row
+    /// offering a level with no way to get there.
+    func testEveryHookCapableAgentCanBeWiredByUncoil() {
+        for agent in ExtensionAgentID.allCases {
+            let support = AgentIntegrationSupport.forAgent(agent)
+            guard support.ceiling == .hooks else { continue }
+            XCTAssertTrue(
+                support.isAutomatic,
+                "\(agent.displayName) reaches live events with no way to get there"
             )
+            XCTAssertNil(support.ceilingReason, agent.displayName)
         }
     }
 

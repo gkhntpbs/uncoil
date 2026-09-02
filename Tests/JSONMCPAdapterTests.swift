@@ -58,7 +58,7 @@ final class JSONMCPAdapterTests: XCTestCase {
         }
         XCTAssertEqual(
             ExtensionAgentID.launchable,
-            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok]
+            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok, .hermes]
         )
     }
 

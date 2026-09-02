@@ -186,7 +186,9 @@ final class OpenCodeAdapterTests: XCTestCase {
             projectID: UUID(), provider: .opencode, accountID: nil, title: "t"
         )
         record.providerSessionID = "ses_123"
-        let command = TerminalRegistry.launchCommand(for: record, extraArguments: nil)
+        let command = TerminalRegistry.launchCommand(
+            for: record, resume: .resume("ses_123"), extraArguments: nil
+        )
         XCTAssertNotNil(command)
         XCTAssertTrue(command!.contains("--session 'ses_123'"), command!)
     }

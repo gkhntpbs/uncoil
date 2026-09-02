@@ -114,7 +114,9 @@ final class GrokAdapterTests: XCTestCase {
             projectID: UUID(), provider: .grok, accountID: nil, title: "t"
         )
         record.providerSessionID = "ses-9"
-        let command = TerminalRegistry.launchCommand(for: record, extraArguments: nil)
+        let command = TerminalRegistry.launchCommand(
+            for: record, resume: .resume("ses-9"), extraArguments: nil
+        )
         XCTAssertNotNil(command)
         XCTAssertTrue(command!.contains("--resume 'ses-9'"), command!)
     }
@@ -188,7 +190,9 @@ final class GrokAdapterTests: XCTestCase {
             projectID: UUID(), provider: .cursor, accountID: nil, title: "t"
         )
         record.providerSessionID = "chat-7"
-        let command = TerminalRegistry.launchCommand(for: record, extraArguments: nil)
+        let command = TerminalRegistry.launchCommand(
+            for: record, resume: .resume("chat-7"), extraArguments: nil
+        )
         XCTAssertNotNil(command)
         XCTAssertTrue(command!.contains("--resume 'chat-7'"), command!)
         XCTAssertEqual(

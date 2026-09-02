@@ -9,6 +9,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     case gemini
     case opencode
     case grok
+    case hermes
     case cursor
     case terminal
 
@@ -34,6 +35,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .gemini: "Gemini"
         case .opencode: "OpenCode"
         case .grok: "Grok"
+        case .hermes: "Hermes"
         case .cursor: "Cursor"
         case .terminal: "Terminal"
         }
@@ -47,6 +49,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .gemini: Theme.gemini
         case .opencode: Theme.opencode
         case .grok: Theme.grok
+        case .hermes: Theme.hermes
         case .cursor: Theme.cursor
         case .terminal: Theme.terminal
         }
@@ -60,6 +63,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .gemini: "gemini"
         case .opencode: "opencode"
         case .grok: "grok"
+        case .hermes: "hermes"
         // The agent CLI, not the editor's `cursor` command.
         case .cursor: "cursor-agent"
         case .terminal: nil  // plain login shell
@@ -81,6 +85,10 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .opencode: "opencode providers login"
         // `grok login` is its own documented subcommand.
         case .grok: "grok login"
+        // `hermes login` still exists but prints "Deprecated" and points at
+        // three other commands; `hermes setup` is the interactive sign-in it
+        // names, and it is what a login terminal should run.
+        case .hermes: "hermes setup"
         case .cursor: "cursor-agent login"
         case .terminal: nil
         }
@@ -95,7 +103,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// status, no hooks and no control plane.
     var isAgent: Bool {
         switch self {
-        case .claude, .codex, .gemini, .opencode, .grok, .cursor: true
+        case .claude, .codex, .gemini, .opencode, .grok, .cursor, .hermes: true
         case .terminal: false
         }
     }
@@ -110,7 +118,12 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     var reportsStatusThroughHooks: Bool {
         switch self {
         case .claude: true
-        case .codex, .gemini, .opencode, .grok, .cursor, .terminal: false
+        // Hermes has a hook system of the same shape — `on_session_start`,
+        // `pre_tool_call`, a JSON payload on stdin carrying `session_id` — but
+        // Uncoil's hook bridge speaks Claude Code's wire format only. Until it
+        // speaks Hermes' too, claiming this would bind sessions to events that
+        // never arrive.
+        case .codex, .gemini, .opencode, .grok, .cursor, .hermes, .terminal: false
         }
     }
 
@@ -141,7 +154,13 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         // Cursor is the same story: `CURSOR_CONFIG_DIR` moves the whole
         // config root, credentials included, so a per-session copy would
         // start every session logged out.
-        case .grok, .cursor, .gemini, .terminal: false
+        // Hermes is the same shape as Grok here, with one difference worth
+        // recording: it interpolates `${VAR}` in an MCP entry's values from
+        // the process environment, so a single config.yaml entry could pick up
+        // a per-session id. That is a real path to a control plane, but it
+        // needs a persistent write to the user's config, so it is not
+        // something a session launch may do on its own.
+        case .grok, .cursor, .gemini, .hermes, .terminal: false
         }
     }
 
@@ -153,7 +172,9 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// `update` (or `upgrade`) subcommand of its own.
     var hasBuiltInUpdater: Bool {
         switch self {
-        case .claude, .cursor, .grok, .opencode: true
+        // `hermes update` is its own documented updater; the CLI installs
+        // outside any package manager's tree.
+        case .claude, .cursor, .grok, .opencode, .hermes: true
         case .codex, .gemini, .terminal: false
         }
     }
@@ -172,7 +193,8 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     var resumesConversation: Bool {
         switch self {
         // Grok documents both `--resume <id>` and `--session-id`.
-        case .claude, .codex, .opencode, .grok, .cursor: true
+        // Hermes documents `--resume <session_id>` and `-c/--continue`.
+        case .claude, .codex, .opencode, .grok, .cursor, .hermes: true
         case .gemini, .terminal: false
         }
     }
@@ -194,6 +216,8 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         // Unverified for Grok's TUI, same rule.
         case .grok: false
         case .cursor: false
+        // Unverified for Hermes' REPL and its TUI alike, same rule.
+        case .hermes: false
         case .terminal: false
         }
     }
@@ -218,9 +242,15 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
     static func options(for provider: AgentProvider) -> [AgentWorkingMode] {
         switch provider {
         case .claude:
-            [.manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
+            [.providerDefault, .manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
+        // Codex's own two axes, in the pairs its `/approvals` screen offers.
+        // `providerDefault` is the one that was missing and the one that
+        // matters most: without it every launch carried `--sandbox` and
+        // `--ask-for-approval`, so whatever the user had set in
+        // `~/.codex/config.toml` — or chosen inside the TUI — was overruled
+        // every time, and there was no way to ask Uncoil to stop.
         case .codex:
-            [.askForApproval, .approveForMe, .fullAccess]
+            [.providerDefault, .readOnly, .askForApproval, .approveForMe, .fullAccess]
         // No modes offered: the Gemini CLI's approval flags are not verified
         // here, and Uncoil's rule is that it adds no flag it was not asked
         // for. An unverified flag on a real CLI is a launch failure.
@@ -238,6 +268,12 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         // two documented booleans. Nothing else is offered.
         case .cursor:
             [.providerDefault, .plan, .readOnly, .auto, .dangerouslySkipPermissions]
+        // `--yolo` ("bypass all dangerous command approval prompts") is the one
+        // approval flag Hermes' own `--help` documents. `--safe-mode` is a
+        // troubleshooting switch that disables customisations, not an approval
+        // level, so it is not offered as one.
+        case .hermes:
+            [.providerDefault, .dangerouslySkipPermissions]
         case .terminal:
             [.providerDefault]
         }
@@ -274,12 +310,16 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             "File edits are accepted automatically."
         case (.claude, .dangerouslySkipPermissions):
             "Claude starts with every permission check bypassed."
+        case (.codex, .readOnly):
+            "Codex can read the project but not write to it, and asks before running anything."
         case (.codex, .askForApproval):
-            "Codex asks you to approve actions when it needs to."
+            "Codex may write inside the project, and asks before anything beyond it."
         case (.codex, .approveForMe):
-            "Codex runs without asking for approval inside the workspace bounds."
+            "Codex runs without asking for approval, inside the project's bounds."
         case (.codex, .fullAccess):
             "Codex runs without approval prompts or sandbox limits."
+        case (.hermes, .dangerouslySkipPermissions):
+            "Hermes runs without asking to approve dangerous commands."
         default:
             "The CLI starts with its own default behaviour."
         }
@@ -303,6 +343,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         case .opencode: .auto
         case .grok: .dangerouslySkipPermissions
         case .cursor: .dangerouslySkipPermissions
+        case .hermes: .dangerouslySkipPermissions
         // Gemini's approval flags are unverified, and Uncoil adds no flag it
         // has not checked: an invented one is a launch failure, not a
         // permissive session.
@@ -324,6 +365,12 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             ["--permission-mode", "acceptEdits"]
         case (.claude, .dangerouslySkipPermissions):
             ["--dangerously-skip-permissions"]
+        // Read straight off `codex --help`: `--sandbox` takes read-only,
+        // workspace-write or danger-full-access, and `--ask-for-approval`
+        // takes on-request or never. Each pair below was launched against the
+        // installed CLI before it was offered here.
+        case (.codex, .readOnly):
+            ["--sandbox", "read-only", "--ask-for-approval", "on-request"]
         case (.codex, .askForApproval):
             ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"]
         case (.codex, .approveForMe):
@@ -352,16 +399,26 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             ["--auto-review"]
         case (.cursor, .dangerouslySkipPermissions):
             ["--force"]
+        case (.hermes, .dangerouslySkipPermissions):
+            ["--yolo"]
         default:
             []
         }
     }
 
+    /// Maps another provider's vocabulary onto this one's, for a mode carried
+    /// over from a dispatch or a preset.
+    ///
+    /// `providerDefault` is never mapped onto anything: it means "add no
+    /// flags", and turning it into a real mode is what made Uncoil overrule
+    /// the user's own CLI configuration on every launch. `readOnly` is not
+    /// mapped either — it used to become Codex's workspace-write, which is to
+    /// say the one mode that promises not to write was the one that could.
     func normalized(for provider: AgentProvider) -> AgentWorkingMode {
         switch (provider, self) {
-        case (.claude, .providerDefault), (.claude, .dontAsk):
+        case (.claude, .dontAsk):
             .manual
-        case (.codex, .providerDefault), (.codex, .onRequest), (.codex, .readOnly):
+        case (.codex, .onRequest):
             .askForApproval
         case (.codex, .auto):
             .approveForMe
@@ -429,6 +486,11 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         // Verified: with `CURSOR_CONFIG_DIR` set, `cursor-agent status` wrote
         // its `cli-config.json` into that directory instead of ~/.cursor.
         case .cursor: "CURSOR_CONFIG_DIR"
+        // Verified against the CLI's own source: `HERMES_HOME` is resolved
+        // before anything else is read and relocates the entire home —
+        // config.yaml, .env, auth.json and the session store together — which
+        // is exactly what an isolated account profile needs.
+        case .hermes: "HERMES_HOME"
         case .terminal: nil
         }
     }

@@ -489,7 +489,7 @@ final class AgentAdapterRegistryTests: XCTestCase {
         let registry = AgentAdapterRegistry()
         XCTAssertEqual(
             registry.adapters.map(\.agent),
-            [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok]
+            [.claudeCode, .codex, .geminiCLI, .cursor, .amp, .opencode, .grok, .hermes]
         )
         for agent in ExtensionAgentID.supported {
             XCTAssertNotNil(registry.adapter(for: agent), agent.rawValue)
@@ -505,7 +505,7 @@ final class AgentAdapterRegistryTests: XCTestCase {
         // became a session provider, which is what `launchable` is derived from.
         XCTAssertEqual(
             ExtensionAgentID.launchable,
-            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok]
+            [.claudeCode, .codex, .geminiCLI, .cursor, .opencode, .grok, .hermes]
         )
     }
 

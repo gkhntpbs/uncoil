@@ -10,7 +10,7 @@ struct AgentAdapterRegistry {
     init(adapters: [any AgentAdapter]? = nil) {
         self.adapters = adapters ?? [ClaudeCodeAdapter(), CodexAdapter()]
             + JSONMCPConfigLayout.all.map { JSONMCPAdapter(layout: $0) }
-            + [OpenCodeAdapter(), GrokAdapter()]
+            + [OpenCodeAdapter(), GrokAdapter(), HermesAdapter()]
     }
 
     func adapter(for agent: ExtensionAgentID) -> (any AgentAdapter)? {
