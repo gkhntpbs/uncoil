@@ -15,8 +15,14 @@ import Foundation
 /// for nvm, fnm, asdf, `n` and a plain install at once — and gives back the
 /// prefix, which is the part that matters.
 enum AgentInstallSource: Equatable {
-    /// Formula or cask name, which is not always the command's name.
-    case homebrew(formula: String)
+    /// Formula or cask name, which is not always the command's name, and
+    /// which of the two it is.
+    ///
+    /// Homebrew keeps casks and formulae in separate namespaces and upgrades
+    /// them with separate commands. `brew upgrade codex` on a cask is not a
+    /// harmless synonym — Homebrew looks for a *formula* by that name, finds
+    /// none, and stops. That is one of the ways an update button did nothing.
+    case homebrew(formula: String, isCask: Bool)
     /// A global npm package. `prefix` is the Node installation that owns it —
     /// `<prefix>/bin/npm` — when it could be worked out.
     case npm(prefix: String?)
@@ -50,6 +56,9 @@ enum AgentCLIInstall {
         case .opencode: "opencode"
         // Grok ships its own installer and updater; there is no formula.
         case .grok: ""
+        // Hermes is a Python application installed by its own bootstrap
+        // script, not a Homebrew formula.
+        case .hermes: ""
         case .cursor: ""
         case .terminal: ""
         }
@@ -62,9 +71,10 @@ enum AgentCLIInstall {
         case .gemini: "@google/gemini-cli"
         case .opencode: "opencode-ai"
         // Grok and Cursor are not published on npm; both install and update
-        // themselves.
+        // themselves. Hermes is a Python package with its own updater.
         case .grok: ""
         case .cursor: ""
+        case .hermes: ""
         case .terminal: ""
         }
     }
@@ -92,8 +102,11 @@ enum AgentCLIInstall {
         let resolved = resolvedPath ?? path
 
         // Unambiguous: nothing but Homebrew writes into these.
-        if resolved.contains("/Caskroom/") || resolved.contains("/Cellar/") {
-            return .homebrew(formula: brewFormula(for: provider))
+        if resolved.contains("/Caskroom/") {
+            return .homebrew(formula: brewFormula(for: provider), isCask: true)
+        }
+        if resolved.contains("/Cellar/") {
+            return .homebrew(formula: brewFormula(for: provider), isCask: false)
         }
 
         // Before any prefix check, and deliberately: a package installed with
@@ -138,6 +151,15 @@ enum AgentCLIInstall {
         if provider == .opencode, resolved.contains("/.opencode/") {
             return .nativeInstaller
         }
+        // Hermes' launcher is a shell wrapper that execs a Python interpreter
+        // inside its own tree, so the resolved path is the wrapper itself
+        // rather than anything under the install. Its bootstrap writes both
+        // locations, and the second one is what an external-disk install with
+        // a symlinked home resolves to.
+        if provider == .hermes,
+           resolved.contains("/hermes") || path.contains("/.local/bin/") {
+            return .nativeInstaller
+        }
 
         if path.hasPrefix("/opt/homebrew/") || path.hasPrefix("/usr/local/") {
             // Only when Homebrew actually packages it. `/usr/local/bin` is a
@@ -146,7 +168,11 @@ enum AgentCLIInstall {
             // formula — which reads to the user as "Homebrew has no package
             // for this" instead of offering the tool's own updater.
             let formula = brewFormula(for: provider)
-            if !formula.isEmpty { return .homebrew(formula: formula) }
+            // Which of the two it is cannot be told from `/opt/homebrew/bin`
+            // alone — that directory holds symlinks for both. A formula is the
+            // commoner case and the wrong guess is recoverable: the upgrade
+            // reports "no available formula" rather than doing something else.
+            if !formula.isEmpty { return .homebrew(formula: formula, isCask: false) }
             return provider.hasBuiltInUpdater ? .nativeInstaller : .unknown
         }
 
@@ -191,20 +217,30 @@ extension AgentCLIInstall {
     ) -> AgentUpdatePlan {
         let package = npmPackage(for: provider)
         switch source {
-        case .homebrew(let formula):
+        case .homebrew(let formula, let isCask):
             guard !formula.isEmpty else {
                 return .cannot(String(localized: "Homebrew has no package for this tool."))
             }
-            return .run("brew upgrade \(formula)")
+            return .run(isCask ? "brew upgrade --cask \(formula)" : "brew upgrade \(formula)")
 
         case .npm(let prefix):
             guard !package.isEmpty else {
                 return .cannot(String(localized: "This tool is not published on npm."))
             }
-            // That Node's own npm, so the update lands in the installation the
-            // binary on PATH actually comes from.
+            // That Node's own npm, *run by that Node*. Naming the npm alone is
+            // not enough: npm is a JavaScript file with a `#!/usr/bin/env node`
+            // line, so it runs under whichever node the PATH resolves first and
+            // takes its global prefix from that interpreter. On a machine with
+            // Homebrew's node ahead of nvm's on PATH, nvm's npm asked for its
+            // prefix answers `/opt/homebrew/Cellar/node/…` — so the install
+            // lands in a Node the binary on PATH does not come from, exits 0,
+            // and leaves the tool exactly as old as it was. Putting the
+            // prefix's own bin first is what makes the update land where the
+            // tool actually lives.
             if let prefix, hasNpm("\(prefix)/bin/npm") {
-                return .run("\"\(prefix)/bin/npm\" install -g \(package)@latest")
+                return .run(
+                    "PATH=\"\(prefix)/bin:$PATH\" \"\(prefix)/bin/npm\" install -g \(package)@latest"
+                )
             }
             return .run("npm install -g \(package)@latest")
 
@@ -218,6 +254,7 @@ extension AgentCLIInstall {
             // Each of these documents the subcommand as its own updater.
             switch provider {
             case .claude: return .run("claude update")
+            case .hermes: return .run("hermes update")
             case .cursor: return .run("cursor-agent update")
             case .grok: return .run("grok update")
             case .opencode: return .run("opencode upgrade")

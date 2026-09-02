@@ -71,7 +71,21 @@ final class AgentInstallSourceTests: XCTestCase {
                 resolvedPath: "/opt/homebrew/Caskroom/codex/0.146.0/bin/codex",
                 provider: .codex
             ),
-            .homebrew(formula: "codex")
+            .homebrew(formula: "codex", isCask: true)
+        )
+    }
+
+    /// Casks and formulae are separate namespaces with separate upgrade
+    /// commands, and telling them apart is only possible from the directory
+    /// the launcher resolves into.
+    func testACellarInstallIsAFormulaRatherThanACask() {
+        XCTAssertEqual(
+            AgentCLIInstall.source(
+                path: "/opt/homebrew/bin/opencode",
+                resolvedPath: "/opt/homebrew/Cellar/opencode/1.18.26/bin/opencode",
+                provider: .opencode
+            ),
+            .homebrew(formula: "opencode", isCask: false)
         )
     }
 
@@ -135,7 +149,29 @@ final class AgentUpdatePlanTests: XCTestCase {
         let prefix = "/Users/x/.nvm/versions/node/v24.1.0"
         XCTAssertEqual(
             plan(.gemini, .npm(prefix: prefix), npmAt: ["\(prefix)/bin/npm"]),
-            .run("\"\(prefix)/bin/npm\" install -g @google/gemini-cli@latest")
+            .run(
+                "PATH=\"\(prefix)/bin:$PATH\" \"\(prefix)/bin/npm\" install -g @google/gemini-cli@latest"
+            )
+        )
+    }
+
+    /// Naming the npm is not enough. npm is a script with a
+    /// `#!/usr/bin/env node` line, so it runs under whichever node PATH
+    /// resolves first and takes its global prefix from *that* interpreter — on
+    /// a machine with Homebrew's node ahead of nvm's, nvm's npm installs into
+    /// Homebrew's tree. Measured on a real machine: the same npm reports
+    /// `/opt/homebrew/Cellar/node/26.0.0` as its prefix under `zsh -l -c`, and
+    /// its own nvm root once its bin is first on PATH.
+    func testAnNpmUpdatePutsItsOwnNodeFirstOnPath() {
+        let prefix = "/Users/x/.nvm/versions/node/v24.1.0"
+        guard case .run(let command) = plan(
+            .gemini, .npm(prefix: prefix), npmAt: ["\(prefix)/bin/npm"]
+        ) else {
+            return XCTFail("an npm install should have an update command")
+        }
+        XCTAssertTrue(
+            command.hasPrefix("PATH=\"\(prefix)/bin:$PATH\""),
+            "the package's own Node must resolve first, or the install lands elsewhere: \(command)"
         )
     }
 
@@ -157,8 +193,18 @@ final class AgentUpdatePlanTests: XCTestCase {
 
     func testHomebrewUpdatesByItsOwnName() {
         XCTAssertEqual(
-            plan(.gemini, .homebrew(formula: "gemini-cli")),
+            plan(.gemini, .homebrew(formula: "gemini-cli", isCask: false)),
             .run("brew upgrade gemini-cli")
+        )
+    }
+
+    /// `brew upgrade codex` on a cask is not a synonym for the cask command:
+    /// Homebrew looks for a formula by that name, finds none, and stops. That
+    /// is one of the ways the update button did nothing.
+    func testACaskUpgradesAsACask() {
+        XCTAssertEqual(
+            plan(.codex, .homebrew(formula: "codex", isCask: true)),
+            .run("brew upgrade --cask codex")
         )
     }
 

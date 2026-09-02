@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Agents screen's opening card: every agent Uncoil knows about, whether it
@@ -7,9 +8,15 @@ import SwiftUI
 /// Deliberately lists agents that are *not* installed too. "Cursor: not found"
 /// is information — it tells the user Uncoil looked — and it is the only way a
 /// row can appear the moment they install one.
+///
+/// Settings › Agents is where agents are managed; this card mirrors it rather
+/// than competing with it, which is why "Locate…" opens the same
+/// `AgentLocationPicker` and writes to the same setting. Acting here and acting
+/// there are the same act.
 struct AgentHookupCard: View {
     @ObservedObject var hookup: AgentHookupService
     @Binding var message: String?
+    @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
         SectionCard(
@@ -18,12 +25,23 @@ struct AgentHookupCard: View {
         ) {
             ForEach(Array(hookup.states.enumerated()), id: \.element.id) { index, state in
                 if index > 0 { Divider().overlay(Theme.border) }
-                AgentHookupRow(state: state) {
-                    Task {
-                        await hookup.apply(to: state.agent)
-                        message = hookup.lastError ?? completionMessage(for: state)
-                    }
-                }
+                AgentHookupRow(
+                    state: state,
+                    chosenLocation: settings.agentBinaryLocation(
+                        forCommand: state.agent.cliBinaryName
+                    ),
+                    isChosenLocationReachable: BinarySearchPath.userLocationIsReachable(
+                        for: state.agent.cliBinaryName
+                    ),
+                    action: {
+                        Task {
+                            await hookup.apply(to: state.agent)
+                            message = hookup.lastError ?? completionMessage(for: state)
+                        }
+                    },
+                    onLocate: { locate(state.agent) },
+                    onClearLocation: { clearLocation(state.agent) }
+                )
             }
 
             Divider().overlay(Theme.border)
@@ -57,6 +75,22 @@ struct AgentHookupCard: View {
         .task { await hookup.scan() }
     }
 
+    // MARK: - Pointing Uncoil at a location
+
+    /// The panel itself lives in `AgentLocationPicker`, shared with Settings ›
+    /// Agents so the two surfaces cannot drift apart.
+    private func locate(_ agent: ExtensionAgentID) {
+        AgentLocationPicker.choose(for: agent, settings: settings) { text, changed in
+            message = text
+            if changed { Task { await hookup.scan() } }
+        }
+    }
+
+    private func clearLocation(_ agent: ExtensionAgentID) {
+        message = AgentLocationPicker.clear(for: agent, settings: settings)
+        Task { await hookup.scan() }
+    }
+
     private var summary: String {
         guard !hookup.installed.isEmpty else {
             return String(localized: "No agent CLI found on this machine.")
@@ -86,10 +120,18 @@ struct AgentHookupCard: View {
     }
 }
 
-/// One agent's line: name, where it is, what level it is at, and its action.
+/// One agent's line: name, where it is, what level it is at, and its actions.
 private struct AgentHookupRow: View {
     let state: AgentIntegrationState
+    /// The location the user pointed Uncoil at, if they have.
+    let chosenLocation: String?
+    /// False when that location has gone away — an ejected disk, a reinstall
+    /// that moved. Worth saying, because the agent may still be found by the
+    /// ordinary search and the row would otherwise look untroubled.
+    let isChosenLocationReachable: Bool
     let action: () -> Void
+    let onLocate: () -> Void
+    let onClearLocation: () -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -112,14 +154,39 @@ private struct AgentHookupRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.textFaint)
                     .fixedSize(horizontal: false, vertical: true)
+                if let chosenLocation {
+                    Text(AgentLocationPicker.detail(
+                        for: chosenLocation, isReachable: isChosenLocationReachable
+                    ))
+                        .font(.system(size: 10))
+                        .foregroundStyle(isChosenLocationReachable ? Theme.textFaint : Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier(
+                            "extensions.hookup.location.\(state.agent.rawValue)"
+                        )
+                }
             }
 
             Spacer(minLength: 8)
 
-            if let pending = state.pendingAction {
-                Button(pending.label, action: action)
+            HStack(spacing: 6) {
+                if let pending = state.pendingAction {
+                    Button(pending.label, action: action)
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier(
+                            "extensions.hookup.action.\(state.agent.rawValue)"
+                        )
+                }
+                Button(chosenLocation == nil ? "Locate…" : "Change…", action: onLocate)
                     .buttonStyle(GhostButtonStyle())
-                    .accessibilityIdentifier("extensions.hookup.action.\(state.agent.rawValue)")
+                    .accessibilityIdentifier("extensions.hookup.locate.\(state.agent.rawValue)")
+                if chosenLocation != nil {
+                    Button("Clear", action: onClearLocation)
+                        .buttonStyle(GhostButtonStyle())
+                        .accessibilityIdentifier(
+                            "extensions.hookup.clearLocation.\(state.agent.rawValue)"
+                        )
+                }
             }
         }
         .padding(.vertical, 4)

@@ -6,9 +6,20 @@ import SwiftUI
 /// is on this machine, how deeply Uncoil talks to it, and the single action
 /// that would improve that. The Extensions window's card is a summary of the
 /// same service; this page is where the user is sent to act.
+///
+/// It is also where an agent that Uncoil could not find is dealt with. The
+/// eight directories `BinarySearchPath` knows cannot cover every way a CLI gets
+/// onto a Mac — nix, pipx, mise, a company image, an install kept on an
+/// external disk — so every row can be pointed at a location by hand, whether
+/// or not the agent was found. Nothing is imported or copied: the path is
+/// remembered and searched, and the install stays exactly where it is.
 struct AgentsSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var hookup = AgentHookupService.shared
+    /// What the last locate or clear did, shown under the list. The Extensions
+    /// card has a banner of its own for this; a settings page does not, so it
+    /// keeps the sentence itself.
+    @State private var locationMessage: String?
 
     var body: some View {
         SettingsPage(
@@ -20,10 +31,18 @@ struct AgentsSettingsPage: View {
                     AgentControlRow(
                         state: state,
                         version: version(for: state),
+                        chosenLocation: settings.agentBinaryLocation(
+                            forCommand: state.agent.cliBinaryName
+                        ),
+                        isChosenLocationReachable: BinarySearchPath.userLocationIsReachable(
+                            for: state.agent.cliBinaryName
+                        ),
                         action: { Task { await hookup.apply(to: state.agent) } },
                         disconnect: state.active == .hooks
                             ? { Task { await hookup.disconnect(state.agent) } }
-                            : nil
+                            : nil,
+                        onLocate: { locate(state.agent) },
+                        onClearLocation: { clearLocation(state.agent) }
                     )
                 }
             } footer: {
@@ -57,6 +76,12 @@ struct AgentsSettingsPage: View {
                 }
             }
 
+            if let locationMessage {
+                Section {
+                    SettingsStatusLine(level: .neutral, text: locationMessage)
+                }
+            }
+
             if let error = hookup.lastError {
                 Section {
                     SettingsStatusLine(level: .error, text: error)
@@ -64,6 +89,20 @@ struct AgentsSettingsPage: View {
             }
         }
         .task { await hookup.scan() }
+    }
+
+    /// The panel is `AgentLocationPicker`'s, shared with the Extensions card so
+    /// the wording and the refusal are the same wherever it is opened from.
+    private func locate(_ agent: ExtensionAgentID) {
+        AgentLocationPicker.choose(for: agent, settings: settings) { text, changed in
+            locationMessage = text
+            if changed { Task { await hookup.scan() } }
+        }
+    }
+
+    private func clearLocation(_ agent: ExtensionAgentID) {
+        locationMessage = AgentLocationPicker.clear(for: agent, settings: settings)
+        Task { await hookup.scan() }
     }
 
     /// Versions come from the CLI-tools store for the agents Uncoil launches;
@@ -77,10 +116,18 @@ struct AgentsSettingsPage: View {
 private struct AgentControlRow: View {
     let state: AgentIntegrationState
     let version: String?
+    /// The location the user pointed Uncoil at, if they have.
+    let chosenLocation: String?
+    /// False when that location has gone away — an ejected disk, a reinstall
+    /// that moved. `BinarySearchPath` falls back to the ordinary search so the
+    /// agent does not vanish, which is exactly why the row has to say it.
+    let isChosenLocationReachable: Bool
     let action: () -> Void
     /// Present only while the agent reports live events; removing hooks from
     /// an agent that has none would be a button with nothing behind it.
     let disconnect: (() -> Void)?
+    let onLocate: () -> Void
+    let onClearLocation: () -> Void
 
     var body: some View {
         AdaptiveRow {
@@ -99,21 +146,30 @@ private struct AgentControlRow: View {
                         .font(.caption)
                         .foregroundStyle(Theme.textFaint)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let chosenLocation {
+                        Text(AgentLocationPicker.detail(
+                            for: chosenLocation, isReachable: isChosenLocationReachable
+                        ))
+                        .font(.caption2)
+                        .foregroundStyle(isChosenLocationReachable ? Theme.textFaint : Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier(
+                            "settings.agents.location.\(state.agent.rawValue)"
+                        )
+                    }
                 }
             }
         } control: {
-            if !state.isInstalled {
-                Text("not installed")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textFaint)
-            } else if let pending = state.pendingAction {
-                HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                if !state.isInstalled {
+                    Text("not installed")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textFaint)
+                } else if let pending = state.pendingAction {
                     SettingsStatusLine(level: .warning, text: state.active.label)
                     Button(pending.label, action: action)
                         .settingsID("agents.action.\(state.agent.rawValue)")
-                }
-            } else {
-                HStack(spacing: 8) {
+                } else {
                     // At its own ceiling. A "detected only" ceiling earns no
                     // green: nothing is connected, there is just nothing to do.
                     SettingsStatusLine(
@@ -124,6 +180,16 @@ private struct AgentControlRow: View {
                         Button("Disconnect", action: disconnect)
                             .settingsID("agents.disconnect.\(state.agent.rawValue)")
                     }
+                }
+                // Offered whether or not the agent was found: the row that says
+                // "not installed" is the one a user is looking at when they know
+                // perfectly well where they put it, and an agent Uncoil *did*
+                // find may still be the wrong copy of two.
+                Button(chosenLocation == nil ? "Locate…" : "Change…", action: onLocate)
+                    .settingsID("agents.locate.\(state.agent.rawValue)")
+                if chosenLocation != nil {
+                    Button("Clear", action: onClearLocation)
+                        .settingsID("agents.clearLocation.\(state.agent.rawValue)")
                 }
             }
         }
