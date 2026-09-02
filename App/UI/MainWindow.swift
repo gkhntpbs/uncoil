@@ -884,7 +884,14 @@ struct MainWindow: View {
         // on a timer: the only thing that creates them is a session that no
         // longer exists, and that set does not change while the app runs.
         projectStore.pruneDroppedImages()
-        Task { await settings.resolveBinaries() }
+        Task {
+            await settings.resolveBinaries()
+            // Asked once at start so the badge on the settings button means
+            // something before anyone opens Settings. It used to be asked only
+            // by the Agents screen's own `.task`, which is to say only by
+            // people who already suspected there was an update.
+            await settings.checkCLIUpdates()
+        }
     }
 
     /// Wires the two notification sources that are not the hook reducer:
