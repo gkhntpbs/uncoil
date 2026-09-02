@@ -348,6 +348,135 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         }
     }
 
+    func testASessionThatStopsReadingItsInputDoesNotFreezeTheDaemon() throws {
+        try withDaemon { socketPath, _ in
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            // Holds its terminal open and never reads a byte of it. That is
+            // what an agent in the middle of a long tool call looks like from
+            // here, and a PTY's input queue is only kilobytes deep.
+            let sid = UUID().uuidString
+            try send(RuntimeCommand(
+                cmd: "launch", sid: sid, shell: "/bin/sh",
+                args: ["-c", "stty raw; sleep 30"],
+                env: [], cwd: NSTemporaryDirectory(), cols: 80, rows: 24
+            ), to: fd)
+            usleep(500_000)
+
+            let payload = Data(repeating: UInt8(ascii: "x"), count: 256 * 1024)
+            try send(RuntimeCommand(
+                cmd: "input", sid: sid, b64: payload.base64EncodedString()
+            ), to: fd)
+
+            // The daemon still answers somebody else, promptly.
+            let second = try connect(to: socketPath)
+            defer { close(second) }
+            let asked = Date()
+            try send(RuntimeCommand.hello(), to: second)
+            XCTAssertEqual(try receive(from: second).ev, "hello")
+            XCTAssertLessThan(
+                Date().timeIntervalSince(asked), 2,
+                "the daemon answered, but only once the session took its input"
+            )
+
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: second)
+        }
+    }
+
+    func testInputQueuedWhileTheChildIsBusyArrivesWhenItReadsAgain() throws {
+        try withDaemon { socketPath, _ in
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let taken = root.appendingPathComponent("taken.txt")
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            _ = try receive(from: fd)
+
+            // Reads nothing for two seconds, then takes exactly what was sent.
+            let bytes = 64 * 1024
+            let sid = UUID().uuidString
+            try send(RuntimeCommand(
+                cmd: "launch", sid: sid, shell: "/bin/sh",
+                args: ["-c", "stty raw; sleep 2; head -c \(bytes) > taken.txt"],
+                env: [], cwd: root.path, cols: 80, rows: 24
+            ), to: fd)
+            usleep(300_000)
+
+            let payload = Data(repeating: UInt8(ascii: "x"), count: bytes)
+            try send(RuntimeCommand(
+                cmd: "input", sid: sid, b64: payload.base64EncodedString()
+            ), to: fd)
+
+            // Asked of FileManager rather than the URL: URL caches the resource
+            // values it is given once, so a polled size never changes.
+            XCTAssertTrue(
+                waitUntil(timeout: 20) {
+                    let attributes = try? FileManager.default
+                        .attributesOfItem(atPath: taken.path)
+                    return (attributes?[.size] as? Int) == bytes
+                },
+                "input the PTY could not take at once is kept and finished, not dropped"
+            )
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: fd)
+        }
+    }
+
+    func testAScanThatNeverExitsIsEndedByItsTimeoutAndDoesNotFreezeTheDaemon() throws {
+        try withDaemon { socketPath, _ in
+            let root = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
+            let script = root.appendingPathComponent("hanging-scan.sh")
+            try """
+            #!/bin/sh
+            sleep 600
+            """.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: script.path
+            )
+
+            let fd = try connect(to: socketPath)
+            defer { close(fd) }
+            try send(RuntimeCommand.hello(), to: fd)
+            XCTAssertEqual(try receive(from: fd).ev, "hello")
+
+            try send(RuntimeCommand(
+                cmd: "scan_schedule",
+                scan_binary: script.path,
+                scan_args: [],
+                interval_s: 600,
+                timeout_s: 10
+            ), to: fd)
+            XCTAssertEqual(try receive(from: fd).scan_scheduled, true)
+            // The first run fires a second after scheduling, and then hangs.
+            usleep(2_500_000)
+
+            let second = try connect(to: socketPath)
+            defer { close(second) }
+            let asked = Date()
+            try send(RuntimeCommand.hello(), to: second)
+            XCTAssertEqual(try receive(from: second).ev, "hello")
+            XCTAssertLessThan(
+                Date().timeIntervalSince(asked), 2,
+                "the daemon answered, but only once the scan let it go"
+            )
+
+            // The timeout is armed on the same queue the scan used to occupy,
+            // so it could never have fired while the scan was hung.
+            XCTAssertTrue(
+                waitUntil(timeout: 25) {
+                    guard (try? send(RuntimeCommand(cmd: "scan_status"), to: second)) != nil,
+                          let status = try? receive(from: second) else { return false }
+                    return status.scan_running == false && (status.scan_runs ?? 0) >= 1
+                },
+                "a scan that never exits should be terminated by its timeout"
+            )
+
+            try send(RuntimeCommand(cmd: "scan_cancel"), to: second)
+        }
+    }
+
     private func withDaemon(
         _ body: (String, Process) throws -> Void
     ) throws {
@@ -992,6 +1121,9 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         guard fd >= 0 else { throw POSIXError(.EMFILE) }
         var timeout = timeval(tv_sec: 3, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        // A frozen daemon stops reading, and without this a test that writes to
+        // it hangs the suite instead of failing it.
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         let bytes = path.utf8CString

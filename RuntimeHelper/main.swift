@@ -66,9 +66,39 @@ let runtimeLog = RuntimeLog()
 
 // MARK: - PTY session
 
+/// Owns a PTY master fd and closes it when the last dispatch source registered
+/// on it has finished cancelling.
+///
+/// Closing an fd out from under a live dispatch source is a libdispatch fault:
+/// cancellation is asynchronous, and the number can be handed to something else
+/// before it completes. Two sources share this fd — the session's output and
+/// its input — so there is no moment at which closing it by hand is safe.
+///
+/// It is a separate object rather than a counter on `PTYSession` because the
+/// session is released as soon as the daemon forgets it, which is *before* the
+/// cancellations land. A handler holding the session weakly finds nothing left
+/// to ask, and the fd stays open for the life of the daemon.
+final class MasterFD {
+    let value: Int32
+    private var registeredSources = 0
+    private var isOpen = true
+
+    init(_ value: Int32) { self.value = value }
+
+    func retain() { registeredSources += 1 }
+
+    func release() {
+        registeredSources -= 1
+        guard registeredSources <= 0, isOpen else { return }
+        isOpen = false
+        close(value)
+    }
+}
+
 final class PTYSession {
     let sid: String
-    let masterFD: Int32
+    let master: MasterFD
+    var masterFD: Int32 { master.value }
     let pid: pid_t
     var buffer = Data()
     var readSource: DispatchSourceRead?
@@ -96,6 +126,16 @@ final class PTYSession {
     /// daemon's one serial queue, which is the queue that also carries every
     /// session's output and every command the app sends.
     var replayIsDirty = false
+    /// Input the child has not taken yet, and the source armed to finish it.
+    ///
+    /// A PTY's input queue holds a few kilobytes. A child that stops reading
+    /// stdin — an agent busy in a long tool call, one that was stopped, one
+    /// that wedged — fills it, and a plain `write` to the master then parks
+    /// the caller until the child reads again, which may be never. That caller
+    /// is the daemon's one serial queue. See `drainInput(_:)`.
+    var pendingInput = Data()
+    var inputSource: DispatchSourceWrite?
+    var inputSourceIsPaused = false
     /// fd of the single attached client, if any.
     var attachedFD: Int32? {
         didSet { unattachedSince = attachedFD == nil ? Date() : nil }
@@ -103,7 +143,7 @@ final class PTYSession {
 
     init(sid: String, masterFD: Int32, pid: pid_t, replayURL: URL) {
         self.sid = sid
-        self.masterFD = masterFD
+        self.master = MasterFD(masterFD)
         self.pid = pid
         self.replayURL = replayURL
     }
@@ -147,6 +187,11 @@ func spawnPTY(shell: String, args: [String], env: [String], cwd: String, cols: I
         close(master)
         throw SpawnError.spawnFailed(rc)
     }
+    // Non-blocking from here on, in both directions. The daemon reads and
+    // writes this fd from the one serial queue that also answers every
+    // command, so neither may ever wait on the child.
+    let flags = fcntl(master, F_GETFL, 0)
+    _ = fcntl(master, F_SETFL, flags | O_NONBLOCK)
     return (master, pid)
 }
 
@@ -196,12 +241,17 @@ final class RuntimeDaemon {
     func start(socketPath: String) throws {
         let directory = URL(fileURLWithPath: socketPath).deletingLastPathComponent()
         runtimeLog.configure(directory: directory)
-        let lockPath = socketPath + ".lock"
+        let lockPath = socketPath + RuntimeProtocol.lockSuffix
         lockFD = open(lockPath, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
         guard lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) == 0 else {
             if lockFD >= 0 { close(lockFD) }
             throw POSIXError(.EADDRINUSE)
         }
+        // Whoever holds the lock says so by pid. The app reads it to end a
+        // daemon that has stopped answering — the daemon outliving the app is
+        // the point, but it must not be able to outlive its own usefulness.
+        ftruncate(lockFD, 0)
+        _ = "\(getpid())\n".withCString { write(lockFD, $0, strlen($0)) }
         var fileLimit = rlimit(rlim_cur: 1024, rlim_max: 1024)
         _ = setrlimit(RLIMIT_NOFILE, &fileLimit)
         var coreLimit = rlimit(rlim_cur: 0, rlim_max: 0)
@@ -471,9 +521,8 @@ final class RuntimeDaemon {
             if let sid = command.sid, let b64 = command.b64,
                let data = Data(base64Encoded: b64), let session = sessions[sid] {
                 session.lastActivity = .now
-                data.withUnsafeBytes { raw in
-                    _ = write(session.masterFD, raw.baseAddress, raw.count)
-                }
+                session.pendingInput.append(data)
+                drainInput(session)
             }
         case "resize":
             if let sid = command.sid, let cols = command.cols, let rows = command.rows,
@@ -573,12 +622,110 @@ final class RuntimeDaemon {
         }
     }
 
+    /// Writes as much queued input as the session's PTY will accept.
+    ///
+    /// This is the mirror of `drainOutbox(_:)`, and it exists for the same
+    /// reason. It ran as a plain `write` to the master fd, on the one serial
+    /// queue that also drains every PTY and handles every command — so an
+    /// agent that stopped reading its stdin for a moment filled the few
+    /// kilobytes a PTY holds, parked the daemon inside `write`, and stopped
+    /// *everything*: every other session's output, the health checks, and
+    /// every command the app sent afterwards. Because the daemon outlives the
+    /// app, quitting Uncoil and opening it again found the same frozen daemon:
+    /// new sessions came up blank and stayed blank, and only killing the
+    /// daemon — in practice, rebooting — brought them back.
+    ///
+    /// What the PTY will not take now is kept and a write source finishes it
+    /// when there is room.
+    private func drainInput(_ session: PTYSession) {
+        guard session.exitCode == nil else {
+            session.pendingInput = Data()
+            return
+        }
+        while !session.pendingInput.isEmpty {
+            let written = session.pendingInput.withUnsafeBytes { raw -> Int in
+                write(session.masterFD, raw.baseAddress!, raw.count)
+            }
+            if written > 0 {
+                session.pendingInput.removeFirst(written)
+                continue
+            }
+            // EAGAIN is the input queue being full, which is the ordinary case
+            // here and is what the write source exists for.
+            if written < 0, errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR {
+                break
+            }
+            // Anything else is a PTY with nothing on the other end. The read
+            // source sees the same thing and reaps the session.
+            session.pendingInput = Data()
+            break
+        }
+        if session.pendingInput.isEmpty {
+            suspendInputSource(session)
+        } else if session.pendingInput.count > RuntimeProtocol.sessionInputLimit {
+            runtimeLog.write("session input backlog exceeded \(session.sid); dropped")
+            session.pendingInput = Data()
+            suspendInputSource(session)
+        } else {
+            resumeInputSource(session)
+        }
+    }
+
+    private func resumeInputSource(_ session: PTYSession) {
+        if let source = session.inputSource {
+            if session.inputSourceIsPaused {
+                session.inputSourceIsPaused = false
+                source.resume()
+            }
+            return
+        }
+        let source = DispatchSource.makeWriteSource(
+            fileDescriptor: session.masterFD, queue: queue
+        )
+        source.setEventHandler { [weak self, weak session] in
+            guard let self, let session else { return }
+            self.drainInput(session)
+        }
+        let master = session.master
+        source.setCancelHandler { master.release() }
+        master.retain()
+        session.inputSource = source
+        source.resume()
+    }
+
+    /// A write source armed with nothing to write wakes the process every time
+    /// the PTY is writable, which is constantly.
+    private func suspendInputSource(_ session: PTYSession) {
+        guard let source = session.inputSource, !session.inputSourceIsPaused else { return }
+        session.inputSourceIsPaused = true
+        source.suspend()
+    }
+
+    /// A suspended dispatch source cannot be released, so it is resumed on the
+    /// way out; cancelling it while suspended would trap.
+    private func teardownInputSource(_ session: PTYSession) {
+        session.pendingInput = Data()
+        guard let source = session.inputSource else { return }
+        if session.inputSourceIsPaused {
+            session.inputSourceIsPaused = false
+            source.resume()
+        }
+        source.cancel()
+        session.inputSource = nil
+    }
+
     private func startReading(_ session: PTYSession) {
         let source = DispatchSource.makeReadSource(fileDescriptor: session.masterFD, queue: queue)
         source.setEventHandler { [weak self, weak session] in
             guard let self, let session else { return }
             var chunk = [UInt8](repeating: 0, count: 64 * 1024)
             let count = read(session.masterFD, &chunk, chunk.count)
+            // The master is non-blocking now: "nothing to read yet" is a -1
+            // and is not the child going away. Reaping on it would kill a live
+            // session on a spurious wake-up.
+            if count < 0, errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR {
+                return
+            }
             if count > 0 {
                 let data = Data(chunk[0..<count])
                 session.buffer.append(data)
@@ -594,6 +741,9 @@ final class RuntimeDaemon {
                 self.reap(session)
             }
         }
+        let master = session.master
+        source.setCancelHandler { master.release() }
+        master.retain()
         source.resume()
         session.readSource = source
     }
@@ -601,13 +751,13 @@ final class RuntimeDaemon {
     private func reap(_ session: PTYSession, status knownStatus: Int32? = nil) {
         session.readSource?.cancel()
         session.readSource = nil
+        teardownInputSource(session)
         var status = knownStatus ?? 0
         if knownStatus == nil {
             _ = waitpid(session.pid, &status, WNOHANG)
         }
         let code = (status & 0x7f) == 0 ? (status >> 8) & 0xff : -1
         session.exitCode = Int32(code)
-        close(session.masterFD)
         if let fd = session.attachedFD {
             send(RuntimeEventMessage(ev: "exited", sid: session.sid, code: session.exitCode), to: fd)
         }
@@ -661,9 +811,9 @@ final class RuntimeDaemon {
         guard let session = sessions[sid] else { return }
         session.readSource?.cancel()
         session.readSource = nil
+        teardownInputSource(session)
         // Signal the whole process group (the child called setsid).
         Darwin.kill(-session.pid, SIGTERM)
-        close(session.masterFD)
         var status: Int32 = 0
         waitpid(session.pid, &status, WNOHANG)
         sessions[sid] = nil
@@ -986,26 +1136,35 @@ final class RuntimeDaemon {
             scanSchedule?.lastExitCode = -1
             return
         }
+        // Reading the scanner's output and waiting for it both block, so both
+        // happen off the daemon's queue. They used to run on it, with the
+        // timeout below scheduled onto that same serial queue — which meant
+        // the one thing that could end a hung scan was itself queued behind
+        // the hung scan. A scanner that never exited froze the daemon for good.
         let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
         queue.asyncAfter(deadline: .now() + schedule.timeout, execute: deadline)
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        deadline.cancel()
-
-        // The result is written where the app will find it on its next launch;
-        // the daemon does not interpret it.
-        if let path = scanSchedule?.outputPath, !data.isEmpty {
-            try? FileManager.default.createDirectory(
-                at: URL(fileURLWithPath: path).deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        let outputPath = schedule.outputPath
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let data = output.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
+            let status = process.terminationStatus
+            self?.queue.async {
+                guard let self else { return }
+                deadline.cancel()
+                // The result is written where the app will find it on its next
+                // launch; the daemon does not interpret it.
+                if let outputPath, !data.isEmpty {
+                    try? FileManager.default.createDirectory(
+                        at: URL(fileURLWithPath: outputPath).deletingLastPathComponent(),
+                        withIntermediateDirectories: true
+                    )
+                    try? data.write(to: URL(fileURLWithPath: outputPath), options: .atomic)
+                }
+                self.scanSchedule?.isRunning = false
+                self.scanSchedule?.lastExitCode = status
+                runtimeLog.write("scan finished: exit \(status), \(data.count) bytes")
+            }
         }
-        scanSchedule?.isRunning = false
-        scanSchedule?.lastExitCode = process.terminationStatus
-        runtimeLog.write(
-            "scan finished: exit \(process.terminationStatus), \(data.count) bytes"
-        )
     }
 
     private func pruneTaskClaims() {
