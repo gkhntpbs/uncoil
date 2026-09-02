@@ -747,7 +747,16 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 size, RuntimeProtocol.replayBufferLimit,
                 "the replay is bounded however long the session runs"
             )
-            try send(RuntimeCommand(cmd: "kill", sid: sid), to: fd)
+            // 16 MB is twice `clientBacklogLimit` and this connection has read
+            // none of it, so the daemon has dropped it by now — deliberately,
+            // which is what `testAClientThatStopsReadingDoesNotFreezeTheDaemon`
+            // asserts one test above. The kill therefore goes over a fresh
+            // connection, for the same reason that test opens a second one.
+            let closing = try connect(to: socketPath)
+            defer { close(closing) }
+            try send(RuntimeCommand.hello(), to: closing)
+            _ = try receive(from: closing)
+            try send(RuntimeCommand(cmd: "kill", sid: sid), to: closing)
         }
     }
 
@@ -1124,6 +1133,15 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
         // A frozen daemon stops reading, and without this a test that writes to
         // it hangs the suite instead of failing it.
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        // And a daemon that has already gone turns the next write into
+        // SIGPIPE, which ends the test runner outright: the failure then reads
+        // as a crash with no message instead of as the assertion that did not
+        // hold, and takes the rest of the suite's run with it.
+        var noSignalOnBrokenPipe: Int32 = 1
+        setsockopt(
+            fd, SOL_SOCKET, SO_NOSIGPIPE,
+            &noSignalOnBrokenPipe, socklen_t(MemoryLayout<Int32>.size)
+        )
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         let bytes = path.utf8CString
@@ -1157,7 +1175,12 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                     raw.baseAddress?.advanced(by: offset),
                     raw.count - offset
                 )
-                guard result > 0 else { throw POSIXError(.EIO) }
+                // Carry the real errno rather than flattening it: EPIPE says
+                // the daemon is gone, EAGAIN says it stopped reading, and a
+                // test that reports neither leaves the next reader guessing.
+                guard result > 0 else {
+                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+                }
                 offset += result
             }
         }

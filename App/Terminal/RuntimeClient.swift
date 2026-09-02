@@ -185,6 +185,18 @@ final class RuntimeClient: @unchecked Sendable {
         let path = configuredSocketPath
         let sock = socket(AF_UNIX, SOCK_STREAM, 0)
         guard sock >= 0 else { return false }
+        // The daemon goes away for ordinary reasons — it is upgraded, it is
+        // ended after a stall, it crashes — and a write to a socket whose peer
+        // has gone raises SIGPIPE, whose default action is to end *this*
+        // process. The daemon guards itself the same way at its own entry
+        // point; without the same guard here the `written < 0` branch in
+        // `drainOutbox()` is unreachable, because the signal arrives before
+        // the error does.
+        var noSignalOnBrokenPipe: Int32 = 1
+        setsockopt(
+            sock, SOL_SOCKET, SO_NOSIGPIPE,
+            &noSignalOnBrokenPipe, socklen_t(MemoryLayout<Int32>.size)
+        )
         var address = sockaddr_un()
         address.sun_family = sa_family_t(AF_UNIX)
         let pathBytes = path.utf8CString
