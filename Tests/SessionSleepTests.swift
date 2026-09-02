@@ -150,10 +150,12 @@ final class SessionSleepTests: XCTestCase {
             var record = SessionRecord(
                 projectID: UUID(), provider: provider, accountID: nil, title: "s"
             )
-            let withoutID = TerminalRegistry.launchCommand(for: record, extraArguments: nil)
+            let withoutID = TerminalRegistry.launchCommand(
+                for: record, resume: .fresh(nil), extraArguments: nil
+            )
             record.providerSessionID = "prov-1"
             guard let withID = TerminalRegistry.launchCommand(
-                for: record, extraArguments: nil
+                for: record, resume: .resume("prov-1"), extraArguments: nil
             ) else {
                 XCTAssertFalse(provider.resumesConversation, provider.rawValue)
                 continue

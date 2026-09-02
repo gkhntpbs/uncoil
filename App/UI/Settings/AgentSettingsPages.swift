@@ -174,17 +174,25 @@ struct CLIToolsSettingsPage: View {
 private struct CLIToolRow: View {
     let provider: AgentProvider
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var sessionStore: SessionStore
 
     private var path: String? { settings.binaryPath(for: provider) }
     private var updating: Bool { settings.cliUpdating.contains(provider.rawValue) }
     private var source: AgentInstallSource { settings.installSource(for: provider) }
     private var plan: AgentUpdatePlan { settings.updatePlan(for: provider) }
+    private var availability: AgentUpdateAvailability { settings.updateAvailability(for: provider) }
 
-    /// Both halves of the comparison are in. Until then there is nothing to
-    /// say, and saying "up to date" would be saying it without looking.
-    private var isChecked: Bool {
-        settings.cliVersions[provider.rawValue] != nil
-            && settings.cliLatest[provider.rawValue] != nil
+    /// Sessions of this agent that a restart would actually touch.
+    private var restartTargets: [UUID] {
+        AgentProcessRestart.targets(
+            sessions: projectStore.sessions,
+            provider: provider,
+            isLive: { TerminalRegistry.shared.hasTerminal(for: $0) },
+            isAsleep: { id in
+                projectStore.sessions.first { $0.id == id }?.sleepMode != nil
+            }
+        )
     }
 
     /// Where the launcher actually points. Two agents can be on `PATH` at
@@ -220,24 +228,8 @@ private struct CLIToolRow: View {
                         ProgressView().controlSize(.small)
                         Text("updating…").font(.caption).foregroundStyle(Theme.textDim)
                     }
-                } else if settings.updateAvailable(for: provider) {
-                    HStack(spacing: 8) {
-                        if let latest = settings.cliLatest[provider.rawValue] {
-                            Text("new: \(latest)").font(.caption).foregroundStyle(Theme.warn)
-                        }
-                        if case .run = plan {
-                            Button("Update") { Task { await settings.updateCLI(provider) } }
-                                .buttonStyle(.borderedProminent)
-                        }
-                    }
-                } else if path != nil, isChecked {
-                    SettingsStatusLine(level: .ok, text: String(localized: "up to date"))
-                } else if path != nil {
-                    // Neither installed version nor latest is known yet, and
-                    // "up to date" is a claim rather than a placeholder.
-                    Text("checking…").font(.caption).foregroundStyle(Theme.textDim)
                 } else {
-                    SettingsStatusLine(level: .error, text: String(localized: "not installed"))
+                    control
                 }
             }
 
@@ -251,6 +243,72 @@ private struct CLIToolRow: View {
                     .textSelection(.enabled)
                     .lineLimit(6)
             }
+            // Offered whenever this agent has something running, not only
+            // after an update: an agent CLI reads its configuration and its
+            // own code once at launch, so "restart it" is the answer to more
+            // than one question. After an update it is the necessary next
+            // step — Claude Code says so itself — and it is the only one that
+            // used to mean visiting every session by hand.
+            restartOffer
+        }
+    }
+
+    /// One state per row, decided in one place.
+    ///
+    /// Every branch here used to be a separate question asked of separate
+    /// fields, which is how a row came to say "new: 0.152.1" beside a button
+    /// that could not deliver it: the version came from npm and the button ran
+    /// Homebrew. `AgentUpdateAvailability` answers both from the same reading
+    /// of how the tool was installed.
+    @ViewBuilder
+    private var control: some View {
+        switch availability {
+        case .available(_, let latest):
+            HStack(spacing: 8) {
+                Text("new: \(latest)").font(.caption).foregroundStyle(Theme.warn)
+                Button("Update") { Task { await settings.updateCLI(provider) } }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("cli.update.\(provider.rawValue)")
+            }
+        case .selfChecking:
+            // No version to compare, and a button anyway. These four ship
+            // their own updater and publish no list to read, so the only way
+            // to find out is to run it — which is what the tool's own users do.
+            Button("Check & Update") { Task { await settings.updateCLI(provider) } }
+                .accessibilityIdentifier("cli.update.\(provider.rawValue)")
+        case .upToDate:
+            SettingsStatusLine(level: .ok, text: String(localized: "up to date"))
+        case .noUpdater:
+            SettingsStatusLine(level: .warning, text: String(localized: "no updater"))
+        case .unchecked:
+            // "up to date" is a claim rather than a placeholder.
+            Text("checking…").font(.caption).foregroundStyle(Theme.textDim)
+        case .notInstalled:
+            SettingsStatusLine(level: .error, text: String(localized: "not installed"))
+        }
+    }
+
+    /// Offered after an update, because most agent CLIs load themselves once
+    /// at start: a session that was already running keeps running the version
+    /// it launched with, and Claude Code says so out loud by asking to be
+    /// restarted. Doing that by hand meant finding every session of that agent
+    /// and restarting each — which is exactly the list Uncoil already has.
+    @ViewBuilder
+    private var restartOffer: some View {
+        if let title = AgentProcessRestart.offer(
+            count: restartTargets.count, provider: provider
+        ) {
+            Button(title) { restartRunningSessions() }
+                .controlSize(.small)
+                .accessibilityIdentifier("cli.restart.\(provider.rawValue)")
+        }
+    }
+
+    private func restartRunningSessions() {
+        for id in restartTargets {
+            TerminalRegistry.shared.closeTerminal(for: id)
+            projectStore.updateSession(id) { $0.lastActivityAt = .now }
+            sessionStore.bumpRestart(id)
         }
     }
 
