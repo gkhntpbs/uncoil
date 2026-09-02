@@ -113,8 +113,8 @@ final class AgentLaunchOptionsTests: XCTestCase {
         )
         record.launchSelection = AgentLaunchSelection(model: "sonnet", effort: "low")
         let command = TerminalRegistry.launchCommand(
-            for: record, binaryPath: "/usr/local/bin/claude", extraArguments: nil,
-            modeArguments: ["--permission-mode", "manual"]
+            for: record, binaryPath: "/usr/local/bin/claude", resume: .fresh(nil),
+            extraArguments: nil, modeArguments: ["--permission-mode", "manual"]
         )
         XCTAssertNotNil(command)
         XCTAssertTrue(command!.contains("--model") && command!.contains("sonnet"), command!)
@@ -129,11 +129,103 @@ final class AgentLaunchOptionsTests: XCTestCase {
         )
         record.launchSelection = AgentLaunchSelection(workingMode: .plan)
         let command = TerminalRegistry.launchCommand(
-            for: record, binaryPath: "/usr/local/bin/claude", extraArguments: nil,
-            modeArguments: ["--permission-mode", "manual"]
+            for: record, binaryPath: "/usr/local/bin/claude", resume: .fresh(nil),
+            extraArguments: nil, modeArguments: ["--permission-mode", "manual"]
         )
         XCTAssertNotNil(command)
         XCTAssertTrue(command!.contains("plan"), command!)
         XCTAssertFalse(command!.contains("manual"), command!)
+    }
+
+    // MARK: - Codex approval
+
+    /// The flags and the app-server fields are two spellings of one choice,
+    /// and they had drifted: everything the app server did not name fell
+    /// through to workspace-write. Read Only could therefore write, which is
+    /// the one thing its name promises it cannot.
+    func testTheAppServerAndTheFlagsAgreeOnEveryMode() {
+        let expected: [AgentWorkingMode: [String]] = [
+            .readOnly: ["read-only", "on-request"],
+            .askForApproval: ["workspace-write", "on-request"],
+            .approveForMe: ["workspace-write", "never"],
+            .fullAccess: ["danger-full-access", "never"],
+        ]
+        for (mode, pair) in expected {
+            let flags = mode.launchArguments(for: .codex)
+            XCTAssertEqual(flags, ["--sandbox", pair[0], "--ask-for-approval", pair[1]], "\(mode)")
+            let served = AgentLaunchCatalog.codexApproval(mode: mode, config: nil)
+            XCTAssertEqual(served.sandbox, pair[0], "\(mode)")
+            XCTAssertEqual(served.approvalPolicy, pair[1], "\(mode)")
+        }
+    }
+
+    /// "The provider's own settings" has to mean the user's file, not Uncoil's
+    /// idea of a sensible pair.
+    func testProviderDefaultTakesTheUsersOwnCodexConfig() {
+        let config = """
+        model = "gpt-5.6-sol"
+        approval_policy = "never"
+        sandbox_mode = "danger-full-access"
+
+        [projects."/repo"]
+        trust_level = "trusted"
+        """
+        let served = AgentLaunchCatalog.codexApproval(mode: .providerDefault, config: config)
+        XCTAssertEqual(served.approvalPolicy, "never")
+        XCTAssertEqual(served.sandbox, "danger-full-access")
+        // And adds no flags at all on the command-line path.
+        XCTAssertTrue(AgentWorkingMode.providerDefault.launchArguments(for: .codex).isEmpty)
+    }
+
+    /// A config that says nothing keeps the pair Uncoil sent before there was
+    /// a way to ask it to leave the choice alone.
+    func testAnEmptyCodexConfigFallsBackToTheConservativePair() {
+        let served = AgentLaunchCatalog.codexApproval(mode: .providerDefault, config: nil)
+        XCTAssertEqual(served.approvalPolicy, "on-request")
+        XCTAssertEqual(served.sandbox, "workspace-write")
+    }
+
+    // MARK: - Hermes
+
+    /// Hermes names its reasoning levels in prose rather than in parentheses,
+    /// and argparse wraps the sentence across lines. Verbatim from
+    /// `hermes --help`, wrapping and all.
+    func testHermesReasoningLevelsAreReadFromItsOwnHelpText() {
+        let help = """
+          --reasoning LEVEL     Reasoning effort for this invocation: none, minimal,
+                                low, medium, high, xhigh, max, or ultra. Overrides
+                                agent.reasoning_effort in config.yaml for this run
+                                only.
+        """
+        XCTAssertEqual(
+            AgentLaunchCatalog.reasoningLevels(fromHelp: help),
+            ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]
+        )
+    }
+
+    /// No picker beats a picker offering a level the CLI would reject.
+    func testHermesOffersNoEffortsWhenTheFlagIsAbsent() {
+        let capabilities = AgentLaunchCatalog.capabilities(
+            for: .hermes, helpText: "usage: hermes [-h] [--version]"
+        )
+        XCTAssertTrue(capabilities.efforts.isEmpty)
+        // Its model ids are `provider/model` from the account's own providers,
+        // so no list is offered on any machine.
+        XCTAssertTrue(capabilities.models.isEmpty)
+    }
+
+    func testHermesPassesTheFlagsItsHelpDocuments() {
+        let arguments = AgentLaunchCatalog.launchArguments(
+            for: .hermes,
+            selection: AgentLaunchSelection(
+                model: "anthropic/claude-sonnet-4.6",
+                effort: "high",
+                workingMode: .dangerouslySkipPermissions
+            )
+        )
+        XCTAssertEqual(
+            arguments,
+            ["-m", "anthropic/claude-sonnet-4.6", "--reasoning", "high", "--yolo"]
+        )
     }
 }

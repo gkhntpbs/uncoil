@@ -3,14 +3,25 @@ import Foundation
 struct CodexSessionCandidate: Equatable {
     let id: String
     let cwd: String
-    let modifiedAt: Date
+    /// When Codex *began* this thread, from the thread's own `session_meta`.
+    ///
+    /// Not the file's modification time, which is what this used to sort on.
+    /// A thread that is merely still being written to — another agent working
+    /// in the same directory, which is the ordinary case in Uncoil — is
+    /// modified constantly, so the newly launched session was not reliably the
+    /// most recently touched file, and the oldest-first order this then took
+    /// picked the *other* agent's thread. Binding to it meant resuming
+    /// somebody else's conversation, or being told the thread already had an
+    /// active writer, which is exactly what it had.
+    let startedAt: Date
 }
 
 enum CodexSessionLocator {
+    /// Threads begun in `cwd` since `startedAfter`, newest first.
     static func candidates(
         codexHome: URL,
         cwd: String,
-        modifiedAfter: Date
+        startedAfter: Date
     ) -> [CodexSessionCandidate] {
         let normalizedCWD = URL(fileURLWithPath: cwd).standardizedFileURL.path
         var matches: [CodexSessionCandidate] = []
@@ -26,21 +37,26 @@ enum CodexSessionLocator {
                         forKeys: [.contentModificationDateKey, .isRegularFileKey]
                       ),
                       values.isRegularFile == true,
+                      // Still filtered on the file's own time first, purely to
+                      // skip reading thousands of old rollouts: a thread begun
+                      // after the launch cannot live in a file last written
+                      // before it.
                       let modifiedAt = values.contentModificationDate,
-                      modifiedAt >= modifiedAfter,
+                      modifiedAt >= startedAfter,
                       let metadata = metadata(at: url),
+                      metadata.startedAt >= startedAfter,
                       URL(fileURLWithPath: metadata.cwd).standardizedFileURL.path == normalizedCWD
                 else { continue }
                 matches.append(
                     CodexSessionCandidate(
                         id: metadata.id,
                         cwd: metadata.cwd,
-                        modifiedAt: modifiedAt
+                        startedAt: metadata.startedAt
                     )
                 )
             }
         }
-        return matches.sorted { $0.modifiedAt < $1.modifiedAt }
+        return matches.sorted { $0.startedAt > $1.startedAt }
     }
 
     private static func candidateRoots(codexHome: URL, now: Date = .now) -> [URL] {
@@ -62,7 +78,21 @@ enum CodexSessionLocator {
         }
     }
 
-    private static func metadata(at url: URL) -> (id: String, cwd: String)? {
+    /// `2026-09-01T09:38:00.695Z`, as Codex writes it.
+    static let timestampFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static func parseTimestamp(_ value: String) -> Date? {
+        timestampFormatter.date(from: value)
+            // A build that drops the milliseconds should not stop the session
+            // being found.
+            ?? ISO8601DateFormatter().date(from: value)
+    }
+
+    static func metadata(at url: URL) -> (id: String, cwd: String, startedAt: Date)? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? handle.close() }
         guard let data = try? handle.read(upToCount: 65_536),
@@ -75,9 +105,11 @@ enum CodexSessionLocator {
                   object["type"] as? String == "session_meta",
                   let payload = object["payload"] as? [String: Any],
                   let id = payload["id"] as? String,
-                  let cwd = payload["cwd"] as? String
+                  let cwd = payload["cwd"] as? String,
+                  let timestamp = payload["timestamp"] as? String,
+                  let startedAt = parseTimestamp(timestamp)
             else { continue }
-            return (id, cwd)
+            return (id, cwd, startedAt)
         }
         return nil
     }

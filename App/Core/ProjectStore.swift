@@ -481,6 +481,22 @@ final class ProjectStore: ObservableObject {
         }
     }
 
+    /// Forgets a provider session id the provider itself no longer has.
+    ///
+    /// Without this the record stays bound to a conversation that is gone, and
+    /// because a bound record is not a candidate for binding, it can never
+    /// learn the id of the session that started in its place — so every later
+    /// launch would try the same dead id again.
+    func clearProviderSessionID(_ id: UUID) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }),
+              sessions[index].providerSessionID != nil
+        else { return }
+        sessions[index].providerSessionID = nil
+        sessions[index].metadataVersion = Self.currentSessionSchemaVersion
+        saveSessions()
+        objectWillChange.send()
+    }
+
     @discardableResult
     func claimProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
         guard !providerSessionID.isEmpty,

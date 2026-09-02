@@ -24,6 +24,10 @@ final class TerminalRegistry {
     /// be released while the few most recent stay instantly re-openable.
     private var deadOrder: [UUID] = []
     private let deadTerminalLimit = 4
+    /// Why the last launch of a session could not go back into its
+    /// conversation. Written when the command is built and read one hop later,
+    /// where publishing a change to the session is allowed.
+    private var resumeObstacles: [UUID: AgentResumeObstacle] = [:]
     private weak var titleStore: ProjectStore?
 
     func hasTerminal(for recordID: UUID) -> Bool {
@@ -90,7 +94,10 @@ final class TerminalRegistry {
                 project: project,
                 account: account,
                 settings: settings,
-                projectStore: projectStore
+                projectStore: projectStore,
+                // The thread Codex had is gone, so the record has to let go of
+                // it before it can be told which thread started instead.
+                rediscovers: resumeObstacles[record.id] == .gone
             )
         }
 
@@ -104,9 +111,22 @@ final class TerminalRegistry {
         // "Publishing changes from within view updates is not allowed" every
         // time a session was opened.
         let recordID = record.id
+        let resumeObstacle = resumeObstacles.removeValue(forKey: recordID)
+        let provider = record.provider
         DispatchQueue.main.async { [weak sessionStore, weak projectStore] in
             projectStore?.markSessionStarted(recordID)
-            sessionStore?.setStatus(.idle, for: recordID)
+            // A conversation the provider has lost is one this record must
+            // stop asking for; one that is merely busy elsewhere is not.
+            if resumeObstacle == .gone {
+                projectStore?.clearProviderSessionID(recordID)
+            }
+            // A conversation that quietly did not come back reads as one that
+            // was lost, so the reason rides on the session's own status line.
+            sessionStore?.setStatus(
+                .idle,
+                detail: resumeObstacle?.message(for: provider),
+                for: recordID
+            )
             if LaunchConfig.shared.codexApprovalFixture, record.provider == .codex {
                 sessionStore?.setCodexApproval(
                     CodexApprovalRequest(
@@ -145,9 +165,12 @@ final class TerminalRegistry {
         project: Project,
         account: AccountProfile?,
         settings: SettingsStore,
-        projectStore: ProjectStore
+        projectStore: ProjectStore,
+        rediscovers: Bool = false
     ) {
-        guard record.provider == .codex, record.providerSessionID == nil else { return }
+        guard record.provider == .codex,
+              record.providerSessionID == nil || rediscovers
+        else { return }
         let codexHome = account?.configDirectory(profilesRoot: settings.profilesRootURL)
             ?? FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".codex", isDirectory: true)
@@ -156,11 +179,14 @@ final class TerminalRegistry {
         let recordID = record.id
 
         Task.detached(priority: .utility) {
+            if rediscovers {
+                await MainActor.run { projectStore.clearProviderSessionID(recordID) }
+            }
             for _ in 0..<60 {
                 let candidates = CodexSessionLocator.candidates(
                     codexHome: codexHome,
                     cwd: cwd,
-                    modifiedAfter: launchedAfter
+                    startedAfter: launchedAfter
                 )
                 for candidate in candidates {
                     let claimed = await MainActor.run {
@@ -290,10 +316,51 @@ final class TerminalRegistry {
         return fileURL.path
     }
 
+    /// Whether this session can actually go back into its conversation.
+    ///
+    /// Each provider is asked about its own store, and only about stores whose
+    /// shape has been checked against a real install. A provider Uncoil cannot
+    /// read answers `.unknown`, which resumes — refusing one that would have
+    /// worked is worse than the error it would have avoided.
+    nonisolated static func resumeDecision(
+        for record: SessionRecord,
+        cwd: String,
+        configDirectory: URL?
+    ) -> AgentResumeDecision {
+        AgentResume.decide(
+            provider: record.provider,
+            providerSessionID: record.providerSessionID
+        ) { id in
+            switch record.provider {
+            case .claude:
+                ClaudeSessionStore.state(
+                    configDirectory: configDirectory ?? ClaudeSessionStore.defaultConfigDirectory(),
+                    cwd: cwd,
+                    sessionID: id
+                )
+            case .codex:
+                CodexSessionStore.state(
+                    codexHome: configDirectory ?? CodexSessionStore.defaultHome(),
+                    threadID: id
+                )
+            // OpenCode, Grok, Cursor and Hermes each keep their conversations
+            // somewhere Uncoil has not verified against a real install, and a
+            // guess here would refuse resumes that work today.
+            default:
+                .unknown
+            }
+        }
+    }
+
     /// Shell arguments launching the agent. `exec` replaces the shell so the
     /// user never sees a typed command and closing the agent ends the session.
     /// -i: also source ~/.zshrc, for users whose PATH is set there.
-    private func shellArguments(for record: SessionRecord, settings: SettingsStore) -> (shell: String, args: [String]) {
+    private func shellArguments(
+        for record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore
+    ) -> (shell: String, args: [String]) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
         let mcpBinaryPath = record.provider.wiresControlPlane ? bundledMCPBinaryPath() : nil
@@ -305,9 +372,19 @@ final class TerminalRegistry {
             "UNCOIL_PROJECT_ID": record.projectID.uuidString,
             "UNCOIL_SESSION_ID": record.id.uuidString,
         ]
+        // Asked of the provider's own store rather than assumed from having an
+        // id: a resume flag the CLI cannot honour is not a degraded launch, it
+        // is a session that dies on its first line.
+        let resume = Self.resumeDecision(
+            for: record,
+            cwd: record.workingDirectory(in: project),
+            configDirectory: account?.configDirectory(profilesRoot: settings.profilesRootURL)
+        )
+        resumeObstacles[record.id] = resume.obstacle
         if let command = Self.launchCommand(
             for: record,
             binaryPath: settings.binaryPath(for: record.provider),
+            resume: resume,
             mcpConfigPath: mcpConfigPath,
             mcpBinaryPath: mcpBinaryPath,
             mcpEnvironment: mcpEnvironment,
@@ -414,21 +491,16 @@ final class TerminalRegistry {
         let view = UncoilTerminalView(frame: .zero)
         applyTheme(view)
         applyOptionAsMeta(view, settings: settings)
-        let mode = record.launchSelection?.workingMode?.normalized(for: .codex)
-            ?? settings.workingMode(for: .codex)
-        let approvalPolicy: String
-        let sandbox: String
-        switch mode {
-        case .approveForMe:
-            approvalPolicy = "never"
-            sandbox = "workspace-write"
-        case .fullAccess:
-            approvalPolicy = "never"
-            sandbox = "danger-full-access"
-        default:
-            approvalPolicy = "on-request"
-            sandbox = "workspace-write"
-        }
+        let mode = record.launchSelection?.workingMode ?? settings.workingMode(for: .codex)
+        let codexConfig = try? String(
+            contentsOf: (account?.configDirectory(profilesRoot: settings.profilesRootURL)
+                ?? CodexSessionStore.defaultHome())
+                .appendingPathComponent("config.toml"),
+            encoding: .utf8
+        )
+        let (approvalPolicy, sandbox) = AgentLaunchCatalog.codexApproval(
+            mode: mode, config: codexConfig
+        )
         var config: [String: JSONValue] = [:]
         // The app server takes no CLI flags; the same selection lands as config.
         if let model = record.launchSelection?.model {
@@ -527,7 +599,9 @@ final class TerminalRegistry {
             record: record, project: project, settings: settings
         )
 
-        let (shell, args) = shellArguments(for: record, settings: settings)
+        let (shell, args) = shellArguments(
+            for: record, project: project, account: account, settings: settings
+        )
         let spec = RuntimeClient.LaunchSpec(
             shell: shell,
             args: args,
@@ -599,7 +673,9 @@ final class TerminalRegistry {
                 )
             }
         }
-        let (shell, args) = shellArguments(for: record, settings: settings)
+        let (shell, args) = shellArguments(
+            for: record, project: project, account: account, settings: settings
+        )
         view.startProcess(
             executable: shell,
             args: args,
@@ -770,6 +846,10 @@ final class TerminalRegistry {
     nonisolated static func launchCommand(
         for record: SessionRecord,
         binaryPath: String? = nil,
+        /// Required rather than defaulted: a caller that forgets it would
+        /// silently start a fresh conversation where the user expected theirs
+        /// back, and nothing would say so.
+        resume: AgentResumeDecision,
         mcpConfigPath: String? = nil,
         mcpBinaryPath: String? = nil,
         mcpEnvironment: [String: String] = [:],
@@ -779,20 +859,30 @@ final class TerminalRegistry {
     ) -> String? {
         guard let name = record.provider.launchCommand else { return nil }
         var command = binaryPath.map { "\"\($0)\"" } ?? name
-        if record.provider == .claude, let sid = record.providerSessionID {
+        let resumeID = resume.sessionID
+        if record.provider == .claude, let sid = resumeID {
             command += " --resume \(shellQuote(sid))"
         }
-        if record.provider == .codex, let sid = record.providerSessionID {
+        if record.provider == .codex, let sid = resumeID {
             command += " resume \(shellQuote(sid))"
         }
-        if record.provider == .opencode, let sid = record.providerSessionID {
+        if record.provider == .opencode, let sid = resumeID {
             command += " --session \(shellQuote(sid))"
         }
-        if record.provider == .grok, let sid = record.providerSessionID {
+        if record.provider == .grok, let sid = resumeID {
             command += " --resume \(shellQuote(sid))"
         }
-        if record.provider == .cursor, let sid = record.providerSessionID {
+        if record.provider == .cursor, let sid = resumeID {
             command += " --resume \(shellQuote(sid))"
+        }
+        if record.provider == .hermes, let sid = resumeID {
+            // `--no-restore-cwd` is not optional here. Hermes records a
+            // session's working directory and cd's back into it on resume, so
+            // waking a session would silently move it out of the worktree
+            // Uncoil started it in — and the agent would then work in the wrong
+            // checkout while the UI still showed the right one. Uncoil chose the
+            // directory; the resume must not overrule it.
+            command += " --resume \(shellQuote(sid)) --no-restore-cwd"
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""
