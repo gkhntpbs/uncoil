@@ -137,16 +137,6 @@
     "#%lld" : {
 
     },
-    "%@  ·  %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@  ·  %2$@"
-          }
-        }
-      }
-    },
     "%@ — %@" : {
       "localizations" : {
         "en" : {
@@ -221,16 +211,6 @@
         }
       }
     },
-    "%@ · %lld%% remaining" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · %2$lld%% remaining"
-          }
-        }
-      }
-    },
     "%@ › %@" : {
       "localizations" : {
         "en" : {
@@ -240,9 +220,6 @@
           }
         }
       }
-    },
-    "%@ (continued)" : {
-
     },
     "%@ (popped out)" : {
 
@@ -327,6 +304,9 @@
         }
       }
     },
+    "%@ cannot be reached right now." : {
+
+    },
     "%@ changed on disk; the plan was refreshed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -406,12 +386,6 @@
         }
       }
     },
-    "%@ has stopped accepting work" : {
-
-    },
-    "%@ has the work" : {
-
-    },
     "%@ in %@ — click to switch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -445,6 +419,12 @@
       }
     },
     "%@ installed." : {
+
+    },
+    "%@ is back to the usual install locations." : {
+
+    },
+    "%@ is connected." : {
 
     },
     "%@ is not a git repository." : {
@@ -555,6 +535,26 @@
         }
       }
     },
+    "%@ keeps a secret in Grok's config.toml: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ keeps a secret in Grok's config.toml: %2$@."
+          }
+        }
+      }
+    },
+    "%@ keeps a secret in Hermes' config.yaml: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ keeps a secret in Hermes' config.yaml: %2$@."
+          }
+        }
+      }
+    },
     "%@ keeps a secret in its config: %@." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -565,6 +565,9 @@
           }
         }
       }
+    },
+    "%@ keeps a secret in OpenCode's config: " : {
+
     },
     "%@ no longer reports usage for this kind of account. Your allowance is unaffected; it just cannot be read from here." : {
 
@@ -817,6 +820,12 @@
     "%%%lld" : {
 
     },
+    "%1$@ will be run from %2$@." : {
+
+    },
+    "%1$lld of %2$lld connectable agents are fully connected." : {
+
+    },
     "%lld" : {
 
     },
@@ -878,9 +887,6 @@
           }
         }
       }
-    },
-    "%lld failed" : {
-
     },
     "%lld files" : {
       "extractionState" : "manual",
@@ -1003,9 +1009,6 @@
           }
         }
       }
-    },
-    "%lld passed" : {
-
     },
     "%lld pending notifications" : {
       "extractionState" : "manual",
@@ -1189,12 +1192,6 @@
         }
       }
     },
-    "%lld skipped" : {
-
-    },
-    "%lld so far" : {
-
-    },
     "%lld stars" : {
 
     },
@@ -1244,6 +1241,9 @@
           }
         }
       }
+    },
+    "%lld updates waiting" : {
+
     },
     "%lld/%lld" : {
       "localizations" : {
@@ -2209,6 +2209,9 @@
         }
       }
     },
+    "Agents were found, but none of them can be connected yet." : {
+
+    },
     "All" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2549,12 +2552,6 @@
           }
         }
       }
-    },
-    "Ask this agent what it was doing first" : {
-
-    },
-    "Asking %@ what it was doing…" : {
-
     },
     "Asks before it edits a file or runs a command." : {
       "extractionState" : "manual",
@@ -3315,6 +3312,9 @@
         }
       }
     },
+    "Change…" : {
+
+    },
     "changed %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3337,6 +3337,9 @@
         }
       }
     },
+    "Changing appearance restores that theme's own colours, so any colours you have set below are replaced." : {
+
+    },
     "Changing files" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3347,6 +3350,9 @@
           }
         }
       }
+    },
+    "Check & Update" : {
+
     },
     "Check automatically" : {
 
@@ -3445,6 +3451,9 @@
           }
         }
       }
+    },
+    "Choose the %1$@ executable, or the folder it is in. Uncoil will look for “%2$@”." : {
+
     },
     "Choose the Binary…" : {
       "extractionState" : "manual",
@@ -4035,6 +4044,9 @@
     "Config drift" : {
 
     },
+    "config.yaml is indented with tabs, which YAML does not allow." : {
+
+    },
     "Conflict" : {
 
     },
@@ -4070,6 +4082,9 @@
           }
         }
       }
+    },
+    "Connect all (%lld)" : {
+
     },
     "Connect GitHub for full browsing" : {
 
@@ -4118,6 +4133,9 @@
         }
       }
     },
+    "Connected agents" : {
+
+    },
     "Containers running" : {
 
     },
@@ -4136,9 +4154,6 @@
       }
     },
     "Continue" : {
-
-    },
-    "Continue with %@" : {
 
     },
     "Control plane" : {
@@ -4178,9 +4193,6 @@
       }
     },
     "Copy" : {
-
-    },
-    "Copy failure" : {
 
     },
     "Copy failure message" : {
@@ -4921,6 +4933,9 @@
         }
       }
     },
+    "Disconnect" : {
+
+    },
     "Document" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5338,6 +5353,9 @@
         }
       }
     },
+    "Every agent CLI Uncoil found on this Mac, and how deeply it is connected." : {
+
+    },
     "Every agent opens side by side on the same project." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5348,6 +5366,9 @@
           }
         }
       }
+    },
+    "Every agent Uncoil could connect is connected." : {
+
     },
     "Every event carries its own setting. While “Default” is selected, the value on the General page applies." : {
       "extractionState" : "manual",
@@ -5952,6 +5973,9 @@
         }
       }
     },
+    "Grok reads config.toml at startup; open sessions must be restarted." : {
+
+    },
     "Group by project" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5999,12 +6023,6 @@
         }
       }
     },
-    "Hand off" : {
-
-    },
-    "Hand off before it runs out" : {
-
-    },
     "Hand out work from a TODO.md" : {
 
     },
@@ -6022,13 +6040,7 @@
         }
       }
     },
-    "Hand the work to another agent before this account runs out" : {
-
-    },
     "Hand this issue to an agent" : {
-
-    },
-    "Hand this work to another agent" : {
 
     },
     "Has no skills directory" : {
@@ -6095,6 +6107,9 @@
         }
       }
     },
+    "Hermes reads config.yaml at startup; open sessions must be restarted." : {
+
+    },
     "Hibernate" : {
 
     },
@@ -6119,6 +6134,9 @@
           }
         }
       }
+    },
+    "Hide output" : {
+
     },
     "Hide Sessions" : {
       "extractionState" : "manual",
@@ -6145,9 +6163,6 @@
     "Hide the details" : {
 
     },
-    "Hide the results" : {
-
-    },
     "Hide the sidebar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6158,6 +6173,9 @@
           }
         }
       }
+    },
+    "Hide the steps" : {
+
     },
     "Hide while idle" : {
       "extractionState" : "manual",
@@ -6530,6 +6548,9 @@
         }
       }
     },
+    "Installed Agents" : {
+
+    },
     "Installed by Uncoil" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6693,36 +6714,6 @@
     "ISSUES" : {
 
     },
-    "it did not answer in time" : {
-
-    },
-    "it produced no answer" : {
-
-    },
-    "It was given the previous agent's notes, the branch, the changed files and the diff." : {
-
-    },
-    "It writes a handover file and stops. If it cannot answer, the handoff goes ahead with what Uncoil already knows." : {
-
-    },
-    "it wrote an empty handover" : {
-
-    },
-    "its answer could not be read" : {
-
-    },
-    "its answer had no result" : {
-
-    },
-    "its CLI could not be found" : {
-
-    },
-    "its CLI could not be started" : {
-
-    },
-    "its project is gone" : {
-
-    },
     "just now" : {
 
     },
@@ -6758,12 +6749,6 @@
           }
         }
       }
-    },
-    "Keep using this account" : {
-
-    },
-    "Keeps the branch, the changes and what was decided" : {
-
     },
     "Keeps watching the agents while Uncoil's window is closed." : {
       "extractionState" : "manual",
@@ -6944,6 +6929,9 @@
     "License" : {
 
     },
+    "Light" : {
+
+    },
     "Limit approaching" : {
 
     },
@@ -7061,6 +7049,9 @@
         }
       }
     },
+    "Locate…" : {
+
+    },
     "Login needed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7124,6 +7115,9 @@
           }
         }
       }
+    },
+    "Looking in %@" : {
+
     },
     "lost" : {
 
@@ -7648,6 +7642,9 @@
     "Move It Here" : {
 
     },
+    "Move it to the Uncoil launcher to keep the value in the Keychain, or to ~/.hermes/.env and reference it as ${NAME}." : {
+
+    },
     "Move it to the Uncoil launcher to keep the value in the Keychain." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8040,6 +8037,12 @@
     "No adapter for this agent" : {
 
     },
+    "No agent CLI found on this machine." : {
+
+    },
+    "No agent CLI was found in any of the usual install locations." : {
+
+    },
     "No banner is sent about the session already on screen." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8128,6 +8131,9 @@
           }
         }
       }
+    },
+    "No executable named “%1$@” under %2$@, so nothing was changed." : {
+
     },
     "No extension has been installed from this repo yet." : {
       "extractionState" : "manual",
@@ -8668,6 +8674,9 @@
         }
       }
     },
+    "no updater" : {
+
+    },
     "No usage figures" : {
 
     },
@@ -8795,6 +8804,9 @@
           }
         }
       }
+    },
+    "Not found in any of the usual install locations." : {
+
     },
     "Not in the strip" : {
 
@@ -9237,6 +9249,9 @@
     "Open a new agent session on these failures" : {
 
     },
+    "Open a new agent session on this test" : {
+
+    },
     "Open Extensions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9313,9 +9328,6 @@
           }
         }
       }
-    },
-    "Open it" : {
-
     },
     "Open on GitHub" : {
 
@@ -9486,6 +9498,9 @@
         }
       }
     },
+    "OpenCode reads its config at startup; open sessions must be restarted." : {
+
+    },
     "Opening a network connection." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9580,6 +9595,9 @@
           }
         }
       }
+    },
+    "Out of %lld, which is what the last run reported" : {
+
     },
     "Out of reach" : {
       "extractionState" : "manual",
@@ -10452,9 +10470,6 @@
         }
       }
     },
-    "Read `%@` and continue the work it describes. It is a handover from another agent that ran out of quota; check the current state of the repository before you change anything." : {
-
-    },
     "Read Only" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10960,6 +10975,9 @@
         }
       }
     },
+    "Replace the leading tabs with spaces; until then Hermes ignores the whole file." : {
+
+    },
     "reported by the agent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11060,6 +11078,16 @@
         }
       }
     },
+    "Restart %lld running %@ sessions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Restart %1$lld running %2$@ sessions"
+          }
+        }
+      }
+    },
     "Restart now" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11070,6 +11098,9 @@
           }
         }
       }
+    },
+    "Restart the running %@ session" : {
+
     },
     "Restart the session" : {
       "extractionState" : "manual",
@@ -11608,6 +11639,9 @@
         }
       }
     },
+    "Scanned %@" : {
+
+    },
     "Scanning the project…" : {
 
     },
@@ -12136,6 +12170,9 @@
         }
       }
     },
+    "Settings — %lld agent updates waiting" : {
+
+    },
     "Settings: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12316,9 +12353,6 @@
     "Show the rest of this task" : {
 
     },
-    "Show the results" : {
-
-    },
     "Show the sidebar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12329,6 +12363,9 @@
           }
         }
       }
+    },
+    "Show the steps" : {
+
     },
     "Show this repository's GitHub issues" : {
 
@@ -12747,6 +12784,12 @@
     "Start working" : {
 
     },
+    "Started fresh — %@ no longer has this conversation." : {
+
+    },
+    "Started fresh — this conversation is open in another %@ process." : {
+
+    },
     "starting" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12768,9 +12811,6 @@
           }
         }
       }
-    },
-    "Starting %@…" : {
-
     },
     "Starting a child process." : {
       "extractionState" : "manual",
@@ -12977,6 +13017,9 @@
         }
       }
     },
+    "System" : {
+
+    },
     "System sound" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13006,9 +13049,6 @@
 
     },
     "Take over what you already installed" : {
-
-    },
-    "Takes up to a minute and uses a little of the remaining quota. Without it the handover still carries the branch, the changed files and the diff — but not what was decided." : {
 
     },
     "Target" : {
@@ -13732,9 +13772,6 @@
     "the layout changed" : {
 
     },
-    "The old session is still running and was not closed." : {
-
-    },
     "The package contains binary files." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13756,9 +13793,6 @@
           }
         }
       }
-    },
-    "The previous agent did not answer (%@), so the handover carries only what Uncoil knows: the branch, the changed files and the diff." : {
-
     },
     "The previous revision is kept; rollback returns to it with one click." : {
       "extractionState" : "manual",
@@ -13792,9 +13826,6 @@
           }
         }
       }
-    },
-    "The project is gone." : {
-
     },
     "The prompt is typed in; press Enter in the session to start it." : {
       "extractionState" : "manual",
@@ -14238,9 +14269,6 @@
         }
       }
     },
-    "There is no other agent installed to hand this work to." : {
-
-    },
     "There is no session to grant anything to yet." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14277,9 +14305,6 @@
         }
       }
     },
-    "This account is out — hand the work to another agent" : {
-
-    },
     "This agent cannot resume a conversation, so it cannot sleep." : {
 
     },
@@ -14311,7 +14336,7 @@
         }
       }
     },
-    "This framework's failure output is not parsed, so there is no message to show — the run's own output is under the suite." : {
+    "This framework's failure output is not parsed, so there is no message to show — the run's own output is below." : {
 
     },
     "This is the mode every new session starts in. You can change it per session at any time, and change the default later in Settings." : {
@@ -14575,9 +14600,6 @@
     "Uncoil can look for the test setup this project already has, run it, and show what failed." : {
 
     },
-    "Uncoil cannot ask %@ for a handover." : {
-
-    },
     "Uncoil cannot tell how this was installed, so it will not guess at an update command." : {
 
     },
@@ -14603,6 +14625,9 @@
         }
       }
     },
+    "Uncoil detects these but does not manage their configuration; each moves up once an adapter for its config format lands." : {
+
+    },
     "Uncoil directory" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14615,6 +14640,9 @@
       }
     },
     "Uncoil Extensions" : {
+
+    },
+    "Uncoil follows this Mac's appearance, and switches with it. Changing appearance restores that theme's own colours, so any colours you have set below are replaced." : {
 
     },
     "Uncoil hands every session an MCP server of its own, so the agent can talk back: eight tools, each one gated by a capability you control." : {
@@ -14965,9 +14993,6 @@
         }
       }
     },
-    "unsupported provider" : {
-
-    },
     "Untitled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15131,9 +15156,6 @@
     "Usage unavailable" : {
 
     },
-    "usage unknown" : {
-
-    },
     "Use Option as Meta" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15144,6 +15166,9 @@
           }
         }
       }
+    },
+    "Use this" : {
+
     },
     "Uses the managed Chromium browser and its persistent state." : {
       "extractionState" : "manual",
@@ -15453,6 +15478,9 @@
           }
         }
       }
+    },
+    "Where is %@?" : {
+
     },
     "Which agents an extension is enabled for." : {
       "extractionState" : "manual",
