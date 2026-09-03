@@ -211,6 +211,16 @@
         }
       }
     },
+    "%@ · %lld%% remaining" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld%% remaining"
+          }
+        }
+      }
+    },
     "%@ › %@" : {
       "localizations" : {
         "en" : {
@@ -220,6 +230,9 @@
           }
         }
       }
+    },
+    "%@ (continued)" : {
+
     },
     "%@ (popped out)" : {
 
@@ -385,6 +398,12 @@
           }
         }
       }
+    },
+    "%@ has stopped accepting work" : {
+
+    },
+    "%@ has the work" : {
+
     },
     "%@ in %@ — click to switch" : {
       "extractionState" : "manual",
@@ -2553,6 +2572,12 @@
         }
       }
     },
+    "Ask this agent what it was doing first" : {
+
+    },
+    "Asking %@ what it was doing…" : {
+
+    },
     "Asks before it edits a file or runs a command." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4154,6 +4179,9 @@
       }
     },
     "Continue" : {
+
+    },
+    "Continue with %@" : {
 
     },
     "Control plane" : {
@@ -6023,6 +6051,12 @@
         }
       }
     },
+    "Hand off" : {
+
+    },
+    "Hand off before it runs out" : {
+
+    },
     "Hand out work from a TODO.md" : {
 
     },
@@ -6040,7 +6074,13 @@
         }
       }
     },
+    "Hand the work to another agent before this account runs out" : {
+
+    },
     "Hand this issue to an agent" : {
+
+    },
+    "Hand this work to another agent" : {
 
     },
     "Has no skills directory" : {
@@ -6714,6 +6754,36 @@
     "ISSUES" : {
 
     },
+    "it did not answer in time" : {
+
+    },
+    "it produced no answer" : {
+
+    },
+    "It was given the previous agent's notes, the branch, the changed files and the diff." : {
+
+    },
+    "It writes a handover file and stops. If it cannot answer, the handoff goes ahead with what Uncoil already knows." : {
+
+    },
+    "it wrote an empty handover" : {
+
+    },
+    "its answer could not be read" : {
+
+    },
+    "its answer had no result" : {
+
+    },
+    "its CLI could not be found" : {
+
+    },
+    "its CLI could not be started" : {
+
+    },
+    "its project is gone" : {
+
+    },
     "just now" : {
 
     },
@@ -6749,6 +6819,12 @@
           }
         }
       }
+    },
+    "Keep using this account" : {
+
+    },
+    "Keeps the branch, the changes and what was decided" : {
+
     },
     "Keeps watching the agents while Uncoil's window is closed." : {
       "extractionState" : "manual",
@@ -9329,6 +9405,9 @@
         }
       }
     },
+    "Open it" : {
+
+    },
     "Open on GitHub" : {
 
     },
@@ -10469,6 +10548,9 @@
           }
         }
       }
+    },
+    "Read `%@` and continue the work it describes. It is a handover from another agent that ran out of quota; check the current state of the repository before you change anything." : {
+
     },
     "Read Only" : {
       "extractionState" : "manual",
@@ -12812,6 +12894,9 @@
         }
       }
     },
+    "Starting %@…" : {
+
+    },
     "Starting a child process." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13049,6 +13134,9 @@
 
     },
     "Take over what you already installed" : {
+
+    },
+    "Takes up to a minute and uses a little of the remaining quota. Without it the handover still carries the branch, the changed files and the diff — but not what was decided." : {
 
     },
     "Target" : {
@@ -13772,6 +13860,9 @@
     "the layout changed" : {
 
     },
+    "The old session is still running and was not closed." : {
+
+    },
     "The package contains binary files." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13793,6 +13884,9 @@
           }
         }
       }
+    },
+    "The previous agent did not answer (%@), so the handover carries only what Uncoil knows: the branch, the changed files and the diff." : {
+
     },
     "The previous revision is kept; rollback returns to it with one click." : {
       "extractionState" : "manual",
@@ -13826,6 +13920,9 @@
           }
         }
       }
+    },
+    "The project is gone." : {
+
     },
     "The prompt is typed in; press Enter in the session to start it." : {
       "extractionState" : "manual",
@@ -14269,6 +14366,9 @@
         }
       }
     },
+    "There is no other agent installed to hand this work to." : {
+
+    },
     "There is no session to grant anything to yet." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14304,6 +14404,9 @@
           }
         }
       }
+    },
+    "This account is out — hand the work to another agent" : {
+
     },
     "This agent cannot resume a conversation, so it cannot sleep." : {
 
@@ -14598,6 +14701,9 @@
 
     },
     "Uncoil can look for the test setup this project already has, run it, and show what failed." : {
+
+    },
+    "Uncoil cannot ask %@ for a handover." : {
 
     },
     "Uncoil cannot tell how this was installed, so it will not guess at an update command." : {
@@ -14993,6 +15099,9 @@
         }
       }
     },
+    "unsupported provider" : {
+
+    },
     "Untitled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15154,6 +15263,9 @@
 
     },
     "Usage unavailable" : {
+
+    },
+    "usage unknown" : {
 
     },
     "Use Option as Meta" : {
