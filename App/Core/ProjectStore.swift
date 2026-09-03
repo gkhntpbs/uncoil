@@ -88,12 +88,23 @@ final class ProjectStore: ObservableObject {
         )
     }
 
-    func addProject(at url: URL) {
+    /// Adds a folder as a project and returns it, or nil when the folder is
+    /// already one.
+    ///
+    /// Returning the project is not a convenience. `sortProjects` puts the
+    /// scratch workspace last, so a caller reaching for `projects.last` gets
+    /// Scratch rather than the folder the user just chose — and gets the wrong
+    /// answer again when the add was a no-op. The only reliable way to know
+    /// what was created is to be told.
+    @discardableResult
+    func addProject(at url: URL) -> Project? {
         let path = url.standardizedFileURL.path
-        guard !projects.contains(where: { $0.rootPath == path }) else { return }
-        projects.append(Project(name: url.lastPathComponent, rootPath: path))
+        guard !projects.contains(where: { $0.rootPath == path }) else { return nil }
+        let project = Project(name: url.lastPathComponent, rootPath: path)
+        projects.append(project)
         sortProjects()
         save()
+        return project
     }
 
     /// The projects the user opened. Excludes the scratch workspace, which is

@@ -3,6 +3,20 @@ import AppKit
 
 // MARK: - Provider
 
+/// How far a provider can be held to a project's extension selection. See
+/// `AgentProvider.extensionScoping` for the per-CLI evidence.
+enum ExtensionScopingSupport: Equatable {
+    /// MCP servers and skills alike can be restricted for one session.
+    case strict
+    /// MCP servers only; the CLI offers no per-session skill selection.
+    case mcpOnly
+    /// Nothing can be restricted without writing to the user's own config.
+    case none
+
+    var scopesMCPServers: Bool { self != .none }
+    var scopesSkills: Bool { self == .strict }
+}
+
 enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     case claude
     case codex
@@ -161,6 +175,39 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         // needs a persistent write to the user's config, so it is not
         // something a session launch may do on its own.
         case .grok, .cursor, .gemini, .hermes, .terminal: false
+        }
+    }
+
+    /// How much of a project's extension selection this provider can actually
+    /// be held to when a session starts.
+    ///
+    /// A project says which MCP servers and skills belong to it; whether that
+    /// can be *enforced* is a fact about each CLI, and the answer differs per
+    /// half. Every entry here was checked against the installed CLI's own
+    /// `--help` and config, because a scoping claim that quietly does nothing
+    /// is worse than admitting the gap: the user would trim a list, watch the
+    /// agent load everything anyway, and have no way to tell which of the two
+    /// was lying.
+    var extensionScoping: ExtensionScopingSupport {
+        switch self {
+        // Codex answers both halves from its own config: `mcp_servers.<name>`
+        // and each `[[skills.config]]` entry carry an `enabled` flag, and `-c`
+        // overrides either without touching `~/.codex/config.toml`.
+        case .codex: .strict
+        // Claude Code scopes MCP exactly — `--mcp-config` names the servers and
+        // `--strict-mcp-config` ignores every other source — but has no
+        // per-session skill selection. `--setting-sources project,local` would
+        // drop the user's skills, and with them the hooks Uncoil installs into
+        // `~/.claude/settings.json`, so the session would go dark in the UI to
+        // buy a shorter skill list. OpenCode is `mcpOnly` for the opposite
+        // reason: `OPENCODE_CONFIG_CONTENT` scopes its servers, and it reads no
+        // skills at all, so there is no second half to answer for.
+        case .claude, .opencode: .mcpOnly
+        // No per-session mechanism at all — the same finding, and the same
+        // evidence, as `wiresControlPlane` above. Grok and Cursor register MCP
+        // servers only in their own config files, Hermes needs a persistent
+        // write to pick one up, and Gemini has nothing verified.
+        case .gemini, .grok, .cursor, .hermes, .terminal: .none
         }
     }
 

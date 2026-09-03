@@ -19,6 +19,13 @@ struct MainWindow: View {
     /// Secondary session shown side-by-side (drop a session onto the view).
     @State private var splitSessionID: UUID?
     @State private var showFolderPicker = false
+    /// The project whose extension selection is being asked for, right after it
+    /// was added. Nil at every other moment.
+    @State private var configuringNewProject: Project?
+    /// Shared, not per-sheet. `save()` serialises the whole registry document
+    /// from memory, so a sheet with its own instance would discard whatever the
+    /// last one wrote — see `ExtensionRegistry.shared`.
+    @ObservedObject private var extensionRegistry = ExtensionRegistry.shared
     @State private var testWorkspaceError: String?
     @State private var debugBundleMessage: String?
     @State private var debugBundleURL: URL?
@@ -271,11 +278,20 @@ struct MainWindow: View {
             isPresented: $showFolderPicker,
             prompt: String(localized: "Add Project")
         ) { url in
-            projectStore.addProject(at: url)
-            if let added = projectStore.projects.last {
-                openInThisWindow(added.id)
-                selection = .project(added.id)
-            }
+            // `addProject` answers with the project it made. Reaching for
+            // `projects.last` instead used to pick the scratch workspace, which
+            // `sortProjects` keeps at the bottom, and picked the wrong project
+            // again when the folder was already open.
+            guard let added = projectStore.addProject(at: url) else { return }
+            openInThisWindow(added.id)
+            selection = .project(added.id)
+            // Deferred by one turn: this runs from the open panel's own
+            // completion, and asking the window for a second sheet while the
+            // first is still tearing down gets the second one dropped.
+            DispatchQueue.main.async { configuringNewProject = added }
+        }
+        .sheet(item: $configuringNewProject) { project in
+            NewProjectSheet(project: project, registry: extensionRegistry)
         }
         .background(
             MainWindowFrame(

@@ -240,7 +240,12 @@ final class TerminalRegistry {
         // ~/.config/opencode — the user's providers and keys stay untouched.
         if record.provider == .opencode,
            let binary = bundledMCPBinaryPath(),
-           let content = Self.openCodeConfigContent(for: record, binaryPath: binary) {
+           let content = Self.openCodeConfigContent(
+               for: record,
+               binaryPath: binary,
+               scope: ProjectScopeService.shared
+                   .resolve(for: record.provider, projectID: record.projectID).scope
+           ) {
             env.append("OPENCODE_CONFIG_CONTENT=\(content)")
         }
         return env
@@ -251,22 +256,28 @@ final class TerminalRegistry {
     /// (`mcp.<name>.type/command/environment`) without launching anything.
     nonisolated static func openCodeConfigContent(
         for record: SessionRecord,
-        binaryPath: String
+        binaryPath: String,
+        scope: ProjectExtensionScope = .unrestricted
     ) -> String? {
-        let config: [String: Any] = [
-            "mcp": [
-                "uncoil": [
-                    "type": "local",
-                    "command": [binaryPath],
-                    "enabled": true,
-                    "environment": [
-                        "UNCOIL_SESSION_ID": record.id.uuidString,
-                        "UNCOIL_PROJECT_ID": record.projectID.uuidString,
-                        "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
-                    ],
+        var mcp: [String: Any] = [
+            ControlPlaneMCPName: [
+                "type": "local",
+                "command": [binaryPath],
+                "enabled": true,
+                "environment": [
+                    "UNCOIL_SESSION_ID": record.id.uuidString,
+                    "UNCOIL_PROJECT_ID": record.projectID.uuidString,
+                    "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
                 ],
             ],
         ]
+        // The content is merged over the user's own file, so naming a server
+        // here with nothing but `enabled: false` switches it off without
+        // restating — or losing — anything else it declares.
+        for name in scope.excludedMCPNames where name != ControlPlaneMCPName {
+            mcp[name] = ["enabled": false]
+        }
+        let config: [String: Any] = ["mcp": mcp]
         guard let data = try? JSONSerialization.data(withJSONObject: config) else { return nil }
         return String(decoding: data, as: UTF8.self)
     }
@@ -284,28 +295,51 @@ final class TerminalRegistry {
         return result
     }
 
-    /// Writes a per-session MCP config registering the bundled `uncoil-mcp`
-    /// server, and returns its path. We never touch the user's ~/.claude.json;
-    /// Claude Code merges this file via `--mcp-config` (additive, not strict).
     private func bundledMCPBinaryPath() -> String? {
         let binary = Bundle.main.bundleURL
             .appendingPathComponent("Contents/Helpers/uncoil-mcp")
         return FileManager.default.isExecutableFile(atPath: binary.path) ? binary.path : nil
     }
 
-    private func writeMCPConfig(for record: SessionRecord, binaryPath: String) -> String? {
-        let config: [String: Any] = [
-            "mcpServers": [
-                "uncoil": [
-                    "command": binaryPath,
-                    "env": [
-                        "UNCOIL_SESSION_ID": record.id.uuidString,
-                        "UNCOIL_PROJECT_ID": record.projectID.uuidString,
-                        "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
-                    ],
+    /// Writes a per-session MCP config and returns its path. The user's
+    /// `~/.claude.json` is never touched.
+    ///
+    /// The file plays one of two roles, and which one is decided by whether the
+    /// project excludes anything. Normally it registers the bundled
+    /// `uncoil-mcp` server alone and Claude Code merges it over the user's own
+    /// config. Once a project has refused a server the file becomes the
+    /// session's whole answer — it carries every allowed server too, and
+    /// `launchCommand` adds `--strict-mcp-config` so nothing else is read.
+    private func writeMCPConfig(
+        for record: SessionRecord,
+        binaryPath: String,
+        scoped: ProjectScopeService.Resolved = .unrestricted
+    ) -> String? {
+        var servers: [String: Any] = [
+            ControlPlaneMCPName: [
+                "command": binaryPath,
+                "env": [
+                    "UNCOIL_SESSION_ID": record.id.uuidString,
+                    "UNCOIL_PROJECT_ID": record.projectID.uuidString,
+                    "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
                 ],
             ],
         ]
+        // The project's allow-list only has to be spelled out when the file is
+        // about to become the session's *only* source of servers. While nothing
+        // is excluded the file stays as it always was — one entry, merged over
+        // the user's own config — and `--strict-mcp-config` is not passed.
+        if !scoped.scope.excludedMCPNames.isEmpty {
+            let allowed = ProjectExtensionScope.filteredMCPServers(
+                rawConfig: scoped.rawConfig,
+                allowing: scoped.scope.allowedMCPNames
+            )
+            // `uncoil` is added above and is not the project's to override.
+            for (name, entry) in allowed where name != ControlPlaneMCPName {
+                servers[name] = entry
+            }
+        }
+        let config: [String: Any] = ["mcpServers": servers]
         let dir = ProjectStore.defaultDirectory().appendingPathComponent("mcp", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fileURL = dir.appendingPathComponent("\(record.id.uuidString).json")
@@ -364,8 +398,16 @@ final class TerminalRegistry {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
         let mcpBinaryPath = record.provider.wiresControlPlane ? bundledMCPBinaryPath() : nil
+        // What this project lets the agent load. Resolved once here and handed
+        // down, so the file that is written and the flags that point at it are
+        // computed from the same answer.
+        let scoped = ProjectScopeService.shared.resolve(
+            for: record.provider, projectID: record.projectID
+        )
         let mcpConfigPath = record.provider == .claude
-            ? mcpBinaryPath.flatMap { writeMCPConfig(for: record, binaryPath: $0) }
+            ? mcpBinaryPath.flatMap {
+                writeMCPConfig(for: record, binaryPath: $0, scoped: scoped)
+            }
             : nil
         let mcpEnvironment = [
             "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
@@ -388,6 +430,7 @@ final class TerminalRegistry {
             mcpConfigPath: mcpConfigPath,
             mcpBinaryPath: mcpBinaryPath,
             mcpEnvironment: mcpEnvironment,
+            scope: scoped.scope,
             extraArguments: settings.extraArguments[record.provider.rawValue],
             presetArguments: record.extraArguments,
             modeArguments: settings.workingModeArguments(for: record.provider)
@@ -509,16 +552,36 @@ final class TerminalRegistry {
         if let effort = record.launchSelection?.effort {
             config["model_reasoning_effort"] = .string(effort)
         }
+        // This path takes no command line, so the project's scope arrives as
+        // config the same way the model and the effort level do.
+        let scope = ProjectScopeService.shared
+            .resolve(for: record.provider, projectID: record.projectID).scope
+        var mcpServers: [String: JSONValue] = [:]
         if let mcpBinaryPath = bundledMCPBinaryPath() {
-            config["mcp_servers"] = .object([
-                "uncoil": .object([
-                    "command": .string(mcpBinaryPath),
-                    "env": .object([
-                        "UNCOIL_CONTROL_SOCKET": .string(ControlPlaneServer.defaultSocketPath()),
-                        "UNCOIL_PROJECT_ID": .string(record.projectID.uuidString),
-                        "UNCOIL_SESSION_ID": .string(record.id.uuidString),
-                    ]),
+            mcpServers[ControlPlaneMCPName] = .object([
+                "command": .string(mcpBinaryPath),
+                "env": .object([
+                    "UNCOIL_CONTROL_SOCKET": .string(ControlPlaneServer.defaultSocketPath()),
+                    "UNCOIL_PROJECT_ID": .string(record.projectID.uuidString),
+                    "UNCOIL_SESSION_ID": .string(record.id.uuidString),
                 ]),
+            ])
+        }
+        for name in scope.excludedMCPNames where name != ControlPlaneMCPName {
+            mcpServers[name] = .object(["enabled": .bool(false)])
+        }
+        if !mcpServers.isEmpty {
+            config["mcp_servers"] = .object(mcpServers)
+        }
+        let refusedSkills = scope.skills.filter { !$0.isEnabled }
+        if !refusedSkills.isEmpty {
+            config["skills"] = .object([
+                "config": .array(refusedSkills.map { skill in
+                    .object([
+                        "path": .string(skill.path),
+                        "enabled": .bool(false),
+                    ])
+                }),
             ])
         }
         let recordID = record.id
@@ -853,6 +916,7 @@ final class TerminalRegistry {
         mcpConfigPath: String? = nil,
         mcpBinaryPath: String? = nil,
         mcpEnvironment: [String: String] = [:],
+        scope: ProjectExtensionScope = .unrestricted,
         extraArguments: String?,
         presetArguments: [String]? = nil,
         modeArguments: [String] = []
@@ -886,6 +950,33 @@ final class TerminalRegistry {
         }
         if record.provider == .claude, let mcpConfigPath {
             command += " --mcp-config \"\(mcpConfigPath)\""
+            // Only once the project actually refuses something. Passing this
+            // unconditionally would make every session ignore the user's own
+            // `~/.claude.json`, which is the opposite of what an unconfigured
+            // project asked for.
+            if !scope.excludedMCPNames.isEmpty {
+                command += " --strict-mcp-config"
+            }
+        }
+        if record.provider == .codex {
+            // Subtractive, and deliberately so: Codex's own entries stay put,
+            // so nothing has to re-state a server's secrets to switch its
+            // neighbour off.
+            for name in scope.excludedMCPNames {
+                command += " -c \(shellQuote("mcp_servers.\(name).enabled=false"))"
+            }
+            // Subtractive here too. Measured against the installed CLI with
+            // `codex debug prompt-input`: an override array is merged into the
+            // config's own `[[skills.config]]` rather than replacing it, so
+            // naming one skill removes exactly that skill and leaves the other
+            // 48 listed. Sending the full list with `enabled=true` on the
+            // allowed ones would add ~3 KB of argv to assert a default, and
+            // would be Uncoil overruling a skill the user disabled globally.
+            let refused = scope.skills.filter { !$0.isEnabled }
+            if !refused.isEmpty {
+                let entries = refused.map { "{path=\(tomlString($0.path)),enabled=false}" }
+                command += " -c \(shellQuote("skills.config=[\(entries.joined(separator: ","))]"))"
+            }
         }
         if record.provider == .codex, let mcpBinaryPath {
             let escaped = mcpBinaryPath
@@ -927,6 +1018,18 @@ final class TerminalRegistry {
 
     nonisolated private static func shellQuote(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
+    /// A TOML basic string. Codex parses a `-c` value as TOML and silently
+    /// falls back to treating it as a bare literal when the parse fails, so a
+    /// path holding a quote or a backslash has to arrive escaped — otherwise
+    /// the whole `skills.config` array is read as one meaningless string and
+    /// the override does nothing at all.
+    nonisolated private static func tomlString(_ value: String) -> String {
+        "\"" + value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            + "\""
     }
 }
 

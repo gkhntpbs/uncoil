@@ -65,6 +65,17 @@ final class ExtensionRegistry: ObservableObject {
     private let store: SkillStore
     private let auditFileName = "audit.jsonl"
 
+    /// The instance the main window's surfaces share.
+    ///
+    /// `save()` serialises the whole document from memory, so two live
+    /// instances mean the second one to save silently discards what the first
+    /// wrote — a project's extension selection would survive right up until the
+    /// next project was added. Everything in the main window therefore goes
+    /// through this one. The Extensions window still builds its own, because it
+    /// configures `skillLockHome` and hands the same object to its scan
+    /// coordinator; that pair predates this and is left as it was.
+    static let shared = ExtensionRegistry()
+
     init(layout: ExtensionStoreLayout = .default(), store: SkillStore? = nil) {
         self.layout = layout
         self.store = store ?? SkillStore(layout: layout)
@@ -345,6 +356,25 @@ final class ExtensionRegistry: ObservableObject {
             kind: .assignmentChanged, extensionID: binding.extensionID,
             agent: binding.agent,
             detail: binding.isGlobal ? String(localized: "global assignment") : String(localized: "project assignment")
+        ))
+    }
+
+    /// Replaces everything one project says, in one write.
+    ///
+    /// The picker hands over a whole answer rather than a stream of toggles,
+    /// and `setProjectBinding` saves the document and appends an audit event on
+    /// every call — thirty rows would mean thirty writes and thirty entries
+    /// saying the same thing. Records naming a *specific agent* are left alone:
+    /// the picker does not offer that axis, so it must not silently discard a
+    /// finer rule set from the assignment matrix.
+    func setProjectBindings(_ bindings: [ProjectBinding], forProject projectID: UUID) {
+        projectBindings.removeAll { $0.projectID == projectID && $0.agent == nil }
+        projectBindings.append(contentsOf: bindings)
+        save()
+        record(AuditEvent(
+            kind: .assignmentChanged,
+            extensionID: nil,
+            detail: String(localized: "project assignment (\(bindings.count) excluded)")
         ))
     }
 

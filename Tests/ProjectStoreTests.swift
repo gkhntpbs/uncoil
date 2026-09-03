@@ -33,6 +33,27 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(store.projects.count, 1)
     }
 
+    /// The caller has to be able to configure what it just created, and a
+    /// no-op add has to be distinguishable from a real one.
+    func testAddProjectAnswersWithWhatItCreated() throws {
+        let store = ProjectStore(directory: tempDir)
+        let created = try XCTUnwrap(store.addProject(at: URL(fileURLWithPath: "/tmp/demo")))
+        XCTAssertEqual(created.rootPath, "/tmp/demo")
+        XCTAssertTrue(store.projects.contains { $0.id == created.id })
+        XCTAssertNil(store.addProject(at: URL(fileURLWithPath: "/tmp/demo")))
+    }
+
+    /// `sortProjects` keeps the scratch workspace last, so the project that was
+    /// just added is not the last one in the list. Reaching for `projects.last`
+    /// used to hand the caller Scratch instead.
+    func testTheNewProjectIsNotTheLastOneWhenScratchExists() throws {
+        let store = ProjectStore(directory: tempDir)
+        _ = store.ensureScratchProject()
+        let created = try XCTUnwrap(store.addProject(at: URL(fileURLWithPath: "/tmp/real")))
+        XCTAssertTrue(store.projects.last?.isScratchWorkspace == true)
+        XCTAssertNotEqual(store.projects.last?.id, created.id)
+    }
+
     func testRemoveProjectRemovesItsSessions() throws {
         let store = ProjectStore(directory: tempDir)
         store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))

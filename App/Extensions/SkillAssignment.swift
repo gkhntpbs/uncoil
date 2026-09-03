@@ -40,7 +40,10 @@ enum SkillAssignment {
         if let global = applicable.first(where: \.isGlobal) {
             return global.isEnabled
         }
-        // Only other projects are named, so this one is out of scope.
+        // Only other projects are named, so this one is out of scope. This is
+        // an *allow*-list: naming a project is how "this extension belongs to
+        // that project" is said. `ProjectExtensionScope` deliberately reads the
+        // same records the other way round — see the note there.
         return false
     }
 
