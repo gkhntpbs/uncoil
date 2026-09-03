@@ -10,6 +10,8 @@ release notes are written once, here.
 
 ## Unreleased
 
+## [0.2.0] - 2026-09-03
+
 ### Added
 
 - Blueprints: the prompt you always write when you start a project of a certain shape, kept and named. Most people build the same shapes over and over — a workspace with `api/`, `web/` and `docs/` under it, the same three files at the root, the same opening instructions — and retype that paragraph every time. Write it once, and adding a folder offers it as a card. Uncoil creates nothing on disk itself, which is the point rather than a shortcut: whether `api/` should hold a Fastify skeleton or a Go module, and what *this* project's CLAUDE.md should say, is judgement, and judgement is what the agent is for — a tree stamped out by the app would still need all of it applied afterwards. A blueprint can also be applied to a project you already have, from its right-click menu or the command palette. Each one decides whether its prompt is sent the moment the session opens or typed in and left for you to read first; off is the default.
