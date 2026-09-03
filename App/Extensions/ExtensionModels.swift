@@ -166,6 +166,17 @@ struct AgentProviderCapabilities: Equatable, Codable {
     static let none = AgentProviderCapabilities()
 }
 
+extension AgentProvider {
+    /// The Extensions-side identity for this provider, when it has one.
+    ///
+    /// The reverse of `ExtensionAgentID.provider`, and deliberately next to it
+    /// so the two halves of one mapping cannot drift apart. `.terminal` has
+    /// none: a shell has no configuration for Uncoil to manage.
+    var extensionAgent: ExtensionAgentID? {
+        ExtensionAgentID.allCases.first { $0.provider == self }
+    }
+}
+
 // MARK: - Sources
 
 /// Where an extension came from, which decides what Uncoil may do with it.

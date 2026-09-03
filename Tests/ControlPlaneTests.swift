@@ -410,6 +410,106 @@ final class CapabilityRouterTests: XCTestCase {
         XCTAssertEqual(env.error?.code, "INVALID_ARGUMENT")
     }
 
+    // MARK: - Blueprints
+
+    /// Writing a blueprint is opt-in, because a blueprint is text that a later
+    /// session gets handed: a session able to write one silently could leave
+    /// instructions behind for a session that has not started yet.
+    func testWritingABlueprintIsOptInAndReadingIsNot() async {
+        router.blueprints = BlueprintStore(
+            directory: tempDir.appendingPathComponent("blueprints", isDirectory: true))
+
+        let listed = await router.handle(request("uncoil_projects", "list_blueprints"))
+        XCTAssertTrue(listed.ok, "reading needs no grant")
+
+        let refused = await router.handle(request(
+            "uncoil_projects", "save_blueprint",
+            args: ["name": .string("Full stack"), "prompt": .string("do the thing")]))
+        XCTAssertFalse(refused.ok)
+        XCTAssertEqual(refused.error?.code, "CAPABILITY_DISABLED")
+        XCTAssertTrue(router.blueprints.blueprints.isEmpty)
+
+        XCTAssertFalse(PolicyEngine.defaultGrants.contains("blueprints.write"))
+        XCTAssertTrue(PolicyEngine.optionalGrants.contains("blueprints.write"))
+    }
+
+    /// An unresolvable caller is refused rather than handed the default grants.
+    /// `uncoil_projects` reads fall back to defaults on a euid-gated socket,
+    /// which is right for reading and wrong for leaving a prompt behind.
+    func testABlueprintWriteWithNoResolvableCallerIsRefused() async {
+        router.blueprints = BlueprintStore(
+            directory: tempDir.appendingPathComponent("blueprints", isDirectory: true))
+        let env = await router.handle(request(
+            "uncoil_projects", "save_blueprint",
+            args: ["name": .string("X"), "prompt": .string("p")],
+            caller: false))
+        XCTAssertFalse(env.ok)
+        XCTAssertEqual(env.error?.code, "UNKNOWN_SESSION")
+    }
+
+    func testAGrantedSessionSavesABlueprintAsADraft() async throws {
+        router.blueprints = BlueprintStore(
+            directory: tempDir.appendingPathComponent("blueprints", isDirectory: true))
+        store.updateSession(caller.id) {
+            $0.capabilities = Array(PolicyEngine.defaultGrants) + ["blueprints.write"]
+        }
+        caller = store.sessions.first { $0.id == caller.id }
+
+        let env = await router.handle(request(
+            "uncoil_projects", "save_blueprint",
+            args: [
+                "name": .string("Full stack"),
+                "prompt": .string("Create api/ and web/ in {{project_path}}."),
+            ]))
+        XCTAssertTrue(env.ok, env.error?.message ?? "")
+        let data = try XCTUnwrap(env.data?.objectValue)
+        XCTAssertEqual(data["id"]?.stringValue, "full-stack")
+        // Stored as a draft whatever it asked for, and said so out loud.
+        XCTAssertEqual(data["needs_review"]?.boolValue, true)
+        XCTAssertEqual(data["starts_immediately"]?.boolValue, false)
+        XCTAssertFalse(env.warnings.isEmpty)
+
+        let listed = await router.handle(request("uncoil_projects", "list_blueprints"))
+        let blueprints = try XCTUnwrap(
+            listed.data?.objectValue?["blueprints"]?.arrayValue)
+        XCTAssertEqual(blueprints.count, 1)
+
+        let deleted = await router.handle(request(
+            "uncoil_projects", "delete_blueprint",
+            args: ["blueprint_id": .string("full-stack")]))
+        XCTAssertTrue(deleted.ok)
+        XCTAssertTrue(router.blueprints.blueprints.isEmpty)
+    }
+
+    func testABlueprintPromptIsCappedAndStrippedOfControlCharacters() async throws {
+        router.blueprints = BlueprintStore(
+            directory: tempDir.appendingPathComponent("blueprints", isDirectory: true))
+        store.updateSession(caller.id) {
+            $0.capabilities = Array(PolicyEngine.defaultGrants) + ["blueprints.write"]
+        }
+        caller = store.sessions.first { $0.id == caller.id }
+
+        let tooLong = await router.handle(request(
+            "uncoil_projects", "save_blueprint",
+            args: [
+                "name": .string("X"),
+                "prompt": .string(String(repeating: "a", count: BlueprintStore.promptLimit + 1)),
+            ]))
+        XCTAssertFalse(tooLong.ok)
+        XCTAssertEqual(tooLong.error?.code, "INVALID_ARGUMENT")
+
+        // The prompt ends up in a PTY, just later than usual.
+        let escaped = await router.handle(request(
+            "uncoil_projects", "save_blueprint",
+            args: [
+                "name": .string("Escapes"),
+                "prompt": .string("safe\u{1B}[31m still safe"),
+            ]))
+        XCTAssertTrue(escaped.ok, escaped.error?.message ?? "")
+        let stored = try XCTUnwrap(router.blueprints.blueprints.first)
+        XCTAssertFalse(stored.prompt.unicodeScalars.contains { $0.value == 0x1B })
+    }
+
     /// Every registered action must return help documentation.
     func testHelpCoversEveryAction() async {
         for (capability, doc) in HelpRegistry.capabilities {

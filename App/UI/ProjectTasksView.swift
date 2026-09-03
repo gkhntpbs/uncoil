@@ -1435,25 +1435,11 @@ struct ProjectTasksView: View {
         guard let project = projectStore.projects.first(where: { $0.id == record.projectID }) else {
             return
         }
-        _ = TerminalRegistry.shared.terminal(
-            for: record, project: project,
-            account: settings.account(id: record.accountID),
-            settings: settings, sessionStore: sessionStore,
-            projectStore: projectStore
+        SessionPromptDelivery.deliver(
+            prompt, to: record, project: project,
+            settings: settings, sessionStore: sessionStore, projectStore: projectStore,
+            autoStart: autoStart, namesTheSession: true
         )
-        let sid = record.id
-        let provider = record.provider
-        Task { @MainActor in
-            let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-            }
-            if autoStart {
-                await TerminalRegistry.shared.submitText(prompt, for: sid, provider: provider)
-            } else {
-                await TerminalRegistry.shared.typeText(prompt, for: sid, provider: provider)
-            }
-        }
     }
 
     /// The task's own change first — the patch Uncoil wrote — and the worktree's

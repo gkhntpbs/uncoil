@@ -17,6 +17,8 @@ enum PaletteAction: Equatable {
     case focusSession(UUID)
     case newSession(UUID, AgentProvider)
     case createWorktree(UUID)
+    /// Hands a stored setup prompt to a new session in a project.
+    case applyBlueprint(UUID)
     case openSettings(String?)          // settings pane rawValue, nil = default
     case restartSession(UUID)
     case closeSession(UUID)
@@ -350,6 +352,12 @@ enum PaletteEngine {
                 title: String(localized: "Create Worktree… [\(project.name)]"),
                 iconName: "git-branch", kind: .command,
                 action: .createWorktree(project.id),
+                rank: rank))
+            items.append(PaletteItem(
+                id: "cmd.blueprint.\(project.id)",
+                title: String(localized: "Apply Blueprint… [\(project.name)]"),
+                iconName: "layout-grid", kind: .command,
+                action: .applyBlueprint(project.id),
                 rank: rank))
         }
 

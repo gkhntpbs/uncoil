@@ -364,22 +364,78 @@ final class ProjectExtensionScopeTests: XCTestCase {
         }
     }
 
+    // MARK: - Precedence between the two axes
+
+    /// The regression that the per-agent tabs made reachable. Both a record for
+    /// this agent and one for every agent can name the same extension in the
+    /// same project; the agent's own has to win. A single `first(where:)` over
+    /// the mixed list answered with whichever the store happened to hold first,
+    /// so the same project could scope differently between two launches.
+    func testAnAgentsOwnRecordBeatsTheAllAgentsOne() {
+        let allAgents = ProjectBinding(
+            extensionID: "codex:figma", projectID: projectA, agent: nil, isEnabled: false
+        )
+        let forCodex = ProjectBinding(
+            extensionID: "codex:figma", projectID: projectA, agent: .codex, isEnabled: true
+        )
+        // Both orderings, because the bug was an ordering dependency.
+        for bindings in [[allAgents, forCodex], [forCodex, allAgents]] {
+            XCTAssertTrue(
+                ProjectExtensionScope.allows(
+                    extensionID: "codex:figma", projectID: projectA,
+                    agent: .codex, projectBindings: bindings
+                ),
+                "codex names it explicitly and must win"
+            )
+            XCTAssertFalse(
+                ProjectExtensionScope.allows(
+                    extensionID: "codex:figma", projectID: projectA,
+                    agent: .claudeCode, projectBindings: bindings
+                ),
+                "claude says nothing, so the all-agents rule applies"
+            )
+        }
+    }
+
+    /// A project-scoped record beats a global one on the same agent axis.
+    func testThisProjectBeatsTheGlobalRule() {
+        let bindings = [
+            ProjectBinding(extensionID: "codex:figma", projectID: nil, isEnabled: false),
+            ProjectBinding(extensionID: "codex:figma", projectID: projectA, isEnabled: true),
+        ]
+        XCTAssertTrue(ProjectExtensionScope.allows(
+            extensionID: "codex:figma", projectID: projectA,
+            agent: .codex, projectBindings: bindings
+        ))
+        XCTAssertFalse(ProjectExtensionScope.allows(
+            extensionID: "codex:figma", projectID: projectB,
+            agent: .codex, projectBindings: bindings
+        ))
+    }
+
     // MARK: - Selection round-trip
 
     func testTheSelectionRoundTripsThroughTheStoredRecords() {
-        let excluded: Set<String> = ["codex:figma", "local:drop"]
-        let bindings = ProjectExtensionPicker.bindings(
-            excluding: excluded, projectID: projectA
+        var selection = ProjectExtensionSelection()
+        selection.toggle("codex:figma", for: nil)
+        selection.toggle("local:drop", for: nil)
+        selection.toggle("codex:figma", for: .codex)   // an exception: back on
+
+        let all = selection.bindings(for: nil, projectID: projectA)
+        let codex = selection.bindings(for: .codex, projectID: projectA)
+        XCTAssertEqual(all.map(\.extensionID), ["codex:figma", "local:drop"])
+        XCTAssertTrue(all.allSatisfy { !$0.isEnabled && $0.agent == nil })
+        XCTAssertEqual(codex.map(\.extensionID), ["codex:figma"])
+        XCTAssertEqual(codex.first?.isEnabled, true)
+
+        let reloaded = ProjectExtensionSelection.load(
+            from: all + codex, projectID: projectA
         )
-        XCTAssertEqual(bindings.count, 2)
-        XCTAssertTrue(bindings.allSatisfy { !$0.isEnabled && $0.projectID == projectA })
-        XCTAssertEqual(
-            ProjectExtensionPicker.excludedIDs(in: bindings, projectID: projectA),
-            excluded
-        )
+        XCTAssertEqual(reloaded, selection)
         // Another project's records are not this project's selection.
-        XCTAssertTrue(
-            ProjectExtensionPicker.excludedIDs(in: bindings, projectID: projectB).isEmpty
+        XCTAssertEqual(
+            ProjectExtensionSelection.load(from: all + codex, projectID: projectB),
+            ProjectExtensionSelection()
         )
     }
 
@@ -387,7 +443,99 @@ final class ProjectExtensionScopeTests: XCTestCase {
     /// That is what lets an extension installed tomorrow reach the project.
     func testAllowingSomethingWritesNoRecord() {
         XCTAssertTrue(
-            ProjectExtensionPicker.bindings(excluding: [], projectID: projectA).isEmpty
+            ProjectExtensionSelection().bindings(for: nil, projectID: projectA).isEmpty
         )
+    }
+
+    /// An exception that stops being an exception stops being stored, so an
+    /// agent goes back to inheriting instead of carrying a record that happens
+    /// to agree.
+    func testAnAgentGoesBackToInheritingWhenItAgreesAgain() {
+        var selection = ProjectExtensionSelection()
+        selection.toggle("codex:figma", for: nil)          // off everywhere
+        selection.toggle("codex:figma", for: .codex)       // on for Codex
+        XCTAssertEqual(selection.opinionCount(for: .codex), 1)
+        XCTAssertEqual(
+            selection.disagreements(with: "codex:figma", among: [.codex, .claudeCode]),
+            [.codex]
+        )
+
+        selection.toggle("codex:figma", for: .codex)       // off for Codex again
+        XCTAssertEqual(selection.opinionCount(for: .codex), 0)
+        XCTAssertTrue(
+            selection.bindings(for: .codex, projectID: projectA).isEmpty
+        )
+        XCTAssertTrue(
+            selection.disagreements(with: "codex:figma", among: [.codex]).isEmpty
+        )
+    }
+
+    /// The selection the picker produces has to mean, at launch, what the
+    /// picker showed. This walks the whole path rather than trusting either end.
+    func testWhatThePickerShowsIsWhatTheLaunchEnforces() {
+        var selection = ProjectExtensionSelection()
+        selection.toggle("codex:figma", for: nil)
+        selection.toggle("codex:figma", for: .codex)
+
+        let stored = selection.bindings(for: nil, projectID: projectA)
+            + selection.bindings(for: .codex, projectID: projectA)
+
+        XCTAssertTrue(selection.isAllowed("codex:figma", for: .codex))
+        XCTAssertTrue(ProjectExtensionScope.allows(
+            extensionID: "codex:figma", projectID: projectA,
+            agent: .codex, projectBindings: stored
+        ))
+
+        XCTAssertFalse(selection.isAllowed("codex:figma", for: .claudeCode))
+        XCTAssertFalse(ProjectExtensionScope.allows(
+            extensionID: "codex:figma", projectID: projectA,
+            agent: .claudeCode, projectBindings: stored
+        ))
+    }
+
+    // MARK: - Getting a long prompt into a session intact
+
+    /// A newline written into a PTY *is* Enter. A blueprint's prompt, or the
+    /// brief for an authoring session, is several paragraphs — sent raw it
+    /// arrives as several submissions and the agent answers only the last
+    /// fragment, which is exactly what it used to do.
+    func testAMultiLinePromptIsPastedRatherThanTypedLineByLine() {
+        let prompt = "First paragraph.\n\nSecond paragraph.\n\nThird."
+        let delivered = TerminalRegistry.deliverable(prompt, bracketedPaste: true)
+        XCTAssertTrue(delivered.hasPrefix("\u{1B}[200~"), delivered)
+        XCTAssertTrue(delivered.hasSuffix("\u{1B}[201~"), delivered)
+        XCTAssertTrue(delivered.contains(prompt), "the text itself must be untouched")
+    }
+
+    /// Without the mode there is no way to deliver the shape, so the shape is
+    /// what gets given up — not the content.
+    func testWithoutBracketedPasteTheNewlinesGoRatherThanTheText() {
+        let delivered = TerminalRegistry.deliverable(
+            "First paragraph.\n\nSecond paragraph.", bracketedPaste: false
+        )
+        XCTAssertEqual(delivered, "First paragraph. Second paragraph.")
+        XCTAssertFalse(delivered.contains("\n"))
+    }
+
+    /// The common case is one line, and it must come out byte-for-byte as it
+    /// went in — every existing caller is on this path.
+    func testASingleLinePromptIsUntouched() {
+        for bracketed in [true, false] {
+            XCTAssertEqual(
+                TerminalRegistry.deliverable("just one line", bracketedPaste: bracketed),
+                "just one line"
+            )
+        }
+    }
+
+    /// `.terminal` has no configuration to scope, and Amp is not a provider
+    /// Uncoil launches — the reverse mapping has to say so rather than guess.
+    func testTheProviderToAgentMappingRoundTrips() {
+        for agent in ExtensionAgentID.allCases {
+            guard let provider = agent.provider else { continue }
+            XCTAssertEqual(provider.extensionAgent, agent, agent.rawValue)
+        }
+        XCTAssertNil(AgentProvider.terminal.extensionAgent)
+        XCTAssertNil(ExtensionAgentID.amp.provider)
     }
 }

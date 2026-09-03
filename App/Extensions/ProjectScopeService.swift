@@ -46,7 +46,7 @@ final class ProjectScopeService {
     /// asked to lose, and a launch is the worst place to discover that.
     func resolve(for provider: AgentProvider, projectID: UUID) -> Resolved {
         guard provider.extensionScoping != .none,
-              let agent = ExtensionAgentID.allCases.first(where: { $0.provider == provider }),
+              let agent = provider.extensionAgent,
               let adapter = adapters.adapter(for: agent)
         else { return .unrestricted }
 

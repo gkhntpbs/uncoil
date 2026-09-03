@@ -306,6 +306,16 @@
         }
       }
     },
+    "%@ and %@ are filled in when it runs. Write it as instructions to an agent — Uncoil creates no files itself." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ and %2$@ are filled in when it runs. Write it as instructions to an agent — Uncoil creates no files itself."
+          }
+        }
+      }
+    },
     "%@ cannot be linked to a repo." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -363,6 +373,9 @@
           }
         }
       }
+    },
+    "%@ copy" : {
+
     },
     "%@ could not be resolved" : {
       "extractionState" : "manual",
@@ -816,6 +829,9 @@
         }
       }
     },
+    "%@: write a blueprint" : {
+
+    },
     "%@:%lld" : {
       "localizations" : {
         "en" : {
@@ -1261,6 +1277,9 @@
         }
       }
     },
+    "%lld turned off for this project" : {
+
+    },
     "%lld updates waiting" : {
 
     },
@@ -1426,6 +1445,9 @@
       }
     },
     "A Blocked finding stops adoption outright; nothing about it can be clicked past here." : {
+
+    },
+    "A blueprint is the prompt you always write when you start a project of a certain shape. Pick one when you add a project and Uncoil hands it to an agent — it creates nothing itself, so what gets built is the agent's work, done the way you asked." : {
 
     },
     "A Chromium the agent drives on its own, in a blank profile with none of your logins in it. Without the driver the browser tools simply report that they are unavailable." : {
@@ -1756,6 +1778,9 @@
         }
       }
     },
+    "Add %@" : {
+
+    },
     "Add a %@ profile" : {
 
     },
@@ -1888,6 +1913,9 @@
           }
         }
       }
+    },
+    "Add the folder and nothing else." : {
+
     },
     "Add This Folder" : {
       "extractionState" : "manual",
@@ -2242,6 +2270,9 @@
         }
       }
     },
+    "All agents" : {
+
+    },
     "All clean" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2387,6 +2418,9 @@
         }
       }
     },
+    "Any other colour" : {
+
+    },
     "Anything you skipped stays listed at the bottom of the sidebar under “Finish setup”." : {
 
     },
@@ -2466,6 +2500,15 @@
           }
         }
       }
+    },
+    "Apply a Blueprint" : {
+
+    },
+    "Apply Blueprint…" : {
+
+    },
+    "Apply Blueprint… [%@]" : {
+
     },
     "Applying…" : {
 
@@ -2975,6 +3018,12 @@
           }
         }
       }
+    },
+    "Blueprints" : {
+
+    },
+    "Blueprints are markdown files in ~/.uncoil/blueprints. Sending one to someone else is sending them the file." : {
+
     },
     "Board, task session, orchestrator." : {
       "extractionState" : "manual",
@@ -3893,6 +3942,9 @@
         }
       }
     },
+    "Colour" : {
+
+    },
     "Colour only" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4539,6 +4591,9 @@
         }
       }
     },
+    "Customise %@" : {
+
+    },
     "Customise…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5072,6 +5127,9 @@
         }
       }
     },
+    "Draft — written outside this editor. Open it to check what it says; it will not start on its own until you do." : {
+
+    },
     "Drag onto a group to move it; drop outside the window to open it in a new one" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5098,6 +5156,9 @@
       }
     },
     "Drop to attach the image to this session's message" : {
+
+    },
+    "Duplicate" : {
 
     },
     "Duration" : {
@@ -5199,6 +5260,9 @@
         }
       }
     },
+    "Edit %@" : {
+
+    },
     "Edit Preset" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5220,6 +5284,9 @@
           }
         }
       }
+    },
+    "Edit…" : {
+
     },
     "Editor" : {
       "extractionState" : "manual",
@@ -5462,6 +5529,9 @@
         }
       }
     },
+    "Everything this project's agents already have" : {
+
+    },
     "Exactly this will change — nothing has been written yet:" : {
 
     },
@@ -5533,6 +5603,9 @@
           }
         }
       }
+    },
+    "Export…" : {
+
     },
     "Extension" : {
 
@@ -5866,6 +5939,9 @@
           }
         }
       }
+    },
+    "Full-stack workspace" : {
+
     },
     "General" : {
       "extractionState" : "manual",
@@ -6332,7 +6408,16 @@
         }
       }
     },
+    "How should this project start?" : {
+
+    },
     "How the scanner rates a package" : {
+
+    },
+    "How this blueprint is recognised in the list." : {
+
+    },
+    "How this project is named and recognised in the sidebar." : {
 
     },
     "Icon" : {
@@ -6425,6 +6510,12 @@
           }
         }
       }
+    },
+    "Import…" : {
+
+    },
+    "Imported “%@”. Open it to check what it says before you use it." : {
+
     },
     "Importing %lld MCP servers" : {
       "extractionState" : "manual",
@@ -7128,6 +7219,9 @@
     "Locate…" : {
 
     },
+    "Location" : {
+
+    },
     "Login needed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7328,6 +7422,9 @@
         }
       }
     },
+    "Mark" : {
+
+    },
     "Mark as resolved" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7405,6 +7502,9 @@
         }
       }
     },
+    "MCP & Skills" : {
+
+    },
     "MCP Catalog" : {
 
     },
@@ -7473,6 +7573,12 @@
           }
         }
       }
+    },
+    "MCP servers & skills" : {
+
+    },
+    "MCP Servers & Skills" : {
+
     },
     "MCP to add: %@" : {
       "extractionState" : "manual",
@@ -7790,6 +7896,9 @@
         }
       }
     },
+    "Name and Mark" : {
+
+    },
     "Needs input · permission request · turn finished · error · task done · merge ready · login needed. Each carries its own switch, priority and sound in Settings › Notifications." : {
 
     },
@@ -7891,6 +8000,12 @@
           }
         }
       }
+    },
+    "New Blueprint" : {
+
+    },
+    "New Blueprint…" : {
+
     },
     "New Empty Window" : {
 
@@ -8144,6 +8259,9 @@
     "No binary on this Mac's PATH. Install it, then rescan." : {
 
     },
+    "No blueprints yet. Settings › Agents › Blueprints is where they are written." : {
+
+    },
     "No change." : {
 
     },
@@ -8288,6 +8406,9 @@
         }
       }
     },
+    "No icon matches “%@”." : {
+
+    },
     "No icon; only the counters you picked are shown." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8395,6 +8516,9 @@
           }
         }
       }
+    },
+    "No MCP server is configured for any agent yet." : {
+
     },
     "No MCP server is defined in the agent configs." : {
       "extractionState" : "manual",
@@ -8653,6 +8777,9 @@
     "No setup" : {
 
     },
+    "No skill is installed for any agent yet." : {
+
+    },
     "No SKILL.md was found in this repository — there is nothing to install." : {
 
     },
@@ -8813,6 +8940,9 @@
           }
         }
       }
+    },
+    "None yet. Write one below, or let an agent write it with you." : {
+
     },
     "Normal" : {
 
@@ -9177,6 +9307,12 @@
         }
       }
     },
+    "off for %@" : {
+
+    },
+    "Off means the prompt is typed in and left for you to read and send." : {
+
+    },
     "Off, Option types the character your keyboard layout prints — ⌥Q gives @ on a Turkish-Q layout. On, Option is sent to the agent as Meta (⌥f, ⌥b). Applies immediately." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9229,6 +9365,9 @@
           }
         }
       }
+    },
+    "on for %@" : {
+
     },
     "Once" : {
       "extractionState" : "manual",
@@ -9580,6 +9719,9 @@
     "OpenCode reads its config at startup; open sessions must be restarted." : {
 
     },
+    "Opened a session in the main window with the brief typed in. Adjust it, send it, and it will save the blueprint back here." : {
+
+    },
     "Opening a network connection." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9598,6 +9740,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Başlangıç promptu"
+          }
+        }
+      }
+    },
+    "Opens a %@ session and sends this straight away." : {
+
+    },
+    "Opens a %@ session and types this in for you to read and send." : {
+
+    },
+    "Opens a session in %@ with %@ and gives it the prompt." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Opens a session in %1$@ with %2$@ and gives it the prompt."
           }
         }
       }
@@ -10184,6 +10342,9 @@
         }
       }
     },
+    "project assignment (%lld excluded)" : {
+
+    },
     "Project list" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10265,6 +10426,9 @@
 
     },
     "Projects, worktrees and artifacts" : {
+
+    },
+    "Prompt" : {
 
     },
     "Prompt preview" : {
@@ -11741,6 +11905,9 @@
     "Scratch" : {
 
     },
+    "Search %lld icons" : {
+
+    },
     "Search commands, find files, jump to a project… (? to ask)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11965,6 +12132,9 @@
         }
       }
     },
+    "Send as soon as the session opens" : {
+
+    },
     "Send input to the process (r for Flutter, for example)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12030,6 +12200,9 @@
           }
         }
       }
+    },
+    "Sends its prompt as soon as the session opens." : {
+
     },
     "Sent to the agent the moment the session opens." : {
       "extractionState" : "manual",
@@ -12644,6 +12817,9 @@
     "Skills are discovered on GitHub. Without a connection the catalog still works inside GitHub's small anonymous limit; signing in with the browser removes that ceiling. The token stays in your Keychain." : {
 
     },
+    "Skills are not scoped for %@ — the CLI has no per-session skill selection, so it loads all of them. MCP servers are scoped." : {
+
+    },
     "Skills in this repository (%lld)" : {
 
     },
@@ -13134,6 +13310,9 @@
 
     },
     "Take over what you already installed" : {
+
+    },
+    "Takes effect on the next session. One already running keeps what it started with." : {
 
     },
     "Takes up to a minute and uses a little of the remaining quota. Without it the handover still carries the branch, the changed files and the diff — but not what was decided." : {
@@ -13816,6 +13995,9 @@
       }
     },
     "The image is written into the session's working directory and its path is typed into the prompt — the same thing dropping an image does. Works with every agent." : {
+
+    },
+    "The instructions an agent gets when a project starts from this." : {
 
     },
     "The interface language applies after a restart. The agent language is the one Uncoil writes in when it hands a task to an agent." : {
@@ -14659,6 +14841,9 @@
           }
         }
       }
+    },
+    "Types its prompt in and waits for you to send it." : {
+
     },
     "Unassigned" : {
       "extractionState" : "manual",
@@ -15521,6 +15706,9 @@
         }
       }
     },
+    "What a session in this project may load. Everything is on until you turn it off." : {
+
+    },
     "What gets announced" : {
 
     },
@@ -15553,6 +15741,9 @@
       }
     },
     "What should this window open on?" : {
+
+    },
+    "What this project is called in the sidebar, and how it is recognised there." : {
 
     },
     "What your agents may do" : {
@@ -15592,6 +15783,9 @@
       }
     },
     "Where is %@?" : {
+
+    },
+    "Where the sessions in this project run." : {
 
     },
     "Which agents an extension is enabled for." : {
@@ -15768,6 +15962,9 @@
     "Worktrees, task branches and diffs are available for this project." : {
 
     },
+    "Write a blueprint" : {
+
+    },
     "Write an example prompt…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15778,6 +15975,9 @@
           }
         }
       }
+    },
+    "Write One With an Agent…" : {
+
     },
     "Writes broadly into the home directory." : {
       "extractionState" : "manual",

@@ -65,8 +65,9 @@ enum HelpRegistry {
 
     static let projects: CapabilityDoc = {
         let names = ["help", "current", "list", "inspect", "list_worktrees", "create_worktree",
-                     "list_presets", "inspect_preset"]
-        let overview = "Inspect Uncoil projects and their git worktrees, and create new worktrees."
+                     "list_presets", "inspect_preset",
+                     "list_blueprints", "inspect_blueprint", "save_blueprint", "delete_blueprint"]
+        let overview = "Inspect Uncoil projects and their git worktrees, create new worktrees, and read or write the project blueprints a new project can be set up from."
         return CapabilityDoc(
             capability: "uncoil_projects",
             overview: overview,
@@ -86,6 +87,32 @@ enum HelpRegistry {
                     doc: "# list_presets\nReturns the configured session presets (or the built-in `claude-worker`/`codex-reviewer` defaults): `presets:[{id, name, provider, extra_arguments, initial_prompt_template, granted_capabilities, permission_mode}]`. Feed a preset `id` to `uncoil_sessions create_child`."),
                 ActionDoc(action: "inspect_preset", summary: "Full detail for one preset.",
                     doc: "# inspect_preset\nArgs: `preset_id` (required). Returns the single preset object, or `INVALID_ARGUMENT` if unknown."),
+                ActionDoc(action: "list_blueprints", summary: "Stored project blueprints.",
+                    doc: "# list_blueprints\nA blueprint is a saved prompt that sets a project up — the same instructions the user gives an agent every time they start a project of a given shape. Uncoil never creates files itself; applying a blueprint opens a session and hands it the prompt. No args. Returns `blueprints:[{id, name, icon, prompt, starts_immediately, needs_review}]`."),
+                ActionDoc(action: "inspect_blueprint", summary: "Full detail for one blueprint.",
+                    doc: "# inspect_blueprint\nArgs: `blueprint_id` (required). Returns the single blueprint object, or `INVALID_ARGUMENT` if unknown."),
+                ActionDoc(action: "save_blueprint", summary: "Write a blueprint the user can apply.",
+                    doc: """
+                    # save_blueprint
+                    Requires the `blueprints.write` grant, which is opt-in: a session only has it \
+                    when the user opened that session in order to write blueprints. The caller \
+                    session must be resolvable.
+
+                    Args: `name` (required, 1–60 chars), `prompt` (required, ≤ 8000 chars, control \
+                    characters are stripped), `icon` (optional, a Tabler icon name), `blueprint_id` \
+                    (optional — supply it to update an existing blueprint; omit it and a fresh id \
+                    is derived from the name, so saving twice never overwrites the user's own copy).
+
+                    Write the prompt as instructions to an agent, not as a description. Two \
+                    placeholders are filled in when it is applied: `{{project_name}}` and \
+                    `{{project_path}}`.
+
+                    Anything saved this way is stored as a **draft**: `needs_review` is true and \
+                    `starts_immediately` is forced false, so it cannot start a session by itself \
+                    until the user has opened and kept it. Returns the stored blueprint.
+                    """),
+                ActionDoc(action: "delete_blueprint", summary: "Remove a blueprint.",
+                    doc: "# delete_blueprint\nRequires the `blueprints.write` grant. Args: `blueprint_id` (required). Deletes the blueprint's file. Returns `{deleted}`."),
             ])
     }()
 

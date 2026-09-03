@@ -359,21 +359,29 @@ final class ExtensionRegistry: ObservableObject {
         ))
     }
 
-    /// Replaces everything one project says, in one write.
+    /// Replaces everything one project says on one axis, in one write.
     ///
     /// The picker hands over a whole answer rather than a stream of toggles,
     /// and `setProjectBinding` saves the document and appends an audit event on
     /// every call — thirty rows would mean thirty writes and thirty entries
-    /// saying the same thing. Records naming a *specific agent* are left alone:
-    /// the picker does not offer that axis, so it must not silently discard a
-    /// finer rule set from the assignment matrix.
-    func setProjectBindings(_ bindings: [ProjectBinding], forProject projectID: UUID) {
-        projectBindings.removeAll { $0.projectID == projectID && $0.agent == nil }
+    /// saying the same thing.
+    ///
+    /// `agent` is the axis, and only that axis is rewritten. The picker's
+    /// "All agents" tab passes nil and must not wipe the exception someone set
+    /// for Codex; a Codex tab passes `.codex` and must not wipe the answer that
+    /// applies everywhere else.
+    func setProjectBindings(
+        _ bindings: [ProjectBinding],
+        forProject projectID: UUID,
+        agent: ExtensionAgentID? = nil
+    ) {
+        projectBindings.removeAll { $0.projectID == projectID && $0.agent == agent }
         projectBindings.append(contentsOf: bindings)
         save()
         record(AuditEvent(
             kind: .assignmentChanged,
             extensionID: nil,
+            agent: agent,
             detail: String(localized: "project assignment (\(bindings.count) excluded)")
         ))
     }

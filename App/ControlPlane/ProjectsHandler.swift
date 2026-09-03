@@ -81,8 +81,116 @@ extension CapabilityRouter {
             }
             return .success(request, data: preset.asJSON())
 
+        case "list_blueprints":
+            let list = blueprints.blueprints.map { $0.asJSON() }
+            return .success(request, data: .object(["blueprints": .array(list)]))
+
+        case "inspect_blueprint":
+            guard let id = request.args["blueprint_id"]?.stringValue else {
+                return .failure(request, code: .invalidArgument, message: "'blueprint_id' is required")
+            }
+            guard let blueprint = blueprints.blueprint(id: id) else {
+                return .failure(request, code: .invalidArgument, message: "unknown blueprint_id '\(id)'")
+            }
+            return .success(request, data: blueprint.asJSON())
+
+        case "save_blueprint":
+            return requiringBlueprintWrite(request) { saveBlueprint(request) }
+
+        case "delete_blueprint":
+            return requiringBlueprintWrite(request) {
+                guard let id = request.args["blueprint_id"]?.stringValue else {
+                    return .failure(request, code: .invalidArgument,
+                        message: "'blueprint_id' is required")
+                }
+                do {
+                    try blueprints.delete(id: id)
+                    return .success(request, data: .object(["deleted": .string(id)]))
+                } catch {
+                    return .failure(request, code: .invalidArgument,
+                        message: error.localizedDescription)
+                }
+            }
+
         default:
             return .failure(request, code: .invalidAction, message: "unsupported project action")
+        }
+    }
+
+    // MARK: - Blueprints
+
+    /// Blueprint writes are attributed, not merely granted.
+    ///
+    /// `grants(for:)` falls back to the default set when the caller cannot be
+    /// resolved, which is right for reads on a socket that is already
+    /// euid-gated. It is wrong here: a blueprint is text that later gets fed to
+    /// an agent, so writing one has to be traceable to a session the user
+    /// opened for it — `uncoil_tasks` refuses an unresolvable caller for the
+    /// same reason.
+    private func requiringBlueprintWrite(
+        _ request: ControlRequest,
+        _ body: () -> ControlEnvelope
+    ) -> ControlEnvelope {
+        guard let caller = caller(of: request) else {
+            return .failure(request, code: .unknownSession, message: "caller session not found")
+        }
+        guard PolicyEngine.grants(for: caller).contains("blueprints.write") else {
+            return .failure(request, code: .capabilityDisabled,
+                message: "blueprints.write is not granted")
+        }
+        return body()
+    }
+
+    private func saveBlueprint(_ request: ControlRequest) -> ControlEnvelope {
+        guard let name = request.args["name"]?.stringValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
+            return .failure(request, code: .invalidArgument,
+                message: "'name' is required and must not be empty")
+        }
+        guard name.count <= 60 else {
+            return .failure(request, code: .invalidArgument, message: "'name' exceeds 60 characters")
+        }
+        guard let rawPrompt = request.args["prompt"]?.stringValue, !rawPrompt.isEmpty else {
+            return .failure(request, code: .invalidArgument,
+                message: "'prompt' is required and must not be empty")
+        }
+        guard rawPrompt.count <= BlueprintStore.promptLimit else {
+            return .failure(request, code: .invalidArgument,
+                message: "prompt exceeds \(BlueprintStore.promptLimit) characters")
+        }
+        // The same escape defence the child launcher applies: this text ends up
+        // in a PTY, just later than usual.
+        let prompt = Self.sanitizePrompt(rawPrompt)
+        guard !prompt.isEmpty else {
+            return .failure(request, code: .invalidArgument,
+                message: "'prompt' is empty after removing control characters")
+        }
+
+        // An explicit id updates that blueprint; without one a fresh slug is
+        // taken, so writing "Full stack" twice never silently replaces the
+        // user's own copy.
+        let requestedID = request.args["blueprint_id"]?.stringValue
+        let id = requestedID ?? blueprints.availableID(for: name)
+        guard !id.isEmpty else {
+            return .failure(request, code: .invalidArgument,
+                message: "'name' must contain a letter or a digit")
+        }
+
+        do {
+            let saved = try blueprints.save(
+                Blueprint(
+                    id: id,
+                    name: name,
+                    iconName: request.args["icon"]?.stringValue,
+                    prompt: prompt
+                ),
+                writtenByAgent: true
+            )
+            return .success(request, data: saved.asJSON(), warnings: [
+                "Stored as a draft: it will not start a session on its own until the user opens it.",
+            ])
+        } catch {
+            return .failure(request, code: .ioError, message: error.localizedDescription)
         }
     }
 

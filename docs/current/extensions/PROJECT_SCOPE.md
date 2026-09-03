@@ -11,14 +11,41 @@ applied per session, at launch, through each CLI's own per-session mechanism.
 ## Where the decision lives
 
 `ProjectBinding` (`App/Extensions/ExtensionModels.swift`), stored in the
-extension registry alongside packages and agent bindings. Only **exclusions**
-are recorded — an allowed extension is the absence of a record.
+extension registry alongside packages and agent bindings. Only what a project
+has an **opinion** about is recorded; silence is the default, and the default is
+"allowed".
 
-That asymmetry is the design, not an optimisation. It makes the default
-"everything", so a project nobody has configured behaves exactly as it did
-before this feature existed, and an extension installed next week reaches every
-project that has not explicitly refused it. A stored allow-list would freeze
-today's inventory into every project and quietly withhold anything added later.
+That asymmetry is the design, not an optimisation. A project nobody has
+configured behaves exactly as it did before this feature existed, and an
+extension installed next week reaches every project that has not explicitly
+refused it. A stored allow-list would freeze today's inventory into every
+project and quietly withhold anything added later.
+
+## Per agent
+
+The choice is made per agent, not once for everything. A tab strip runs across
+the picker: **All agents**, then the agents from Quick Launch
+(`SettingsStore.launcherProviders`) with the terminal dropped — a shell has no
+configuration to scope, and the agents someone actually starts sessions with are
+the ones worth asking about.
+
+An agent tab records an *exception*; silence inherits. `ProjectBinding` carries
+`isEnabled` rather than only recording refusals, so "off everywhere, but on for
+Codex" is expressible — a picker that could only subtract would have been able
+to take a server away and never give it back.
+
+Four records can speak to one launch, and `ProjectExtensionScope.allows` ranks
+them rather than searching:
+
+1. this project, this agent
+2. this project, any agent
+3. every project, this agent
+4. every project, any agent
+
+A single `first(where:)` over the mixed list answered with whichever record the
+store happened to hold first, so the same project could scope differently
+between two launches. An exception drops out of the store the moment it agrees
+with the layer beneath it, which is how an agent goes back to inheriting.
 
 ### Two readings of the same records
 
@@ -117,7 +144,7 @@ ProjectExtensionPicker              one view, two homes:
   └── ProjectCustomizeSheet           the "MCP & Skills" tab, editable any time
             │
             ▼
-  ExtensionRegistry.setProjectBindings(_:forProject:)   one write, one audit event
+  ExtensionRegistry.setProjectBindings(_:forProject:agent:)  one write per axis
             │
             ▼  registry.json
   ProjectScopeService.resolve(for:projectID:)   reads the records + the agent's

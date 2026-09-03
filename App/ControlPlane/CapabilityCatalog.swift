@@ -56,6 +56,12 @@ enum CapabilityCatalog {
         .init(key: "projects.read", domain: .projects,
               label: "Projeleri oku",
               detail: "Sees the project list and its metadata.", risky: false),
+        // Filed under Projects rather than a domain of its own: a blueprint is
+        // how a project gets set up, and one entry does not earn a section.
+        .init(key: "blueprints.write", domain: .projects,
+              label: "Write a blueprint",
+              detail: "Can save and delete project blueprints. A blueprint an agent writes is stored as a draft and never starts a session on its own.",
+              risky: true),
 
         .init(key: "worktrees.read", domain: .worktrees,
               label: "Read worktrees",

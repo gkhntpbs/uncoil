@@ -43,6 +43,11 @@ final class CapabilityRouter {
     /// registry with a fake launcher.
     var runRegistry: RunRegistry = .shared
 
+    /// The blueprints an agent can read and, with the grant, write. Defaults to
+    /// the app-wide store so a blueprint an agent saves appears in Settings
+    /// without a reload; tests point it at a temporary directory.
+    var blueprints: BlueprintStore = .shared
+
     /// Launches a freshly-created child session's terminal (and delivers its
     /// initial prompt). Injected by the app; nil in tests, where the child
     /// record is still created but no PTY is spawned.

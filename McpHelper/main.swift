@@ -25,7 +25,7 @@ struct ToolDef { let name: String; let description: String }
 
 let tools: [ToolDef] = [
     ToolDef(name: "uncoil_projects",
-            description: "Inspect Uncoil projects and their git worktrees, and create new worktrees. Call {\"action\":\"help\"} for full documentation."),
+            description: "Inspect Uncoil projects and their git worktrees, create new worktrees, and read or write the project blueprints a new project can be set up from. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_sessions",
             description: "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_artifacts",

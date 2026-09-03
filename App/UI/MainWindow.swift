@@ -22,6 +22,8 @@ struct MainWindow: View {
     /// The project whose extension selection is being asked for, right after it
     /// was added. Nil at every other moment.
     @State private var configuringNewProject: Project?
+    /// The project a blueprint is being chosen for, from the palette.
+    @State private var blueprintProject: Project?
     /// Shared, not per-sheet. `save()` serialises the whole registry document
     /// from memory, so a sheet with its own instance would discard whatever the
     /// last one wrote — see `ExtensionRegistry.shared`.
@@ -293,6 +295,9 @@ struct MainWindow: View {
         .sheet(item: $configuringNewProject) { project in
             NewProjectSheet(project: project, registry: extensionRegistry)
         }
+        .sheet(item: $blueprintProject) { project in
+            ApplyBlueprintSheet(project: project)
+        }
         .background(
             MainWindowFrame(
                 windowID: windowID,
@@ -399,6 +404,8 @@ struct MainWindow: View {
             launchSession(projectID: projectID, provider: provider)
         case .createWorktree(let projectID):
             selection = .project(projectID)
+        case .applyBlueprint(let projectID):
+            blueprintProject = projectStore.projects.first { $0.id == projectID }
         case .openSettings(let paneID):
             SettingsRoute.shared.requestedPane = paneID
             openWindow(id: "settings")
@@ -509,21 +516,11 @@ struct MainWindow: View {
         selection = .session(record.id)
 
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
-        _ = TerminalRegistry.shared.terminal(
-            for: record, project: project,
-            account: settings.account(id: record.accountID),
-            settings: settings, sessionStore: sessionStore,
-            projectStore: projectStore)
-
-        let sid = record.id
-        Task { @MainActor in
-            let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-            }
-            await TerminalRegistry.shared.submitText(
-                prompt, for: sid, provider: record.provider)
-        }
+        SessionPromptDelivery.deliver(
+            prompt, to: record, project: project,
+            settings: settings, sessionStore: sessionStore, projectStore: projectStore,
+            namesTheSession: true
+        )
     }
 
     /// Every route starts below the title bar, from one place.
@@ -630,14 +627,6 @@ struct MainWindow: View {
         )
         selection = .session(record.id)
         guard let project = projectStore.projects.first(where: { $0.id == projectID }) else { return }
-        _ = TerminalRegistry.shared.terminal(
-            for: record,
-            project: project,
-            account: settings.account(id: record.accountID),
-            settings: settings,
-            sessionStore: sessionStore,
-            projectStore: projectStore
-        )
         var prompt = """
         Organise the Uncoil sessions in this project. Use only the Uncoil MCP tools. \
         Start by calling uncoil_sessions list and list_groups. Decide on a small number \
@@ -650,15 +639,10 @@ struct MainWindow: View {
         if let directive = settings.language.resolvedAgent().directive {
             prompt += "\n\(directive)"
         }
-        Task { @MainActor in
-            let deadline = Date().addingTimeInterval(3)
-            while Date() < deadline, !sessionStore.status(of: record.id).isKnownLive {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-            }
-            await TerminalRegistry.shared.submitText(
-                prompt, for: record.id, provider: record.provider,
-                namesTheSession: false)
-        }
+        SessionPromptDelivery.deliver(
+            prompt, to: record, project: project,
+            settings: settings, sessionStore: sessionStore, projectStore: projectStore
+        )
     }
 
     /// Opens the first-run window on a machine that has never seen it — and on
@@ -1005,24 +989,10 @@ struct MainWindow: View {
             guard let projectStore, let settings, let sessionStore,
                   let project = projectStore.projects.first(where: { $0.id == record.projectID })
             else { return }
-            let account = settings.account(id: record.accountID)
-            _ = TerminalRegistry.shared.terminal(
-                for: record, project: project, account: account,
+            SessionPromptDelivery.deliver(
+                prompt ?? "", to: record, project: project,
                 settings: settings, sessionStore: sessionStore,
                 projectStore: projectStore)
-            guard let prompt, !prompt.isEmpty else { return }
-            let sid = record.id
-            Task { @MainActor in
-                // Wait for the first hook to flip status off .terminated, else
-                // fall back to a fixed delay, then send the prompt as input.
-                let deadline = Date().addingTimeInterval(3)
-                while Date() < deadline, !sessionStore.status(of: sid).isKnownLive {
-                    try? await Task.sleep(nanoseconds: 200_000_000)
-                }
-                await TerminalRegistry.shared.submitText(
-                    prompt, for: sid, provider: record.provider,
-                    namesTheSession: false)
-            }
         }
 
         let server = ControlPlaneServer(

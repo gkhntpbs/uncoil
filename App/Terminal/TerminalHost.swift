@@ -852,7 +852,9 @@ final class TerminalRegistry {
             return
         }
         await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
-        await RuntimeClient.shared.submitText(text, sid: recordID, provider: provider)
+        await RuntimeClient.shared.submitText(
+            deliverable(text, for: recordID), sid: recordID, provider: provider
+        )
     }
 
     /// Types a prompt into the session without submitting it: the user reads,
@@ -865,8 +867,47 @@ final class TerminalRegistry {
         }
         await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
         RuntimeClient.shared.sendText(
-            RuntimeClient.submissionParts(text, provider: provider)[0], sid: recordID
+            RuntimeClient.submissionParts(
+                deliverable(text, for: recordID), provider: provider
+            )[0],
+            sid: recordID
         )
+    }
+
+    /// Text as the agent can actually receive it.
+    ///
+    /// A newline written straight into a PTY *is* Enter. A prompt with a blank
+    /// line in it therefore arrives as several submissions, the agent answers
+    /// the last fragment, and everything before it is gone — which is what a
+    /// long instruction handed to a session used to do.
+    ///
+    /// Bracketed paste is how a terminal says "this is one lump of text,
+    /// newlines included": exactly what happens when a person pastes. It is
+    /// only used when the running agent has actually turned the mode on
+    /// (DECSET 2004), which the emulator already tracks, so nothing is assumed
+    /// about a CLI that may not support it.
+    ///
+    /// Without it, runs of newlines are collapsed to single spaces. That loses
+    /// the shape of the text, which is a real cost — but the alternative is
+    /// losing all of it but the last paragraph.
+    private func deliverable(_ text: String, for recordID: UUID) -> String {
+        Self.deliverable(
+            text,
+            bracketedPaste: terminals[recordID]?.getTerminal().bracketedPasteMode == true
+        )
+    }
+
+    /// Pure half of the above, so both branches are testable without a PTY.
+    nonisolated static func deliverable(
+        _ text: String, bracketedPaste: Bool
+    ) -> String {
+        guard text.contains("\n") else { return text }
+        if bracketedPaste {
+            return "\u{1B}[200~" + text + "\u{1B}[201~"
+        }
+        return text
+            .replacingOccurrences(of: "\n+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func sendRaw(_ data: Data, for recordID: UUID) {

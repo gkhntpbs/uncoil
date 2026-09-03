@@ -30,6 +30,7 @@ struct SidebarView: View {
     // Sheets and dialogs the row context menus ask for. They live here rather
     // than in the rows because a recycled row is the wrong owner for a window.
     @State private var customizingProject: Project?
+    @State private var blueprintProject: Project?
     /// Project getting a new, empty group from its context menu. Until now a
     /// group could only be born from a multi-selection.
     @State private var groupingProject: Project?
@@ -106,6 +107,7 @@ struct SidebarView: View {
                 actions: SidebarRowActions(
                     openSessionWindow: { openWindow(id: "session-window", value: $0) },
                     customizeProject: { customizingProject = $0 },
+                    applyBlueprint: { blueprintProject = $0 },
                     createGroup: {
                         groupName = ""
                         groupingProject = $0
@@ -207,6 +209,9 @@ struct SidebarView: View {
         }
         .sheet(item: $customizingProject) { project in
             ProjectCustomizeSheet(project: project)
+        }
+        .sheet(item: $blueprintProject) { project in
+            ApplyBlueprintSheet(project: project)
         }
         .alert("New Group", isPresented: isPresenting($groupingProject)) {
             TextField("Group name", text: $groupName)

@@ -50,6 +50,12 @@ enum PolicyEngine {
         // Deleting a task, spawning agents for it, cutting a worktree or asking
         // for a merge all need to be granted deliberately.
         "tasks.delete", "tasks.orchestrate", "tasks.worktree", "tasks.merge",
+        // A blueprint is a prompt that a later session gets handed. A session
+        // able to write one silently could leave instructions behind for a
+        // session that has not started yet, so the grant belongs to the one
+        // session the user opened in order to write blueprints — not to every
+        // agent that happens to be running.
+        "blueprints.write",
     ]
 
     static func grants(for record: SessionRecord) -> Set<String> {

@@ -28,7 +28,8 @@ Failure: `{ok:false, ..., error:{code, message, retryable, details?}}`.
 
 ## uncoil_projects
 
-Inspect projects and worktrees, create worktrees, and enumerate presets.
+Inspect projects and worktrees, create worktrees, enumerate presets, and read
+or write blueprints.
 
 | action | grant | params | returns |
 |---|---|---|---|
@@ -39,6 +40,18 @@ Inspect projects and worktrees, create worktrees, and enumerate presets.
 | `create_worktree` | **worktrees.create** | `project_id?`, `name` (`[a-zA-Z0-9._-]{1,64}`) | `{path,branch,is_main}` |
 | `list_presets` | projects.read | — | `presets:[{id,name,provider,extra_arguments,initial_prompt_template,granted_capabilities,permission_mode}]` |
 | `inspect_preset` | projects.read | `preset_id` | one preset object |
+| `list_blueprints` | projects.read | — | `blueprints:[{id,name,icon,prompt,starts_immediately,needs_review}]` |
+| `inspect_blueprint` | projects.read | `blueprint_id` | one blueprint object |
+| `save_blueprint` | **blueprints.write** | `name` (1–60), `prompt` (≤ 8000), `icon?`, `blueprint_id?` | the stored blueprint |
+| `delete_blueprint` | **blueprints.write** | `blueprint_id` | `{deleted}` |
+
+A blueprint is a stored prompt a project can be set up from. `blueprints.write`
+is opt-in and the caller session must be resolvable, because a blueprint is text
+a *later* session gets handed — a session that could write one silently could
+leave instructions behind for a session that has not started yet. Anything
+written through this surface is stored as a draft: `needs_review` is true and
+`starts_immediately` is forced false, so it cannot open a session by itself
+until a person has opened and kept it. See `../extensions/BLUEPRINTS.md`.
 
 ## uncoil_sessions
 

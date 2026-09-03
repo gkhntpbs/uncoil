@@ -81,8 +81,39 @@ struct TablerIcon: View {
 
 /// Palette offered in the project customize sheet.
 enum ProjectPalette {
+    /// Ready-made accents, in spectrum order so the row reads as a spectrum
+    /// rather than as a bag of colours.
+    ///
+    /// Eighteen rather than eight: with only one swatch per hue, picking "a
+    /// blue project" and "another blue project" was impossible, and the answer
+    /// to that is not a colour picker — it is a second blue. The picker beside
+    /// this row covers everything else.
     static let colors: [UInt32] = [
-        0xE2572B, 0x4A8FD9, 0x4CAF7A, 0xD9A63F,
-        0xB56CD6, 0xD95757, 0x53B8B0, 0x8A8A93,
+        0xD95757, 0xE2572B, 0xE0803A, 0xD9A63F,
+        0xBFC248, 0x8CBF4C, 0x4CAF7A, 0x3FB4A0,
+        0x53B8B0, 0x46A5C9, 0x4A8FD9, 0x5C74E0,
+        0x7A63D6, 0xB56CD6, 0xD96BB4, 0xD4577C,
+        0x9A7B62, 0x8A8A93,
+    ]
+
+    /// What the icon grid opens on before anyone types.
+    ///
+    /// The grid used to show three hundred icons in alphabetical order, which
+    /// is a list nobody reads to the end of. These are the ones that actually
+    /// describe a project or a way of setting one up; everything else is a
+    /// search away.
+    static let suggestedIcons: [String] = [
+        "folder", "folders", "box", "package", "stack-2", "layout-grid",
+        "layout-dashboard", "app-window", "browser", "device-mobile",
+        "device-desktop", "device-laptop", "server", "database", "cloud",
+        "api", "plug", "topology-star", "sitemap", "hierarchy",
+        "code", "terminal-2", "brand-github", "git-branch", "git-merge",
+        "bug", "test-pipe", "flask", "rocket", "bolt",
+        "brush", "palette", "wand", "photo", "movie", "music",
+        "book", "notes", "file-text", "clipboard-list", "checklist",
+        "shopping-cart", "credit-card", "chart-line", "chart-bar",
+        "users", "message", "mail", "calendar", "clock",
+        "shield", "lock", "key", "settings", "tool", "puzzle",
+        "sparkles", "star", "heart", "flame", "leaf", "world",
     ]
 }

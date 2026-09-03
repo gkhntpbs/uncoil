@@ -124,15 +124,27 @@ struct ProjectExtensionScope: Equatable {
         agent: ExtensionAgentID,
         projectBindings: [ProjectBinding]
     ) -> Bool {
-        let applicable = projectBindings.filter {
-            $0.extensionID == extensionID && ($0.agent == nil || $0.agent == agent)
-        }
-        // The most specific record wins: this project's over the global one.
-        if let scoped = applicable.first(where: { $0.projectID == projectID }) {
-            return scoped.isEnabled
-        }
-        if let global = applicable.first(where: \.isGlobal) {
-            return global.isEnabled
+        let relevant = projectBindings.filter { $0.extensionID == extensionID }
+        // Four records can speak to one launch, so they are ranked rather than
+        // searched. Naming this agent beats saying nothing about agents, and
+        // naming this project beats saying nothing about projects.
+        //
+        // A single `first(where:)` over a mixed list would answer with whichever
+        // record the store happened to hold first, so "off for Codex in this
+        // project" and "on everywhere" would trade places between launches for
+        // no reason the user could see.
+        let ranked: [(project: UUID?, agent: ExtensionAgentID?)] = [
+            (projectID, agent),
+            (projectID, nil),
+            (nil, agent),
+            (nil, nil),
+        ]
+        for want in ranked {
+            if let match = relevant.first(where: {
+                $0.projectID == want.project && $0.agent == want.agent
+            }) {
+                return match.isEnabled
+            }
         }
         // Only other projects are named, and what they refused is their own
         // business.

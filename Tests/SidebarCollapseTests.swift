@@ -52,6 +52,7 @@ final class SidebarCollapseTests: XCTestCase {
             actions: SidebarRowActions(
                 openSessionWindow: { _ in },
                 customizeProject: { _ in },
+                applyBlueprint: { _ in },
                 createGroup: { _ in },
                 renameGroup: { _ in },
                 confirmDeleteSession: { _ in },

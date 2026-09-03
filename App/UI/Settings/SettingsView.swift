@@ -79,6 +79,7 @@ struct SettingsView: View {
         case launchArgs
         case agentBehavior
         case presets
+        case blueprints
 
         case notifications
         case notificationEvents
@@ -104,7 +105,8 @@ struct SettingsView: View {
         var category: Category {
             switch self {
             case .general, .input: .general
-            case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets: .agents
+            case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets,
+                 .blueprints: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours,
                  .projectNotifications: .notifications
             // How Uncoil looks and what it puts in front of you.
@@ -132,6 +134,7 @@ struct SettingsView: View {
             case .launchArgs: String(localized: "Run Parameters")
             case .agentBehavior: String(localized: "Working Mode")
             case .presets: String(localized: "Session Presets")
+            case .blueprints: String(localized: "Blueprints")
             case .launcher: String(localized: "Quick Launch")
             case .notifications: String(localized: "General")
             case .notificationEvents: String(localized: "Events")
@@ -160,6 +163,7 @@ struct SettingsView: View {
             case .launchArgs: "command"
             case .agentBehavior: "slider.horizontal.3"
             case .presets: "square.stack.3d.up"
+            case .blueprints: "square.grid.2x2"
             case .launcher: "bolt"
             case .notifications: "bell"
             case .notificationEvents: "list.bullet.rectangle"
@@ -192,6 +196,7 @@ struct SettingsView: View {
             case .launchArgs: "parametre argüman argument model flag bayrak"
             case .agentBehavior: "agent davranış behavior mod mode auto plan onay approval yetki varsayılan default"
             case .presets: "preset alt agent child yetki capability prompt şablon template"
+            case .blueprints: "blueprint şema plan iskelet scaffold kurulum setup yeni proje new project prompt şablon template klasör yapısı structure"
             case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
             case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background"
             case .notificationEvents: "olay event izin permission girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority ses sound"
@@ -326,6 +331,7 @@ struct SettingsView: View {
         case .launchArgs: LaunchArgumentsSettingsPage()
         case .agentBehavior: AgentBehaviorSettingsPage()
         case .presets: SessionPresetsSettingsPage()
+        case .blueprints: BlueprintsSettingsPage()
         case .launcher: LauncherSettingsPage()
         case .notifications: NotificationGeneralPage()
         case .notificationEvents: NotificationEventsPage()

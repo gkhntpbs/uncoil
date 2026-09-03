@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Everything a project is configured with: its identity — name, icon (Tabler)
-/// and accent colour — and the MCP servers and skills its sessions are handed.
+/// Everything a project is configured with: its identity — name, icon and
+/// accent colour — and the MCP servers and skills its sessions are handed.
 ///
 /// The two live behind one Save because they are one answer to "what is this
 /// project", and splitting them would put the extension list somewhere the
@@ -23,6 +23,7 @@ struct ProjectCustomizeSheet: View {
 
     let project: Project
     @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var registry = ExtensionRegistry.shared
 
@@ -30,207 +31,104 @@ struct ProjectCustomizeSheet: View {
     @State private var name: String = ""
     @State private var selectedIcon: String?
     @State private var selectedColor: UInt32?
-    @State private var search = ""
-    @State private var excluded: Set<String> = []
+    @State private var selection = ProjectExtensionSelection()
 
-    private let columns = Array(repeating: GridItem(.fixed(34), spacing: 6), count: 10)
-
-    private var filteredIcons: [String] {
-        let query = search.trimmingCharacters(in: .whitespaces).lowercased()
-        if query.isEmpty {
-            return Array(TablerIcons.sortedNames.prefix(300))
-        }
-        return TablerIcons.sortedNames.filter { $0.contains(query) }.prefix(300).map { $0 }
-    }
-
-    private var previewColor: Color {
-        selectedColor.map { Color(hex: $0) } ?? Theme.textDim
+    private var agents: [ExtensionAgentID] {
+        ProjectExtensionPicker.tabAgents(for: settings)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Live preview row
-            HStack(spacing: 10) {
-                if let icon = selectedIcon {
-                    TablerIcon(name: icon, size: 16, color: previewColor)
-                } else {
-                    Image(systemName: "folder.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(previewColor)
+        SheetScaffold(
+            title: String(localized: "Customise \(project.name)"),
+            subtitle: tab == .identity
+                ? String(localized: "How this project is named and recognised in the sidebar.")
+                : String(localized: "What a session in this project may load. Everything is on until you turn it off."),
+            width: 560
+        ) {
+            VStack(spacing: Theme.Space.snug) {
+                Picker("", selection: $tab) {
+                    ForEach(Tab.allCases) { Text($0.title).tag($0) }
                 }
-                Text(name.isEmpty ? project.name : name)
-                    .font(Theme.mono(.large, .medium))
-                    .foregroundStyle(Theme.text)
-                Spacer()
-                Text("preview")
-                    .font(Theme.mono(.small))
-                    .foregroundStyle(Theme.textFaint)
-            }
-            .padding(12)
-            .background(Theme.panel)
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal, Theme.Space.section)
+                .accessibilityIdentifier("project.customize.tab")
 
-            Divider().overlay(Theme.border)
-
-            Picker("", selection: $tab) {
-                ForEach(Tab.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .accessibilityIdentifier("project.customize.tab")
-
-            Divider().overlay(Theme.border)
-
-            if tab == .extensions {
                 ScrollView {
-                    ProjectExtensionPicker(
-                        registry: registry,
-                        excluded: $excluded,
-                        providers: registry.installedAgents.compactMap(\.provider)
-                    )
-                    .padding(14)
+                    Group {
+                        if tab == .extensions {
+                            ProjectExtensionPicker(
+                                registry: registry, selection: $selection, agents: agents
+                            )
+                        } else {
+                            identityTab
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.section)
                 }
                 .uncoilScrollers()
-                .frame(height: 396)
-                .task { registry.discover() }
-            } else {
-                identityTab
-            }
-
-            Divider().overlay(Theme.border)
-
-            HStack {
-                Button("Cancel") { dismiss() }
-                    .buttonStyle(GhostButtonStyle())
-                Spacer()
-                Button("Save") {
-                    projectStore.updateProject(project.id) { p in
-                        let trimmed = name.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty { p.name = trimmed }
-                        p.iconName = selectedIcon
-                        p.colorHex = selectedColor
-                    }
-                    registry.setProjectBindings(
-                        ProjectExtensionPicker.bindings(
-                            excluding: excluded, projectID: project.id
-                        ),
-                        forProject: project.id
-                    )
-                    dismiss()
+                .frame(height: 372)
+                .task(id: tab) {
+                    if tab == .extensions { registry.discover() }
                 }
-                .buttonStyle(AccentButtonStyle())
             }
-            .padding(12)
+        } actions: {
+            Button(String(localized: "Cancel")) { dismiss() }
+                .buttonStyle(GhostButtonStyle())
+            Spacer()
+            Button(String(localized: "Save")) { save() }
+                .buttonStyle(AccentButtonStyle())
         }
-        .frame(width: 460)
-        .background(Theme.bg)
         .onAppear {
             name = project.name
             selectedIcon = project.iconName
             selectedColor = project.colorHex
-            excluded = ProjectExtensionPicker.excludedIDs(
-                in: registry.projectBindings, projectID: project.id
+            selection = ProjectExtensionSelection.load(
+                from: registry.projectBindings, projectID: project.id
             )
         }
     }
 
-    /// Name, colour and icon. Extracted so the two tabs read as two arms
-    /// rather than one arm and ninety inline lines.
     private var identityTab: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Name
-            TextField("Project name", text: $name)
-                .textFieldStyle(.plain)
-                .font(Theme.mono(.body))
-                .foregroundStyle(Theme.text)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                        .strokeBorder(Theme.border, lineWidth: 1)
+        VStack(alignment: .leading, spacing: Theme.Space.snug) {
+            SheetField(label: String(localized: "Name")) {
+                SheetTextField(
+                    placeholder: String(localized: "Project name"), text: $name
                 )
-
-            // Colors
-            HStack(spacing: 8) {
-                ForEach(ProjectPalette.colors, id: \.self) { hex in
-                    Button {
-                        selectedColor = selectedColor == hex ? nil : hex
-                    } label: {
-                        Circle()
-                            .fill(Color(hex: hex))
-                            .frame(width: 18, height: 18)
-                            .overlay(
-                                Circle()
-                                    .strokeBorder(
-                                        selectedColor == hex ? Theme.text : .clear,
-                                        lineWidth: 2
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-                Spacer()
-                if selectedIcon != nil || selectedColor != nil {
-                    Button("Reset") {
-                        selectedIcon = nil
-                        selectedColor = nil
-                    }
-                    .buttonStyle(GhostButtonStyle())
-                }
             }
-
-            // Icon search
-            TextField("Search icons (tabler icons — \(TablerIcons.map.count) icons)", text: $search)
-                .textFieldStyle(.plain)
-                .font(Theme.mono(.body))
-                .foregroundStyle(Theme.text)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                        .strokeBorder(Theme.border, lineWidth: 1)
-                )
-
-            // Icon grid
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 6) {
-                    ForEach(filteredIcons, id: \.self) { iconName in
-                        Button {
-                            selectedIcon = selectedIcon == iconName ? nil : iconName
-                        } label: {
-                            TablerIcon(
-                                name: iconName,
-                                size: 15,
-                                color: selectedIcon == iconName ? previewColor : Theme.textDim
-                            )
-                            .frame(width: 32, height: 30)
-                            .background(
-                                selectedIcon == iconName ? Theme.panelActive : Theme.panel,
-                                in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                                    .strokeBorder(
-                                        selectedIcon == iconName ? previewColor.opacity(0.6) : .clear,
-                                        lineWidth: 1
-                                    )
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .help(iconName)
-                    }
-                }
-                .padding(2)
-                .uncoilScrollers()
+            SheetField(
+                label: String(localized: "Location"),
+                hint: String(localized: "Where the sessions in this project run.")
+            ) {
+                Text(project.rootPath)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textDim)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.Space.snug)
+                    .padding(.vertical, 9)
+                    .background(
+                        Theme.panel,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                    )
             }
-            .frame(height: 190)
+            IconColorPicker(iconName: $selectedIcon, colorHex: $selectedColor)
         }
-        .padding(14)
     }
 
+    private func save() {
+        projectStore.updateProject(project.id) { stored in
+            let trimmed = name.trimmingCharacters(in: .whitespaces)
+            if !trimmed.isEmpty { stored.name = trimmed }
+            stored.iconName = selectedIcon
+            stored.colorHex = selectedColor
+        }
+        ProjectExtensionPicker.save(
+            selection, projectID: project.id, agents: agents, to: registry
+        )
+        dismiss()
+    }
 }
 
 /// Shared project icon: custom Tabler icon + color, or the default folder.

@@ -765,6 +765,9 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: String(localized: "Customise…")) {
                     environment.actions.customizeProject(project)
                 }
+                add(to: menu, title: String(localized: "Apply Blueprint…")) {
+                    environment.actions.applyBlueprint(project)
+                }
                 let collapsed = CollapsedProjects.shared.contains(id)
                 add(to: menu, title: collapsed ? String(localized: "Show Sessions") : String(localized: "Hide Sessions")) {
                     CollapsedProjects.shared.set(id, collapsed: !collapsed)
@@ -975,6 +978,8 @@ final class SidebarOutlineView: NSOutlineView {
 struct SidebarRowActions {
     var openSessionWindow: (UUID) -> Void
     var customizeProject: (Project) -> Void
+    /// Hands a stored setup prompt to a new session in this project.
+    var applyBlueprint: (Project) -> Void
     var createGroup: (Project) -> Void
     var renameGroup: (SessionGroup) -> Void
     var confirmDeleteSession: (SessionRecord) -> Void
