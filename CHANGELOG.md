@@ -10,6 +10,11 @@ release notes are written once, here.
 
 ## Unreleased
 
+### Fixed
+
+- Restarting a session restarts it everywhere. The verb was written out at each surface that offered it, and the copies had drifted: restarting from the session header or a split pane rebuilt that one terminal view, while the command palette, the group view and Settings rebuilt every view of the session. So a restart from the header left the split pane, the popout and the group view still showing the process it had just killed. Closing and deleting a session were duplicated the same way, each copy deciding for itself whether the process was closed before the record went.
+- A second window no longer restarts the app's services. Opening one with Cmd-N re-resolved every agent binary, asked every CLI for its version again, re-ran the cleanup of dropped images and reassigned the runtime daemon's session bookkeeping out from under the first window. The services the app has to start belong to the app; they now start once, whatever the windows do.
+
 ## [0.2.0] - 2026-09-03
 
 ### Added
