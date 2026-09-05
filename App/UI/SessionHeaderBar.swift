@@ -251,16 +251,15 @@ struct SessionHeaderBar: View {
             }
 
             HStack(spacing: 2) {
+                // Kept as controls rather than folded into the menu: the run
+                // button is a *state* — the colour says whether this project's
+                // dev server is up — and a menu that has to be opened to be
+                // read is not a status. The handoff button is the other
+                // exception, and for the opposite reason: it appears only when
+                // a login is about to stop the user's work, which is the worst
+                // moment to put an action one level further away.
                 RunDefaultControl(project: project, onOpenLogs: onOpenProject)
 
-                EditorOpenControl(directory: workingDirectory)
-
-                // In the control cluster, not only inside the usage card. A
-                // popover is its own window and its contents are outside the
-                // app's accessibility tree, so anything that lives only in one
-                // is unreachable to a UI test — and, more to the point, one
-                // click further away for the user at the moment the limit is
-                // about to stop their work.
                 if let usageAlert, usageAlert.state.isAlerting {
                     ControlButton(
                         iconName: "arrow-move-right",
@@ -276,12 +275,14 @@ struct SessionHeaderBar: View {
 
                 Rectangle().fill(Theme.border).frame(width: 1, height: 16)
 
-                ControlButton(
-                    iconName: "refresh",
-                    help: String(localized: "Restart the session") +
-                        (record.providerSessionID != nil ? " (continues with its history)" : ""),
-                    identifier: "session.restartButton",
-                    action: onRestart
+                // Everything else the session can be told to do. The same list
+                // is the menu bar's Session menu, so each verb has one name and
+                // one shortcut wherever it is reached from.
+                SessionMenuButton(
+                    record: record,
+                    project: project,
+                    onRestart: onRestart,
+                    onHandoff: usageAlert.map { alert in { handoff = alert } }
                 )
             }
             .padding(3)

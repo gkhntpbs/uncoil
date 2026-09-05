@@ -19,9 +19,15 @@ final class AppServices {
     static let shared = AppServices()
 
     private var hasStarted = false
-    private var projectStore: ProjectStore!
-    private var sessionStore: SessionStore!
-    private var settings: SettingsStore!
+    /// The stores, once the app has them.
+    ///
+    /// Read by the menu bar's own commands, which are declared beside the
+    /// scenes and so have no environment to take them from — a menu item that
+    /// acts on the selected session needs the same stores the window uses, and
+    /// this is the object that already owns the app-lifetime wiring.
+    private(set) var projectStore: ProjectStore!
+    private(set) var sessionStore: SessionStore!
+    private(set) var settings: SettingsStore!
 
     private init() {}
 
