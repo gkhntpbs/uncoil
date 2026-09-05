@@ -29,7 +29,6 @@ struct SidebarView: View {
     @State private var isMultiSelecting = false
     // Sheets and dialogs the row context menus ask for. They live here rather
     // than in the rows because a recycled row is the wrong owner for a window.
-    @State private var customizingProject: Project?
     @State private var blueprintProject: Project?
     /// Project getting a new, empty group from its context menu. Until now a
     /// group could only be born from a multi-selection.
@@ -106,7 +105,7 @@ struct SidebarView: View {
                 scope: scope,
                 actions: SidebarRowActions(
                     openSessionWindow: { openWindow(.session, value: $0) },
-                    customizeProject: { customizingProject = $0 },
+                    customizeProject: { Router.shared.go(to: .projectSettings($0.id)) },
                     applyBlueprint: { blueprintProject = $0 },
                     createGroup: {
                         groupName = ""
@@ -206,15 +205,6 @@ struct SidebarView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Running processes are closed; the recordings cannot be recovered.")
-        }
-        .sheet(item: $customizingProject) { project in
-            ProjectSettingsSheet(project: project)
-        }
-        // Asked for from the menu bar or the palette. The sheet is presented
-        // here and nowhere else: two presenters would be two sheets.
-        .onReceive(Router.shared.$projectSettingsCounter) { _ in
-            guard let id = Router.shared.takeProjectSettings() else { return }
-            customizingProject = projectStore.projects.first { $0.id == id }
         }
         .sheet(item: $blueprintProject) { project in
             ApplyBlueprintSheet(project: project)

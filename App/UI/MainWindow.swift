@@ -24,6 +24,12 @@ struct MainWindow: View {
     @State private var configuringNewProject: Project?
     /// The project a blueprint is being chosen for, from the palette.
     @State private var blueprintProject: Project?
+    /// The project whose settings sheet is up.
+    ///
+    /// Presented by the window rather than by the sidebar: the sidebar is
+    /// unmounted when it is hidden, and a sheet whose presenter can vanish is a
+    /// shortcut that sometimes does nothing.
+    @State private var projectSettings: Project?
     /// Shared, not per-sheet. `save()` serialises the whole registry document
     /// from memory, so a sheet with its own instance would discard whatever the
     /// last one wrote — see `ExtensionRegistry.shared`.
@@ -294,6 +300,24 @@ struct MainWindow: View {
         }
         .sheet(item: $configuringNewProject) { project in
             NewProjectSheet(project: project, registry: extensionRegistry)
+        }
+        .sheet(item: $projectSettings) { project in
+            ProjectSettingsSheet(project: project)
+        }
+        // Asked for by the sidebar's context menu, the project header's gear,
+        // the menu bar and the palette alike — one sheet, one presenter.
+        //
+        // Every window hears the request and exactly one answers, by the same
+        // rule that routes a selection: otherwise the menu bar's Cmd-I would
+        // raise a sheet in every open window at once.
+        .onReceive(Router.shared.$projectSettingsCounter) { _ in
+            guard let id = Router.shared.requestedProjectSettingsID,
+                  let windowID,
+                  windows.routeTarget(for: .project(id)) == windowID,
+                  let project = projectStore.projects.first(where: { $0.id == id })
+            else { return }
+            _ = Router.shared.takeProjectSettings()
+            projectSettings = project
         }
         .sheet(item: $blueprintProject) { project in
             ApplyBlueprintSheet(project: project)

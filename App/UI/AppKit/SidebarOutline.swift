@@ -762,7 +762,7 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: String(localized: "New Group…")) {
                     environment.actions.createGroup(project)
                 }
-                add(to: menu, title: String(localized: "Customise…")) {
+                add(to: menu, title: String(localized: "Project Settings…")) {
                     environment.actions.customizeProject(project)
                 }
                 add(to: menu, title: String(localized: "Apply Blueprint…")) {

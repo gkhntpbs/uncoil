@@ -371,10 +371,22 @@ struct ProjectDashboardView: View {
 
             areaTabs
 
-            // Right of the tabs: opening the project in an editor is a thing
-            // done *to* the project, not one of its screens, so it sits past
-            // the row that switches between them.
-            EditorOpenControl(directory: project.rootPath)
+            // Right of the tabs: things done *to* the project rather than
+            // screens of it, so they sit past the row that switches between
+            // them. Its settings are here as well as in the sidebar's
+            // right-click menu and the menu bar — the same sheet, reached
+            // from the screen you are already on.
+            HStack(spacing: 2) {
+                EditorOpenControl(directory: project.rootPath)
+
+                ControlButton(
+                    iconName: "settings",
+                    help: String(localized: "Project Settings (⌘I)"),
+                    identifier: "dashboard.projectSettings"
+                ) {
+                    Router.shared.go(to: .projectSettings(project.id))
+                }
+            }
                 .padding(3)
                 .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
                 .overlay(
