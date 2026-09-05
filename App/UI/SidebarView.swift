@@ -105,7 +105,7 @@ struct SidebarView: View {
                 isMultiSelecting: isMultiSelecting,
                 scope: scope,
                 actions: SidebarRowActions(
-                    openSessionWindow: { openWindow(id: "session-window", value: $0) },
+                    openSessionWindow: { openWindow(.session, value: $0) },
                     customizeProject: { customizingProject = $0 },
                     applyBlueprint: { blueprintProject = $0 },
                     createGroup: {
@@ -151,7 +151,7 @@ struct SidebarView: View {
                         ? String(localized: "Settings")
                         : String(localized: "Settings — \(pendingUpdates.count) agent updates waiting")
                 ) {
-                    openWindow(id: "settings")
+                    openWindow(.settings)
                 }
                 .countBadge(
                     pendingUpdates.count,

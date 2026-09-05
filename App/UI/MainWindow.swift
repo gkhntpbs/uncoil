@@ -399,7 +399,7 @@ struct MainWindow: View {
                 debugBundleMessage = error.localizedDescription
             }
         case .openExtensions:
-            openWindow(id: "extensions")
+            openWindow(.extensions)
         case .openProject(let id):
             openInThisWindow(id)
             selection = .project(id)
@@ -416,13 +416,13 @@ struct MainWindow: View {
             blueprintProject = projectStore.projects.first { $0.id == projectID }
         case .openSettings(let paneID):
             SettingsRoute.shared.requestedPane = paneID
-            openWindow(id: "settings")
+            openWindow(.settings)
         case .restartSession(let id):
             sessionActions.restart(id)
         case .closeSession(let id):
             sessionActions.close(id)
         case .popoutSession(let id):
-            openWindow(id: "session-window", value: id)
+            openWindow(.session, value: id)
         case .openFile(let url), .openArtifact(let url):
             settings.preferredEditor.open(url)
         case .ask(let prompt, let target, let projectID):
@@ -671,7 +671,7 @@ struct MainWindow: View {
                 config.extensionsSection.flatMap(ExtensionsView.Section.init(rawValue:))
                     ?? .overview
             )
-            openWindow(id: "extensions")
+            openWindow(.extensions)
         }
         // An agent session in preference to the first one seeded. The route
         // exists to open "a session" for inspection, and the plain terminal —
@@ -781,7 +781,7 @@ struct MainWindow: View {
         let extras = windows.prepareRestore()
         let registration = windows.register()
         windowID = registration.id
-        for _ in 0..<extras { openWindow(id: "main") }
+        for _ in 0..<extras { openWindow(.main) }
         switch registration.mode {
         case .restored(let saved):
             selection = liveSelection(

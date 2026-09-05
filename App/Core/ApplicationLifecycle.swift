@@ -49,8 +49,7 @@ final class UncoilApplicationDelegate: NSObject, NSApplicationDelegate {
         hasVisibleWindows flag: Bool
     ) -> Bool {
         if !flag {
-            let existing = sender.windows
-                .first { $0.title == "Uncoil" || $0.identifier?.rawValue == "main" }
+            let existing = sender.windows.first { AppWindow.of($0) == .main }
             if let existing {
                 existing.makeKeyAndOrderFront(nil)
             } else if let command = newWindowCommand(in: sender.mainMenu),

@@ -283,13 +283,6 @@ enum PaletteHotkeyMonitor {
     }
 
     private static func isAuxiliaryWindow(_ window: NSWindow?) -> Bool {
-        guard let window else { return false }
-        // Identified by scene id, not by title: the titles are localized, so
-        // matching on them made the palette open over Settings the moment the
-        // interface language stopped being English.
-        if let identifier = window.identifier?.rawValue {
-            return identifier.contains("settings") || identifier.contains("session-window")
-        }
-        return false
+        AppWindow.of(window)?.isAuxiliary ?? false
     }
 }

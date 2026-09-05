@@ -194,7 +194,7 @@ struct MenuBarMonitorMenu: View {
     }
 
     private func activateMainWindow() {
-        openWindow(id: "main")
+        openWindow(.main)
         NSApp.activate(ignoringOtherApps: true)
     }
 }

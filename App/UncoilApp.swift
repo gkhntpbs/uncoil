@@ -64,7 +64,7 @@ struct UncoilApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        WindowGroup(id: AppWindow.main.rawValue) {
             ThemedWindow {
                 MainWindow()
                     .environmentObject(projectStore)
@@ -88,7 +88,7 @@ struct UncoilApp: App {
 
         // Terminal-only popout: a session dragged/sent out of the main
         // window lives here; the PTY is shared via TerminalRegistry.
-        WindowGroup("Session", id: "session-window", for: UUID.self) { $sessionID in
+        WindowGroup("Session", id: AppWindow.session.rawValue, for: UUID.self) { $sessionID in
             if let sessionID {
                 ThemedWindow {
                     SessionPopoutWindow(sessionID: sessionID)
@@ -101,7 +101,7 @@ struct UncoilApp: App {
         }
         .windowStyle(.hiddenTitleBar)
 
-        Window("Uncoil Settings", id: "settings") {
+        Window("Uncoil Settings", id: AppWindow.settings.rawValue) {
             // Not wrapped in ThemedWindow on purpose: Settings owns the colour
             // pickers, and rebuilding it on every value change would tear the
             // picker down mid-drag. It observes the store directly instead.
@@ -119,7 +119,7 @@ struct UncoilApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
 
-        Window("Uncoil Extensions", id: "extensions") {
+        Window("Uncoil Extensions", id: AppWindow.extensions.rawValue) {
             ThemedWindow {
                 ExtensionsView()
                     .environmentObject(projectStore)
@@ -202,13 +202,13 @@ struct MainWindowCommands: Commands {
         }
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") {
-                openWindow(id: "settings")
+                openWindow(.settings)
             }
             .keyboardShortcut(",", modifiers: .command)
         }
         CommandGroup(replacing: .newItem) {
             Button("New Uncoil Window") {
-                openWindow(id: "main")
+                openWindow(.main)
             }
             .keyboardShortcut("n", modifiers: .command)
         }

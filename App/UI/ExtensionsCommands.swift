@@ -59,6 +59,6 @@ struct ExtensionsMenuCommands: Commands {
 
     private func open(_ section: ExtensionsView.Section?, action: ExtensionsCommandBus.QuickAction? = nil) {
         bus.open(section, action: action)
-        openWindow(id: "extensions")
+        openWindow(.extensions)
     }
 }

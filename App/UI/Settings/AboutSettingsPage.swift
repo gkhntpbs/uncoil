@@ -80,7 +80,7 @@ struct AboutSettingsPage: View {
                         OnboardingPresenter.shared.present()
                         // The flow lives in the main window; Settings is its
                         // own, so bring that one forward with it.
-                        openWindow(id: "main")
+                        openWindow(.main)
                     }
                     .settingsID("about.rerunOnboarding")
                 }
