@@ -78,7 +78,6 @@ struct SettingsView: View {
         case notificationEvents
         case reminders
         case quietHours
-        case projectNotifications
 
         case theme
         case menuBar
@@ -100,8 +99,7 @@ struct SettingsView: View {
             case .general, .input: .general
             case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets,
                  .blueprints: .agents
-            case .notifications, .notificationEvents, .reminders, .quietHours,
-                 .projectNotifications: .notifications
+            case .notifications, .notificationEvents, .reminders, .quietHours: .notifications
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
             // Uncoil's own machinery: what it lets agents do, how it talks to
@@ -133,7 +131,6 @@ struct SettingsView: View {
             case .notificationEvents: String(localized: "Events")
             case .reminders: String(localized: "Reminders")
             case .quietHours: String(localized: "Quiet Hours")
-            case .projectNotifications: String(localized: "Per Project")
             case .menuBar: String(localized: "Menu Bar")
             case .theme: String(localized: "Theme and Colours")
             case .permissions: String(localized: "Permissions")
@@ -162,7 +159,6 @@ struct SettingsView: View {
             case .notificationEvents: "list.bullet.rectangle"
             case .reminders: "alarm"
             case .quietHours: "moon"
-            case .projectNotifications: "folder.badge.gearshape"
             case .menuBar: "menubar.rectangle"
             case .theme: "paintpalette"
             case .permissions: "lock.shield"
@@ -195,7 +191,6 @@ struct SettingsView: View {
             case .notificationEvents: "olay event izin permission girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority ses sound"
             case .reminders: "hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor waiting"
             case .quietHours: "sessiz saat quiet hours rahatsız etme do not disturb gece night odak focus"
-            case .projectNotifications: "proje project bazında override bildirim notification"
             case .menuBar: "menü bar menubar ikon icon simge sayaç counter status durum çubuğu mark"
             case .theme: "tema theme renk color açık koyu light dark terminal palet palette"
             case .permissions: "izin permission mcp grant onay approval agent kontrol control computer use browser"
@@ -214,6 +209,10 @@ struct SettingsView: View {
         static func resolve(_ raw: String) -> Pane? {
             if let exact = Pane(rawValue: raw) { return exact }
             switch raw {
+            // A project's own notification settings moved beside the
+            // project, into its settings sheet; the deep link lands on the
+            // notification defaults they inherit from.
+            case "projectNotifications": return .notifications
             case "defaults": return .general
             case "notificationSounds": return .notifications
             case "transcripts": return .privacyData
@@ -330,7 +329,6 @@ struct SettingsView: View {
         case .notificationEvents: NotificationEventsPage()
         case .reminders: NotificationRemindersPage()
         case .quietHours: NotificationQuietHoursPage()
-        case .projectNotifications: ProjectNotificationsPage()
         case .menuBar: MenuBarSettingsPage()
         case .theme: AppearanceSettingsPage()
         case .permissions:

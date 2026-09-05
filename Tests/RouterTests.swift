@@ -67,6 +67,26 @@ final class RouterTests: XCTestCase {
         XCTAssertNil(router.takeArea(for: project))
     }
 
+    // MARK: - Project settings
+
+    /// The sheet belongs to the sidebar, so the menu bar and the palette ask
+    /// for it rather than each presenting one of their own.
+    func testProjectSettingsAreAskedForOnceAndAnsweredOnce() {
+        let project = UUID()
+        router.go(to: .projectSettings(project))
+        XCTAssertEqual(router.requestedProjectSettingsID, project)
+        XCTAssertEqual(router.takeProjectSettings(), project)
+        XCTAssertNil(router.takeProjectSettings())
+    }
+
+    func testAskingForTheSameProjectSettingsTwiceIsHeardTwice() {
+        let project = UUID()
+        router.go(to: .projectSettings(project))
+        let first = router.projectSettingsCounter
+        router.go(to: .projectSettings(project))
+        XCTAssertEqual(router.projectSettingsCounter, first + 1)
+    }
+
     // MARK: - Handoff
 
     /// The sheet belongs to the session's own header, so only that session may

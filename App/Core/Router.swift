@@ -16,6 +16,8 @@ enum Destination: Equatable {
     case project(UUID, area: ProjectArea? = nil)
     case group(UUID)
     case session(UUID)
+    /// A project's own settings sheet, which the sidebar owns.
+    case projectSettings(UUID)
     /// A settings pane, by its `SettingsView.Pane` raw value. `nil` opens
     /// Settings wherever it was.
     case settings(pane: String?)
@@ -106,6 +108,19 @@ final class Router: ObservableObject {
     /// A one-shot action, cleared by the window once it has run it.
     @Published var extensionsAction: ExtensionsQuickAction?
 
+    // MARK: - Project settings
+
+    /// The project whose settings sheet has been asked for. Owned by the
+    /// sidebar, so the menu bar and the palette ask rather than presenting one
+    /// of their own — a sheet raised from two places is two sheets.
+    @Published private(set) var requestedProjectSettingsID: UUID?
+    @Published private(set) var projectSettingsCounter = 0
+
+    func takeProjectSettings() -> UUID? {
+        defer { requestedProjectSettingsID = nil }
+        return requestedProjectSettingsID
+    }
+
     // MARK: - Handoff
 
     @Published private(set) var requestedHandoffSessionID: UUID?
@@ -140,6 +155,9 @@ final class Router: ObservableObject {
             request(selection: .group(id))
         case .session(let id):
             request(selection: .session(id))
+        case .projectSettings(let id):
+            requestedProjectSettingsID = id
+            projectSettingsCounter += 1
         case .settings(let pane):
             requestedPane = pane
         case .extensions(let section, let action):

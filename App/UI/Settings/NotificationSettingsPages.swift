@@ -417,33 +417,7 @@ struct NotificationQuietHoursPage: View {
 
 // MARK: - Per project
 
-struct ProjectNotificationsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-    @EnvironmentObject private var projectStore: ProjectStore
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Per Project"),
-            subtitle: String(localized: "You can silence a project completely, or change only its priority and sound.")
-        ) {
-            if projectStore.projects.isEmpty {
-                Section {
-                    Text("No projects yet.")
-                        .foregroundStyle(Theme.textDim)
-                }
-            }
-
-            ForEach(projectStore.projects) { project in
-                Section(project.name) {
-                    ProjectNotificationRows(project: project)
-                }
-            }
-        }
-        .disabled(!settings.notifications.enabled)
-    }
-}
-
-private struct ProjectNotificationRows: View {
+struct ProjectNotificationRows: View {
     let project: Project
     @EnvironmentObject private var settings: SettingsStore
 

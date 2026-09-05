@@ -208,7 +208,13 @@ struct SidebarView: View {
             Text("Running processes are closed; the recordings cannot be recovered.")
         }
         .sheet(item: $customizingProject) { project in
-            ProjectCustomizeSheet(project: project)
+            ProjectSettingsSheet(project: project)
+        }
+        // Asked for from the menu bar or the palette. The sheet is presented
+        // here and nowhere else: two presenters would be two sheets.
+        .onReceive(Router.shared.$projectSettingsCounter) { _ in
+            guard let id = Router.shared.takeProjectSettings() else { return }
+            customizingProject = projectStore.projects.first { $0.id == id }
         }
         .sheet(item: $blueprintProject) { project in
             ApplyBlueprintSheet(project: project)

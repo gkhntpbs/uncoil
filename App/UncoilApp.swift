@@ -78,6 +78,7 @@ struct UncoilApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands {
             MainWindowCommands()
+            ProjectCommands()
             SessionCommands()
             CommandGroup(after: .toolbar) {
                 Button(sidebarVisible ? "Hide Sidebar" : "Show Sidebar") {

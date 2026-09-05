@@ -157,3 +157,63 @@ struct SessionCommands: Commands {
         return (record, project)
     }
 }
+
+/// The menu bar's Project menu.
+///
+/// Everything a project can be told to do had lived in its right-click menu and
+/// nowhere else: no menu item, no shortcut, and nothing to discover unless you
+/// thought to right-click a row in the sidebar. The verbs are the same ones —
+/// this is the same list, reachable the way macOS users expect to reach it.
+struct ProjectCommands: Commands {
+    @ObservedObject private var router = Router.shared
+
+    var body: some Commands {
+        CommandMenu(String(localized: "Project")) {
+            if let project = current {
+                Button(String(localized: "New Session")) {
+                    guard let projects = AppServices.shared.projectStore,
+                          let settings = AppServices.shared.settings
+                    else { return }
+                    let launcher = SessionLauncher(projects: projects, settings: settings)
+                    guard let provider = launcher.defaultProvider else { return }
+                    let record = launcher.launch(provider, in: project)
+                    Router.shared.go(to: .session(record.id))
+                }
+                .keyboardShortcut("t", modifiers: .command)
+
+                Divider()
+
+                Button(String(localized: "Open in Finder")) {
+                    NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
+                }
+
+                Button(String(localized: "Project Settings…")) {
+                    Router.shared.go(to: .projectSettings(project.id))
+                }
+                .keyboardShortcut("i", modifiers: .command)
+            } else {
+                Button(String(localized: "No Project Selected")) {}
+                    .disabled(true)
+            }
+        }
+    }
+
+    /// The project the front window is on — directly, or the one the selected
+    /// session belongs to. A session *is* in a project, so acting on "the
+    /// project" while looking at a session is not ambiguous.
+    private var current: Project? {
+        guard let projects = AppServices.shared.projectStore else { return nil }
+        switch router.currentSelection {
+        case .project(let id):
+            return projects.projects.first { $0.id == id }
+        case .session(let id):
+            guard let record = projects.sessions.first(where: { $0.id == id }) else { return nil }
+            return projects.projects.first { $0.id == record.projectID }
+        case .group(let id):
+            guard let group = projects.sessionGroups.first(where: { $0.id == id }) else { return nil }
+            return projects.projects.first { $0.id == group.projectID }
+        case nil:
+            return nil
+        }
+    }
+}

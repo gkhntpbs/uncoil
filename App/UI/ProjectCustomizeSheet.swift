@@ -6,10 +6,11 @@ import SwiftUI
 /// The two live behind one Save because they are one answer to "what is this
 /// project", and splitting them would put the extension list somewhere the
 /// project is not.
-struct ProjectCustomizeSheet: View {
+struct ProjectSettingsSheet: View {
     enum Tab: String, CaseIterable, Identifiable {
         case identity
         case extensions
+        case notifications
 
         var id: String { rawValue }
 
@@ -17,6 +18,20 @@ struct ProjectCustomizeSheet: View {
             switch self {
             case .identity: String(localized: "Identity")
             case .extensions: String(localized: "MCP & Skills")
+            case .notifications: String(localized: "Notifications")
+            }
+        }
+
+        /// One line under the title, so the sheet says what this tab decides
+        /// rather than leaving the user to infer it from the controls.
+        var subtitle: String {
+            switch self {
+            case .identity:
+                String(localized: "How this project is named and recognised in the sidebar.")
+            case .extensions:
+                String(localized: "What a session in this project may load. Everything is on until you turn it off.")
+            case .notifications:
+                String(localized: "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings.")
             }
         }
     }
@@ -39,10 +54,8 @@ struct ProjectCustomizeSheet: View {
 
     var body: some View {
         SheetScaffold(
-            title: String(localized: "Customise \(project.name)"),
-            subtitle: tab == .identity
-                ? String(localized: "How this project is named and recognised in the sidebar.")
-                : String(localized: "What a session in this project may load. Everything is on until you turn it off."),
+            title: String(localized: "\(project.name) Settings"),
+            subtitle: tab.subtitle,
             width: 560
         ) {
             VStack(spacing: Theme.Space.snug) {
@@ -52,15 +65,28 @@ struct ProjectCustomizeSheet: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .padding(.horizontal, Theme.Space.section)
-                .accessibilityIdentifier("project.customize.tab")
+                .accessibilityIdentifier("project.settings.tab")
 
                 ScrollView {
                     Group {
-                        if tab == .extensions {
+                        switch tab {
+                        case .extensions:
                             ProjectExtensionPicker(
                                 registry: registry, selection: $selection, agents: agents
                             )
-                        } else {
+                        case .notifications:
+                            // The same rows the global Settings window used to
+                            // carry a copy of, for every project at once. A
+                            // project's override belongs beside the project.
+                            Form {
+                                Section {
+                                    ProjectNotificationRows(project: project)
+                                }
+                            }
+                            .formStyle(.grouped)
+                            .scrollDisabled(true)
+                            .scrollContentBackground(.hidden)
+                        case .identity:
                             identityTab
                         }
                     }
