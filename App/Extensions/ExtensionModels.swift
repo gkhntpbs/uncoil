@@ -17,31 +17,15 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// The product's own full name. Amp has no descriptor because Uncoil
+    /// never launches it, so it answers for itself.
     var displayName: String {
-        switch self {
-        case .claudeCode: "Claude Code"
-        case .codex: "Codex"
-        case .geminiCLI: "Gemini CLI"
-        case .cursor: "Cursor"
-        case .amp: "Amp"
-        case .opencode: "OpenCode"
-        case .grok: "Grok CLI"
-        case .hermes: "Hermes"
-        }
+        provider?.descriptor.fullName ?? "Amp"
     }
 
     /// The session provider Uncoil launches for this agent, when it has one.
     var provider: AgentProvider? {
-        switch self {
-        case .claudeCode: .claude
-        case .codex: .codex
-        case .geminiCLI: .gemini
-        case .opencode: .opencode
-        case .grok: .grok
-        case .hermes: .hermes
-        case .cursor: .cursor
-        case .amp: nil
-        }
+        AgentRegistry.all.first { $0.extensionAgentID == self }?.provider
     }
 
     /// The executable looked up on the search path when detecting an install.
@@ -50,33 +34,14 @@ enum ExtensionAgentID: String, Codable, CaseIterable, Identifiable, Sendable {
     /// work for agents that have no adapter yet — finding a CLI is a fact
     /// about the machine, not about how much of the agent Uncoil manages.
     var cliBinaryName: String {
-        switch self {
-        case .claudeCode: "claude"
-        case .codex: "codex"
-        case .geminiCLI: "gemini"
-        case .cursor: "cursor-agent"
-        case .amp: "amp"
-        case .opencode: "opencode"
-        case .grok: "grok"
-        case .hermes: "hermes"
-        }
+        provider?.descriptor.cliBinaryName ?? "amp"
     }
 
     /// The agent's documented default config root, relative to home. Display
     /// and detection only — reading or writing anything inside it is adapter
     /// work, and an agent without an adapter gets neither.
     var defaultConfigDirectory: String {
-        switch self {
-        case .claudeCode: ".claude"
-        case .codex: ".codex"
-        case .geminiCLI: ".gemini"
-        case .cursor: ".cursor"
-        case .amp: ".config/amp"
-        case .opencode: ".config/opencode"
-        case .grok: ".grok"
-        // `HERMES_HOME` moves this root wholesale; `HermesAdapter` resolves it.
-        case .hermes: ".hermes"
-        }
+        provider?.descriptor.defaultConfigDirectory ?? ".config/amp"
     }
 
     /// Agents with an adapter today; the rest are listed but not managed.

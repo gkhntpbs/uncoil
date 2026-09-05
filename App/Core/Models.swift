@@ -42,18 +42,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// The agents plus the plain shell: what a "new session" chooser offers.
     static let sessionKinds: [AgentProvider] = allCases
 
-    var displayName: String {
-        switch self {
-        case .claude: "Claude"
-        case .codex: "Codex"
-        case .gemini: "Gemini"
-        case .opencode: "OpenCode"
-        case .grok: "Grok"
-        case .hermes: "Hermes"
-        case .cursor: "Cursor"
-        case .terminal: "Terminal"
-        }
-    }
+    var displayName: String { descriptor.displayName }
 
     @MainActor
     var color: Color {
@@ -70,43 +59,10 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     }
 
     /// Command executed (via `exec`, invisible to the user) when a session starts.
-    var launchCommand: String? {
-        switch self {
-        case .claude: "claude"
-        case .codex: "codex"
-        case .gemini: "gemini"
-        case .opencode: "opencode"
-        case .grok: "grok"
-        case .hermes: "hermes"
-        // The agent CLI, not the editor's `cursor` command.
-        case .cursor: "cursor-agent"
-        case .terminal: nil  // plain login shell
-        }
-    }
+    var launchCommand: String? { descriptor.launchCommand }
 
     /// The provider's own browser-login flow, run inside a login terminal.
-    var loginCommand: String? {
-        switch self {
-        case .claude: "claude /login"
-        case .codex: "codex login"
-        // The Gemini CLI runs its own sign-in on first start, and Uncoil has
-        // no verified non-interactive command to drive it. Offering a login
-        // terminal that types a guessed command would be worse than not
-        // offering one.
-        case .gemini: nil
-        // Verified against the CLI's own help: `providers login` is the
-        // documented sign-in, and it drives a browser flow in a terminal.
-        case .opencode: "opencode providers login"
-        // `grok login` is its own documented subcommand.
-        case .grok: "grok login"
-        // `hermes login` still exists but prints "Deprecated" and points at
-        // three other commands; `hermes setup` is the interactive sign-in it
-        // names, and it is what a login terminal should run.
-        case .hermes: "hermes setup"
-        case .cursor: "cursor-agent login"
-        case .terminal: nil
-        }
-    }
+    var loginCommand: String? { descriptor.loginCommand }
 
     /// Whether Uncoil runs an agent in this session, or just a shell.
     ///
@@ -115,116 +71,33 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// are what put "Claude is waiting for your input" and an MCP badge on a
     /// plain terminal. A terminal session has no agent, so it has no agent
     /// status, no hooks and no control plane.
-    var isAgent: Bool {
-        switch self {
-        case .claude, .codex, .gemini, .opencode, .grok, .cursor, .hermes: true
-        case .terminal: false
-        }
-    }
+    var isAgent: Bool { descriptor.isAgent }
 
     /// Whether this provider reports what it is doing through Uncoil's hooks.
     ///
     /// Only Claude Code does. Codex reports through its own app-server events
-    /// and Gemini reports nothing at all, so neither can be the answer to
+    /// and the rest report nothing at all, so neither can be the answer to
     /// "which session did this hook event come from" — and a provider that
     /// never binds a session id would otherwise be the standing fallback for
-    /// every event nobody claimed.
-    var reportsStatusThroughHooks: Bool {
-        switch self {
-        case .claude: true
-        // Hermes has a hook system of the same shape — `on_session_start`,
-        // `pre_tool_call`, a JSON payload on stdin carrying `session_id` — but
-        // Uncoil's hook bridge speaks Claude Code's wire format only. Until it
-        // speaks Hermes' too, claiming this would bind sessions to events that
-        // never arrive.
-        case .codex, .gemini, .opencode, .grok, .cursor, .hermes, .terminal: false
-        }
-    }
+    /// every event nobody claimed. See `AgentDescriptor.statusSource` for the
+    /// other two answers.
+    var reportsStatusThroughHooks: Bool { descriptor.statusSource == .hooks }
 
     /// Whether Uncoil actually registers its MCP server for this provider.
     ///
-    /// Registration is provider-specific — `--mcp-config` for Claude Code,
-    /// `-c mcp_servers.uncoil.*` for Codex, `OPENCODE_CONFIG_CONTENT` for
-    /// OpenCode — so it is not enough for a session to be an agent's. Gemini
-    /// has no verified per-session equivalent yet, and handing a session the
-    /// control socket in its environment while nothing serves it would
-    /// advertise a control plane that is not there: the agent would read the
-    /// variables, find no tools, and the failure would look like a broken
-    /// socket rather than a missing feature.
-    ///
-    /// OpenCode's mechanism was verified against the installed CLI before it
-    /// was claimed here: `opencode debug config` shows the inline content
-    /// *merged* over the user's own file, so the server arrives without any
-    /// write to `~/.config/opencode`.
-    var wiresControlPlane: Bool {
-        switch self {
-        case .claude, .codex, .opencode: true
-        // Grok registers MCP servers only in its own config.toml, and the one
-        // entry Uncoil would write carries a session id — which would be the
-        // same stale id for every session, so every tool call would arrive
-        // from a caller the app cannot find. Verified against the CLI: there
-        // is no per-session equivalent of `--mcp-config`, and `GROK_HOME`
-        // redirects the whole home (credentials included) rather than one file.
-        // Cursor is the same story: `CURSOR_CONFIG_DIR` moves the whole
-        // config root, credentials included, so a per-session copy would
-        // start every session logged out.
-        // Hermes is the same shape as Grok here, with one difference worth
-        // recording: it interpolates `${VAR}` in an MCP entry's values from
-        // the process environment, so a single config.yaml entry could pick up
-        // a per-session id. That is a real path to a control plane, but it
-        // needs a persistent write to the user's config, so it is not
-        // something a session launch may do on its own.
-        case .grok, .cursor, .gemini, .hermes, .terminal: false
-        }
-    }
+    /// Registration is provider-specific, so it is not enough for a session to
+    /// be an agent's; `AgentDescriptor.controlPlane` records which mechanism
+    /// each CLI offers, and `.none` means handing the session a control socket
+    /// would advertise a control plane that is not there.
+    var wiresControlPlane: Bool { descriptor.controlPlane.isWired }
 
     /// How much of a project's extension selection this provider can actually
     /// be held to when a session starts.
-    ///
-    /// A project says which MCP servers and skills belong to it; whether that
-    /// can be *enforced* is a fact about each CLI, and the answer differs per
-    /// half. Every entry here was checked against the installed CLI's own
-    /// `--help` and config, because a scoping claim that quietly does nothing
-    /// is worse than admitting the gap: the user would trim a list, watch the
-    /// agent load everything anyway, and have no way to tell which of the two
-    /// was lying.
-    var extensionScoping: ExtensionScopingSupport {
-        switch self {
-        // Codex answers both halves from its own config: `mcp_servers.<name>`
-        // and each `[[skills.config]]` entry carry an `enabled` flag, and `-c`
-        // overrides either without touching `~/.codex/config.toml`.
-        case .codex: .strict
-        // Claude Code scopes MCP exactly — `--mcp-config` names the servers and
-        // `--strict-mcp-config` ignores every other source — but has no
-        // per-session skill selection. `--setting-sources project,local` would
-        // drop the user's skills, and with them the hooks Uncoil installs into
-        // `~/.claude/settings.json`, so the session would go dark in the UI to
-        // buy a shorter skill list. OpenCode is `mcpOnly` for the opposite
-        // reason: `OPENCODE_CONFIG_CONTENT` scopes its servers, and it reads no
-        // skills at all, so there is no second half to answer for.
-        case .claude, .opencode: .mcpOnly
-        // No per-session mechanism at all — the same finding, and the same
-        // evidence, as `wiresControlPlane` above. Grok and Cursor register MCP
-        // servers only in their own config files, Hermes needs a persistent
-        // write to pick one up, and Gemini has nothing verified.
-        case .gemini, .grok, .cursor, .hermes, .terminal: .none
-        }
-    }
+    var extensionScoping: ExtensionScopingSupport { descriptor.extensionScoping }
 
     /// Whether the CLI updates itself through its own subcommand rather than
     /// through a package manager.
-    ///
-    /// These four install outside any package manager's tree — into
-    /// `~/.local/share`, `~/.grok`, `~/.opencode` — and each documents an
-    /// `update` (or `upgrade`) subcommand of its own.
-    var hasBuiltInUpdater: Bool {
-        switch self {
-        // `hermes update` is its own documented updater; the CLI installs
-        // outside any package manager's tree.
-        case .claude, .cursor, .grok, .opencode, .hermes: true
-        case .codex, .gemini, .terminal: false
-        }
-    }
+    var hasBuiltInUpdater: Bool { descriptor.hasBuiltInUpdater }
 
     /// Whether relaunching this provider with a stored session id brings the
     /// conversation back rather than starting a fresh one.
@@ -233,41 +106,10 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     /// command and whether a session may be hibernated: hibernating kills the
     /// process, so a provider that cannot resume would wake up having lost the
     /// conversation — which is not hibernation, it is a restart.
-    ///
-    /// Gemini has no verified resume flag, and guessing one is a launch failure
-    /// rather than a cosmetic bug. A plain shell has no conversation at all.
-    /// OpenCode documents `--session <id>` in its own `--help`.
-    var resumesConversation: Bool {
-        switch self {
-        // Grok documents both `--resume <id>` and `--session-id`.
-        // Hermes documents `--resume <session_id>` and `-c/--continue`.
-        case .claude, .codex, .opencode, .grok, .cursor, .hermes: true
-        case .gemini, .terminal: false
-        }
-    }
+    var resumesConversation: Bool { descriptor.resumesConversation }
 
-    /// Default for the Shift+Enter → literal-newline behavior. Claude Code and
-    /// the Codex TUI both accept a backslash+CR for an in-prompt newline (this
-    /// is what `claude /terminal-setup` configures in iTerm/VSCode), so it is on
-    /// by default for both; a plain terminal keeps Enter meaning submit.
-    var defaultShiftEnterNewline: Bool {
-        switch self {
-        case .claude, .codex: true
-        // Unverified for the Gemini CLI: backslash+CR is what Claude Code and
-        // the Codex TUI document, and sending it to a prompt that does not
-        // understand it would put a stray backslash in the message. Off until
-        // it is checked; the setting is there for anyone who has.
-        case .gemini: false
-        // Unverified for OpenCode's TUI, same rule as Gemini.
-        case .opencode: false
-        // Unverified for Grok's TUI, same rule.
-        case .grok: false
-        case .cursor: false
-        // Unverified for Hermes' REPL and its TUI alike, same rule.
-        case .hermes: false
-        case .terminal: false
-        }
-    }
+    /// Default for the Shift+Enter → literal-newline behavior.
+    var defaultShiftEnterNewline: Bool { descriptor.defaultShiftEnterNewline }
 }
 
 enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
@@ -287,43 +129,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     static func options(for provider: AgentProvider) -> [AgentWorkingMode] {
-        switch provider {
-        case .claude:
-            [.providerDefault, .manual, .acceptEdits, .plan, .auto, .dangerouslySkipPermissions]
-        // Codex's own two axes, in the pairs its `/approvals` screen offers.
-        // `providerDefault` is the one that was missing and the one that
-        // matters most: without it every launch carried `--sandbox` and
-        // `--ask-for-approval`, so whatever the user had set in
-        // `~/.codex/config.toml` — or chosen inside the TUI — was overruled
-        // every time, and there was no way to ask Uncoil to stop.
-        case .codex:
-            [.providerDefault, .readOnly, .askForApproval, .approveForMe, .fullAccess]
-        // No modes offered: the Gemini CLI's approval flags are not verified
-        // here, and Uncoil's rule is that it adds no flag it was not asked
-        // for. An unverified flag on a real CLI is a launch failure.
-        case .gemini:
-            [.providerDefault]
-        // `--auto` is documented in OpenCode's own `--help`, so it is offered;
-        // nothing beyond it is, for the same reason Gemini offers nothing.
-        case .opencode:
-            [.providerDefault, .auto]
-        // Read straight off `--permission-mode`'s own possible values:
-        // default, acceptEdits, auto, dontAsk, bypassPermissions, plan.
-        case .grok:
-            [.providerDefault, .plan, .acceptEdits, .auto, .dontAsk, .dangerouslySkipPermissions]
-        // `--mode` lists plan and ask; `--auto-review` and `--force` are its
-        // two documented booleans. Nothing else is offered.
-        case .cursor:
-            [.providerDefault, .plan, .readOnly, .auto, .dangerouslySkipPermissions]
-        // `--yolo` ("bypass all dangerous command approval prompts") is the one
-        // approval flag Hermes' own `--help` documents. `--safe-mode` is a
-        // troubleshooting switch that disables customisations, not an approval
-        // level, so it is not offered as one.
-        case .hermes:
-            [.providerDefault, .dangerouslySkipPermissions]
-        case .terminal:
-            [.providerDefault]
-        }
+        provider.descriptor.workingModes
     }
 
     func label(for provider: AgentProvider) -> String {
@@ -384,18 +190,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
     /// Worth knowing what each gives up: Claude's skips every permission check,
     /// Codex's drops the workspace sandbox as well.
     static func unattended(for provider: AgentProvider) -> AgentWorkingMode {
-        switch provider {
-        case .claude: .dangerouslySkipPermissions
-        case .codex: .fullAccess
-        case .opencode: .auto
-        case .grok: .dangerouslySkipPermissions
-        case .cursor: .dangerouslySkipPermissions
-        case .hermes: .dangerouslySkipPermissions
-        // Gemini's approval flags are unverified, and Uncoil adds no flag it
-        // has not checked: an invented one is a launch failure, not a
-        // permissive session.
-        case .gemini, .terminal: .providerDefault
-        }
+        provider.descriptor.unattendedMode
     }
 
     func launchArguments(for provider: AgentProvider) -> [String] {
