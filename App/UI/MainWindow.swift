@@ -40,6 +40,7 @@ struct MainWindow: View {
     @ObservedObject private var windows = WindowRegistry.shared
     @State private var windowID: UUID?
     /// Non-nil while the "what should this window open on?" question is up.
+    @State private var newWindowOptions: [NewWindowOption]?
 
     static let maxSidebarWidth: Double = 252
     private static let hideThreshold: Double = 120
@@ -72,7 +73,16 @@ struct MainWindow: View {
                 OnboardingView()
                     .transition(.opacity)
             }
+            // Below setup on purpose: a machine that has never been set up has
+            // nothing worth cloning, and two questions at once is one too many.
+            if let newWindowOptions, !router.isPresentingOnboarding {
+                NewWindowOverlay(options: newWindowOptions) { choice in
+                    apply(choice)
+                }
+                .transition(.opacity)
+            }
         }
+        .animation(Theme.Motion.expressive, value: newWindowOptions == nil)
         // The palette used to appear and vanish outright: its transition never
         // ran because nothing animated the condition that mounts it.
         .animation(Theme.Motion.expressive, value: palette.isOpen)
@@ -674,8 +684,9 @@ struct MainWindow: View {
             selection = .session(record.id)
             return
         }
-        // A restored window, and one that opened on what the main window was
-        // showing, already have their selection back.
+        // A window that is still asking must not be answered for it, and a
+        // restored one already has its selection back.
+        guard newWindowOptions == nil else { return }
         if selection == nil,
            let first = projectScope.filter(projectStore.visibleProjects).first {
             selection = .project(first.id)
@@ -780,20 +791,32 @@ struct MainWindow: View {
             syncOwnership()
         case .first:
             break
-        case .clonesTheMainWindow:
-            // Opens on what the main window is showing rather than asking. A
-            // session collapses to its project on the way: a session can only
-            // be mounted in one window, so a clone that opened straight onto
-            // one would arrive showing "this is open in another window".
+        case .asks:
+            newWindowOptions = NewWindowOptions.options(
+                windows: windows.summaries(excluding: registration.id, projectStore: projectStore)
+            )
+        }
+    }
+
+    private func apply(_ choice: NewWindowChoice) {
+        guard let windowID else { return }
+        switch choice {
+        case .empty:
+            // Already `.some([])` from the moment the window registered, so
+            // the question was never asked over a sidebar full of projects.
+            selection = nil
+        case .clone(let sourceID):
+            windows.setScope(windows.scope(of: sourceID), for: windowID)
             selection = NewWindowOptions.clonedSelection(
-                from: windows.order.first.flatMap { windows.selection(of: $0) },
+                from: windows.selection(of: sourceID),
                 projectOfSession: { id in
                     projectStore.sessions.first { $0.id == id }?.projectID
                 }
             )
-            persistSelection()
-            syncOwnership()
         }
+        newWindowOptions = nil
+        persistSelection()
+        syncOwnership()
     }
 }
 

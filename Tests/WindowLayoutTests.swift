@@ -26,15 +26,13 @@ final class WindowOpeningTests: XCTestCase {
         )
     }
 
-    /// Nothing open to copy, so it shows everything.
-    func testTheVeryFirstWindowIsTheFirstWindow() {
+    /// Nothing to clone, so nothing to ask.
+    func testTheVeryFirstWindowIsNotAsked() {
         XCTAssertEqual(WindowOpening.mode(restoreQueue: [], openCount: 0), .first)
     }
 
-    /// Opened by hand, it opens on what the main window is showing rather than
-    /// stopping to ask.
-    func testAWindowOpenedByHandFollowsTheMainWindow() {
-        XCTAssertEqual(WindowOpening.mode(restoreQueue: [], openCount: 1), .clonesTheMainWindow)
+    func testAWindowOpenedByHandIsAsked() {
+        XCTAssertEqual(WindowOpening.mode(restoreQueue: [], openCount: 1), .asks)
     }
 }
 
@@ -70,12 +68,47 @@ final class SelectionCodingTests: XCTestCase {
     }
 }
 
-/// What a hand-opened window opens on.
-///
-/// It used to ask — a full-window question offering "clone this window", "clone
-/// that one" or "empty" — which put a modal in front of the shortcut every Mac
-/// user presses without thinking.
+/// What the overlay offers, and what a clone actually opens on.
 final class NewWindowOptionsTests: XCTestCase {
+    private let mainID = UUID()
+    private let otherID = UUID()
+
+    private var windows: [WindowSummary] {
+        [
+            WindowSummary(id: otherID, title: "uncoil", isMain: false),
+            WindowSummary(id: mainID, title: "acme", isMain: true),
+        ]
+    }
+
+    func testTheMainWindowIsOfferedFirstWhateverOrderItArrivesIn() {
+        let options = NewWindowOptions.options(windows: windows)
+        XCTAssertEqual(options.first?.choice, .clone(mainID))
+    }
+
+    func testEveryOpenWindowIsOfferedPlusAnEmptyOne() {
+        let options = NewWindowOptions.options(windows: windows)
+        XCTAssertEqual(
+            options.map(\.choice), [.clone(mainID), .clone(otherID), .empty]
+        )
+    }
+
+    /// An empty window is always an answer, even when there is nothing to copy.
+    func testTheEmptyWindowIsAlwaysOffered() {
+        XCTAssertEqual(NewWindowOptions.options(windows: []).map(\.choice), [.empty])
+    }
+
+    func testANamedWindowIsNamedInItsOffer() {
+        let options = NewWindowOptions.options(windows: windows)
+        XCTAssertTrue(options[1].title.contains("uncoil"), options[1].title)
+    }
+
+    func testEveryOfferSaysWhatItDoes() {
+        for option in NewWindowOptions.options(windows: windows) {
+            XCTAssertFalse(option.title.isEmpty)
+            XCTAssertFalse(option.detail.isEmpty)
+        }
+    }
+
     // MARK: - What a clone opens on
 
     /// A clone that opened straight onto "this session is open in another

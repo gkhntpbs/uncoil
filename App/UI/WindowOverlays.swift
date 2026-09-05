@@ -1,5 +1,64 @@
 import SwiftUI
 
+/// The question a hand-opened window asks before it becomes anything.
+///
+/// It covers the window rather than sitting beside it, for the same reason
+/// first-run setup does: a half-built window behind the question is the state
+/// the question exists to end.
+struct NewWindowOverlay: View {
+    let options: [NewWindowOption]
+    let choose: (NewWindowChoice) -> Void
+
+    var body: some View {
+        ZStack {
+            Theme.bg.opacity(0.92)
+                .ignoresSafeArea()
+            VStack(alignment: .leading, spacing: Theme.Space.roomy) {
+                VStack(alignment: .leading, spacing: Theme.Space.hair) {
+                    Text("New Window")
+                        .font(Theme.ui(.title, .medium))
+                        .foregroundStyle(Theme.text)
+                    Text("What should this window open on?")
+                        .font(Theme.ui(.body))
+                        .foregroundStyle(Theme.textDim)
+                }
+                VStack(spacing: Theme.Space.tight) {
+                    ForEach(options) { option in
+                        Button {
+                            choose(option.choice)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(option.title)
+                                    .font(Theme.ui(.body, .medium))
+                                    .foregroundStyle(Theme.text)
+                                Text(option.detail)
+                                    .font(Theme.ui(.small))
+                                    .foregroundStyle(Theme.textFaint)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(Theme.Space.snug)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                                    .fill(Theme.panel)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("newWindow.\(option.title)")
+                    }
+                }
+            }
+            .padding(Theme.Space.section)
+            .frame(maxWidth: 420)
+        }
+        .accessibilityIdentifier("newWindow.overlay")
+    }
+}
+
 /// Shown where a terminal would be, when another window holds this session.
 ///
 /// It says which window, and offers both answers: go to the window that has it,

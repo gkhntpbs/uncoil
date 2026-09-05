@@ -654,6 +654,9 @@
         }
       }
     },
+    "%@ Settings" : {
+
+    },
     "%@ skill directory" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1935,9 +1938,6 @@
 
     },
     "added" : {
-
-    },
-    "Added %lld." : {
 
     },
     "added from a folder: %@" : {
@@ -3720,12 +3720,6 @@
     "Clipboard" : {
 
     },
-    "Clone “%@” Window" : {
-
-    },
-    "Clone Main Window" : {
-
-    },
     "Close" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4281,6 +4275,9 @@
     "Copy name" : {
 
     },
+    "Copy Path" : {
+
+    },
     "Copy the code" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4392,8 +4389,15 @@
     "Could not read the issues" : {
 
     },
-    "Could not write .uncoil/tests.json: %@" : {
-
+    "Could not write %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Could not write %1$@: %2$@"
+          }
+        }
+      }
     },
     "Counters" : {
       "extractionState" : "manual",
@@ -4590,9 +4594,6 @@
           }
         }
       }
-    },
-    "Customise %@" : {
-
     },
     "Customise…" : {
       "extractionState" : "manual",
@@ -5861,7 +5862,7 @@
         }
       }
     },
-    "Found %lld. The tab is on the right." : {
+    "Found %lld." : {
 
     },
     "Found on PATH" : {
@@ -6151,6 +6152,9 @@
       }
     },
     "Hand the work to another agent before this account runs out" : {
+
+    },
+    "Hand the Work to Another Agent…" : {
 
     },
     "Hand this issue to an agent" : {
@@ -8007,9 +8011,6 @@
     "New Blueprint…" : {
 
     },
-    "New Empty Window" : {
-
-    },
     "New Group" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8167,9 +8168,6 @@
         }
       }
     },
-    "New Window" : {
-
-    },
     "New worktree name (isolated task branch)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8232,6 +8230,9 @@
 
     },
     "No agent CLI was found in any of the usual install locations." : {
+
+    },
+    "No agent is installed yet" : {
 
     },
     "No banner is sent about the session already on screen." : {
@@ -8603,6 +8604,9 @@
         }
       }
     },
+    "No Project Selected" : {
+
+    },
     "no project to scan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8751,6 +8755,9 @@
           }
         }
       }
+    },
+    "No Session Selected" : {
+
     },
     "No sessions in this group. Drag sessions here from the sidebar." : {
       "extractionState" : "manual",
@@ -9107,9 +9114,6 @@
         }
       }
     },
-    "Nothing found. Add a suite to .uncoil/tests.json by hand, or ask an agent to." : {
-
-    },
     "Nothing found. You can still write the configuration by hand, or ask an agent to." : {
 
     },
@@ -9128,9 +9132,6 @@
       }
     },
     "Nothing matches “%@”." : {
-
-    },
-    "Nothing new." : {
 
     },
     "Nothing shows up in the agents' skill directories." : {
@@ -9478,6 +9479,9 @@
         }
       }
     },
+    "Open in %@" : {
+
+    },
     "Open in a New Window" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9759,15 +9763,6 @@
           }
         }
       }
-    },
-    "Opens on the same project and view as that window." : {
-
-    },
-    "Opens on the same project and view as the main window." : {
-
-    },
-    "Opens with nothing selected." : {
-
     },
     "Opt-in" : {
 
@@ -10328,6 +10323,9 @@
     "Profile name" : {
 
     },
+    "Project" : {
+
+    },
     "Project → worktree → session" : {
 
     },
@@ -10388,6 +10386,9 @@
           }
         }
       }
+    },
+    "Project Settings…" : {
+
     },
     "Project, session, artifact and Agent Browser are on by default in new sessions. Computer Use stays off for every session until you turn it on." : {
       "extractionState" : "manual",
@@ -11380,6 +11381,9 @@
           }
         }
       }
+    },
+    "Restart, Continuing the Conversation" : {
+
     },
     "Restore" : {
       "extractionState" : "manual",
@@ -12947,6 +12951,9 @@
           }
         }
       }
+    },
+    "Start %@ here — right-click for another agent" : {
+
     },
     "Start a fresh agent for the task." : {
       "extractionState" : "manual",
@@ -15740,10 +15747,13 @@
         }
       }
     },
-    "What should this window open on?" : {
+    "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings." : {
 
     },
     "What this project is called in the sidebar, and how it is recognised there." : {
+
+    },
+    "What you can do to this session" : {
 
     },
     "What your agents may do" : {

@@ -104,7 +104,7 @@ final class WindowRegistry: ObservableObject {
         case .restored(let saved):
             restoreQueue.removeFirst()
             id = saved.id
-        case .first, .clonesTheMainWindow:
+        case .first, .asks:
             id = UUID()
         }
         order.append(id)
@@ -115,9 +115,10 @@ final class WindowRegistry: ObservableObject {
         case .first:
             // The window someone has always had goes on showing everything.
             scopes[id] = .all
-        case .clonesTheMainWindow:
-            // The same projects the window it was opened from is showing.
-            scopes[id] = order.first.flatMap { scopes[$0] } ?? .all
+        case .asks:
+            // Decided by the answer; until then it shows nothing, so the
+            // question is never asked over a sidebar full of projects.
+            scopes[id] = .some([])
         }
         return (id, mode)
     }
@@ -274,6 +275,19 @@ final class WindowRegistry: ObservableObject {
         guard let window = windows[id] else { return }
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// Everything except the window doing the asking — a window is never
+    /// offered a clone of itself, since it has not decided anything yet.
+    func summaries(excluding id: UUID, projectStore: ProjectStore) -> [WindowSummary] {
+        order.compactMap { windowID in
+            guard windowID != id else { return nil }
+            return WindowSummary(
+                id: windowID,
+                title: title(of: windowID, projectStore: projectStore),
+                isMain: windowID == mainWindowID
+            )
+        }
     }
 
     func title(of id: UUID, projectStore: ProjectStore) -> String {
