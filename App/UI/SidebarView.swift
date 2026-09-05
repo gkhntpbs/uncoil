@@ -604,25 +604,31 @@ struct ProjectRowView: View {
                     .padding(.trailing, 6)
                 }
             }
-            // The launcher and the collapsed count share the space to the left
-            // of the chevron's slot — they swap on hover, and neither can push
-            // the chevron anywhere, because the chevron is not in this stack.
+            // Starting a session is the app's primary action, so it is not
+            // hidden behind a hover: the `+` sits in the row at all times, to
+            // the left of the chevron's own slot. It floats above the row
+            // rather than sitting in the stack, because laid out inline it
+            // would either grow the row or truncate every project name to
+            // reserve the width.
+            //
+            // The collapsed count takes the same place when the project is
+            // closed and not being pointed at: what the project hides is worth
+            // saying, but not at the cost of the button that opens it.
             .overlay(alignment: .trailing) {
                 Group {
-                    if hovering {
-                        // The launcher floats above the row instead of sitting
-                        // in it: laid out inline it grew the row on hover (the
-                        // whole list twitched), and reserving its full width
-                        // truncated every project name for good.
-                        AgentLauncherStrip(project: project, selection: $selection)
-                    } else if sessionsCollapsed, childCount > 0 {
-                        // Collapsed, the project has to say how much it hides.
+                    if sessionsCollapsed, childCount > 0, !hovering {
                         Text("\(childCount)")
                             .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
+                    } else {
+                        NewSessionButton(
+                            project: project,
+                            selection: $selection,
+                            isProminent: hovering || isProjectSelected
+                        )
                     }
                 }
-                .padding(.trailing, Self.chevronSlot + 6)
+                .padding(.trailing, Self.chevronSlot + 4)
                 .animation(Theme.Motion.quick, value: hovering)
             }
             .background(
@@ -684,76 +690,6 @@ final class CollapsedProjects: ObservableObject {
 
     private func persist() {
         UserDefaults.standard.set(Array(ids), forKey: Self.key)
-    }
-}
-
-/// Hover strip: pick an agent, it launches into this project
-/// (or into a specific worktree when `worktreePath` is set).
-struct AgentLauncherStrip: View {
-    let project: Project
-    var worktreePath: String? = nil
-    @Binding var selection: MainSelection?
-    @EnvironmentObject private var projectStore: ProjectStore
-    @EnvironmentObject private var settings: SettingsStore
-
-    var body: some View {
-        HStack(spacing: 4) {
-            // What the user chose, resolved against what is installed — not
-            // every provider Uncoil knows. An agent that is not on the machine
-            // is a button that can only fail.
-            ForEach(settings.launcherProviders) { provider in
-                LauncherButton(provider: provider) {
-                    launch(provider)
-                }
-                // Clicking starts the default account, which is the common
-                // case and stays one click. A second login was enterable but
-                // never choosable; right-click is where the choice lives, so
-                // the common case does not pay for the rare one.
-                .contextMenu {
-                    let choices = settings.accounts(for: provider)
-                    if provider.isAgent, choices.count > 1 {
-                        ForEach(choices) { account in
-                            Button(account.name) { launch(provider, account: account) }
-                        }
-                    }
-                }
-            }
-        }
-        .padding(3)
-        .background(Theme.panelActive, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
-    }
-
-    private func launch(_ provider: AgentProvider, account chosen: AccountProfile? = nil) {
-        let account = chosen ?? settings.defaultAccount(for: provider)
-        let worktreeName = worktreePath.map { URL(fileURLWithPath: $0).lastPathComponent }
-        let record = projectStore.createSession(
-            projectID: project.id,
-            provider: provider,
-            accountID: provider == .terminal ? nil : account?.id,
-            title: provider == .terminal
-                ? (worktreeName.map { "terminal @ \($0)" } ?? "terminal")
-                : String(localized: "\(provider.rawValue): new session"),
-            worktreePath: worktreePath
-        )
-        selection = .session(record.id)
-    }
-}
-
-private struct LauncherButton: View {
-    let provider: AgentProvider
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            ProviderMark(provider: provider, size: 11)
-                .frame(width: 22, height: 18)
-                .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityIdentifier("launcher.\(provider.rawValue)")
-        .help("Start \(provider.displayName)")
     }
 }
 
