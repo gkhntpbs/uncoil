@@ -222,3 +222,38 @@ struct SidebarStructure: Equatable {
         return context
     }
 }
+
+extension SidebarStructure {
+    /// What a folded project still shows.
+    ///
+    /// Folding a project used to hide everything under it, including the
+    /// session open on the right — so the sidebar could be showing no trace of
+    /// the agent filling the rest of the window, and there was no row to click
+    /// back to. A collapsed project keeps exactly one child: the session you
+    /// are looking at. Everything else stays folded away.
+    ///
+    /// The session is shown at the top level of the project even when it is a
+    /// sub-agent nested three deep — the point is a row that says "this is
+    /// where you are", not a reconstruction of the branch it came from.
+    func revealing(sessionID: UUID?, inCollapsed collapsed: Set<UUID>) -> SidebarStructure {
+        guard !collapsed.isEmpty else { return self }
+        return SidebarStructure(projects: projects.map { project in
+            guard collapsed.contains(project.id) else { return project }
+            let revealed = sessionID.flatMap { id in
+                Self.contains(id, in: project) ? SessionNode(id: id) : nil
+            }
+            return Project(
+                id: project.id,
+                groups: [],
+                ungrouped: revealed.map { [$0] } ?? []
+            )
+        })
+    }
+
+    private static func contains(_ sessionID: UUID, in project: Project) -> Bool {
+        func search(_ nodes: [SessionNode]) -> Bool {
+            nodes.contains { $0.id == sessionID || search($0.children) }
+        }
+        return search(project.ungrouped) || project.groups.contains { search($0.sessions) }
+    }
+}

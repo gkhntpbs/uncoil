@@ -848,7 +848,7 @@ private struct WorktreeRow: View {
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
-            NewSessionButton(
+            AgentLauncherStrip(
                 project: project,
                 worktreePath: worktree.isMain ? nil : worktree.path,
                 selection: $selection,

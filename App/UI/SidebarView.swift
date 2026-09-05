@@ -538,15 +538,6 @@ struct ProjectRowView: View {
         projectStore.sessions(for: projectID).count
     }
 
-    private var hasChildren: Bool {
-        childCount > 0 || !projectStore.groups(for: projectID).isEmpty
-    }
-
-    /// The chevron's slot at the trailing edge: its hit target, and the width
-    /// the project name stops short of. Fixed so the chevron sits in the same
-    /// place on every row whatever the name's length or the hover state.
-    static let chevronSlot: CGFloat = 22
-
     var body: some View {
         if let project {
             HStack(spacing: 8) {
@@ -561,70 +552,35 @@ struct ProjectRowView: View {
                     PinMark(isPinned: true, size: 10, color: Theme.textDim)
                         .help("Pinned")
                 }
-                // Nothing follows the name inline. The chevron owns a fixed slot
-                // at the trailing edge and the name stops short of it.
-                Spacer(minLength: Self.chevronSlot)
+                // Nothing follows the name inline: the launcher owns the
+                // trailing edge and the name stops short of it.
+                Spacer(minLength: 8)
             }
             .padding(.leading, SidebarIndent.leading(depth: 0))
             .padding(.trailing, 10)
             .padding(.vertical, 6)
-            // The collapse chevron never moves.
+            // The launcher floats above the row rather than sitting in the
+            // stack: laid out inline it grew the row whenever it changed, and
+            // reserving its width truncated every project name for good.
             //
-            // It used to be laid out after the project name, which put it in a
-            // different place on every row and, on a long name, directly under
-            // the launcher strip. Then it was grouped with the launcher, which
-            // was worse: hovering *inserted* the strip to its left, so the
-            // chevron jumped ~90pt away from the cursor that was reaching for
-            // it. A control you have to chase is a control you do not have.
-            // It gets its own slot, sized and placed the same on every row,
-            // hovered or not; the launcher is laid out to the left of it.
+            // There is no disclosure chevron. Clicking the project is what
+            // opens and closes it — a row whose whole width is the target,
+            // instead of an 8pt mark at the far edge that had to be aimed at.
             .overlay(alignment: .trailing) {
-                if hasChildren {
-                    Button {
-                        toggleCollapsed()
-                    } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(Theme.textFaint)
-                            .rotationEffect(.degrees(sessionsCollapsed ? -90 : 0))
-                            // An 8pt glyph is an 8pt target: the chevron is
-                            // drawn small on purpose, but it still has to be
-                            // hittable without aiming. The frame is the target,
-                            // not the mark.
-                            .frame(width: Self.chevronSlot, height: 22)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.pressable)
-                    .opacity(hovering || sessionsCollapsed ? 1 : 0)
-                    .allowsHitTesting(hovering || sessionsCollapsed)
-                    .padding(.trailing, 6)
-                }
-            }
-            // Starting a session is the app's primary action, so it is not
-            // hidden behind a hover: the `+` sits in the row at all times, to
-            // the left of the chevron's own slot. It floats above the row
-            // rather than sitting in the stack, because laid out inline it
-            // would either grow the row or truncate every project name to
-            // reserve the width.
-            //
-            // The collapsed count takes the same place when the project is
-            // closed and not being pointed at: what the project hides is worth
-            // saying, but not at the cost of the button that opens it.
-            .overlay(alignment: .trailing) {
-                Group {
-                    if sessionsCollapsed, childCount > 0, !hovering {
+                HStack(spacing: 6) {
+                    // Folded, the project says how much it is holding back.
+                    if sessionsCollapsed, childCount > 0 {
                         Text("\(childCount)")
                             .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
-                    } else {
-                        NewSessionButton(
-                            project: project,
-                            selection: $selection,
-                            isProminent: hovering || isProjectSelected
-                        )
                     }
+                    AgentLauncherStrip(
+                        project: project,
+                        selection: $selection,
+                        isProminent: hovering || isProjectSelected
+                    )
                 }
-                .padding(.trailing, Self.chevronSlot + 4)
+                .padding(.trailing, 4)
                 .animation(Theme.Motion.quick, value: hovering)
             }
             .background(
@@ -644,11 +600,6 @@ struct ProjectRowView: View {
         }
     }
 
-    private func toggleCollapsed() {
-        withAnimation(Theme.Motion.standard) {
-            collapsedStore.set(projectID, collapsed: !sessionsCollapsed)
-        }
-    }
 }
 
 /// Persisted per-project "sessions hidden" state, observable so the
@@ -665,6 +616,10 @@ final class CollapsedProjects: ObservableObject {
     }
 
     func contains(_ id: UUID) -> Bool { ids.contains(id.uuidString) }
+
+    /// The same set as ids, as the tree wants it. Stored as strings because
+    /// that is what user defaults can hold.
+    var projectIDs: Set<UUID> { Set(ids.compactMap(UUID.init(uuidString:))) }
 
     func set(_ id: UUID, collapsed: Bool) {
         if collapsed { ids.insert(id.uuidString) } else { ids.remove(id.uuidString) }
@@ -986,5 +941,83 @@ private struct CollapseAllButton: View {
         .onHover { hovering = $0 }
         .accessibilityIdentifier("sidebar.collapseAllButton")
         .help(allCollapsed ? "Show all sessions" : "Hide all sessions")
+    }
+}
+
+/// Start an agent in this project, without choosing anything first.
+///
+/// One mark per agent the user actually launches — their own Quick Launch
+/// order, resolved against what is installed, because an agent that is not on
+/// the machine is a button that can only fail. The mark *is* the answer to
+/// "which one": a menu would make the common case (the agent you always use,
+/// in the project in front of you) cost a click and a read.
+///
+/// Quiet at rest and lit when the row is under the pointer or selected. It used
+/// to appear only on hover, which meant a new user could look at the whole
+/// window and find no way to start anything; and it used to be a full panel,
+/// which is more furniture than a row of marks needs.
+struct AgentLauncherStrip: View {
+    let project: Project
+    var worktreePath: String?
+    @Binding var selection: MainSelection?
+    /// Lit rather than merely legible — the row is being pointed at.
+    var isProminent = false
+
+    @EnvironmentObject private var projectStore: ProjectStore
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(settings.launcherProviders) { provider in
+                LauncherButton(provider: provider, isProminent: isProminent) {
+                    launch(provider)
+                }
+                // Clicking starts the default login, which is the common case
+                // and stays one click. Right-click is where a second login
+                // lives, so the common case does not pay for the rare one.
+                .contextMenu {
+                    let choices = settings.accounts(for: provider)
+                    if provider.isAgent, choices.count > 1 {
+                        ForEach(choices) { account in
+                            Button(account.name) { launch(provider, account: account) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func launch(_ provider: AgentProvider, account chosen: AccountProfile? = nil) {
+        let record = SessionLauncher(projects: projectStore, settings: settings)
+            .launch(provider, in: project, account: chosen, worktreePath: worktreePath)
+        selection = .session(record.id)
+    }
+}
+
+private struct LauncherButton: View {
+    let provider: AgentProvider
+    var isProminent = false
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            ProviderMark(provider: provider, size: 11)
+                // Faded until the row is being pointed at: at rest the strip
+                // has to be readable without competing with the project name
+                // it sits beside.
+                .opacity(hovering ? 1 : (isProminent ? 0.85 : 0.45))
+                .frame(width: 21, height: 20)
+                .background(
+                    hovering ? Theme.panelActive : .clear,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
+        }
+        .buttonStyle(.pressable)
+        .onHover { hovering = $0 }
+        .animation(Theme.Motion.quick, value: hovering)
+        .accessibilityIdentifier("launcher.\(provider.rawValue)")
+        .help("Start \(provider.displayName)")
     }
 }

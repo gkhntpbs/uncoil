@@ -202,7 +202,15 @@ struct SidebarOutline: NSViewRepresentable {
             defer { isSyncing = false }
 
             let fresh = Self.structure(
-                from: environment.projectStore, scope: environment.scope
+                from: environment.projectStore,
+                scope: environment.scope,
+                collapsed: collapsedProjects.projectIDs,
+                // The session on the right stays visible under its project
+                // however folded that project is.
+                activeSessionID: {
+                    if case .session(let id) = environment.selection.wrappedValue { return id }
+                    return nil
+                }()
             )
             let structureChanged = fresh != structure
             structure = fresh
@@ -240,7 +248,10 @@ struct SidebarOutline: NSViewRepresentable {
         }
 
         private static func structure(
-            from store: ProjectStore, scope: WindowProjects
+            from store: ProjectStore,
+            scope: WindowProjects,
+            collapsed: Set<UUID>,
+            activeSessionID: UUID?
         ) -> SidebarStructure {
             SidebarStructure.build(
                 projectIDs: scope.filter(store.projects).map(\.id),
@@ -249,6 +260,7 @@ struct SidebarOutline: NSViewRepresentable {
                     store.sessions(for: $0).map { ($0.id, $0.groupID, $0.parentSessionID) }
                 }
             )
+            .revealing(sessionID: activeSessionID, inCollapsed: collapsed)
         }
 
         /// A session row, and under it the sessions it spawned. A session with
@@ -297,7 +309,14 @@ struct SidebarOutline: NSViewRepresentable {
             guard let outlineView else { return }
             for node in root.children {
                 guard case .project(let id) = node.payload else { continue }
-                setExpanded(!collapsedProjects.contains(id), for: node, in: outlineView)
+                // A folded project with a child still has one row to show: the
+                // session open on the right, which `revealing` left behind.
+                // Everything else was already taken out of the tree, so the
+                // node is expanded to show that one row and nothing more.
+                setExpanded(
+                    !collapsedProjects.contains(id) || !node.children.isEmpty,
+                    for: node, in: outlineView
+                )
                 for child in node.children {
                     switch child.payload {
                     case .group(let groupID):
@@ -548,11 +567,33 @@ struct SidebarOutline: NSViewRepresentable {
             }
 
             environment.selectedSessionIDs.wrappedValue = []
+            let previous = environment.selection.wrappedValue
             switch selected[0].payload {
-            case .project(let id): environment.selection.wrappedValue = .project(id)
+            case .project(let id):
+                environment.selection.wrappedValue = .project(id)
+                clickToFold(project: id, wasAlreadySelected: previous == .project(id))
             case .group(let id): environment.selection.wrappedValue = .group(id)
             case .session(let id): environment.selection.wrappedValue = .session(id)
             }
+        }
+
+        /// Clicking a project is what opens and closes it.
+        ///
+        /// The disclosure chevron was an 8pt mark at the far edge of the row
+        /// that had to be aimed at; the row itself is the target now. The rule
+        /// is the one a disclosure has to have to be predictable: a folded
+        /// project opens, and a project you are already on folds away. Landing
+        /// on a project from somewhere else only selects it, so arriving at a
+        /// project never hides what it is holding.
+        ///
+        /// Only for a click. Walking the sidebar with the arrow keys selects
+        /// without folding anything, or holding a key down would flap every
+        /// project open and shut on the way past.
+        private func clickToFold(project id: UUID, wasAlreadySelected: Bool) {
+            guard NSApp.currentEvent?.type == .leftMouseDown else { return }
+            let collapsed = CollapsedProjects.shared.contains(id)
+            guard collapsed || wasAlreadySelected else { return }
+            CollapsedProjects.shared.set(id, collapsed: !collapsed)
         }
 
         func outlineViewItemDidExpand(_ notification: Notification) {
