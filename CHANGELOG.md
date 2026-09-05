@@ -10,6 +10,12 @@ release notes are written once, here.
 
 ## Unreleased
 
+### Changed
+
+- Starting an agent is a button you can see. The way to start one was a strip of agent marks that appeared when the pointer crossed a project row: a new user could look at the whole window and find no way in, and on a trackpad the strip arrived under a cursor that was only passing through. Every project row now carries a plus that is always there — one click starts the agent you always use, and a right-click offers the others and their second logins. The worktree rows on the project screen work the same way.
+- A session's actions are a menu, and the menu bar has one too. The session header had grown a square icon per verb, and none of them had a menu item or a keyboard shortcut, so restarting a session or opening its folder meant being at that header with a mouse. There is now a Session menu in the menu bar that acts on whatever is selected, and the same list behind the header's `...`. Two controls stayed in the header on purpose: the run button, because its colour is how you know the project's dev server is up and a menu you have to open is not a status, and the handoff button, which only appears when a login is about to stop your work.
+- Cmd-N opens a window. It used to open a question — "what should this window open on?", with clone-this, clone-that and empty — in the app's own vocabulary of window scope and cloning, in front of the shortcut every Mac user presses without thinking. A new window now opens on whatever the window you were in is showing, and you move it wherever you like afterwards.
+
 ### Fixed
 
 - Restarting a session restarts it everywhere. The verb was written out at each surface that offered it, and the copies had drifted: restarting from the session header or a split pane rebuilt that one terminal view, while the command palette, the group view and Settings rebuilt every view of the session. So a restart from the header left the split pane, the popout and the group view still showing the process it had just killed. Closing and deleting a session were duplicated the same way, each copy deciding for itself whether the process was closed before the record went.

@@ -116,13 +116,21 @@ enum WindowOpening {
         case restored(PersistedWindow)
         /// The only window there is. Nothing to copy, so nothing to ask.
         case first
-        /// Opened by hand while other windows are up: this one asks.
-        case asks
+        /// Opened by hand while other windows are up. It opens on what the
+        /// main window is showing, without asking.
+        ///
+        /// It used to ask — a full-window question offering "clone this
+        /// window", "clone that one" or "empty" — which put a modal in front
+        /// of the shortcut every Mac user presses without thinking, and asked
+        /// it in the app's own vocabulary of window scope and ownership.
+        /// Those are constraints of mounting one terminal view in one place,
+        /// not something the user came here to decide.
+        case clonesTheMainWindow
     }
 
     static func mode(restoreQueue: [PersistedWindow], openCount: Int) -> Mode {
         if let next = restoreQueue.first { return .restored(next) }
-        return openCount == 0 ? .first : .asks
+        return openCount == 0 ? .first : .clonesTheMainWindow
     }
 }
 
@@ -152,60 +160,7 @@ enum SessionRouting {
     }
 }
 
-/// An open window, as the "new window" overlay needs to describe it.
-struct WindowSummary: Equatable, Identifiable {
-    var id: UUID
-    /// What the window is showing — a project name, usually.
-    var title: String
-    /// The oldest window still open. There is nothing special about it beyond
-    /// that, but "the main window" is what people call the one they started in.
-    var isMain: Bool
-}
-
-/// What a newly opened window should do.
-enum NewWindowChoice: Hashable {
-    case clone(UUID)
-    case empty
-}
-
-struct NewWindowOption: Identifiable, Equatable {
-    var choice: NewWindowChoice
-    var title: String
-    var detail: String
-
-    var id: NewWindowChoice { choice }
-}
-
 enum NewWindowOptions {
-    /// The main window first, then the others in the order they were opened,
-    /// then the empty window last — the offers run from "most like what you
-    /// already have" to "nothing at all", because someone opening a second
-    /// window usually wants a variation on the first.
-    static func options(windows: [WindowSummary]) -> [NewWindowOption] {
-        let ordered = windows.sorted { lhs, rhs in
-            lhs.isMain && !rhs.isMain
-        }
-        var options = ordered.map { window in
-            NewWindowOption(
-                choice: .clone(window.id),
-                title: window.isMain
-                    ? String(localized: "Clone Main Window")
-                    : String(localized: "Clone “\(window.title)” Window"),
-                detail: window.isMain
-                    ? String(localized: "Opens on the same project and view as the main window.")
-                    : String(localized: "Opens on the same project and view as that window.")
-            )
-        }
-        options.append(
-            NewWindowOption(
-                choice: .empty,
-                title: String(localized: "New Empty Window"),
-                detail: String(localized: "Opens with nothing selected.")
-            )
-        )
-        return options
-    }
-
     /// What a clone actually starts on.
     ///
     /// Not the source's selection verbatim, because a session cannot be in two
