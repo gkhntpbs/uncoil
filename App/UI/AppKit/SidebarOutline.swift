@@ -567,11 +567,8 @@ struct SidebarOutline: NSViewRepresentable {
             }
 
             environment.selectedSessionIDs.wrappedValue = []
-            let previous = environment.selection.wrappedValue
             switch selected[0].payload {
-            case .project(let id):
-                environment.selection.wrappedValue = .project(id)
-                clickToFold(project: id, wasAlreadySelected: previous == .project(id))
+            case .project(let id): environment.selection.wrappedValue = .project(id)
             case .group(let id): environment.selection.wrappedValue = .group(id)
             case .session(let id): environment.selection.wrappedValue = .session(id)
             }
@@ -586,39 +583,33 @@ struct SidebarOutline: NSViewRepresentable {
         /// on a project from somewhere else only selects it, so arriving at a
         /// project never hides what it is holding.
         ///
-        /// Only for a click. Walking the sidebar with the arrow keys selects
-        /// without folding anything, or holding a key down would flap every
-        /// project open and shut on the way past.
-        private func clickToFold(project id: UUID, wasAlreadySelected: Bool) {
-            guard NSApp.currentEvent?.type == .leftMouseDown else { return }
-            let collapsed = CollapsedProjects.shared.contains(id)
-            guard collapsed || wasAlreadySelected else { return }
-            CollapsedProjects.shared.set(id, collapsed: !collapsed)
-        }
-
-        func outlineViewItemDidExpand(_ notification: Notification) {
-            writeExpansion(from: notification, collapsed: false)
-        }
-
-        func outlineViewItemDidCollapse(_ notification: Notification) {
-            writeExpansion(from: notification, collapsed: true)
-        }
-
-        /// Expansion driven from the outline view itself — a double-click, an
-        /// arrow key — is written back so the chevron and the collapse-all
-        /// button agree with it.
-        private func writeExpansion(from notification: Notification, collapsed: Bool) {
-            guard !isSyncing,
-                  let node = notification.userInfo?["NSObject"] as? OutlineNode<SidebarItem>
+        /// Driven by the click rather than by the selection changing, because
+        /// the case that matters most — folding the project you are already on
+        /// — changes no selection at all, so nothing would ever be reported.
+        func projectRowWasClicked(_ row: Int, wasSelectedBefore: Bool) {
+            guard let outlineView,
+                  let node = outlineView.item(atRow: row) as? OutlineNode<SidebarItem>,
+                  case .project(let id) = node.payload
             else { return }
-            switch node.payload {
-            case .project(let id): CollapsedProjects.shared.set(id, collapsed: collapsed)
-            case .group(let id): CollapsedGroups.shared.set(id, collapsed: collapsed)
-            // A session with sub-agents under it is a container too, and the
-            // same store holds it: an id can be a group's or a session's, never
-            // both.
-            case .session(let id): CollapsedGroups.shared.set(id, collapsed: collapsed)
+            switch ProjectRowClick.outcome(
+                isFolded: CollapsedProjects.shared.contains(id),
+                wasAlreadySelected: wasSelectedBefore
+            ) {
+            case .open: CollapsedProjects.shared.set(id, collapsed: false)
+            case .fold: CollapsedProjects.shared.set(id, collapsed: true)
+            case .leaveAlone: break
             }
+        }
+
+        /// Whether this row is the one already selected, asked before the click
+        /// lands so that "click the project you are on" can be told apart from
+        /// "click your way to a project".
+        func isSelectedProjectRow(_ row: Int) -> Bool {
+            guard let outlineView, let environment,
+                  let node = outlineView.item(atRow: row) as? OutlineNode<SidebarItem>,
+                  case .project(let id) = node.payload
+            else { return false }
+            return environment.selection.wrappedValue == .project(id)
         }
 
         // MARK: - Dragging
@@ -1008,10 +999,35 @@ final class SidebarOutlineView: NSOutlineView {
         return coordinator?.menu(for: row)
     }
 
-    /// Hides AppKit's disclosure triangle — the rows draw their own chevron —
-    /// without telling the outline view the item has no outline cell, which is
-    /// what would make the item impossible to collapse.
+    /// Hides AppKit's disclosure triangle — the rows have no chevron of their
+    /// own either — without telling the outline view the item has no outline
+    /// cell, which is what would make the item impossible to collapse.
     override func frameOfOutlineCell(atRow row: Int) -> NSRect { .zero }
+
+    /// A click on a project row opens or closes it, as well as selecting it.
+    ///
+    /// After `super`, not before: the table view's own mouse handling runs
+    /// until the button comes back up — it is what starts a drag — so folding
+    /// first would rearrange the rows under a click that had not finished, and
+    /// the row it eventually acted on would be the wrong one.
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let row = self.row(at: point)
+        let isPlainClick = event.clickCount == 1
+            && event.modifierFlags.isDisjoint(with: [.command, .shift, .option, .control])
+        let wasSelected = row >= 0 && coordinator?.isSelectedProjectRow(row) == true
+        let start = NSEvent.mouseLocation
+
+        super.mouseDown(with: event)
+
+        guard isPlainClick, row >= 0 else { return }
+        // A drag is not a click. Reordering a project by dragging it ends with
+        // the same row selected, and folding it away underneath would be the
+        // app answering a move with a disappearance.
+        let end = NSEvent.mouseLocation
+        guard abs(end.x - start.x) < 4, abs(end.y - start.y) < 4 else { return }
+        coordinator?.projectRowWasClicked(row, wasSelectedBefore: wasSelected)
+    }
 }
 
 /// The handful of things a sidebar row cannot do on its own, because they open a

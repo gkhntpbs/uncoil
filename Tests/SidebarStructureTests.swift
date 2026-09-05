@@ -59,3 +59,32 @@ final class SidebarRevealTests: XCTestCase {
         XCTAssertTrue(revealed.projects[0].ungrouped[0].children.isEmpty)
     }
 }
+
+/// The rule was first written against the selection changing, and the case that
+/// matters most — folding the project you are already on — changes no selection
+/// at all. So it never ran, and with the disclosure chevron gone a folded
+/// project had no way back open.
+final class ProjectRowClickTests: XCTestCase {
+    func testAFoldedProjectOpens() {
+        XCTAssertEqual(
+            ProjectRowClick.outcome(isFolded: true, wasAlreadySelected: false), .open
+        )
+        XCTAssertEqual(
+            ProjectRowClick.outcome(isFolded: true, wasAlreadySelected: true), .open
+        )
+    }
+
+    func testTheProjectYouAreOnFoldsAway() {
+        XCTAssertEqual(
+            ProjectRowClick.outcome(isFolded: false, wasAlreadySelected: true), .fold
+        )
+    }
+
+    /// Arriving at a project must never hide what it is holding — that is what
+    /// you came to look at.
+    func testArrivingFromElsewhereOnlySelects() {
+        XCTAssertEqual(
+            ProjectRowClick.outcome(isFolded: false, wasAlreadySelected: false), .leaveAlone
+        )
+    }
+}

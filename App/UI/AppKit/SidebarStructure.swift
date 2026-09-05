@@ -257,3 +257,26 @@ extension SidebarStructure {
         return search(project.ungrouped) || project.groups.contains { search($0.sessions) }
     }
 }
+
+/// What a click on a project row does to the sessions under it.
+///
+/// Pure, because this is the rule that was silently wrong: it was first written
+/// against the selection changing, and the case that matters most — folding the
+/// project you are already on — changes no selection at all, so it never ran and
+/// a folded project had no way back open once the disclosure chevron was gone.
+enum ProjectRowClick {
+    enum Outcome: Equatable {
+        case open
+        case fold
+        /// Select it and leave what it is holding alone.
+        case leaveAlone
+    }
+
+    /// A folded project opens, and a project you are already on folds away.
+    /// Landing on a project from somewhere else only selects it, so arriving at
+    /// a project never hides what it is holding.
+    static func outcome(isFolded: Bool, wasAlreadySelected: Bool) -> Outcome {
+        if isFolded { return .open }
+        return wasAlreadySelected ? .fold : .leaveAlone
+    }
+}
