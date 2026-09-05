@@ -67,12 +67,11 @@ enum ProjectArea: String, CaseIterable, Identifiable, Equatable {
     }
 
     /// Whether the offer is something Uncoil can act on, or only explain.
-    /// Nothing in the app can give a folder a GitHub remote.
+    ///
+    /// Answered by `ProjectSetup`, which is what would do the acting: an offer
+    /// with a button the setup cannot honour is worse than one that explains.
     var offerIsActionable: Bool {
-        switch self {
-        case .tasks, .run, .tests: true
-        case .overview, .issues: false
-        }
+        ProjectAreaAvailability.capability(for: self).map(ProjectSetup.isActionable) ?? false
     }
 }
 

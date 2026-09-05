@@ -267,28 +267,8 @@ struct ProjectTestsView: View {
         guard !isDetecting else { return }
         isDetecting = true
         message = nil
-        let root = project.rootURL
         Task { @MainActor in
-            let existing = TestConfigFile.load(projectRoot: root).suites
-            let suggestions = await Task.detached(priority: .userInitiated) {
-                TestDetection.detect(fileSystem: DiskRunDetectionFileSystem(root: root))
-            }.value
-            let merged = TestConfigFile.merge(
-                existing: existing, suggestions: suggestions, replacingDetected: false
-            )
-            do {
-                try TestConfigFile.save(merged, projectRoot: root)
-            } catch {
-                message = String(localized: "Could not write .uncoil/tests.json: \(error.localizedDescription)")
-            }
-            let added = Set(merged.map(\.id)).subtracting(existing.map(\.id))
-            if added.isEmpty, merged.isEmpty {
-                message = String(localized: "Nothing found. Add a suite to .uncoil/tests.json by hand, or ask an agent to.")
-            } else if added.isEmpty {
-                message = String(localized: "Nothing new.")
-            } else {
-                message = String(localized: "Added \(added.count).")
-            }
+            message = await ProjectSetup.look(for: .tests, in: project).summary
             reload()
             registry.loadPersistedResults(project: project)
             isDetecting = false

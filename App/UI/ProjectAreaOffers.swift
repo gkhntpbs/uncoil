@@ -68,43 +68,15 @@ struct ProjectAreaOffers: View {
         }
     }
 
-    /// Runs the same detection the area's own screen runs.
-    ///
-    /// Nothing is invented: if the project has no dev server and no test setup,
-    /// the answer is that nothing was found, and the tab stays away.
+    /// The same detection the area's own screen runs, because it is the same
+    /// detection: `ProjectSetup` is the one entry point, so what "Look" finds
+    /// here and what the tab's own button finds cannot disagree.
     private func setUp(_ offer: ProjectArea) {
+        guard let capability = ProjectAreaAvailability.capability(for: offer) else { return }
         busy = offer
         message = nil
-        let root = project.rootURL
         Task { @MainActor in
-            let added: Int
-            switch offer {
-            case .run:
-                let existing = RunConfigFile.load(projectRoot: root).configurations
-                let found = await Task.detached(priority: .userInitiated) {
-                    RunDetection.detect(fileSystem: DiskRunDetectionFileSystem(root: root))
-                }.value
-                let merged = RunDetection.merge(
-                    existing: existing, suggestions: found, replacingDetected: false
-                )
-                try? RunConfigFile.save(merged, projectRoot: root)
-                added = merged.count - existing.count
-            case .tests:
-                let existing = TestConfigFile.load(projectRoot: root).suites
-                let found = await Task.detached(priority: .userInitiated) {
-                    TestDetection.detect(fileSystem: DiskRunDetectionFileSystem(root: root))
-                }.value
-                let merged = TestConfigFile.merge(
-                    existing: existing, suggestions: found, replacingDetected: false
-                )
-                try? TestConfigFile.save(merged, projectRoot: root)
-                added = merged.count - existing.count
-            case .overview, .tasks, .issues:
-                added = 0
-            }
-            message = added > 0
-                ? String(localized: "Found \(added). The tab is on the right.")
-                : String(localized: "Nothing found. You can still write the configuration by hand, or ask an agent to.")
+            message = await ProjectSetup.look(for: capability, in: project).summary
             busy = nil
             onChanged()
         }

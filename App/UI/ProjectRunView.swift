@@ -113,16 +113,8 @@ struct ProjectRunView: View {
 
     private func detect() {
         detecting = true
-        let root = project.rootURL
-        Task {
-            let existing = RunConfigFile.load(projectRoot: root).configurations
-            let suggestions = await Task.detached {
-                RunDetection.detect(fileSystem: DiskRunDetectionFileSystem(root: root))
-            }.value
-            let merged = RunDetection.merge(
-                existing: existing, suggestions: suggestions, replacingDetected: false
-            )
-            try? RunConfigFile.save(merged, projectRoot: root)
+        Task { @MainActor in
+            _ = await ProjectSetup.look(for: .run, in: project)
             detecting = false
             reload()
         }
