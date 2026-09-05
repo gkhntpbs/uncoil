@@ -8,35 +8,32 @@ import XCTest
 /// pushed the sidebar off the left edge where it could not be reached.
 final class ProjectAreaAvailabilityTests: XCTestCase {
     func testABareFolderOffersOnlyGeneral() {
-        XCTAssertEqual(ProjectAreaAvailability.areas(ProjectAreaFacts()), [.overview])
+        XCTAssertEqual(ProjectAreaAvailability.areas(.none), [.overview])
     }
 
     func testEachAreaAppearsOnlyWhenItHasSomething() {
         XCTAssertEqual(
-            ProjectAreaAvailability.areas(ProjectAreaFacts(hasTaskSources: true)),
+            ProjectAreaAvailability.areas(ProjectCapabilities([.tasks])),
             [.overview, .tasks]
         )
         XCTAssertEqual(
-            ProjectAreaAvailability.areas(ProjectAreaFacts(hasRunConfigurations: true)),
+            ProjectAreaAvailability.areas(ProjectCapabilities([.run])),
             [.overview, .run]
         )
         XCTAssertEqual(
-            ProjectAreaAvailability.areas(ProjectAreaFacts(hasTestSuites: true)),
+            ProjectAreaAvailability.areas(ProjectCapabilities([.tests])),
             [.overview, .tests]
         )
         XCTAssertEqual(
-            ProjectAreaAvailability.areas(ProjectAreaFacts(hasGitHubRepository: true)),
+            ProjectAreaAvailability.areas(ProjectCapabilities([.gitHubRepository])),
             [.overview, .issues]
         )
     }
 
     func testAFullyEquippedProjectShowsEveryTabInOrder() {
-        let facts = ProjectAreaFacts(
-            hasTaskSources: true, hasRunConfigurations: true,
-            hasTestSuites: true, hasGitHubRepository: true
-        )
+        let everything = ProjectCapabilities([.tasks, .run, .tests, .gitHubRepository])
         XCTAssertEqual(
-            ProjectAreaAvailability.areas(facts),
+            ProjectAreaAvailability.areas(everything),
             [.overview, .tasks, .run, .tests, .issues]
         )
     }
@@ -44,14 +41,13 @@ final class ProjectAreaAvailabilityTests: XCTestCase {
     /// What is missing is what General offers to set up, so a feature is never
     /// simply undiscoverable.
     func testWhatIsMissingIsWhatIsOffered() {
-        let facts = ProjectAreaFacts(hasTaskSources: true)
-        XCTAssertEqual(ProjectAreaAvailability.offers(facts), [.run, .tests, .issues])
+        XCTAssertEqual(
+            ProjectAreaAvailability.offers(ProjectCapabilities([.tasks])),
+            [.run, .tests, .issues]
+        )
         XCTAssertTrue(
             ProjectAreaAvailability.offers(
-                ProjectAreaFacts(
-                    hasTaskSources: true, hasRunConfigurations: true,
-                    hasTestSuites: true, hasGitHubRepository: true
-                )
+                ProjectCapabilities([.tasks, .run, .tests, .gitHubRepository])
             ).isEmpty
         )
     }
@@ -60,11 +56,11 @@ final class ProjectAreaAvailabilityTests: XCTestCase {
     /// removed — and the screen would otherwise sit on a tab that is gone.
     func testASelectedAreaThatDisappearsFallsBackToGeneral() {
         XCTAssertEqual(
-            ProjectAreaAvailability.resolve(.tasks, facts: ProjectAreaFacts()), .overview
+            ProjectAreaAvailability.resolve(.tasks, capabilities: .none), .overview
         )
         XCTAssertEqual(
             ProjectAreaAvailability.resolve(
-                .tasks, facts: ProjectAreaFacts(hasTaskSources: true)
+                .tasks, capabilities: ProjectCapabilities([.tasks])
             ),
             .tasks
         )

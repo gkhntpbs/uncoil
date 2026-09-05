@@ -37,12 +37,13 @@ final class ProjectPageStore: ObservableObject {
         var worktrees: [GitService.Worktree] = []
         var pullRequests: [GitHubService.PullRequest] = []
         var prMessage: String?
-        var hasTaskSources = false
         var openTaskCount = 0
-        /// Which areas of the project screen this project actually has. The
-        /// tabs are built from this rather than every area being offered
+        /// What this project has, detected once. The tabs, the offers and the
+        /// landing area are built from it rather than every area being offered
         /// everywhere; see `ProjectAreaAvailability`.
-        var areaFacts = ProjectAreaFacts()
+        var capabilities = ProjectCapabilities.none
+
+        var hasTaskSources: Bool { capabilities.has(.tasks) }
         /// When this was last built. `nil` means the project has never been
         /// opened, which is the only time the page has nothing to show.
         var loadedAt: Date?
@@ -87,17 +88,17 @@ final class ProjectPageStore: ObservableObject {
         let root = project.rootPath
         let rootURL = project.rootURL
 
-        // Tasks first: it is a couple of stat calls and it decides whether the
-        // Tasks tab exists at all.
-        let present = await Task.detached(priority: .utility) {
-            TodoDiscovery.hasSources(projectRoot: root)
+        // What the project has, first: it is stat calls and one `rev-parse`,
+        // and it decides which tabs exist at all.
+        let capabilities = await Task.detached(priority: .utility) {
+            ProjectDetector.detect(projectRoot: root)
         }.value
         var snapshot = snapshots[id] ?? Snapshot()
-        snapshot.hasTaskSources = present
+        snapshot.capabilities = capabilities
         snapshot.openTaskCount = 0
         snapshots[id] = snapshot
 
-        if present {
+        if capabilities.has(.tasks) {
             let loaded = await Task.detached(priority: .utility) {
                 TodoDiscovery.load(projectID: id, projectRoot: root)
             }.value
@@ -105,32 +106,15 @@ final class ProjectPageStore: ObservableObject {
             snapshots[id] = snapshot
         }
 
-        let (git, worktrees, remote, hasGitHub, runs, tests) = await Task.detached(priority: .utility) {
+        let (git, worktrees, remote) = await Task.detached(priority: .utility) {
             (
                 GitService.snapshot(repoPath: root),
                 GitService.worktrees(repoPath: root),
-                GitService.remoteURL(repoPath: root),
-                // Not the root's own remote: a project folder is often a
-                // container holding several checkouts, and its own directory
-                // is not a repository at all. Their issues are the project's
-                // issues, so the tab has to exist for them.
-                GitHubRepoDiscovery.hasRepository(projectRoot: root),
-                !RunConfigFile.load(projectRoot: rootURL).configurations.isEmpty,
-                !TestConfigFile.load(projectRoot: rootURL).suites.isEmpty
+                GitService.remoteURL(repoPath: root)
             )
         }.value
         snapshot.git = git
         snapshot.worktrees = worktrees
-        snapshot.areaFacts = ProjectAreaFacts(
-            hasTaskSources: snapshot.hasTaskSources,
-            hasRunConfigurations: runs,
-            hasTestSuites: tests,
-            // The remotes decide it, not the network: a repository whose issues
-            // cannot be read right now still has an Issues tab, and the screen
-            // says why. Hiding the tab on a failed request would make a rate
-            // limit look like a missing feature.
-            hasGitHubRepository: hasGitHub
-        )
         snapshots[id] = snapshot
 
         // The network call last: the local half of the page is already on

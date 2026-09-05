@@ -76,34 +76,42 @@ enum ProjectArea: String, CaseIterable, Identifiable, Equatable {
     }
 }
 
-/// What a project has, as the screen sees it.
-struct ProjectAreaFacts: Equatable {
-    var hasTaskSources = false
-    var hasRunConfigurations = false
-    var hasTestSuites = false
-    var hasGitHubRepository = false
-}
-
+/// The tabs, the offers and the landing area, all from what the project has.
+///
+/// The facts themselves live in `ProjectCapabilities`, detected once per
+/// project rather than once per feature; this only says which area each one
+/// unlocks.
 enum ProjectAreaAvailability {
-    /// The tabs to show, always led by General.
-    static func areas(_ facts: ProjectAreaFacts) -> [ProjectArea] {
-        var areas: [ProjectArea] = [.overview]
-        if facts.hasTaskSources { areas.append(.tasks) }
-        if facts.hasRunConfigurations { areas.append(.run) }
-        if facts.hasTestSuites { areas.append(.tests) }
-        if facts.hasGitHubRepository { areas.append(.issues) }
-        return areas
+    /// What a project must have for an area to exist. General is always
+    /// there, so it is the one area no capability unlocks.
+    static func capability(for area: ProjectArea) -> ProjectCapability? {
+        switch area {
+        case .overview: nil
+        case .tasks: .tasks
+        case .run: .run
+        case .tests: .tests
+        case .issues: .gitHubRepository
+        }
+    }
+
+    /// The tabs to show, in the order `ProjectArea` declares them — which is
+    /// the tab order, so the order is stated once rather than rebuilt here.
+    static func areas(_ capabilities: ProjectCapabilities) -> [ProjectArea] {
+        ProjectArea.allCases.filter { area in
+            guard let capability = capability(for: area) else { return true }
+            return capabilities.has(capability)
+        }
     }
 
     /// The areas General offers to set up, in tab order.
-    static func offers(_ facts: ProjectAreaFacts) -> [ProjectArea] {
-        ProjectArea.allCases.filter { $0 != .overview && !areas(facts).contains($0) }
+    static func offers(_ capabilities: ProjectCapabilities) -> [ProjectArea] {
+        ProjectArea.allCases.filter { $0 != .overview && !areas(capabilities).contains($0) }
     }
 
     /// Where to land when the selected area is no longer available — a TODO.md
     /// deleted while its tab was open, a remote removed. General always exists,
     /// so there is always somewhere to go.
-    static func resolve(_ requested: ProjectArea, facts: ProjectAreaFacts) -> ProjectArea {
-        areas(facts).contains(requested) ? requested : .overview
+    static func resolve(_ requested: ProjectArea, capabilities: ProjectCapabilities) -> ProjectArea {
+        areas(capabilities).contains(requested) ? requested : .overview
     }
 }

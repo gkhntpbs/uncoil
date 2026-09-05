@@ -9,8 +9,8 @@ import SwiftUI
 /// give it one button.
 struct ProjectAreaOffers: View {
     let project: Project
-    let facts: ProjectAreaFacts
-    /// Called after something was set up, so the page reloads its facts.
+    let capabilities: ProjectCapabilities
+    /// Called after something was set up, so the page looks again.
     let onChanged: () -> Void
 
     @State private var busy: ProjectArea?
@@ -19,7 +19,7 @@ struct ProjectAreaOffers: View {
     private var offers: [ProjectArea] {
         // Tasks has its own card with the starter template and a dismissal, so
         // it is not repeated here.
-        ProjectAreaAvailability.offers(facts).filter { $0 != .tasks }
+        ProjectAreaAvailability.offers(capabilities).filter { $0 != .tasks }
     }
 
     var body: some View {

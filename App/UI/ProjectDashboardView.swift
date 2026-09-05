@@ -31,8 +31,8 @@ struct ProjectDashboardView: View {
     /// on every project, which showed four tabs leading to empty pages — and
     /// made the header wider than the window, pushing the sidebar off the left
     /// edge. See `ProjectAreaAvailability`.
-    private var facts: ProjectAreaFacts { page.areaFacts }
-    private var availableAreas: [ProjectArea] { ProjectAreaAvailability.areas(facts) }
+    private var capabilities: ProjectCapabilities { page.capabilities }
+    private var availableAreas: [ProjectArea] { ProjectAreaAvailability.areas(capabilities) }
 
     @State private var area: ProjectArea = .overview
     /// Whether this project has already turned down the TODO.md offer. Read
@@ -82,7 +82,7 @@ struct ProjectDashboardView: View {
             // An area can stop existing under the user — a TODO.md deleted, a
             // remote removed — and General always does, so there is always
             // somewhere to land.
-            area = ProjectAreaAvailability.resolve(area, facts: facts)
+            area = ProjectAreaAvailability.resolve(area, capabilities: capabilities)
             for requested in [
                 LaunchConfig.shared.projectArea,
                 ProjectAreaRoute.shared.take(for: project.id),
@@ -196,7 +196,7 @@ struct ProjectDashboardView: View {
             // What this project could turn on. Only here, because the tabs
             // deliberately show nothing for an area with nothing in it, and
             // without this there would be no way to find the feature at all.
-            ProjectAreaOffers(project: project, facts: facts) {
+            ProjectAreaOffers(project: project, capabilities: capabilities) {
                 pages.invalidate(project.id)
                 Task { await pages.refresh(project: project) }
             }
