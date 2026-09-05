@@ -304,16 +304,15 @@ struct SessionHeaderBar: View {
                 projectStore: projectStore,
                 sessionStore: sessionStore,
                 settings: settings,
-                onOpenSession: { MainRoute.shared.request(.session($0)) }
+                onOpenSession: { Router.shared.go(to: .session($0)) }
             )
             .environmentObject(projectStore)
             .environmentObject(sessionStore)
             .environmentObject(settings)
             .environmentObject(usage)
         }
-        .onReceive(HandoffRoute.shared.$counter) { _ in
-            guard HandoffRoute.shared.requestedSessionID == record.id else { return }
-            HandoffRoute.shared.requestedSessionID = nil
+        .onReceive(Router.shared.$handoffCounter) { _ in
+            guard Router.shared.takeHandoff(for: record.id) else { return }
             handoff = UsageAlert.evaluate(
                 usage.snapshot(for: UsageKey(provider: record.provider, accountID: record.accountID)),
                 threshold: settings.usageWarningThreshold

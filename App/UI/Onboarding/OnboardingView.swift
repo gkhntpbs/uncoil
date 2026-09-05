@@ -108,7 +108,7 @@ struct OnboardingView: View {
 
     private func finish() {
         settings.finishOnboarding()
-        OnboardingPresenter.shared.dismiss()
+        Router.shared.dismissOnboarding()
     }
 }
 
@@ -124,7 +124,7 @@ struct OnboardingResumeRow: View {
         let remaining = settings.remainingOnboardingSteps
         if !remaining.isEmpty && !settings.shouldPresentOnboarding {
             Button {
-                OnboardingPresenter.shared.present()
+                Router.shared.go(to: .onboarding)
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "sparkles")

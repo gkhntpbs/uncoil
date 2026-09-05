@@ -1,12 +1,5 @@
 import SwiftUI
 
-/// Cross-window channel so the command palette can deep-link to a settings pane.
-@MainActor
-final class SettingsRoute: ObservableObject {
-    static let shared = SettingsRoute()
-    @Published var requestedPane: String?
-}
-
 /// Settings, built on the platform's own furniture — a source list of
 /// categories, `Form(.grouped)` detail pages, system controls and system type —
 /// wearing Uncoil's palette.
@@ -272,7 +265,7 @@ struct SettingsView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("settings.container")
         .onAppear { applyRequestedPane() }
-        .onReceive(SettingsRoute.shared.$requestedPane) { _ in applyRequestedPane() }
+        .onReceive(Router.shared.$requestedPane) { _ in applyRequestedPane() }
     }
 
     @ViewBuilder
@@ -360,11 +353,11 @@ struct SettingsView: View {
     }
 
     private func applyRequestedPane() {
-        guard let raw = SettingsRoute.shared.requestedPane,
+        guard let raw = Router.shared.requestedPane,
               let requested = Pane.resolve(raw) else { return }
         pane = requested
         search = ""
-        SettingsRoute.shared.requestedPane = nil
+        _ = Router.shared.takePane()
     }
 }
 

@@ -144,34 +144,3 @@ final class DockerStatusTests: XCTestCase {
         XCTAssertNil(DockerStatus.statusArguments(for: "docker run --rm myapp"))
     }
 }
-
-/// Opening a project on a particular area, for the session header's shortcut
-/// to a run's logs.
-@MainActor
-final class ProjectAreaRouteTests: XCTestCase {
-    func testARequestedAreaIsDelivered() {
-        let route = ProjectAreaRoute()
-        let project = UUID()
-        route.request("run", for: project)
-        XCTAssertEqual(route.take(for: project), "run")
-    }
-
-    /// Consumed once: otherwise every later visit to the project would be
-    /// dragged back to Run instead of landing where the user left off.
-    func testTheRequestIsConsumedRatherThanSticking() {
-        let route = ProjectAreaRoute()
-        let project = UUID()
-        route.request("run", for: project)
-        _ = route.take(for: project)
-        XCTAssertNil(route.take(for: project))
-    }
-
-    func testOneProjectsRequestDoesNotMoveAnother() {
-        let route = ProjectAreaRoute()
-        let first = UUID()
-        let second = UUID()
-        route.request("run", for: first)
-        XCTAssertNil(route.take(for: second))
-        XCTAssertEqual(route.take(for: first), "run")
-    }
-}

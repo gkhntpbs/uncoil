@@ -217,7 +217,7 @@ struct RunDefaultControl: View {
                     tint: registry.state(project: project, configID: config.id)
                         .containerHealth.isDegraded ? Theme.warn : nil
                 ) {
-                    ProjectAreaRoute.shared.request("run", for: project.id)
+                    Router.shared.go(to: .project(project.id, area: .run))
                     onOpenLogs?()
                 }
             }

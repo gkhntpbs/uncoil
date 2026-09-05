@@ -56,7 +56,7 @@ enum RunRepair {
             pasteboard.setString(text, forType: .string)
             return false
         }
-        MainRoute.shared.request(.session(session.id))
+        Router.shared.go(to: .session(session.id))
         Task {
             await TerminalRegistry.shared.submitText(
                 text, for: session.id, provider: session.provider, namesTheSession: false)

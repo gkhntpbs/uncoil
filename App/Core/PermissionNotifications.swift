@@ -206,7 +206,7 @@ final class PermissionNotificationCenter: NSObject, UNUserNotificationCenterDele
 
     private func open(sessionID: String?) {
         if let sessionID, let record = sessionResolver?(sessionID) {
-            MainRoute.shared.request(.session(record.id))
+            Router.shared.go(to: .session(record.id))
         }
         NSApp.activate(ignoringOtherApps: true)
     }

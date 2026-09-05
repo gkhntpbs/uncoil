@@ -132,7 +132,7 @@ private struct AttentionRow: View {
             if item.kind == .usageLow || item.kind == .usageExhausted,
                let sessionID = item.sessionID {
                 Button {
-                    HandoffRoute.shared.request(sessionID: sessionID)
+                    Router.shared.go(to: .handoff(sessionID: sessionID))
                     onOpen()
                 } label: {
                     Text(String(localized: "Hand off"))

@@ -28,7 +28,7 @@ enum BlueprintRunner {
                 ? nil : settings.defaultAccount(for: provider)?.id,
             title: String(localized: "\(provider.rawValue): \(blueprint.name)")
         )
-        MainRoute.shared.request(.session(record.id))
+        Router.shared.go(to: .session(record.id))
         SessionPromptDelivery.deliver(
             blueprint.resolvedPrompt(for: project),
             to: record, project: project,

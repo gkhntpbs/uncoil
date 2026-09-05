@@ -86,7 +86,6 @@ final class ProjectPageStore: ObservableObject {
 
         let id = project.id
         let root = project.rootPath
-        let rootURL = project.rootURL
 
         // What the project has, first: it is stat calls and one `rev-parse`,
         // and it decides which tabs exist at all.
@@ -135,27 +134,5 @@ final class ProjectPageStore: ObservableObject {
 
         snapshot.loadedAt = .now
         snapshots[id] = snapshot
-    }
-}
-
-/// A one-shot request to open a project screen on a particular area.
-///
-/// Which area is showing is the dashboard's own state, which is right — it is a
-/// view concern — but it leaves no way for somewhere else to say "open this
-/// project on Run". A pending request is consumed once and cleared, so
-/// returning to the project later lands wherever the user last was rather than
-/// being dragged back.
-@MainActor
-final class ProjectAreaRoute: ObservableObject {
-    static let shared = ProjectAreaRoute()
-
-    @Published private(set) var pending: [UUID: String] = [:]
-
-    func request(_ area: String, for projectID: UUID) {
-        pending[projectID] = area
-    }
-
-    func take(for projectID: UUID) -> String? {
-        pending.removeValue(forKey: projectID)
     }
 }

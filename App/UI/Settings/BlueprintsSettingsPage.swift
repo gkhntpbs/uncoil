@@ -150,7 +150,7 @@ struct BlueprintsSettingsPage: View {
               let project = projectStore.projects.first(where: { $0.id == record.projectID })
         else { return }
 
-        MainRoute.shared.request(.session(launched.id))
+        Router.shared.go(to: .session(launched.id))
         SessionPromptDelivery.deliver(
             Self.authoringPrompt(language: settings.language.resolvedAgent()),
             to: launched, project: project,

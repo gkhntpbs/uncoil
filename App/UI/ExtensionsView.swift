@@ -111,7 +111,7 @@ struct ExtensionsView: View {
     /// One coordinator for the whole window: the Security screen and the
     /// Extensions menu's quick scan have to be the same scan, not two.
     @StateObject private var scans: BumblebeeScanCoordinator
-    @ObservedObject private var commands = ExtensionsCommandBus.shared
+    @ObservedObject private var router = Router.shared
     // One store per catalog page, owned by the window: switching sections
     // keeps what was already loaded instead of refetching.
     @StateObject private var mcpCatalog = CatalogStore(kind: .mcpServer)
@@ -151,24 +151,24 @@ struct ExtensionsView: View {
                 selectedPackageID = LaunchConfig.shared.extensionsExpand
             }
             if let action = LaunchConfig.shared.extensionsAction
-                .flatMap(ExtensionsCommandBus.QuickAction.init(rawValue:)) {
-                commands.request = action
+                .flatMap(ExtensionsQuickAction.init(rawValue:)) {
+                router.extensionsAction = action
             }
             applyPendingCommands()
         }
-        .onChange(of: commands.route) { applyPendingCommands() }
-        .onChange(of: commands.request) { applyPendingCommands() }
+        .onChange(of: router.extensionsSection) { applyPendingCommands() }
+        .onChange(of: router.extensionsAction) { applyPendingCommands() }
     }
 
     /// Runs whatever the Extensions menu asked for. Each request is consumed, so
     /// re-opening the window later does not repeat it.
     private func applyPendingCommands() {
-        if let route = commands.route {
+        if let route = router.extensionsSection {
             selection = route
-            commands.route = nil
+            router.extensionsSection = nil
         }
-        guard let request = commands.request else { return }
-        commands.request = nil
+        guard let request = router.extensionsAction else { return }
+        router.extensionsAction = nil
         switch request {
         case .rediscover:
             registry.discover()

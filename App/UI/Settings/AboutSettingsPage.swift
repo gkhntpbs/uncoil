@@ -77,7 +77,7 @@ struct AboutSettingsPage: View {
                 } control: {
                     Button("Run again") {
                         settings.resetOnboarding()
-                        OnboardingPresenter.shared.present()
+                        Router.shared.go(to: .onboarding)
                         // The flow lives in the main window; Settings is its
                         // own, so bring that one forward with it.
                         openWindow(.main)

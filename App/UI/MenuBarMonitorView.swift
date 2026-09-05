@@ -1,24 +1,5 @@
 import SwiftUI
 
-/// Cross-window routing for the menu bar: the main window watches this and
-/// selects whatever the monitor asked for.
-@MainActor
-final class MainRoute: ObservableObject {
-    static let shared = MainRoute()
-    /// Bumped alongside a request so repeat requests for the same target
-    /// still reach the window.
-    @Published var requestedSelection: MainSelection?
-    @Published var requestCounter = 0
-    /// What the main window currently shows. Read by the notification policy so
-    /// "stay quiet about the session I am looking at" has something to compare.
-    @Published var lastSelection: MainSelection?
-
-    func request(_ selection: MainSelection) {
-        requestedSelection = selection
-        requestCounter += 1
-    }
-}
-
 /// Menu-bar monitor: running agents, pending permissions, finished sessions
 /// and problems, with quick launch, quick interrupt, and a way back into the
 /// main window.
@@ -136,7 +117,7 @@ struct MenuBarMonitorMenu: View {
             Menu("Task Board") {
                 ForEach(projectStore.projects) { project in
                     Button(project.name) {
-                        MainRoute.shared.request(.project(project.id))
+                        Router.shared.go(to: .project(project.id))
                         activateMainWindow()
                     }
                 }
@@ -174,9 +155,9 @@ struct MenuBarMonitorMenu: View {
     private func open(_ item: AttentionItem) {
         AttentionStore.shared.markRead(item.id)
         if let sessionID = item.sessionID {
-            MainRoute.shared.request(.session(sessionID))
+            Router.shared.go(to: .session(sessionID))
         } else if let projectID = item.projectID {
-            MainRoute.shared.request(.project(projectID))
+            Router.shared.go(to: .project(projectID))
         }
         activateMainWindow()
     }
@@ -189,7 +170,7 @@ struct MenuBarMonitorMenu: View {
             accountID: provider == .terminal ? nil : account?.id,
             title: provider == .terminal ? "terminal" : String(localized: "\(provider.rawValue): new session")
         )
-        MainRoute.shared.request(.session(record.id))
+        Router.shared.go(to: .session(record.id))
         activateMainWindow()
     }
 

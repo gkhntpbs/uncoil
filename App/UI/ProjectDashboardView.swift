@@ -84,12 +84,10 @@ struct ProjectDashboardView: View {
             // somewhere to land.
             area = ProjectAreaAvailability.resolve(area, capabilities: capabilities)
             for requested in [
-                LaunchConfig.shared.projectArea,
-                ProjectAreaRoute.shared.take(for: project.id),
-            ].compactMap({ $0 }) {
-                guard let target = ProjectArea(rawValue: requested),
-                      availableAreas.contains(target) else { continue }
-                area = target
+                LaunchConfig.shared.projectArea.flatMap(ProjectArea.init(rawValue:)),
+                Router.shared.takeArea(for: project.id),
+            ].compactMap({ $0 }) where availableAreas.contains(requested) {
+                area = requested
             }
         }
     }

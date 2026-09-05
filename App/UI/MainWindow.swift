@@ -13,7 +13,7 @@ struct MainWindow: View {
     @EnvironmentObject private var usage: UsageStore
     @Environment(\.openWindow) private var openWindow
     @StateObject private var palette = PaletteModel()
-    @ObservedObject private var onboarding = OnboardingPresenter.shared
+    @ObservedObject private var router = Router.shared
     @State private var selection: MainSelection?
     @State private var selectedSessionIDs: Set<UUID> = []
     /// Secondary session shown side-by-side (drop a session onto the view).
@@ -69,13 +69,13 @@ struct MainWindow: View {
             }
             // Setup covers the app rather than sitting beside it: a half-set-up
             // window behind the flow is the state the flow exists to end.
-            if onboarding.isPresenting {
+            if router.isPresentingOnboarding {
                 OnboardingView()
                     .transition(.opacity)
             }
             // Below setup on purpose: a machine that has never been set up has
             // nothing worth cloning, and two questions at once is one too many.
-            if let newWindowOptions, !onboarding.isPresenting {
+            if let newWindowOptions, !router.isPresentingOnboarding {
                 NewWindowOverlay(options: newWindowOptions) { choice in
                     apply(choice)
                 }
@@ -86,7 +86,7 @@ struct MainWindow: View {
         // The palette used to appear and vanish outright: its transition never
         // ran because nothing animated the condition that mounts it.
         .animation(Theme.Motion.expressive, value: palette.isOpen)
-        .animation(Theme.Motion.expressive, value: onboarding.isPresenting)
+        .animation(Theme.Motion.expressive, value: router.isPresentingOnboarding)
         .onChange(of: selection) { _, _ in
             syncPaletteSelection()
             persistSelection()
@@ -269,7 +269,7 @@ struct MainWindow: View {
             // are taken out of it: a sidebar toggle and a palette button over a
             // window with neither behind them are just two dead controls.
             Group {
-                if !onboarding.isPresenting {
+                if !router.isPresentingOnboarding {
                     TitlebarControls(onOpenPalette: { palette.open() })
                 }
             }
@@ -415,7 +415,7 @@ struct MainWindow: View {
         case .applyBlueprint(let projectID):
             blueprintProject = projectStore.projects.first { $0.id == projectID }
         case .openSettings(let paneID):
-            SettingsRoute.shared.requestedPane = paneID
+            Router.shared.go(to: .settings(pane: paneID))
             openWindow(.settings)
         case .restartSession(let id):
             sessionActions.restart(id)
@@ -654,11 +654,11 @@ struct MainWindow: View {
     private func presentOnboardingIfNeeded() {
         let config = LaunchConfig.shared
         if config.isUITesting {
-            if config.route == "onboarding" { OnboardingPresenter.shared.present() }
+            if config.route == "onboarding" { Router.shared.go(to: .onboarding) }
             return
         }
         if settings.shouldPresentOnboarding {
-            OnboardingPresenter.shared.present()
+            Router.shared.go(to: .onboarding)
         }
     }
 
@@ -667,10 +667,10 @@ struct MainWindow: View {
         if config.route == "extensions" {
             // Deterministic way into the Extensions window: the section it opens
             // on is an argument rather than a click.
-            ExtensionsCommandBus.shared.open(
-                config.extensionsSection.flatMap(ExtensionsView.Section.init(rawValue:))
-                    ?? .overview
-            )
+            Router.shared.go(to: .extensions(
+                section: config.extensionsSection
+                    .flatMap(ExtensionsView.Section.init(rawValue:)) ?? .overview
+            ))
             openWindow(.extensions)
         }
         // An agent session in preference to the first one seeded. The route
@@ -694,7 +694,7 @@ struct MainWindow: View {
     }
 
     private func persistSelection() {
-        MainRoute.shared.lastSelection = selection
+        Router.shared.currentSelection = selection
         guard let windowID else { return }
         windows.setSelection(selection, for: windowID)
     }
@@ -955,8 +955,8 @@ private struct MainWindowSignals: ViewModifier {
             // for an unrelated event and arrived whenever one happened to
             // come.
             .onChange(of: usage.entries) { _, _ in onAttention() }
-            .onReceive(MainRoute.shared.$requestCounter) { _ in
-                guard let requested = MainRoute.shared.requestedSelection else { return }
+            .onReceive(Router.shared.$selectionCounter) { _ in
+                guard let requested = Router.shared.requestedSelection else { return }
                 // Every window hears this. Exactly one answers it, or a single
                 // click from the menu bar would rearrange the whole desktop.
                 guard let windowID,
@@ -966,7 +966,7 @@ private struct MainWindowSignals: ViewModifier {
                 // does not list opens it rather than refusing.
                 onRoute(requested)
                 selection = requested
-                MainRoute.shared.requestedSelection = nil
+                _ = Router.shared.takeSelection()
                 windows.reveal(windowID)
             }
     }

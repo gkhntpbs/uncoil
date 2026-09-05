@@ -160,7 +160,7 @@ final class AppServices {
             },
             sessionTitle: { id in projects.sessions.first { $0.id == id }?.displayTitle },
             visibleSessionID: {
-                if case .session(let id) = MainRoute.shared.lastSelection { return id }
+                if case .session(let id) = Router.shared.currentSelection { return id }
                 return nil
             }
         )

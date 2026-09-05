@@ -1,22 +1,5 @@
 import Foundation
 
-/// "Open the handoff for this session", from anywhere.
-///
-/// The Attention Center knows which session is low but does not own the sheet;
-/// the session header owns the sheet but does not hear about the row. This is
-/// the one-line channel between them, in the same shape as `MainRoute`.
-@MainActor
-final class HandoffRoute: ObservableObject {
-    static let shared = HandoffRoute()
-    @Published var requestedSessionID: UUID?
-    @Published var counter = 0
-
-    func request(sessionID: UUID) {
-        requestedSessionID = sessionID
-        counter += 1
-    }
-}
-
 /// Where a handoff can go.
 ///
 /// A destination is an account, not a provider: handing Claude's work to Claude
