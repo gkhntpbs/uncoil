@@ -848,12 +848,14 @@ private struct WorktreeRow: View {
                     .foregroundStyle(Theme.textFaint)
             }
             Spacer()
-            AgentLauncherStrip(
-                project: project,
-                worktreePath: worktree.isMain ? nil : worktree.path,
-                selection: $selection,
-                isProminent: hovering
-            )
+            if hovering {
+                AgentLauncherStrip(
+                    project: project,
+                    worktreePath: worktree.isMain ? nil : worktree.path,
+                    selection: $selection
+                )
+                .transition(.opacity)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)

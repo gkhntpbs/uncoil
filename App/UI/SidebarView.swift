@@ -559,26 +559,26 @@ struct ProjectRowView: View {
             .padding(.leading, SidebarIndent.leading(depth: 0))
             .padding(.trailing, 10)
             .padding(.vertical, 6)
-            // The launcher floats above the row rather than sitting in the
-            // stack: laid out inline it grew the row whenever it changed, and
-            // reserving its width truncated every project name for good.
+            // The launcher rides above the row rather than sitting in the
+            // stack: laid out inline it grew the row whenever it appeared —
+            // the whole list twitched — and reserving its width truncated
+            // every project name for good.
             //
-            // There is no disclosure chevron. Clicking the project is what
-            // opens and closes it — a row whose whole width is the target,
-            // instead of an 8pt mark at the far edge that had to be aimed at.
+            // Shown while the row is under the pointer, and swapped with the
+            // folded count, which is what the row has to say the rest of the
+            // time. There is no disclosure chevron: clicking the project is
+            // what opens and closes it, so the row's whole width is the
+            // target instead of an 8pt mark at the far edge.
             .overlay(alignment: .trailing) {
-                HStack(spacing: 6) {
-                    // Folded, the project says how much it is holding back.
-                    if sessionsCollapsed, childCount > 0 {
+                Group {
+                    if hovering {
+                        AgentLauncherStrip(project: project, selection: $selection)
+                    } else if sessionsCollapsed, childCount > 0 {
+                        // Folded, the project says how much it is holding back.
                         Text("\(childCount)")
                             .font(Theme.mono(.micro))
                             .foregroundStyle(Theme.textFaint)
                     }
-                    AgentLauncherStrip(
-                        project: project,
-                        selection: $selection,
-                        isProminent: hovering || isProjectSelected
-                    )
                 }
                 .padding(.trailing, 4)
                 .animation(Theme.Motion.quick, value: hovering)
@@ -946,43 +946,106 @@ private struct CollapseAllButton: View {
 
 /// Start an agent in this project, without choosing anything first.
 ///
-/// One mark per agent the user actually launches — their own Quick Launch
-/// order, resolved against what is installed, because an agent that is not on
-/// the machine is a button that can only fail. The mark *is* the answer to
-/// "which one": a menu would make the common case (the agent you always use,
-/// in the project in front of you) cost a click and a read.
+/// A pill that appears over the project row while the pointer is on it: one
+/// mark per agent in the user's own Quick Launch order, resolved against what
+/// is installed, because an agent that is not on the machine is a button that
+/// can only fail. The mark *is* the answer to "which one" — a menu would make
+/// the common case, the agent you always use in the project in front of you,
+/// cost a click and a read.
 ///
-/// Quiet at rest and lit when the row is under the pointer or selected. It used
-/// to appear only on hover, which meant a new user could look at the whole
-/// window and find no way to start anything; and it used to be a full panel,
-/// which is more furniture than a row of marks needs.
+/// At the end of the row, once the pill itself is under the pointer, a plus:
+/// every agent Uncoil can run, including the ones left out of Quick Launch and
+/// the plain terminal. It appears there rather than sitting in the pill all the
+/// time so that the marks stay the thing the eye lands on, and it is at the end
+/// because that is where the pointer already is once it has read them.
 struct AgentLauncherStrip: View {
     let project: Project
     var worktreePath: String?
     @Binding var selection: MainSelection?
-    /// Lit rather than merely legible — the row is being pointed at.
-    var isProminent = false
 
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
+    @State private var hovering = false
+
+    /// Everything else: what Quick Launch leaves out, and the plain shell.
+    private var rest: [AgentProvider] {
+        AgentProvider.sessionKinds.filter { !settings.launcherProviders.contains($0) }
+    }
 
     var body: some View {
-        HStack(spacing: 1) {
+        HStack(spacing: 2) {
             ForEach(settings.launcherProviders) { provider in
-                LauncherButton(provider: provider, isProminent: isProminent) {
-                    launch(provider)
+                LauncherButton(provider: provider) { launch(provider) }
+                    // Clicking starts the default login, which is the common
+                    // case and stays one click. Right-click is where a second
+                    // login lives, so the common case does not pay for the rare
+                    // one.
+                    .contextMenu { logins(for: provider) }
+            }
+            if hovering {
+                Rectangle()
+                    .fill(Theme.border)
+                    .frame(width: 1, height: 12)
+                    .padding(.horizontal, 1)
+                moreMenu
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+        }
+        .padding(3)
+        .background(Theme.panelActive, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        .onHover { hovering = $0 }
+        .animation(Theme.Motion.quick, value: hovering)
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            ForEach(settings.launcherProviders) { provider in
+                agentItem(provider)
+            }
+            if !rest.isEmpty {
+                Divider()
+                ForEach(rest) { provider in
+                    agentItem(provider)
                 }
-                // Clicking starts the default login, which is the common case
-                // and stays one click. Right-click is where a second login
-                // lives, so the common case does not pay for the rare one.
-                .contextMenu {
-                    let choices = settings.accounts(for: provider)
-                    if provider.isAgent, choices.count > 1 {
-                        ForEach(choices) { account in
-                            Button(account.name) { launch(provider, account: account) }
-                        }
-                    }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Theme.textDim)
+                .frame(width: 19, height: 20)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(String(localized: "Start any agent here"))
+        .accessibilityIdentifier("launcher.more")
+    }
+
+    /// One login is not a choice: a submenu holding a single item would be two
+    /// clicks to reach what the mark already does in one.
+    @ViewBuilder
+    private func agentItem(_ provider: AgentProvider) -> some View {
+        let choices = settings.accounts(for: provider)
+        if provider.isAgent, choices.count > 1 {
+            Menu(provider.displayName) {
+                ForEach(choices) { account in
+                    Button(account.name) { launch(provider, account: account) }
                 }
+            }
+        } else {
+            Button(provider.displayName) { launch(provider) }
+        }
+    }
+
+    @ViewBuilder
+    private func logins(for provider: AgentProvider) -> some View {
+        let choices = settings.accounts(for: provider)
+        if provider.isAgent, choices.count > 1 {
+            ForEach(choices) { account in
+                Button(account.name) { launch(provider, account: account) }
             }
         }
     }
@@ -996,27 +1059,21 @@ struct AgentLauncherStrip: View {
 
 private struct LauncherButton: View {
     let provider: AgentProvider
-    var isProminent = false
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             ProviderMark(provider: provider, size: 11)
-                // Faded until the row is being pointed at: at rest the strip
-                // has to be readable without competing with the project name
-                // it sits beside.
-                .opacity(hovering ? 1 : (isProminent ? 0.85 : 0.45))
                 .frame(width: 21, height: 20)
                 .background(
-                    hovering ? Theme.panelActive : .clear,
+                    hovering ? Theme.panelHover : .clear,
                     in: RoundedRectangle(cornerRadius: Theme.Radius.chip)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.pressable)
         .onHover { hovering = $0 }
-        .animation(Theme.Motion.quick, value: hovering)
         .accessibilityIdentifier("launcher.\(provider.rawValue)")
         .help("Start \(provider.displayName)")
     }

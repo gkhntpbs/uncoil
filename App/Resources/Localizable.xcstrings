@@ -3720,6 +3720,12 @@
     "Clipboard" : {
 
     },
+    "Clone “%@” Window" : {
+
+    },
+    "Clone Main Window" : {
+
+    },
     "Close" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8011,6 +8017,9 @@
     "New Blueprint…" : {
 
     },
+    "New Empty Window" : {
+
+    },
     "New Group" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8168,6 +8177,9 @@
         }
       }
     },
+    "New Window" : {
+
+    },
     "New worktree name (isolated task branch)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8230,9 +8242,6 @@
 
     },
     "No agent CLI was found in any of the usual install locations." : {
-
-    },
-    "No agent is installed yet" : {
 
     },
     "No banner is sent about the session already on screen." : {
@@ -9764,6 +9773,15 @@
         }
       }
     },
+    "Opens on the same project and view as that window." : {
+
+    },
+    "Opens on the same project and view as the main window." : {
+
+    },
+    "Opens with nothing selected." : {
+
+    },
     "Opt-in" : {
 
     },
@@ -10386,6 +10404,9 @@
           }
         }
       }
+    },
+    "Project Settings (⌘I)" : {
+
     },
     "Project Settings…" : {
 
@@ -12951,9 +12972,6 @@
           }
         }
       }
-    },
-    "Start %@ here — right-click for another agent" : {
-
     },
     "Start a fresh agent for the task." : {
       "extractionState" : "manual",
@@ -15746,6 +15764,9 @@
           }
         }
       }
+    },
+    "What should this window open on?" : {
+
     },
     "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings." : {
 
