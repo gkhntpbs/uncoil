@@ -305,11 +305,7 @@ private struct CLIToolRow: View {
     }
 
     private func restartRunningSessions() {
-        for id in restartTargets {
-            TerminalRegistry.shared.closeTerminal(for: id)
-            projectStore.updateSession(id) { $0.lastActivityAt = .now }
-            sessionStore.bumpRestart(id)
-        }
+        SessionActions(projects: projectStore, sessions: sessionStore).restart(restartTargets)
     }
 
     /// Path, real path and the update command, in one place.

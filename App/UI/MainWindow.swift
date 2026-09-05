@@ -366,6 +366,10 @@ struct MainWindow: View {
         }
     }
 
+    private var sessionActions: SessionActions {
+        SessionActions(projects: projectStore, sessions: sessionStore)
+    }
+
     private func perform(_ action: PaletteAction) {
         switch action {
         case .addProject:
@@ -410,13 +414,9 @@ struct MainWindow: View {
             SettingsRoute.shared.requestedPane = paneID
             openWindow(id: "settings")
         case .restartSession(let id):
-            TerminalRegistry.shared.closeTerminal(for: id)
-            projectStore.updateSession(id) { $0.lastActivityAt = .now }
-            sessionStore.bumpRestart(id)
+            sessionActions.restart(id)
         case .closeSession(let id):
-            TerminalRegistry.shared.closeTerminal(for: id)
-            sessionStore.setStatus(.terminated, for: id)
-            projectStore.markSessionEnded(id, exitCode: nil)
+            sessionActions.close(id)
         case .popoutSession(let id):
             openWindow(id: "session-window", value: id)
         case .openFile(let url), .openArtifact(let url):

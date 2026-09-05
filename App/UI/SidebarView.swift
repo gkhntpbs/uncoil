@@ -242,8 +242,7 @@ struct SidebarView: View {
         ) {
             Button("Delete", role: .destructive) {
                 guard let record = deletingSession else { return }
-                TerminalRegistry.shared.closeTerminal(for: record.id)
-                projectStore.removeSession(record.id)
+                SessionActions(projects: projectStore, sessions: sessionStore).delete(record.id)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -350,10 +349,7 @@ struct SidebarView: View {
 
     private func deleteSelectedSessions() {
         let projectID = selectedProjectIDs.first
-        for id in selectedSessionIDs {
-            TerminalRegistry.shared.closeTerminal(for: id)
-        }
-        projectStore.removeSessions(selectedSessionIDs)
+        SessionActions(projects: projectStore, sessions: sessionStore).delete(selectedSessionIDs)
         if case .session(let id) = selection, selectedSessionIDs.contains(id) {
             selection = projectID.map(MainSelection.project)
         }

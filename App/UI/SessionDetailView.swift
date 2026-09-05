@@ -8,7 +8,6 @@ struct SessionDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
-    @State private var restartToken = 0
     /// Something is being dragged over the session, so the drop is shown as
     /// possible before it happens.
     @State private var isDropTargeted = false
@@ -82,7 +81,7 @@ struct SessionDetailView: View {
                     // reuses a live terminal or launches fresh (resuming Claude when
                     // a provider session id is known). No "restart" screen.
                     TerminalHostView(record: record, project: project, account: account)
-                        .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
+                        .id(sessionStore.restartCounter[record.id] ?? 0)
                         .padding(.horizontal, 10)
                         .padding(.bottom, 10)
             }
@@ -169,9 +168,7 @@ struct SessionDetailView: View {
     // MARK: - Actions
 
     private func restart() {
-        TerminalRegistry.shared.closeTerminal(for: record.id)
-        projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
-        restartToken += 1
+        SessionActions(projects: projectStore, sessions: sessionStore).restart(record.id)
     }
 }
 
@@ -271,7 +268,6 @@ struct SplitSessionPane: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
-    @State private var restartToken = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -292,7 +288,7 @@ struct SplitSessionPane: View {
                 project: project,
                 account: settings.account(id: record.accountID)
             )
-            .id(restartToken + (sessionStore.restartCounter[record.id] ?? 0))
+            .id(sessionStore.restartCounter[record.id] ?? 0)
             .padding([.horizontal, .bottom], 8)
         }
         .accessibilityElement(children: .contain)
@@ -300,9 +296,7 @@ struct SplitSessionPane: View {
     }
 
     private func restart() {
-        TerminalRegistry.shared.closeTerminal(for: record.id)
-        projectStore.updateSession(record.id) { $0.lastActivityAt = .now }
-        restartToken += 1
+        SessionActions(projects: projectStore, sessions: sessionStore).restart(record.id)
     }
 }
 

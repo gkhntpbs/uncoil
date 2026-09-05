@@ -261,20 +261,17 @@ struct SessionGroupView: View {
         }
     }
 
+    private var actions: SessionActions {
+        SessionActions(projects: projectStore, sessions: sessionStore)
+    }
+
     private func restartTargets() {
-        for id in targetIDs {
-            TerminalRegistry.shared.closeTerminal(for: id)
-            projectStore.updateSession(id) { $0.lastActivityAt = .now }
-            sessionStore.bumpRestart(id)
-        }
+        actions.restart(targetIDs)
     }
 
     private func deleteTargets() {
         let ids = targetIDs
-        for id in ids {
-            TerminalRegistry.shared.closeTerminal(for: id)
-        }
-        projectStore.removeSessions(ids)
+        actions.delete(ids)
         selectedSessionIDs.subtract(ids)
     }
 }
