@@ -10,6 +10,10 @@ release notes are written once, here.
 
 ## Unreleased
 
+### Development
+
+- Development is consolidated on `edge`, with the simplification state and daily worktree changes preserved in local backup tags. Release build allocation now advances beyond both Stable and Edge release tags, preventing a stable promotion from reusing an Edge build number. The update-channel rollout is tracked in `docs/roadmap/EDGE_RELEASES.md`; in-app channel selection is not yet available.
+
 ### Fixed
 
 - The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
