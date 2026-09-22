@@ -46,6 +46,12 @@ struct SettingsPage<Content: View>: View {
             content
         }
         .formStyle(.grouped)
+        // Switches rather than the form's default checkbox: a setting here acts
+        // the moment it is touched, and a checkbox says the opposite — that
+        // something is being ticked off a list to be submitted later. The
+        // multi-select lists in sheets keep their checkboxes, which is what a
+        // checkbox is actually for.
+        .toggleStyle(.switch)
         // The grouped form keeps its layout and insets; only the surfaces
         // change. `scrollContentBackground` clears the system fill so the page
         // sits on the app's background, and the row background paints the

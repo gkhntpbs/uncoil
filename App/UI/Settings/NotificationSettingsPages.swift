@@ -345,41 +345,73 @@ private struct EventRow: View {
     private var prefs: NotificationPrefs { settings.notifications }
     private var isOn: Bool { prefs.isEnabled(event) }
 
+    /// Where the title starts: chevron, gap, icon, gap. The details line up
+    /// under it rather than under the chevron, so an open row reads as one
+    /// block instead of a second list starting at the card's edge.
+    private static let titleInset: CGFloat = 34
+
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            details
-        } label: {
-            // The switch sits where every other control on the page sits, at
-            // the trailing edge, and the triangle stays at the leading edge.
-            // Clicking the switch does not open the row: a control is
-            // hit-tested before its container.
-            AdaptiveRow {
-                SettingsLabel(
-                    title: event.title,
-                    detail: event.detail,
-                    symbol: event.symbolName
-                )
-            } control: {
-                Toggle("", isOn: Binding(
-                    get: { isOn },
-                    set: { newValue in
-                        settings.notifications.update(event) { $0.enabled = newValue }
-                        settings.save()
-                    }
-                ))
-                .labelsHidden()
-                .settingsID("notifications.event.\(event.rawValue)")
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            if isExpanded {
+                details
+                    .padding(.leading, Self.titleInset)
+                    .padding(.top, 10)
             }
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// `DisclosureGroup` put its triangle hard against the card's edge and
+    /// aligned it to the first baseline, which left it floating between the
+    /// title and the detail line of every two-line row. This is the same
+    /// disclosure, centred on the row and inset like everything else.
+    private var header: some View {
+        AdaptiveRow {
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: 10)
+
+                Image(systemName: event.symbolName)
+                    .foregroundStyle(Theme.textDim)
+                    .frame(width: 16)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(event.title)
+                    Text(event.detail)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textDim)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            // The whole row opens it, not the triangle alone. The switch is a
+            // control, so it is hit-tested first and keeps its own click.
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(Theme.Motion.quick) { isExpanded.toggle() }
+            }
+        } control: {
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { newValue in
+                    settings.notifications.update(event) { $0.enabled = newValue }
+                    settings.save()
+                }
+            ))
+            .labelsHidden()
+            .settingsID("notifications.event.\(event.rawValue)")
         }
     }
 
     /// An event that is off keeps its row and its details reachable, but
     /// nothing behind it can be set: those values would describe a banner that
-    /// is never sent. The switch itself stays live, up in the label, which is
+    /// is never sent. The switch itself stays live, up in the header, which is
     /// how the row comes back.
-    @ViewBuilder
     private var details: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 10) {
             NotificationPriorityPicker(
                 title: String(localized: "Priority"),
                 value: Binding(
