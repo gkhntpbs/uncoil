@@ -701,6 +701,9 @@
         }
       }
     },
+    "%@ was not found on this Mac. Nothing on this page takes effect until it is installed, or until you point Uncoil at where it lives." : {
+
+    },
     "%@ was restored from the backup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1489,6 +1492,9 @@
         }
       }
     },
+    "A permission request or a dropped login is announced even during these hours." : {
+
+    },
     "A plain Markdown checklist your agents can read and tick off. Uncoil never adds syntax of its own to it." : {
 
     },
@@ -2067,6 +2073,9 @@
     "Adopting…" : {
 
     },
+    "Advanced" : {
+
+    },
     "Advanced Permissions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2217,9 +2226,6 @@
         }
       }
     },
-    "Agent Status Hooks" : {
-
-    },
     "Agents" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2354,6 +2360,9 @@
     "An account the provider refuses outright is always reported, whatever this is set to — some limits arrive with no warning at all." : {
 
     },
+    "An agent blocked for twenty minutes looks exactly like one blocked five seconds ago." : {
+
+    },
     "An agent that finished, or that is stuck waiting for an answer, is worth knowing about without watching the window." : {
 
     },
@@ -2367,6 +2376,9 @@
           }
         }
       }
+    },
+    "An agent working through the night will not wake you." : {
+
     },
     "An empty group is created; drag sessions into it." : {
       "extractionState" : "manual",
@@ -2418,6 +2430,9 @@
         }
       }
     },
+    "Answered a tool call." : {
+
+    },
     "Any other colour" : {
 
     },
@@ -2468,6 +2483,9 @@
         }
       }
     },
+    "Appended to the launch command." : {
+
+    },
     "Applied" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2489,6 +2507,9 @@
           }
         }
       }
+    },
+    "Applies from the next session on; open sessions are unaffected." : {
+
     },
     "Apply" : {
       "extractionState" : "manual",
@@ -3386,6 +3407,9 @@
         }
       }
     },
+    "Change Location…" : {
+
+    },
     "Change…" : {
 
     },
@@ -3426,6 +3450,9 @@
       }
     },
     "Check & Update" : {
+
+    },
+    "Check Again" : {
 
     },
     "Check automatically" : {
@@ -3565,6 +3592,9 @@
     "Choose your agent CLIs" : {
 
     },
+    "Chosen browser — no longer on this Mac" : {
+
+    },
     "chosen when this session started" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3575,6 +3605,12 @@
           }
         }
       }
+    },
+    "Chromium is installed and ready." : {
+
+    },
+    "Chromium runtime missing" : {
+
     },
     "Claimed" : {
       "extractionState" : "manual",
@@ -5444,6 +5480,9 @@
         }
       }
     },
+    "every %lld minutes" : {
+
+    },
     "Every %lld minutes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5508,6 +5547,9 @@
     "Every package is read before it is installed or adopted: risky shell constructs, executables, its source and its licence. A clean scan is never called “safe” — Verified is reserved for what Uncoil itself ships." : {
 
     },
+    "Every permission is in place." : {
+
+    },
     "Every running agent and terminal process is closed when you quit Uncoil." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5540,6 +5582,9 @@
 
     },
     "Exactly this will change — nothing has been written yet:" : {
+
+    },
+    "Except what stops the work" : {
 
     },
     "exit %d" : {
@@ -5857,6 +5902,9 @@
         }
       }
     },
+    "Follows the interval set under Repeats." : {
+
+    },
     "For the Session" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5898,6 +5946,9 @@
           }
         }
       }
+    },
+    "From" : {
+
     },
     "From %@ · %@" : {
       "localizations" : {
@@ -6072,6 +6123,9 @@
           }
         }
       }
+    },
+    "granted" : {
+
     },
     "Grants" : {
       "extractionState" : "manual",
@@ -6390,6 +6444,9 @@
     "How keys and the clipboard behave in a session's prompt." : {
 
     },
+    "How many times" : {
+
+    },
     "How many times it is repeated after the first notification." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6400,9 +6457,6 @@
           }
         }
       }
-    },
-    "How much each agent does without asking." : {
-
     },
     "How much of the tightest limit has to be left before Uncoil says something." : {
 
@@ -6417,6 +6471,9 @@
           }
         }
       }
+    },
+    "How often" : {
+
     },
     "How should this project start?" : {
 
@@ -7100,7 +7157,13 @@
     "Let Uncoil see what your agents are doing" : {
 
     },
+    "Lets an agent drive a Chromium browser: open a page, read it, click and type." : {
+
+    },
     "Lets an agent hand a task to another agent and cut a worktree for it." : {
+
+    },
+    "Lets an agent see this Mac's screen and use it — the daemon and the macOS permissions it needs." : {
 
     },
     "License" : {
@@ -7254,6 +7317,12 @@
         }
       }
     },
+    "Logins, what it does on its own, and the CLI Uncoil runs." : {
+
+    },
+    "Logins, working mode and run parameters" : {
+
+    },
     "Logs" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7339,6 +7408,9 @@
 
     },
     "macOS permission" : {
+
+    },
+    "macOS still has to be told: %@." : {
 
     },
     "main copy" : {
@@ -7945,6 +8017,9 @@
         }
       }
     },
+    "Neither Node nor the agent-browser Playwright CLI was found." : {
+
+    },
     "Never asks — including for commands outside the project. Pick this only for a session you are watching." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8099,6 +8174,9 @@
           }
         }
       }
+    },
+    "New sessions" : {
+
     },
     "New sessions open with this provider." : {
       "extractionState" : "manual",
@@ -8265,6 +8343,9 @@
           }
         }
       }
+    },
+    "No banner while the app is in front of you; the rows are still marked." : {
+
     },
     "No binary on this Mac's PATH. Install it, then rescan." : {
 
@@ -8977,6 +9058,9 @@
     "Not a git repository" : {
 
     },
+    "Not about the session on screen" : {
+
+    },
     "Not applied" : {
 
     },
@@ -9030,6 +9114,9 @@
     "Not found in any of the usual install locations." : {
 
     },
+    "not granted" : {
+
+    },
     "Not in the strip" : {
 
     },
@@ -9059,6 +9146,9 @@
 
     },
     "Not installed on this machine" : {
+
+    },
+    "Not installed." : {
 
     },
     "not refreshed, %@" : {
@@ -9123,6 +9213,16 @@
         }
       }
     },
+    "Nothing at all between %@ and %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Nothing at all between %1$@ and %2$@."
+          }
+        }
+      }
+    },
     "Nothing found. You can still write the configuration by hand, or ask an agent to." : {
 
     },
@@ -9141,6 +9241,9 @@
       }
     },
     "Nothing matches “%@”." : {
+
+    },
+    "Nothing repeats until Repeats is switched on." : {
 
     },
     "Nothing shows up in the agents' skill directories." : {
@@ -9193,6 +9296,9 @@
         }
       }
     },
+    "Notifications are off." : {
+
+    },
     "Notifications are silenced during the window you set. An agent working through the night will not wake you." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9203,6 +9309,9 @@
           }
         }
       }
+    },
+    "Notifications arrive at any hour." : {
+
     },
     "Notifications off" : {
       "extractionState" : "manual",
@@ -9412,6 +9521,9 @@
         }
       }
     },
+    "One notification per state change, never repeated. Only states that last until you act on them can repeat — a finished turn has no state behind it." : {
+
+    },
     "One shortcut for everything" : {
 
     },
@@ -9475,6 +9587,9 @@
 
     },
     "Open a new agent session on this test" : {
+
+    },
+    "Open an event to give it its own priority, sound and repeat. While “Default” is chosen it follows the values above." : {
 
     },
     "Open Extensions" : {
@@ -9730,6 +9845,9 @@
       }
     },
     "OpenCode reads its config at startup; open sessions must be restarted." : {
+
+    },
+    "Opened a page and closed it again." : {
 
     },
     "Opened a session in the main window with the brief typed in. Adjust it, send it, and it will save the blueprint back here." : {
@@ -10589,6 +10707,16 @@
         }
       }
     },
+    "Quiet between %@ and %@, apart from what stops the work." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Quiet between %1$@ and %2$@, apart from what stops the work."
+          }
+        }
+      }
+    },
     "Quiet between %@ and %@.%@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11221,6 +11349,25 @@
         }
       }
     },
+    "Repeat this one" : {
+
+    },
+    "Repeat while it keeps waiting" : {
+
+    },
+    "Repeated %@ for as long as the state lasts." : {
+
+    },
+    "Repeated %@, up to %lld times — about %lld minutes in all." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Repeated %1$@, up to %2$lld times — about %3$lld minutes in all."
+          }
+        }
+      }
+    },
     "Repeated every %@ while the state lasts." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11242,6 +11389,9 @@
           }
         }
       }
+    },
+    "Repeats" : {
+
     },
     "Replace the leading tabs with spaces; until then Hermes ignores the whole file." : {
 
@@ -11649,6 +11799,9 @@
           }
         }
       }
+    },
+    "Run parameters" : {
+
     },
     "Run Parameters" : {
       "extractionState" : "manual",
@@ -12170,6 +12323,9 @@
           }
         }
       }
+    },
+    "Send notifications" : {
+
     },
     "Send the Review Findings to the Session" : {
       "extractionState" : "manual",
@@ -12749,6 +12905,9 @@
           }
         }
       }
+    },
+    "Silence notifications overnight" : {
+
     },
     "Silent" : {
       "extractionState" : "manual",
@@ -13772,6 +13931,9 @@
         }
       }
     },
+    "The browser did not open." : {
+
+    },
     "The build failed; read the compiler errors in the log, fix the source, and start again." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13811,6 +13973,9 @@
           }
         }
       }
+    },
+    "The CLI" : {
+
     },
     "The code is on your clipboard — pick a browser below and paste it into the page; approving connects it automatically." : {
       "extractionState" : "manual",
@@ -14025,6 +14190,9 @@
     "The image is written into the session's working directory and its path is typed into the prompt — the same thing dropping an image does. Works with every agent." : {
 
     },
+    "The install finished but no Chromium runtime is there." : {
+
+    },
     "The instructions an agent gets when a project starts from this." : {
 
     },
@@ -14068,6 +14236,9 @@
 
     },
     "the layout changed" : {
+
+    },
+    "The new browser will be used from the next browser session on." : {
 
     },
     "The old session is still running and was not closed." : {
@@ -14859,6 +15030,9 @@
         }
       }
     },
+    "Two optional programs that let an agent reach past its terminal. Uncoil probes and reports; nothing is ever installed without you asking for it." : {
+
+    },
     "Type ? and your question" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15315,6 +15489,12 @@
     "unsupported provider" : {
 
     },
+    "Until" : {
+
+    },
+    "Until I act" : {
+
+    },
     "Untitled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15492,6 +15672,9 @@
         }
       }
     },
+    "Use PATH Again" : {
+
+    },
     "Use this" : {
 
     },
@@ -15574,6 +15757,9 @@
           }
         }
       }
+    },
+    "version" : {
+
     },
     "Version reported by the server" : {
       "extractionState" : "manual",
@@ -15740,9 +15926,6 @@
     "What gets announced" : {
 
     },
-    "What is installed on this Mac, where it lives, and how Uncoil would update it." : {
-
-    },
     "What it can reach" : {
 
     },
@@ -15877,6 +16060,9 @@
         }
       }
     },
+    "While this is off, Uncoil sends no banner at all; sessions are still marked in the sidebar." : {
+
+    },
     "Will run: %@" : {
 
     },
@@ -15934,9 +16120,6 @@
           }
         }
       }
-    },
-    "Working Mode" : {
-
     },
     "Working modes" : {
       "extractionState" : "manual",
@@ -16056,6 +16239,9 @@
           }
         }
       }
+    },
+    "You are already looking at it." : {
+
     },
     "you asked for it" : {
       "extractionState" : "manual",

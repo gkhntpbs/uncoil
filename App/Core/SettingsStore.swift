@@ -168,6 +168,13 @@ final class SettingsStore: ObservableObject {
 
     /// Effective session presets: the user's configured list when non-empty,
     /// otherwise the built-in defaults.
+    ///
+    /// Nothing writes this list any more. A preset is a role — what a child
+    /// session started through `create_child` is allowed to do — and editing
+    /// roles by hand in Settings asked the user to design a permission model
+    /// to use the app. The built-in roles are the model now. A list written by
+    /// an older build is still read and still honoured, so nobody's setup
+    /// changes under them.
     var presets: [SessionPreset] {
         if let configured = configuredPresets, !configured.isEmpty { return configured }
         return SessionPreset.builtInDefaults
@@ -175,29 +182,6 @@ final class SettingsStore: ObservableObject {
 
     func preset(id: String) -> SessionPreset? {
         presets.first { $0.id == id }
-    }
-
-    func upsertPreset(_ preset: SessionPreset) {
-        var configured = configuredPresets ?? SessionPreset.builtInDefaults
-        if let index = configured.firstIndex(where: { $0.id == preset.id }) {
-            configured[index] = preset
-        } else {
-            configured.append(preset)
-        }
-        configuredPresets = configured
-        save()
-    }
-
-    func removePreset(id: String) {
-        var configured = configuredPresets ?? SessionPreset.builtInDefaults
-        configured.removeAll { $0.id == id }
-        configuredPresets = configured.isEmpty ? nil : configured
-        save()
-    }
-
-    func resetPresets() {
-        configuredPresets = nil
-        save()
     }
 
     // MARK: - Provider behavior

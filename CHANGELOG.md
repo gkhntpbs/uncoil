@@ -22,6 +22,8 @@ release notes are written once, here.
 
 ### Changed
 
+- The Session Presets editor is gone. A preset is a role — what a child session started by an agent through `create_child` is allowed to do — and editing roles by hand asked you to design a permission model before you could use the app. The built-in roles are the model now. A list written by an older build is still read and still honoured, so an existing setup keeps working.
+
 - Settings separates what Uncoil connects to from what Uncoil is. GitHub and the Computer Use drivers are under Integrations — things you bring and can take away again — while the control plane, permissions and retention sit under Advanced. The Agent Status Hooks page is gone: installing those hooks is what Connect in the Agents list already does, and having it in two places meant one of them was always showing a stale answer.
 
 - Notifications are one page. They were four — General, Events, Reminders, Quiet Hours — for a single decision: when should Uncoil interrupt you. Whether an event repeats is now set on the event itself, where its switch, priority and sound already are; it used to be a second list on the Reminders page, so the same value had two homes and one of them always looked out of date. Each event opens to show its own priority, sound and repeat, and stays a single switch until you need them.

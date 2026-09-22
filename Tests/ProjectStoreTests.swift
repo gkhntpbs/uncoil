@@ -618,7 +618,11 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 
-    func testSessionPresetEditorOperationsPersist() {
+    /// The preset editor is gone — a preset is a role in code, not something a
+    /// user should have to design — but a list written by an older build is
+    /// still read and still honoured, so nobody's `create_child` setup changes
+    /// under them.
+    func testAPresetListWrittenByAnOlderBuildIsStillHonoured() {
         let store = SettingsStore(directory: tempDir)
         let preset = SessionPreset(
             id: "review",
@@ -629,18 +633,18 @@ final class SettingsStoreTests: XCTestCase {
             grantedCapabilities: ["sessions.read", "artifacts.read"],
             permissionMode: "standard"
         )
-
-        store.upsertPreset(preset)
-        XCTAssertEqual(store.preset(id: "review"), preset)
+        store.configuredPresets = [preset]
+        store.save()
 
         let reloaded = SettingsStore(directory: tempDir)
         XCTAssertEqual(reloaded.preset(id: "review"), preset)
+        XCTAssertEqual(reloaded.presets, [preset])
+    }
 
-        reloaded.removePreset(id: "review")
-        XCTAssertNil(reloaded.preset(id: "review"))
-
-        reloaded.resetPresets()
-        XCTAssertEqual(reloaded.presets, SessionPreset.builtInDefaults)
+    /// With nothing on disk, the built-in roles are the whole model.
+    func testWithNoConfiguredListThePresetsAreTheBuiltInRoles() {
+        let store = SettingsStore(directory: tempDir)
+        XCTAssertEqual(store.presets, SessionPreset.builtInDefaults)
     }
 
     func testTranscriptRetentionDefaultsDisabledAndPersists() {

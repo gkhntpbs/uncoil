@@ -72,7 +72,6 @@ struct SettingsView: View {
         /// Everything about one agent: its logins, what it does on its own,
         /// and the CLI Uncoil runs.
         case agent(AgentProvider)
-        case presets
         case blueprints
 
         case notifications
@@ -95,7 +94,6 @@ struct SettingsView: View {
             case .input: "input"
             case .agents: "agents"
             case .agent(let provider): "agent.\(provider.rawValue)"
-            case .presets: "presets"
             case .blueprints: "blueprints"
             case .notifications: "notifications"
             case .theme: "theme"
@@ -114,7 +112,7 @@ struct SettingsView: View {
         /// within a category is the order here.
         static let fixed: [Pane] = [
             .general, .input, .notifications,
-            .agents, .presets, .blueprints,
+            .agents, .blueprints,
             .theme, .menuBar, .launcher,
             .github, .drivers,
             .permissions, .mcp, .privacyData,
@@ -146,7 +144,7 @@ struct SettingsView: View {
             // is one page now, so it sits beside the others rather than under
             // a heading of its own.
             case .general, .input, .notifications: .general
-            case .agents, .agent, .presets, .blueprints: .agents
+            case .agents, .agent, .blueprints: .agents
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
             // What Uncoil connects to, separately from what Uncoil is. A
@@ -168,7 +166,6 @@ struct SettingsView: View {
             case .input: String(localized: "Keyboard and Input")
             case .agents: String(localized: "Installed Agents")
             case .agent(let provider): provider.descriptor.displayName
-            case .presets: String(localized: "Session Presets")
             case .blueprints: String(localized: "Blueprints")
             case .launcher: String(localized: "Quick Launch")
             case .notifications: String(localized: "Notifications")
@@ -189,7 +186,6 @@ struct SettingsView: View {
             case .input: "keyboard"
             case .agents: "point.3.connected.trianglepath.dotted"
             case .agent: "person.2"
-            case .presets: "square.stack.3d.up"
             case .blueprints: "square.grid.2x2"
             case .launcher: "bolt"
             case .notifications: "bell"
@@ -218,7 +214,6 @@ struct SettingsView: View {
             // user actually types.
             case .agent(let provider):
                 "\(provider.descriptor.displayName) \(provider.descriptor.fullName) hesap account login giriş profil profile e-posta email cli güncelle update sürüm version brew npm kurulum install parametre argüman argument model flag bayrak davranış behavior mod mode auto plan onay approval yetki varsayılan default konum location yol path"
-            case .presets: "preset alt agent child yetki capability prompt şablon template"
             case .blueprints: "blueprint şema plan iskelet scaffold kurulum setup yeni proje new project prompt şablon template klasör yapısı structure"
             case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
             // One page, so it answers to everything the four used to.
@@ -246,6 +241,10 @@ struct SettingsView: View {
             if let match = searchable.first(where: { $0.id == raw }) { return match }
             switch raw {
             case "installedAgents": return .agents
+            // The preset editor is gone; presets are roles in code now, and
+            // the page that comes closest to what the editor was for — which
+            // agent does what — is the agents list.
+            case "presets": return .agents
             // Installing an agent's status hooks is what the Agents list does
             // with Connect; the page that did it a second time is gone.
             case "hooks": return .agents
@@ -375,7 +374,6 @@ struct SettingsView: View {
         case .agents: AgentsSettingsPage(open: { pane = .agent($0) })
         case .agent(let provider):
             AgentSettingsPage(provider: provider, back: { pane = .agents })
-        case .presets: SessionPresetsSettingsPage()
         case .blueprints: BlueprintsSettingsPage()
         case .launcher: LauncherSettingsPage()
         case .notifications: NotificationsSettingsPage()
