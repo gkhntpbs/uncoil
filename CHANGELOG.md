@@ -12,7 +12,7 @@ release notes are written once, here.
 
 ### Fixed
 
-- The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now also says where it is and which version answered, instead of one word and a wall of the tool's own output; the output is still there, behind a disclosure, because on a failure it is the only thing that explains it.
+- The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
 
 - A session on an account profile no longer breaks Codex. Project extension
   scope was read from `~/.codex/config.toml` while the session launched with the

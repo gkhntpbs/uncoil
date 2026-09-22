@@ -15,24 +15,19 @@ import SwiftUI
 
 // MARK: - The shape both drivers share
 
-/// What came of running something. Kept apart from the tool's own output so the
-/// page can say what happened in its own voice and still let the output be read
-/// when it is the only thing that explains a failure.
+/// What came of running something, in Uncoil's words.
+///
+/// A tool's own output never reaches the screen: it is read — see
+/// `DriverReport` — and what it meant is what gets shown. A page that pastes in
+/// ticks, crosses and stack traces is asking the user to do the interpreting.
 struct DriverOutcome: Equatable {
     var level: SettingsStatusLine.Level
     var summary: String
-    var output: String?
 
-    static func output(_ text: String, ok: Bool) -> DriverOutcome? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return DriverOutcome(
-            level: ok ? .ok : .error,
-            summary: ok
-                ? String(localized: "Finished.")
-                : String(localized: "It did not finish. The output says why."),
-            output: trimmed
-        )
+    /// A failure explained in the tool's own first line, when it had one, and
+    /// by the fallback when it did not.
+    static func failure(_ text: String, fallback: String) -> DriverOutcome {
+        DriverOutcome(level: .error, summary: DriverReport.sentence(text) ?? fallback)
     }
 }
 
@@ -45,8 +40,12 @@ private struct DriverCard<Actions: View>: View {
     let status: DependencyInfo?
     let state: (level: SettingsStatusLine.Level, text: String)
     let outcome: DriverOutcome?
-    @Binding var isShowingOutput: Bool
     @ViewBuilder let actions: Actions
+
+    /// What the driver says it still needs, read out of its own status output.
+    private var requirements: [DriverRequirement] {
+        DriverReport.requirements(in: status?.detail ?? "")
+    }
 
     var body: some View {
         AdaptiveRow {
@@ -63,20 +62,24 @@ private struct DriverCard<Actions: View>: View {
                 if let version = status.version, !version.isEmpty {
                     SettingsDetailLine(label: String(localized: "version"), value: version)
                 }
-                if let detail = status.detail, !detail.isEmpty {
-                    SettingsDetailLine(
-                        label: String(localized: "reports"), value: detail, wraps: true
-                    )
-                }
-                // What to do about it, in the tool's own words, and only while
-                // there is something to do.
-                if !status.installed, let remedy = status.remedy, !remedy.isEmpty {
-                    SettingsDetailLine(
-                        label: String(localized: "needs"),
-                        value: remedy,
-                        wraps: true,
-                        level: .warning
-                    )
+            }
+        }
+
+        // What the driver needs from macOS, one row each. This is the same
+        // answer its status command gives in ticks and crosses; it is read
+        // rather than shown.
+        if !requirements.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(requirements) { requirement in
+                    AdaptiveRow {
+                        Text(name(of: requirement))
+                            .font(.callout)
+                    } control: {
+                        SettingsStatusLine(
+                            level: level(of: requirement),
+                            text: label(for: requirement)
+                        )
+                    }
                 }
             }
         }
@@ -84,26 +87,29 @@ private struct DriverCard<Actions: View>: View {
         actions
 
         if let outcome {
-            VStack(alignment: .leading, spacing: 6) {
-                SettingsStatusLine(level: outcome.level, text: outcome.summary)
-                if let output = outcome.output {
-                    // The tool's own output is kept, because on a failure it is
-                    // the only thing that explains anything — but it is not the
-                    // page's answer, so it stays behind a disclosure.
-                    DisclosureGroup(isExpanded: $isShowingOutput) {
-                        Text(output)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(Theme.textFaint)
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } label: {
-                        Text("Output")
-                            .font(.caption)
-                            .foregroundStyle(Theme.textDim)
-                    }
-                }
-            }
+            SettingsStatusLine(level: outcome.level, text: outcome.summary)
+        }
+    }
+
+    /// Tools are inconsistent about case; the page is not.
+    private func name(of requirement: DriverRequirement) -> String {
+        guard let first = requirement.name.first else { return requirement.name }
+        return first.uppercased() + requirement.name.dropFirst()
+    }
+
+    private func level(of requirement: DriverRequirement) -> SettingsStatusLine.Level {
+        switch requirement.isGranted {
+        case true: .ok
+        case false: .warning
+        default: .neutral
+        }
+    }
+
+    private func label(for requirement: DriverRequirement) -> String {
+        switch requirement.isGranted {
+        case true: String(localized: "granted")
+        case false: String(localized: "not granted")
+        default: String(localized: "unknown")
         }
     }
 }
@@ -119,7 +125,6 @@ struct AgentBrowserSetupSection: View {
     @State private var isWorking = false
     @State private var isProbing = false
     @State private var outcome: DriverOutcome?
-    @State private var isShowingOutput = false
     @AppStorage(AgentBrowserAdapter.executablePreferenceKey)
     private var executablePath = ""
 
@@ -147,8 +152,7 @@ struct AgentBrowserSetupSection: View {
             symbol: "globe",
             status: status,
             state: state,
-            outcome: outcome,
-            isShowingOutput: $isShowingOutput
+            outcome: outcome
         ) {
             SettingsActionRow(isWorking: isWorking || isProbing) {
                 if status?.installed == true {
@@ -236,16 +240,14 @@ struct AgentBrowserSetupSection: View {
             }.value
             isWorking = false
             await refreshStatus()
-            let installed = status?.installed == true
-            outcome = DriverOutcome.output(
-                [result.stdoutString, result.stderrString].joined(separator: "\n"),
-                ok: installed
-            ) ?? DriverOutcome(
-                level: installed ? .ok : .error,
-                summary: installed
-                    ? String(localized: "Chromium is installed.")
-                    : String(localized: "The install finished but Chromium is still not there.")
-            )
+            // The probe is the verdict, not the installer's exit code: what
+            // matters is whether a runtime is there now.
+            outcome = status?.installed == true
+                ? DriverOutcome(level: .ok, summary: String(localized: "Chromium is installed and ready."))
+                : DriverOutcome.failure(
+                    [result.stderrString, result.stdoutString].joined(separator: "\n"),
+                    fallback: String(localized: "The install finished but no Chromium runtime is there.")
+                )
         }
     }
 
@@ -270,10 +272,9 @@ struct AgentBrowserSetupSection: View {
                         summary: String(localized: "Opened a page and closed it again.")
                     )
                 case .failure(let error):
-                    outcome = DriverOutcome(
-                        level: .error,
-                        summary: error.message,
-                        output: error.remedy
+                    outcome = DriverOutcome.failure(
+                        error.message,
+                        fallback: String(localized: "The browser did not open.")
                     )
                 }
                 return (adapter.probe(), outcome)
@@ -306,7 +307,6 @@ struct CuaDriverSetupSection: View {
     @State private var isWorking = false
     @State private var isProbing = false
     @State private var outcome: DriverOutcome?
-    @State private var isShowingOutput = false
 
     var body: some View {
         DriverCard(
@@ -315,8 +315,7 @@ struct CuaDriverSetupSection: View {
             symbol: "display",
             status: status,
             state: state,
-            outcome: outcome,
-            isShowingOutput: $isShowingOutput
+            outcome: outcome
         ) {
             SettingsActionRow(isWorking: isWorking || isProbing) {
                 if status?.installed == true {
@@ -365,10 +364,9 @@ struct CuaDriverSetupSection: View {
                         summary: String(localized: "Answered a tool call.")
                     )
                 case .failure(let error):
-                    outcome = DriverOutcome(
-                        level: .error,
-                        summary: error.message,
-                        output: error.remedy
+                    outcome = DriverOutcome.failure(
+                        error.message,
+                        fallback: String(localized: "The browser did not open.")
                     )
                 }
                 return (adapter.probe(), outcome)
@@ -393,15 +391,17 @@ struct CuaDriverSetupSection: View {
             }.value
             isWorking = false
             await refreshStatus()
-            outcome = DriverOutcome.output(
-                [result.stdoutString, result.stderrString].joined(separator: "\n"),
-                ok: result.exitCode == 0
-            ) ?? DriverOutcome(
-                level: result.exitCode == 0 ? .ok : .error,
-                summary: result.exitCode == 0
-                    ? String(localized: "Permissions granted.")
-                    : String(localized: "The driver refused to grant its permissions.")
-            )
+            // macOS decides, not the exit code: the re-probe above says which
+            // permissions are actually in hand, and the rows show it.
+            let outstanding = DriverReport
+                .requirements(in: status?.detail ?? "")
+                .filter { $0.isGranted != true }
+            outcome = outstanding.isEmpty
+                ? DriverOutcome(level: .ok, summary: String(localized: "Every permission is in place."))
+                : DriverOutcome(
+                    level: .warning,
+                    summary: String(localized: "macOS still has to be told: \(outstanding.map(\.name).joined(separator: ", ")).")
+                )
         }
     }
 

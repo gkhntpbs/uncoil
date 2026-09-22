@@ -2,7 +2,7 @@ import Foundation
 
 final class CuaDriverAdapter: ComputerEngine, @unchecked Sendable {
     static let binaryName = "cua-driver"
-    static let installRemedy = "open Uncoil Settings → Permissions → Computer Use Setup and install Cua Driver from the official cua.ai guide"
+    static let installRemedy = "open Uncoil Settings → Integrations → Drivers and install Cua Driver from the official cua.ai guide"
 
     typealias Run = @Sendable (String, [String], TimeInterval) -> ProcessRunner.Result
 
@@ -352,7 +352,7 @@ final class CuaDriverAdapter: ComputerEngine, @unchecked Sendable {
             return .failure(EngineError(
                 .computerUnavailable,
                 combinedText(launched),
-                remedy: "start Cua Driver from Uncoil Settings → Permissions"
+                remedy: "start Cua Driver from Uncoil Settings → Integrations → Drivers"
             ))
         }
         for _ in 0..<20 {
@@ -365,7 +365,7 @@ final class CuaDriverAdapter: ComputerEngine, @unchecked Sendable {
         return .failure(EngineError(
             .computerUnavailable,
             "Cua Driver daemon did not become ready",
-            remedy: "open Uncoil Settings → Permissions → Computer Use Setup"
+            remedy: "open Uncoil Settings → Integrations → Drivers"
         ))
     }
 
@@ -420,14 +420,14 @@ final class CuaDriverAdapter: ComputerEngine, @unchecked Sendable {
             return EngineError(
                 .permissionDenied,
                 message,
-                remedy: "open Uncoil Settings → Permissions → Computer Use Setup and grant Accessibility + Screen Recording"
+                remedy: "open Uncoil Settings → Integrations → Drivers and grant Accessibility + Screen Recording"
             )
         }
         if lower.contains("daemon is not running") || lower.contains("socket") {
             return EngineError(
                 .computerUnavailable,
                 message,
-                remedy: "start Cua Driver from Uncoil Settings → Permissions"
+                remedy: "start Cua Driver from Uncoil Settings → Integrations → Drivers"
             )
         }
         if lower.contains("no such window")

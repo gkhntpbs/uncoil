@@ -22,7 +22,7 @@ import Foundation
 /// ever passed through a shell.
 final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
     static let binaryName = "agent-browser"
-    static let installRemedy = "Open Uncoil Settings → Permissions → Agent Browser Setup"
+    static let installRemedy = "Open Uncoil Settings → Integrations → Drivers"
     static let executablePreferenceKey = "agentBrowserExecutablePath"
 
     struct BrowserChoice: Identifiable, Equatable {
