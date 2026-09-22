@@ -90,7 +90,7 @@ struct McpSettingsPage: View {
                     )
                 } control: {
                     Button(String(localized: "Capabilities…")) {
-                        Router.shared.go(to: .settings(pane: SettingsView.Pane.permissions.rawValue))
+                        Router.shared.go(to: .settings(pane: SettingsView.Pane.permissions.id))
                     }
                     .settingsID("mcp.openPermissions")
                 }

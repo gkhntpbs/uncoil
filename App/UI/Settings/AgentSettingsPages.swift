@@ -1,74 +1,9 @@
 import SwiftUI
 
-// MARK: - Accounts
+// MARK: - Rows shared by the agent pages
 
-/// Settings → Agentlar → Hesaplar. One profile per isolated provider config
-/// directory, plus the provider's own default profile, which Uncoil does not own
-/// and therefore cannot delete.
-struct AccountsSettingsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-    @State private var newAccountName = ""
-    @State private var addingFor: AgentProvider?
-
-    private let providers: [AgentProvider] = AgentProvider.agents
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Accounts"),
-            subtitle: String(localized: "Each account uses its own config folder, so work and personal sessions on the same provider stay apart.")
-        ) {
-            ForEach(providers) { provider in
-                Section {
-                    ForEach(settings.accounts(for: provider)) { profile in
-                        AccountRow(profile: profile)
-                    }
-
-                    if addingFor == provider {
-                        SettingsTextField(
-                            title: String(localized: "New account"),
-                            detail: String(localized: "A separate profile is created, with its own config folder."),
-                            prompt: String(localized: "e.g. Work, Personal"),
-                            text: $newAccountName,
-                            onSubmit: { commit(provider) }
-                        )
-                        .settingsID("accounts.newName.\(provider.rawValue)")
-
-                        HStack {
-                            Button("Add") { commit(provider) }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(newAccountName.trimmingCharacters(in: .whitespaces).isEmpty)
-                            Button("Cancel") { addingFor = nil }
-                            Spacer()
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Text("\(provider.displayName) accounts")
-                        Spacer()
-                        Button {
-                            addingFor = provider
-                            newAccountName = ""
-                        } label: {
-                            Label("Add an account", systemImage: "plus")
-                                .labelStyle(.iconOnly)
-                        }
-                        .buttonStyle(.borderless)
-                        .settingsID("accounts.add.\(provider.rawValue)")
-                    }
-                }
-            }
-        }
-    }
-
-    private func commit(_ provider: AgentProvider) {
-        let trimmed = newAccountName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        settings.addAccount(provider: provider, name: trimmed)
-        addingFor = nil
-    }
-}
-
-private struct AccountRow: View {
+/// One login of one agent. Rendered by `AgentSettingsPage`.
+struct AccountRow: View {
     let profile: AccountProfile
     @EnvironmentObject private var settings: SettingsStore
     @State private var email: String?
@@ -130,48 +65,9 @@ private struct AccountRow: View {
     }
 }
 
-// MARK: - CLI tools
-
-struct CLIToolsSettingsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-
-    private let providers: [AgentProvider] = AgentProvider.agents
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "CLI Tools"),
-            subtitle: String(localized: "What is installed on this Mac, where it lives, and how Uncoil would update it.")
-        ) {
-            Section {
-                ForEach(providers) { provider in
-                    CLIToolRow(provider: provider)
-                }
-            } footer: {
-                HStack {
-                    Spacer()
-                    Button {
-                        Task { await settings.checkCLIUpdates() }
-                    } label: {
-                        if settings.cliChecking {
-                            HStack(spacing: 6) {
-                                ProgressView().controlSize(.small)
-                                Text("Checking…")
-                            }
-                        } else {
-                            Text("Check for Updates")
-                        }
-                    }
-                    .disabled(settings.cliChecking)
-                    .settingsID("cli.check")
-                }
-            }
-
-        }
-        .task { await settings.checkCLIUpdates() }
-    }
-}
-
-private struct CLIToolRow: View {
+/// The installed CLI of one agent: where it is, which version, and what
+/// updating it would run. Rendered by `AgentSettingsPage`.
+struct CLIToolRow: View {
     let provider: AgentProvider
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
@@ -376,83 +272,7 @@ private struct CLIToolRow: View {
     }
 }
 
-// MARK: - Launch arguments
-
-struct LaunchArgumentsSettingsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-
-    private let providers: [AgentProvider] = AgentProvider.agents
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Run Parameters"),
-            subtitle: String(localized: "Appended to the launch command; applies from the next session on.")
-        ) {
-            Section {
-                ForEach(providers) { provider in
-                    SettingsTextField(
-                        title: provider.displayName,
-                        prompt: provider == .claude ? String(localized: "e.g. --model opus") : String(localized: "e.g. --full-auto"),
-                        text: Binding(
-                            get: { settings.extraArguments[provider.rawValue] ?? "" },
-                            set: { settings.extraArguments[provider.rawValue] = $0 }
-                        ),
-                        monospaced: true,
-                        onSubmit: { settings.save() }
-                    )
-                    .settingsID("launchArgs.\(provider.rawValue)")
-                }
-            }
-        }
-        .onDisappear { settings.save() }
-    }
-}
-
-// MARK: - Mode & keyboard
-
-/// What an agent is allowed to do on its own, before anyone asks it anything.
-///
-/// This page used to be called "Mode and Keyboard" and held two unrelated
-/// things: a per-agent policy, and how the keyboard behaves in a prompt. One
-/// is about trust and the other about typing, and a page whose title has to
-/// name both is a page that should be two.
-struct AgentBehaviorSettingsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-
-    private let providers: [AgentProvider] = AgentProvider.agents
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Working Mode"),
-            subtitle: String(localized: "How much each agent does without asking.")
-        ) {
-            Section {
-                ForEach(providers) { provider in
-                    Picker(selection: Binding(
-                        get: { settings.workingMode(for: provider) },
-                        set: { settings.setWorkingMode($0, for: provider) }
-                    )) {
-                        ForEach(AgentWorkingMode.options(for: provider)) { mode in
-                            Text(mode.label(for: provider)).tag(mode)
-                        }
-                    } label: {
-                        SettingsLabel(
-                            title: provider.displayName,
-                            detail: settings.workingMode(for: provider).detail(for: provider)
-                        )
-                    }
-                    .settingsID("agentBehavior.workingMode.\(provider.rawValue)")
-                }
-            } header: {
-                Text("Default agent mode")
-            } footer: {
-                SettingsNote(String(localized: "New sessions start in the selected mode; open sessions are unaffected."))
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("settings.agentBehavior.container")
-    }
-}
+// MARK: - Input
 
 /// Typing and pasting, which is app behaviour rather than agent policy.
 struct InputSettingsPage: View {

@@ -53,24 +53,25 @@ struct SettingsView: View {
             }
         }
 
-        var panes: [Pane] { Pane.allCases.filter { $0.category == self } }
     }
 
-    /// One detail page. Raw values are stable: the command palette and the UI
-    /// tests address panes by them.
-    enum Pane: String, CaseIterable, Identifiable {
-        // Declaration order is the order a category lists its pages in, so it
-        // is the reading order: the page most people want first, then the ones
-        // they go looking for. Raw values are addressed by deep links and the
-        // command palette and are never changed by reordering.
+    /// One detail page.
+    ///
+    /// Not `CaseIterable`: the Agents category has one page per agent, so the
+    /// list is partly derived from what is installed on this Mac. `id` is the
+    /// stable address — the command palette, deep links and the UI tests use
+    /// it — and an agent page's is `agent.<provider>`.
+    enum Pane: Hashable, Identifiable {
         case general
         case input
 
-        case installedAgents
-        case accounts
-        case cliTools
-        case launchArgs
-        case agentBehavior
+        /// Which agent CLIs exist and how deeply each is connected. The pages
+        /// below configure one agent; this one is about the set of them, and it
+        /// is also the only place to reach an agent that is not installed.
+        case agents
+        /// Everything about one agent: its logins, what it does on its own,
+        /// and the CLI Uncoil runs.
+        case agent(AgentProvider)
         case presets
         case blueprints
 
@@ -92,13 +93,69 @@ struct SettingsView: View {
 
         case about
 
-        var id: String { rawValue }
+        var id: String {
+            switch self {
+            case .general: "general"
+            case .input: "input"
+            case .agents: "agents"
+            case .agent(let provider): "agent.\(provider.rawValue)"
+            case .presets: "presets"
+            case .blueprints: "blueprints"
+            case .notifications: "notifications"
+            case .notificationEvents: "notificationEvents"
+            case .reminders: "reminders"
+            case .quietHours: "quietHours"
+            case .theme: "theme"
+            case .menuBar: "menuBar"
+            case .launcher: "launcher"
+            case .permissions: "permissions"
+            case .mcp: "mcp"
+            case .hooks: "hooks"
+            case .drivers: "drivers"
+            case .github: "github"
+            case .privacyData: "privacyData"
+            case .about: "about"
+            }
+        }
+
+        /// Everything that does not depend on what is installed. Reading order
+        /// within a category is the order here.
+        static let fixed: [Pane] = [
+            .general, .input,
+            .agents, .presets, .blueprints,
+            .notifications, .notificationEvents, .reminders, .quietHours,
+            .theme, .menuBar, .launcher,
+            .permissions, .mcp, .hooks, .drivers, .github, .privacyData,
+            .about,
+        ]
+
+        /// The source list: the fixed pages, with a page per installed agent
+        /// inserted into Agents. An agent that is not installed has no page of
+        /// its own — it is reached from the Agents page, which is where the
+        /// answer to "it is not here" lives.
+        static func all(installed: Set<AgentProvider>) -> [Pane] {
+            var panes: [Pane] = []
+            for pane in fixed {
+                panes.append(pane)
+                if pane == .agents {
+                    panes.append(contentsOf: AgentProvider.agents
+                        .filter { installed.contains($0) }
+                        .map(Pane.agent))
+                }
+            }
+            return panes
+        }
+
+        /// What the command palette and the search box may offer. Every agent
+        /// is here whether installed or not: a user looking for Codex should
+        /// find its page and read that it is missing, rather than find nothing
+        /// and conclude Uncoil has no such setting.
+        static let searchable: [Pane] = all(installed: Set(AgentProvider.agents))
 
         var category: Category {
             switch self {
             case .general, .input: .general
-            case .installedAgents, .accounts, .cliTools, .launchArgs, .agentBehavior, .presets,
-                 .blueprints: .agents
+            case .agents, .agent, .presets, .blueprints: .agents
             case .notifications, .notificationEvents, .reminders, .quietHours: .notifications
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
@@ -119,11 +176,8 @@ struct SettingsView: View {
             switch self {
             case .general: String(localized: "General")
             case .input: String(localized: "Keyboard and Input")
-            case .installedAgents: String(localized: "Installed Agents")
-            case .accounts: String(localized: "Accounts")
-            case .cliTools: String(localized: "CLI Tools")
-            case .launchArgs: String(localized: "Run Parameters")
-            case .agentBehavior: String(localized: "Working Mode")
+            case .agents: String(localized: "Installed Agents")
+            case .agent(let provider): provider.descriptor.displayName
             case .presets: String(localized: "Session Presets")
             case .blueprints: String(localized: "Blueprints")
             case .launcher: String(localized: "Quick Launch")
@@ -147,11 +201,8 @@ struct SettingsView: View {
             switch self {
             case .general: "gearshape"
             case .input: "keyboard"
-            case .installedAgents: "point.3.connected.trianglepath.dotted"
-            case .accounts: "person.2"
-            case .cliTools: "terminal"
-            case .launchArgs: "command"
-            case .agentBehavior: "slider.horizontal.3"
+            case .agents: "point.3.connected.trianglepath.dotted"
+            case .agent: "person.2"
             case .presets: "square.stack.3d.up"
             case .blueprints: "square.grid.2x2"
             case .launcher: "bolt"
@@ -179,11 +230,12 @@ struct SettingsView: View {
             case .general:
                 "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette"
             case .input: "klavye keyboard shift enter newline satır line yapıştır paste görsel image ⌘v pano clipboard giriş input option meta alt değiştirici modifier"
-            case .installedAgents: "agent ajan bağla connect hook kanca algıla detect tara scan claude codex gemini cursor amp opencode grok hermes seviye level konum location bul locate yol path import içe aktar kurulum install bulunamadı not found"
-            case .accounts: "hesap account claude codex login giriş profil profile e-posta email"
-            case .cliTools: "cli güncelle update sürüm version brew npm kurulum install"
-            case .launchArgs: "parametre argüman argument model flag bayrak"
-            case .agentBehavior: "agent davranış behavior mod mode auto plan onay approval yetki varsayılan default"
+            case .agents: "agent ajan bağla connect hook kanca algıla detect tara scan kurulu installed seviye level konum location bul locate yol path kurulum install bulunamadı not found"
+            // An agent page holds what four matrices used to, so it answers to
+            // all of their terms — plus the agent's own name, which is what a
+            // user actually types.
+            case .agent(let provider):
+                "\(provider.descriptor.displayName) \(provider.descriptor.fullName) hesap account login giriş profil profile e-posta email cli güncelle update sürüm version brew npm kurulum install parametre argüman argument model flag bayrak davranış behavior mod mode auto plan onay approval yetki varsayılan default konum location yol path"
             case .presets: "preset alt agent child yetki capability prompt şablon template"
             case .blueprints: "blueprint şema plan iskelet scaffold kurulum setup yeni proje new project prompt şablon template klasör yapısı structure"
             case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
@@ -206,9 +258,16 @@ struct SettingsView: View {
         var searchText: String { "\(title) \(category.title) \(keywords)".lowercased() }
 
         /// Deep links written before the pane tree was reorganised.
+        ///
+        /// The four cross-agent matrices — accounts, CLI tools, run parameters,
+        /// working mode — no longer exist as pages. A link to one cannot name
+        /// which agent was meant, so it lands on the Agents page, which lists
+        /// them all and is one click from every setting the matrix held.
         static func resolve(_ raw: String) -> Pane? {
-            if let exact = Pane(rawValue: raw) { return exact }
+            if let match = searchable.first(where: { $0.id == raw }) { return match }
             switch raw {
+            case "installedAgents": return .agents
+            case "accounts", "cliTools", "launchArgs", "agentBehavior": return .agents
             // A project's own notification settings moved beside the
             // project, into its settings sheet; the deep link lands on the
             // notification defaults they inherit from.
@@ -223,10 +282,16 @@ struct SettingsView: View {
         }
     }
 
+    /// The source list of one category. Built from what is installed, so the
+    /// Agents category grows a page when an agent CLI appears.
+    private func panes(in category: Category) -> [Pane] {
+        Pane.all(installed: settings.installedProviders).filter { $0.category == category }
+    }
+
     private var matches: [Pane] {
         let query = search.trimmingCharacters(in: .whitespaces).lowercased()
         guard !query.isEmpty else { return [] }
-        return Pane.allCases.filter { $0.searchText.contains(query) }
+        return Pane.searchable.filter { $0.searchText.contains(query) }
     }
 
     private var isSearching: Bool { !matches.isEmpty || !search.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -281,7 +346,7 @@ struct SettingsView: View {
             } else {
                 ForEach(Category.allCases) { category in
                     Section(category.title) {
-                        ForEach(category.panes) { paneRow($0, showsCategory: false) }
+                        ForEach(panes(in: category)) { paneRow($0, showsCategory: false) }
                     }
                 }
             }
@@ -309,7 +374,7 @@ struct SettingsView: View {
             }
         }
         .tag(candidate)
-        .accessibilityIdentifier("settings.pane.\(candidate.rawValue)")
+        .accessibilityIdentifier("settings.pane.\(candidate.id)")
     }
 
     @ViewBuilder
@@ -317,11 +382,8 @@ struct SettingsView: View {
         switch pane {
         case .general: GeneralSettingsPage()
         case .input: InputSettingsPage()
-        case .installedAgents: AgentsSettingsPage()
-        case .accounts: AccountsSettingsPage()
-        case .cliTools: CLIToolsSettingsPage()
-        case .launchArgs: LaunchArgumentsSettingsPage()
-        case .agentBehavior: AgentBehaviorSettingsPage()
+        case .agents: AgentsSettingsPage()
+        case .agent(let provider): AgentSettingsPage(provider: provider)
         case .presets: SessionPresetsSettingsPage()
         case .blueprints: BlueprintsSettingsPage()
         case .launcher: LauncherSettingsPage()

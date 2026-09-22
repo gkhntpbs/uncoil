@@ -367,7 +367,7 @@ struct MainWindow: View {
         palette.configure(
             projectStore: projectStore,
             sessionStore: sessionStore,
-            settingsPanes: SettingsView.Pane.allCases.map { ($0.rawValue, $0.title) },
+            settingsPanes: SettingsView.Pane.searchable.map { ($0.id, $0.title) },
             launcherProviders: { [weak settings] in
                 settings?.launcherProviders ?? AgentProvider.sessionKinds
             }

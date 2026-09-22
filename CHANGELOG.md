@@ -20,6 +20,8 @@ release notes are written once, here.
 
 ### Changed
 
+- Settings has a page per agent. Setting up Codex used to mean visiting four pages — Installed Agents, Accounts, CLI Tools, Run Parameters, Working Mode — each one a table of every agent against a single setting, so three quarters of every page was about some other agent. Now the page is the agent: its logins, what it does without asking, the parameters its sessions start with, and the CLI Uncoil runs, in one place. Links and palette entries written against the old pages open the Agents list, which still says which CLIs were found and where they live.
+
 - Quick Launch reaches every agent. The pill of agent marks over a project row now ends in a plus once the pointer is on it, and that opens the full list — the agents left out of your Quick Launch order, and the plain terminal, which until now could only be started from the command palette. The marks themselves are unchanged: one click starts that agent, right-click picks a second login.
 - Clicking a project opens and closes it. The disclosure chevron is gone: it was an 8pt mark at the far edge of the row that had to be aimed at, and the row itself is the target now. A folded project opens when you click it, and the project you are already on folds away; arriving at a project from somewhere else only selects it, so getting to a project never hides what it is holding.
 - A folded project still shows the session you are looking at. Folding one used to hide everything under it, including the session filling the rest of the window — so the sidebar could show no trace of the agent you were reading, and there was no row to click back to. That one row stays, whatever is folded.

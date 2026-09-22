@@ -111,18 +111,64 @@ final class MenuBarPrefsTests: XCTestCase {
 /// The settings tree itself: every pane is reachable, deep links still resolve,
 /// and search finds settings by the words a user would type.
 final class SettingsNavigationTests: XCTestCase {
-    func testEveryPaneBelongsToACategoryThatListsIt() {
-        for pane in SettingsView.Pane.allCases {
-            XCTAssertTrue(
-                pane.category.panes.contains(pane),
-                "\(pane.rawValue) is not listed by \(pane.category.rawValue)"
-            )
-        }
+    /// Every page has a unique address, or a deep link would open whichever
+    /// one happened to be found first.
+    func testEveryPaneHasAUniqueID() {
+        let ids = SettingsView.Pane.searchable.map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count, "two pages share an id")
     }
 
     func testEveryCategoryHasAtLeastOnePane() {
         for category in SettingsView.Category.allCases {
-            XCTAssertFalse(category.panes.isEmpty, "\(category.rawValue) is empty")
+            XCTAssertFalse(
+                SettingsView.Pane.searchable.filter { $0.category == category }.isEmpty,
+                "\(category.rawValue) is empty"
+            )
+        }
+    }
+
+    /// The Agents category is one page per agent plus the page about the set of
+    /// them. It used to be four matrices of every agent against one setting,
+    /// which meant setting up one agent took four pages and each of them showed
+    /// two other agents' rows.
+    func testAgentsCategoryIsOnePagePerInstalledAgent() {
+        let installed: Set<AgentProvider> = [.claude, .codex]
+        let panes = SettingsView.Pane.all(installed: installed)
+            .filter { $0.category == .agents }
+        XCTAssertEqual(
+            panes.filter { if case .agent = $0 { true } else { false } },
+            [.agent(.claude), .agent(.codex)]
+        )
+        XCTAssertTrue(panes.contains(.agents), "no page lists the set of agents")
+    }
+
+    /// An agent that is not installed has no page in the source list — there is
+    /// nothing to configure until there is a binary — but it is still
+    /// searchable, so looking for it finds the page that says it is missing
+    /// rather than finding nothing at all.
+    func testAnUninstalledAgentIsSearchableButNotListed() {
+        let listed = SettingsView.Pane.all(installed: [.claude])
+        XCTAssertFalse(listed.contains(.agent(.codex)))
+        XCTAssertTrue(SettingsView.Pane.searchable.contains(.agent(.codex)))
+    }
+
+    /// The page is the agent, so the agent's own name is what finds it.
+    func testAnAgentPageIsFoundByItsName() {
+        for provider in AgentProvider.agents {
+            let name = provider.descriptor.displayName.lowercased()
+            XCTAssertTrue(
+                SettingsView.Pane.agent(provider).searchText.contains(name),
+                "\(name) does not find its own page"
+            )
+        }
+    }
+
+    /// The words the four matrices answered to still reach an agent's page:
+    /// that is where those settings went.
+    func testAnAgentPageAnswersToWhatTheMatricesWereCalled() {
+        let text = SettingsView.Pane.agent(.codex).searchText
+        for term in ["hesap", "sürüm", "parametre", "mod"] {
+            XCTAssertTrue(text.contains(term), "\(term) finds no agent page")
         }
     }
 
@@ -132,7 +178,7 @@ final class SettingsNavigationTests: XCTestCase {
     func testNoCategoryIsAHeadingOverASinglePage() {
         for category in SettingsView.Category.allCases where category != .about {
             XCTAssertGreaterThan(
-                category.panes.count, 1,
+                SettingsView.Pane.searchable.filter { $0.category == category }.count, 1,
                 "\(category.rawValue) holds a single page"
             )
         }
@@ -150,10 +196,10 @@ final class SettingsNavigationTests: XCTestCase {
         // do, the control plane that enforces it, what it connects to, and
         // what it keeps.
         for pane: SettingsView.Pane in [.permissions, .mcp, .hooks, .drivers, .github, .privacyData] {
-            XCTAssertEqual(pane.category, .uncoil, pane.rawValue)
+            XCTAssertEqual(pane.category, .uncoil, pane.id)
         }
         // Agent policy stays with the agents; typing does not.
-        XCTAssertEqual(SettingsView.Pane.agentBehavior.category, .agents)
+        XCTAssertEqual(SettingsView.Pane.agent(.claude).category, .agents)
         XCTAssertEqual(SettingsView.Pane.input.category, .general)
     }
 
@@ -162,22 +208,34 @@ final class SettingsNavigationTests: XCTestCase {
     func testLinksToTheSplitPageStillResolve() {
         XCTAssertEqual(SettingsView.Pane.resolve("keyboard"), .input)
         XCTAssertEqual(SettingsView.Pane.resolve("imagePaste"), .input)
-        // The page that kept the raw value keeps answering to it.
-        XCTAssertEqual(SettingsView.Pane.resolve("agentBehavior"), .agentBehavior)
+    }
+
+    /// The four cross-agent matrices are gone. A link to one cannot say which
+    /// agent was meant, so it lands on the page that lists them all — one click
+    /// from every setting the matrix held, and never on the wrong agent.
+    func testLinksToTheRetiredMatricesLandOnTheAgentsPage() {
+        for raw in ["installedAgents", "accounts", "cliTools", "launchArgs", "agentBehavior"] {
+            XCTAssertEqual(SettingsView.Pane.resolve(raw), .agents, raw)
+        }
+    }
+
+    /// An agent page is addressable, which is what lets the palette open it.
+    func testAnAgentPageResolvesFromItsID() {
+        XCTAssertEqual(SettingsView.Pane.resolve("agent.codex"), .agent(.codex))
+        XCTAssertNil(SettingsView.Pane.resolve("agent.nosuchagent"))
     }
 
     func testLegacyDeepLinksStillResolve() {
         // Written by older builds of the command palette.
         XCTAssertEqual(SettingsView.Pane.resolve("defaults"), .general)
         XCTAssertEqual(SettingsView.Pane.resolve("transcripts"), .privacyData)
-        XCTAssertEqual(SettingsView.Pane.resolve("agentBehavior"), .agentBehavior)
         XCTAssertEqual(SettingsView.Pane.resolve("notifications"), .notifications)
         XCTAssertNil(SettingsView.Pane.resolve("nope"))
     }
 
     func testSearchFindsPanesByWhatTheSettingIsCalled() {
         func search(_ query: String) -> [SettingsView.Pane] {
-            SettingsView.Pane.allCases.filter { $0.searchText.contains(query.lowercased()) }
+            SettingsView.Pane.searchable.filter { $0.searchText.contains(query.lowercased()) }
         }
         XCTAssertTrue(search("hatırlatma").contains(.reminders))
         XCTAssertTrue(search("ikinci kez").contains(.reminders))
