@@ -982,14 +982,19 @@ struct AgentLauncherStrip: View {
                     // one.
                     .contextMenu { logins(for: provider) }
             }
-            if hovering {
+            // The plus keeps its place whether it is shown or not: only its
+            // opacity follows the hover. Inserting it into the stack made the
+            // trailing-aligned pill grow leftwards, so every mark slid out from
+            // under the cursor at the moment it was aimed at.
+            Group {
                 Rectangle()
                     .fill(Theme.border)
                     .frame(width: 1, height: 12)
                     .padding(.horizontal, 1)
                 moreMenu
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
+            .opacity(hovering ? 1 : 0)
+            .allowsHitTesting(hovering)
         }
         .padding(3)
         .background(Theme.panelActive, in: Capsule())
