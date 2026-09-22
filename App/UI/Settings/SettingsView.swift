@@ -35,8 +35,9 @@ struct SettingsView: View {
     enum Category: String, CaseIterable, Identifiable {
         case general
         case agents
+        case integrations
         case appearance
-        case uncoil
+        case advanced
         case about
 
         var id: String { rawValue }
@@ -45,8 +46,9 @@ struct SettingsView: View {
             switch self {
             case .general: String(localized: "General")
             case .agents: String(localized: "Agents")
+            case .integrations: String(localized: "Integrations")
             case .appearance: String(localized: "Appearance")
-            case .uncoil: "Uncoil"
+            case .advanced: String(localized: "Advanced")
             case .about: String(localized: "About")
             }
         }
@@ -81,7 +83,6 @@ struct SettingsView: View {
 
         case permissions
         case mcp
-        case hooks
         case drivers
         case github
         case privacyData
@@ -102,7 +103,6 @@ struct SettingsView: View {
             case .launcher: "launcher"
             case .permissions: "permissions"
             case .mcp: "mcp"
-            case .hooks: "hooks"
             case .drivers: "drivers"
             case .github: "github"
             case .privacyData: "privacyData"
@@ -116,7 +116,8 @@ struct SettingsView: View {
             .general, .input, .notifications,
             .agents, .presets, .blueprints,
             .theme, .menuBar, .launcher,
-            .permissions, .mcp, .hooks, .drivers, .github, .privacyData,
+            .github, .drivers,
+            .permissions, .mcp, .privacyData,
             .about,
         ]
 
@@ -148,15 +149,15 @@ struct SettingsView: View {
             case .agents, .agent, .presets, .blueprints: .agents
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
-            // Uncoil's own machinery: what it lets agents do, how it talks to
-            // them, what it connects to, and what it keeps.
-            //
-            // "Security and Data" and "Integrations" were dissolved into this
-            // rather than left beside it. Splitting them three ways would have
-            // put Permissions and the control plane that enforces them under
-            // different headings, and left the two survivors holding one page
-            // each — the defect this tree was reorganised to remove.
-            case .permissions, .mcp, .hooks, .drivers, .github, .privacyData: .uncoil
+            // What Uncoil connects to, separately from what Uncoil is. A
+            // GitHub token and a Computer Use driver are things a user brings
+            // and can take away again; the control plane and the retention
+            // policy are the app itself.
+            case .github, .drivers: .integrations
+            // The machinery: what agents are allowed to do, how Uncoil talks to
+            // them, and what it keeps. Rarely visited, and nothing here is
+            // needed to get work done.
+            case .permissions, .mcp, .privacyData: .advanced
             case .about: .about
             }
         }
@@ -175,7 +176,6 @@ struct SettingsView: View {
             case .theme: String(localized: "Theme and Colours")
             case .permissions: String(localized: "Permissions")
             case .privacyData: String(localized: "Data and Transcripts")
-            case .hooks: String(localized: "Agent Status Hooks")
             case .github: "GitHub"
             case .drivers: String(localized: "Drivers")
             case .mcp: String(localized: "Uncoil MCP")
@@ -197,7 +197,6 @@ struct SettingsView: View {
             case .theme: "paintpalette"
             case .permissions: "lock.shield"
             case .privacyData: "externaldrive.badge.person.crop"
-            case .hooks: "point.3.connected.trianglepath.dotted"
             case .github: "chevron.left.forwardslash.chevron.right"
             case .drivers: "puzzlepiece.extension"
             case .mcp: "point.3.connected.trianglepath.dotted"
@@ -228,7 +227,6 @@ struct SettingsView: View {
             case .theme: "tema theme renk color açık koyu light dark terminal palet palette"
             case .permissions: "izin permission mcp grant onay approval agent kontrol control computer use browser"
             case .privacyData: "transcript kayıt saklama retention veri data gizlilik privacy sil temizle delete clear"
-            case .hooks: "hook durum status izleme watching kanca claude settings.json"
             case .github: "github token pr pull request giriş login sign in"
             case .drivers: "sürücü driver agent-browser cua computer use kurulum install"
             case .mcp: "mcp control plane kontrol düzlemi araç tool uncoil_projects sunucu server soket socket kurulum install yapılandırma configure"
@@ -248,6 +246,9 @@ struct SettingsView: View {
             if let match = searchable.first(where: { $0.id == raw }) { return match }
             switch raw {
             case "installedAgents": return .agents
+            // Installing an agent's status hooks is what the Agents list does
+            // with Connect; the page that did it a second time is gone.
+            case "hooks": return .agents
             case "accounts", "cliTools", "launchArgs", "agentBehavior": return .agents
             // A project's own notification settings moved beside the
             // project, into its settings sheet; the deep link lands on the
@@ -391,7 +392,6 @@ struct SettingsView: View {
                 )
             }
         case .privacyData: PrivacyDataSettingsPage()
-        case .hooks: HooksSettingsPage()
         case .github: GitHubSettingsPage()
         case .drivers: DriversSettingsPage()
         case .mcp: McpSettingsPage()

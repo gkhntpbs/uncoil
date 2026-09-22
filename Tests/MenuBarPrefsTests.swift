@@ -191,12 +191,13 @@ final class SettingsNavigationTests: XCTestCase {
         XCTAssertEqual(SettingsView.Pane.launcher.category, .appearance)
         // How Uncoil looks in the menu bar; it was a category of its own.
         XCTAssertEqual(SettingsView.Pane.menuBar.category, .appearance)
-        // Writes into Claude's own settings.json: an integration with a CLI.
-        // Uncoil's own machinery, all under one heading: what it lets agents
-        // do, the control plane that enforces it, what it connects to, and
-        // what it keeps.
-        for pane: SettingsView.Pane in [.permissions, .mcp, .hooks, .drivers, .github, .privacyData] {
-            XCTAssertEqual(pane.category, .uncoil, pane.id)
+        // What a user brings and can take away again is an integration; the
+        // machinery Uncoil is made of is Advanced.
+        for pane: SettingsView.Pane in [.github, .drivers] {
+            XCTAssertEqual(pane.category, .integrations, pane.id)
+        }
+        for pane: SettingsView.Pane in [.permissions, .mcp, .privacyData] {
+            XCTAssertEqual(pane.category, .advanced, pane.id)
         }
         // Agent policy stays with the agents; typing does not.
         XCTAssertEqual(SettingsView.Pane.agent(.claude).category, .agents)
@@ -227,6 +228,13 @@ final class SettingsNavigationTests: XCTestCase {
         for raw in ["installedAgents", "accounts", "cliTools", "launchArgs", "agentBehavior"] {
             XCTAssertEqual(SettingsView.Pane.resolve(raw), .agents, raw)
         }
+    }
+
+    /// Installing an agent's status hooks had two homes: its own page, and
+    /// Connect in the Agents list — which is the one that actually knows
+    /// whether it worked. The page is gone; its links land on the list.
+    func testLinksToTheHooksPageLandOnTheAgentsList() {
+        XCTAssertEqual(SettingsView.Pane.resolve("hooks"), .agents)
     }
 
     /// An agent page is addressable, which is what lets the palette open it.

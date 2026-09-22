@@ -20,6 +20,8 @@ release notes are written once, here.
 
 ### Changed
 
+- Settings separates what Uncoil connects to from what Uncoil is. GitHub and the Computer Use drivers are under Integrations — things you bring and can take away again — while the control plane, permissions and retention sit under Advanced. The Agent Status Hooks page is gone: installing those hooks is what Connect in the Agents list already does, and having it in two places meant one of them was always showing a stale answer.
+
 - Notifications are one page. They were four — General, Events, Reminders, Quiet Hours — for a single decision: when should Uncoil interrupt you. Whether an event repeats is now set on the event itself, where its switch, priority and sound already are; it used to be a second list on the Reminders page, so the same value had two homes and one of them always looked out of date. Each event opens to show its own priority, sound and repeat, and stays a single switch until you need them.
 
 - Settings has a page per agent. Setting up Codex used to mean visiting four pages — Installed Agents, Accounts, CLI Tools, Run Parameters, Working Mode — each one a table of every agent against a single setting, so three quarters of every page was about some other agent. Now the page is the agent: its logins, what it does without asking, the parameters its sessions start with, and the CLI Uncoil runs, in one place — opened from the row in the Agents list that already says whether that CLI was found. The sidebar is unchanged, because a row per agent would grow it with every CLI installed. Links and palette entries written against the old pages open the Agents list, which still says which CLIs were found and where they live.
