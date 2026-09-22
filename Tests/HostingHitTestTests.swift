@@ -34,8 +34,15 @@ final class HostingHitTestTests: XCTestCase {
         let host = NSHostingView(rootView: Probe(onTap: onTap))
         host.frame = NSRect(x: 0, y: 0, width: 200, height: 30)
         let container = RecordingView(frame: host.frame)
+        // The window is load-bearing, not decoration: a hosting view with no
+        // window builds no hit-test tree, so both probes below would report a
+        // boundary that has not actually moved. A sidebar row is always in a
+        // window, so this is the honest setup.
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = container
         container.addSubview(host)
         host.layoutSubtreeIfNeeded()
+        withExtendedLifetime(window) {}
         return (container, host)
     }
 
