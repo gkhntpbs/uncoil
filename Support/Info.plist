@@ -11,6 +11,8 @@
 	  build setting is silently dropped, which produces an app that embeds the
 	  framework and can never check for an update.
 	-->
+	<key>UncoilReleaseChannel</key>
+	<string>$(UNCOIL_RELEASE_CHANNEL)</string>
 	<key>SUFeedURL</key>
 	<string>https://uncoil.gokhantopbas.com/appcast.xml</string>
 

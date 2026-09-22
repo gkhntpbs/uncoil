@@ -51,6 +51,33 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
     }
 
+    func testUpdateChannelPersistsAcrossRelaunch() {
+        func openAbout() {
+            let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
+            XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
+            settingsButton.click()
+            let about = app.descendants(matching: .any)["settings.pane.about"]
+            XCTAssertTrue(about.waitForExistence(timeout: 5))
+            about.click()
+        }
+        openAbout()
+        let picker = app.popUpButtons["settings.about.updateChannel"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertEqual(picker.value as? String, "Stable")
+        picker.click()
+        app.menuItems["Edge"].click()
+        XCTAssertEqual(picker.value as? String, "Edge")
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-reset-state" }
+        app.launchArguments.insert(contentsOf: ["-route", "project"], at: 0)
+        app.launch()
+        openAbout()
+        XCTAssertEqual(picker.value as? String, "Edge")
+        picker.click()
+        app.menuItems["Stable"].click()
+        XCTAssertEqual(picker.value as? String, "Stable")
+    }
+
     func testSettingsWindowOpens() {
         let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))

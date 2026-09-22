@@ -30,13 +30,29 @@ struct AboutSettingsPage: View {
         SettingsPage(title: String(localized: "About")) {
             Section {
                 LabeledContent("Uncoil", value: version)
+                LabeledContent("Installed channel", value: UpdateChannel.installed().title)
                 LabeledContent("Bundle", value: Bundle.main.bundleIdentifier ?? "—")
             } footer: {
                 SettingsNote(String(localized: "Developed by Gökhan Topbaş"))
             }
 
-            if updater.isAvailable {
-                Section {
+            Section {
+                Picker("Update channel", selection: Binding(
+                    get: { updater.channel },
+                    set: { updater.selectChannel($0) }
+                )) {
+                    ForEach(UpdateChannel.allCases) { channel in
+                        Text(channel.title).tag(channel)
+                    }
+                }
+                .disabled(updater.sessionInProgress)
+                .settingsID("about.updateChannel")
+
+                SettingsNote(updater.channel == .edge
+                    ? String(localized: "Edge receives the newest developments before they reach Stable and may contain bugs.")
+                    : String(localized: "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data."))
+
+                if updater.isAvailable {
                     AdaptiveRow {
                         SettingsLabel(
                             title: String(localized: "Check automatically"),
@@ -61,11 +77,11 @@ struct AboutSettingsPage: View {
                             .disabled(!updater.canCheckForUpdates)
                             .settingsID("about.checkForUpdates")
                     }
-                } header: {
-                    Text("Software Update")
-                } footer: {
-                    SettingsNote(String(localized: "Updates are downloaded from uncoil.gokhantopbas.com and verified against a signature before they are installed."))
                 }
+            } header: {
+                Text("Software Update")
+            } footer: {
+                SettingsNote(String(localized: "Updates are downloaded from uncoil.gokhantopbas.com and verified against a signature before they are installed."))
             }
 
             Section {

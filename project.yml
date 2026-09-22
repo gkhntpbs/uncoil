@@ -187,6 +187,7 @@ targets:
         PRODUCT_NAME: Uncoil
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "2"
+        UNCOIL_RELEASE_CHANNEL: "edge"
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Gökhan Topbaş"
         INFOPLIST_KEY_NSPrincipalClass: NSApplication

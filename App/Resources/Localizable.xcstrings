@@ -1,6 +1,70 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stable, test edilmiş sürümleri alır. Edge’den geçişte daha yeni bir Stable sürümü beklenir; uygulamanız veya verileriniz eski sürüme döndürülmez."
+          }
+        }
+      }
+    },
+    "Edge receives the newest developments before they reach Stable and may contain bugs.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge receives the newest developments before they reach Stable and may contain bugs."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edge, en yeni geliştirmeleri Stable kanalından önce alır ve hatalar içerebilir."
+          }
+        }
+      }
+    },
+    "Update channel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update channel"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleme kanalı"
+          }
+        }
+      }
+    },
+    "Installed channel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed channel"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurulu sürüm kanalı"
+          }
+        }
+      }
+    },
     "" : {
 
     },

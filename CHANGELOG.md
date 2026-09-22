@@ -8,21 +8,35 @@ statement that the app is out of beta. Each released section's body is used
 verbatim as the GitHub Release notes and as the in-app update notes, so the
 release notes are written once, here.
 
+Uncoil has two update channels and one history. A **Stable** release opens a
+`## [x.y.z] - DATE` section; an **Edge** release — a build published before
+acceptance, to people who chose Edge in Settings › About — opens
+`## [x.y.z-edge.BUILD] - DATE`. Work in progress accumulates under
+`## Unreleased` until one of the two claims it. When an Edge line is promoted
+to Stable, its sections are folded into the one stable section that release
+publishes: the Edge headings are how a build was announced, not a second
+history to maintain. The website lists the stable sections at `/releases/` and
+the Edge builds at `/edge/`, straight from the signed feed.
+
 ## Unreleased
 
-### Development
+### Added
 
-- Development is consolidated on `edge`, with the simplification state and daily worktree changes preserved in local backup tags. Release build allocation now advances beyond both Stable and Edge release tags, preventing a stable promotion from reusing an Edge build number. The update-channel rollout is tracked in `docs/roadmap/EDGE_RELEASES.md`; in-app channel selection is not yet available.
+- Settings › About chooses which updates Uncoil offers you. Stable is what
+  every installation gets and stays on unless you say otherwise; Edge receives
+  a release as soon as it is cut, before it has been through acceptance, and
+  says so beside the picker. Switching back to Stable waits for the next
+  Stable release rather than putting an older build over the newer one, and
+  the choice cannot be changed while an update is being installed. The page
+  also says which channel the copy you are running came from.
 
-### Fixed
-
-- The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
-
-- A session on an account profile no longer breaks Codex. Project extension
-  scope was read from `~/.codex/config.toml` while the session launched with the
-  account's own `CODEX_HOME`, so switching a server off named one the profile
-  never declared — and Codex refused the whole config with `invalid transport`.
-  The scope is now read from the config root the session actually uses.
+- Uncoil knows where its own updates come from. The release pipeline now
+  produces a package that carries its channel, its version and its build, and
+  refuses to be published as anything else: a bundle whose Info.plist, git tag
+  and release notes disagree never reaches a feed. Each channel is generated
+  from its own packages only, every enclosure is checked against the key the
+  app ships with, and the website verifies after every deploy that the package
+  a feed advertises can actually be downloaded at the length it claims.
 
 ### Changed
 
@@ -42,8 +56,34 @@ release notes are written once, here.
 
 ### Fixed
 
+- The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
+
+- A session on an account profile no longer breaks Codex. Project extension
+  scope was read from `~/.codex/config.toml` while the session launched with the
+  account's own `CODEX_HOME`, so switching a server off named one the profile
+  never declared — and Codex refused the whole config with `invalid transport`.
+  The scope is now read from the config root the session actually uses.
+
 - Restarting a session restarts it everywhere. The verb was written out at each surface that offered it, and the copies had drifted: restarting from the session header or a split pane rebuilt that one terminal view, while the command palette, the group view and Settings rebuilt every view of the session. So a restart from the header left the split pane, the popout and the group view still showing the process it had just killed. Closing and deleting a session were duplicated the same way, each copy deciding for itself whether the process was closed before the record went.
 - A second window no longer restarts the app's services. Opening one with Cmd-N re-resolved every agent binary, asked every CLI for its version again, re-ran the cleanup of dropped images and reassigned the runtime daemon's session bookkeeping out from under the first window. The services the app has to start belong to the app; they now start once, whatever the windows do.
+
+### Development
+
+- Development is consolidated on `edge`, with the simplification state and daily worktree changes preserved in local backup tags. Release build allocation now advances beyond both Stable and Edge release tags, preventing a stable promotion from reusing an Edge build number, and a release now carries its channel in the bundle so a package can be identified independently of the preference selected in the app. The Edge feed itself is not published yet, so choosing Edge today finds nothing to install.
+
+- The website serves the two channels. `uncoil.gokhantopbas.com` gained an
+  Edge feed alongside the stable one, an `/edge/` page generated from that feed
+  rather than written by hand, and a 404 page that says the address is wrong
+  instead of implying the site is down — which matters on the host that also
+  serves the update feed. The deploy asks both feeds the questions Sparkle will
+  ask, plus one it cannot: whether the package each item points at exists.
+
+- Release notes are still written once, but they now name a channel. A stable
+  release opens `## [x.y.z]`, an Edge release `## [x.y.z-edge.BUILD]`, and the
+  tooling reads the notes from the heading that matches the package it is about
+  to publish. The `/releases/` page stays the stable history; Edge builds are
+  listed on `/edge/` from the signed feed, so no second list has to be kept in
+  step by hand.
 
 ## [0.2.0] - 2026-09-03
 
