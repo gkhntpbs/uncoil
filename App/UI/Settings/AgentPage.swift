@@ -15,6 +15,8 @@ import SwiftUI
 /// updater says so instead of showing a version to compare.
 struct AgentSettingsPage: View {
     let provider: AgentProvider
+    /// Back to the list this page was opened from.
+    let back: () -> Void
 
     @EnvironmentObject private var settings: SettingsStore
     @State private var newAccountName = ""
@@ -25,7 +27,11 @@ struct AgentSettingsPage: View {
     private var isInstalled: Bool { settings.binaryPath(for: provider) != nil }
 
     var body: some View {
-        SettingsPage(title: descriptor.displayName, subtitle: subtitle) {
+        SettingsPage(
+            title: descriptor.displayName,
+            subtitle: subtitle,
+            back: (String(localized: "Installed Agents"), back)
+        ) {
             // Not installed is the first thing to say, not a footnote: every
             // setting under it is inert until there is a binary to run.
             if !isInstalled {

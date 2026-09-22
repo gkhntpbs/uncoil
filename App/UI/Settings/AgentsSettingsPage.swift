@@ -14,6 +14,10 @@ import SwiftUI
 /// or not the agent was found. Nothing is imported or copied: the path is
 /// remembered and searched, and the install stays exactly where it is.
 struct AgentsSettingsPage: View {
+    /// Opens one agent's own page. This list is the only way in: an agent is
+    /// configured from the row that already says whether it was found.
+    let open: (AgentProvider) -> Void
+
     @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var hookup = AgentHookupService.shared
     /// What the last locate or clear did, shown under the list. The Extensions
@@ -42,7 +46,10 @@ struct AgentsSettingsPage: View {
                             ? { Task { await hookup.disconnect(state.agent) } }
                             : nil,
                         onLocate: { locate(state.agent) },
-                        onClearLocation: { clearLocation(state.agent) }
+                        onClearLocation: { clearLocation(state.agent) },
+                        onOpen: state.agent.provider.map { provider in
+                            { open(provider) }
+                        }
                     )
                 }
             } footer: {
@@ -128,6 +135,9 @@ private struct AgentControlRow: View {
     let disconnect: (() -> Void)?
     let onLocate: () -> Void
     let onClearLocation: () -> Void
+    /// Absent for an agent Uncoil only knows as an extension host: there is no
+    /// provider behind it to launch, so there is nothing on a page for it.
+    let onOpen: (() -> Void)?
 
     var body: some View {
         AdaptiveRow {
@@ -190,6 +200,16 @@ private struct AgentControlRow: View {
                 if chosenLocation != nil {
                     Button("Clear", action: onClearLocation)
                         .settingsID("agents.clearLocation.\(state.agent.rawValue)")
+                }
+                if let onOpen {
+                    Button(action: onOpen) {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.textDim)
+                    }
+                    .buttonStyle(.borderless)
+                    .help(String(localized: "Logins, working mode and run parameters"))
+                    .settingsID("agents.configure.\(state.agent.rawValue)")
                 }
             }
         }

@@ -129,28 +129,24 @@ struct SettingsView: View {
             .about,
         ]
 
-        /// The source list: the fixed pages, with a page per installed agent
-        /// inserted into Agents. An agent that is not installed has no page of
-        /// its own — it is reached from the Agents page, which is where the
-        /// answer to "it is not here" lives.
-        static func all(installed: Set<AgentProvider>) -> [Pane] {
-            var panes: [Pane] = []
-            for pane in fixed {
-                panes.append(pane)
-                if pane == .agents {
-                    panes.append(contentsOf: AgentProvider.agents
-                        .filter { installed.contains($0) }
-                        .map(Pane.agent))
-                }
-            }
-            return panes
-        }
+        /// The source list. Agent pages are deliberately absent: one row per
+        /// agent would grow the sidebar with every CLI installed and restate
+        /// the list the Agents page already shows. They are reached by opening
+        /// a row there, and the sidebar keeps Agents selected while one is open.
+        static var sidebar: [Pane] { fixed }
 
-        /// What the command palette and the search box may offer. Every agent
-        /// is here whether installed or not: a user looking for Codex should
-        /// find its page and read that it is missing, rather than find nothing
-        /// and conclude Uncoil has no such setting.
-        static let searchable: [Pane] = all(installed: Set(AgentProvider.agents))
+        /// What the command palette and the search box may offer — the source
+        /// list plus every agent's page, installed or not: a user looking for
+        /// Codex should find its page and read that it is missing, rather than
+        /// find nothing and conclude Uncoil has no such setting.
+        static let searchable: [Pane] = fixed + AgentProvider.agents.map(Pane.agent)
+
+        /// Which row in the source list is the home of this page. An agent page
+        /// has no row of its own, so it keeps its parent lit.
+        var sidebarPane: Pane {
+            if case .agent = self { return .agents }
+            return self
+        }
 
         var category: Category {
             switch self {
@@ -282,10 +278,15 @@ struct SettingsView: View {
         }
     }
 
-    /// The source list of one category. Built from what is installed, so the
-    /// Agents category grows a page when an agent CLI appears.
     private func panes(in category: Category) -> [Pane] {
-        Pane.all(installed: settings.installedProviders).filter { $0.category == category }
+        Pane.sidebar.filter { $0.category == category }
+    }
+
+    /// The sidebar selects the page's home row, not the page: an agent detail
+    /// page keeps Agents lit rather than clearing the selection, which would
+    /// leave the window looking as though nothing were open.
+    private var sidebarSelection: Binding<Pane?> {
+        Binding(get: { pane.sidebarPane }, set: { if let new = $0 { pane = new } })
     }
 
     private var matches: [Pane] {
@@ -334,7 +335,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var sidebar: some View {
-        List(selection: $pane) {
+        List(selection: sidebarSelection) {
             if isSearching {
                 Section("Results") {
                     if matches.isEmpty {
@@ -382,8 +383,9 @@ struct SettingsView: View {
         switch pane {
         case .general: GeneralSettingsPage()
         case .input: InputSettingsPage()
-        case .agents: AgentsSettingsPage()
-        case .agent(let provider): AgentSettingsPage(provider: provider)
+        case .agents: AgentsSettingsPage(open: { pane = .agent($0) })
+        case .agent(let provider):
+            AgentSettingsPage(provider: provider, back: { pane = .agents })
         case .presets: SessionPresetsSettingsPage()
         case .blueprints: BlueprintsSettingsPage()
         case .launcher: LauncherSettingsPage()

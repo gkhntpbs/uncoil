@@ -10,10 +10,26 @@ import SwiftUI
 struct SettingsPage<Content: View>: View {
     let title: String
     var subtitle: String?
+    /// Where this page was opened from, when it is a page inside a page. Only
+    /// the agent detail pages have one: they are reached from a row in the
+    /// Agents list rather than from the source list, so there is no selected
+    /// row in the sidebar to click a second time to get back.
+    var back: (title: String, action: () -> Void)?
     @ViewBuilder let content: Content
 
     var body: some View {
         Form {
+            if let back {
+                Section {
+                    Button(action: back.action) {
+                        Label(back.title, systemImage: "chevron.left")
+                            .font(.callout)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.highlight)
+                    .accessibilityIdentifier("settings.back")
+                }
+            }
             if let subtitle {
                 Section {
                     Text(subtitle)

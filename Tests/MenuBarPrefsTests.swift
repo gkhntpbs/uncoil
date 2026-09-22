@@ -127,29 +127,29 @@ final class SettingsNavigationTests: XCTestCase {
         }
     }
 
-    /// The Agents category is one page per agent plus the page about the set of
-    /// them. It used to be four matrices of every agent against one setting,
-    /// which meant setting up one agent took four pages and each of them showed
-    /// two other agents' rows.
-    func testAgentsCategoryIsOnePagePerInstalledAgent() {
-        let installed: Set<AgentProvider> = [.claude, .codex]
-        let panes = SettingsView.Pane.all(installed: installed)
-            .filter { $0.category == .agents }
-        XCTAssertEqual(
-            panes.filter { if case .agent = $0 { true } else { false } },
-            [.agent(.claude), .agent(.codex)]
-        )
-        XCTAssertTrue(panes.contains(.agents), "no page lists the set of agents")
+    /// There is a page per agent, and none of them is in the sidebar: a row
+    /// each would grow the source list with every CLI installed and restate the
+    /// list the Agents page already shows. They are opened from that list.
+    func testAgentPagesExistButAreNotInTheSidebar() {
+        for provider in AgentProvider.agents {
+            XCTAssertTrue(SettingsView.Pane.searchable.contains(.agent(provider)))
+            XCTAssertFalse(
+                SettingsView.Pane.sidebar.contains(.agent(provider)),
+                "\(provider.rawValue) has a row of its own in the sidebar"
+            )
+        }
+        XCTAssertTrue(SettingsView.Pane.sidebar.contains(.agents))
     }
 
-    /// An agent that is not installed has no page in the source list — there is
-    /// nothing to configure until there is a binary — but it is still
-    /// searchable, so looking for it finds the page that says it is missing
-    /// rather than finding nothing at all.
-    func testAnUninstalledAgentIsSearchableButNotListed() {
-        let listed = SettingsView.Pane.all(installed: [.claude])
-        XCTAssertFalse(listed.contains(.agent(.codex)))
-        XCTAssertTrue(SettingsView.Pane.searchable.contains(.agent(.codex)))
+    /// While an agent's page is open the sidebar keeps Agents lit — the row it
+    /// was opened from. Selecting nothing would leave the window looking as
+    /// though no page were open at all.
+    func testAnAgentPageKeepsItsParentSelected() {
+        XCTAssertEqual(SettingsView.Pane.agent(.codex).sidebarPane, .agents)
+        // Every other page is its own home.
+        for pane in SettingsView.Pane.sidebar {
+            XCTAssertEqual(pane.sidebarPane, pane, pane.id)
+        }
     }
 
     /// The page is the agent, so the agent's own name is what finds it.
