@@ -402,7 +402,9 @@ final class TerminalRegistry {
         // down, so the file that is written and the flags that point at it are
         // computed from the same answer.
         let scoped = ProjectScopeService.shared.resolve(
-            for: record.provider, projectID: record.projectID
+            for: record.provider,
+            projectID: record.projectID,
+            configDirectory: account?.configDirectory(profilesRoot: settings.profilesRootURL)
         )
         let mcpConfigPath = record.provider == .claude
             ? mcpBinaryPath.flatMap {
@@ -554,8 +556,11 @@ final class TerminalRegistry {
         }
         // This path takes no command line, so the project's scope arrives as
         // config the same way the model and the effort level do.
-        let scope = ProjectScopeService.shared
-            .resolve(for: record.provider, projectID: record.projectID).scope
+        let scope = ProjectScopeService.shared.resolve(
+            for: record.provider,
+            projectID: record.projectID,
+            configDirectory: account?.configDirectory(profilesRoot: settings.profilesRootURL)
+        ).scope
         var mcpServers: [String: JSONValue] = [:]
         if let mcpBinaryPath = bundledMCPBinaryPath() {
             mcpServers[ControlPlaneMCPName] = .object([

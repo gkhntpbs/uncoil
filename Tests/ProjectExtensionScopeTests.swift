@@ -528,6 +528,73 @@ final class ProjectExtensionScopeTests: XCTestCase {
         }
     }
 
+    // MARK: - Isolated config roots
+
+    /// A session running on an account profile reads that profile's config, not
+    /// `~/.codex`. The decisions are subtractive, so a name resolved from the
+    /// wrong file is not a no-op: Codex meets `mcp_servers.supabase` with no
+    /// command and refuses the whole config with `invalid transport`.
+    @MainActor
+    func testRebasingAnInstallationKeepsEachFileName() {
+        let account = URL(fileURLWithPath: "/tmp/profiles/codex/work")
+        let moved = ProjectScopeService.rebase(installation(), onto: account)
+        XCTAssertEqual(moved.configDirectory, account.path)
+        XCTAssertEqual(moved.mcpConfigPath, account.appendingPathComponent("config.toml").path)
+        XCTAssertEqual(moved.skillsDirectory, account.appendingPathComponent("skills").path)
+    }
+
+    @MainActor
+    func testRebasingOntoNothingChangesNothing() {
+        let detected = installation()
+        XCTAssertEqual(ProjectScopeService.rebase(detected, onto: nil), detected)
+    }
+
+    /// Claude Code keeps its config in a dotfile beside the root rather than a
+    /// named file inside it; moving the root must not rename it.
+    @MainActor
+    func testRebasingKeepsClaudeCodesDotfileName() {
+        var claude = installation(agent: .claudeCode)
+        claude.mcpConfigPath = "/Users/someone/.claude.json"
+        let moved = ProjectScopeService.rebase(
+            claude, onto: URL(fileURLWithPath: "/tmp/profiles/claude/work")
+        )
+        XCTAssertEqual(moved.mcpConfigPath, "/tmp/profiles/claude/work/.claude.json")
+    }
+
+    /// The end of the bug: a profile whose `config.toml` declares nothing
+    /// excludes nothing, so no `enabled=false` override is ever produced for a
+    /// server that account never had.
+    @MainActor
+    func testAnAccountWithoutTheServerExcludesNothing() throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("uncoil-scope-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try "model = \"gpt-5\"\n".write(
+            to: root.appendingPathComponent("config.toml"), atomically: true, encoding: .utf8
+        )
+        var adapter = CodexAdapter()
+        adapter.binaryPathOverride = "/usr/local/bin/codex"
+        let moved = ProjectScopeService.rebase(
+            adapter.detectInstallations()[0], onto: root
+        )
+        let configuration = try adapter.readConfiguration(moved)
+        XCTAssertTrue(configuration.mcpServers.isEmpty)
+        let scope = ProjectExtensionScope.resolve(
+            configuration: configuration,
+            packages: [],
+            projectBindings: [
+                ProjectBinding(
+                    extensionID: "codex:supabase", projectID: projectA,
+                    agent: .codex, isEnabled: false
+                ),
+            ],
+            projectID: projectA
+        )
+        XCTAssertTrue(scope.excludedMCPNames.isEmpty)
+        XCTAssertTrue(scope.isUnrestricted)
+    }
+
     /// `.terminal` has no configuration to scope, and Amp is not a provider
     /// Uncoil launches — the reverse mapping has to say so rather than guess.
     func testTheProviderToAgentMappingRoundTrips() {

@@ -10,6 +10,14 @@ release notes are written once, here.
 
 ## Unreleased
 
+### Fixed
+
+- A session on an account profile no longer breaks Codex. Project extension
+  scope was read from `~/.codex/config.toml` while the session launched with the
+  account's own `CODEX_HOME`, so switching a server off named one the profile
+  never declared — and Codex refused the whole config with `invalid transport`.
+  The scope is now read from the config root the session actually uses.
+
 ### Changed
 
 - Quick Launch reaches every agent. The pill of agent marks over a project row now ends in a plus once the pointer is on it, and that opens the full list — the agents left out of your Quick Launch order, and the plain terminal, which until now could only be started from the command palette. The marks themselves are unchanged: one click starts that agent, right-click picks a second login.

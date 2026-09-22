@@ -44,7 +44,19 @@ final class ProjectScopeService {
     /// cannot compute must leave the command line exactly as it found it —
     /// guessing narrow would silently strip an agent of tools the user never
     /// asked to lose, and a launch is the worst place to discover that.
-    func resolve(for provider: AgentProvider, projectID: UUID) -> Resolved {
+    ///
+    /// `configDirectory` is the isolated config root the session will actually
+    /// launch with — an account profile's `CODEX_HOME` / `CLAUDE_CONFIG_DIR`.
+    /// It has to be honoured, because the decisions are subtractive: naming a
+    /// server the session's own config never declares does not switch anything
+    /// off, it invents a nameless entry, and Codex refuses the whole file with
+    /// `invalid transport in mcp_servers.<name>`. Reading the default home for
+    /// a session running on a work account produced exactly that.
+    func resolve(
+        for provider: AgentProvider,
+        projectID: UUID,
+        configDirectory: URL? = nil
+    ) -> Resolved {
         guard provider.extensionScoping != .none,
               let agent = provider.extensionAgent,
               let adapter = adapters.adapter(for: agent)
@@ -57,8 +69,9 @@ final class ProjectScopeService {
             return .unrestricted
         }
 
-        guard let installation = adapter.detectInstallations().first,
-              let configuration = try? adapter.readConfiguration(installation)
+        guard let detected = adapter.detectInstallations().first else { return .unrestricted }
+        let installation = Self.rebase(detected, onto: configDirectory)
+        guard let configuration = try? adapter.readConfiguration(installation)
         else { return .unrestricted }
 
         return Resolved(
@@ -70,6 +83,23 @@ final class ProjectScopeService {
             ),
             rawConfig: configuration.raw
         )
+    }
+
+    /// Points one installation at an isolated config root, keeping each file's
+    /// own name. An agent decides where its config lives inside the root — a
+    /// TOML for Codex, a dotfile for Claude Code — and moving the root must not
+    /// rename either, so only the directory is replaced.
+    static func rebase(_ installation: AgentInstallation, onto directory: URL?) -> AgentInstallation {
+        guard let directory else { return installation }
+        var moved = installation
+        moved.configDirectory = directory.path
+        moved.skillsDirectory = installation.skillsDirectory.map {
+            directory.appendingPathComponent(URL(fileURLWithPath: $0).lastPathComponent).path
+        }
+        moved.mcpConfigPath = installation.mcpConfigPath.map {
+            directory.appendingPathComponent(URL(fileURLWithPath: $0).lastPathComponent).path
+        }
+        return moved
     }
 
     /// Decodes the registry document directly, without the audit log an
