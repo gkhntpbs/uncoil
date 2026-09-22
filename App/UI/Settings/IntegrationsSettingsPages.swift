@@ -178,12 +178,15 @@ struct DriversSettingsPage: View {
     var body: some View {
         SettingsPage(
             title: String(localized: "Drivers"),
-            subtitle: String(localized: "Set up and verify the Agent Browser and Computer Use links. Installation always starts with your approval.")
+            subtitle: String(localized: "Two optional programs that let an agent reach past its terminal. Uncoil probes and reports; nothing is ever installed without you asking for it.")
         ) {
-            Section("Agent Browser") {
+            // No section headers: each card names itself, and a heading
+            // repeating the title one line below it is the kind of doubling
+            // this page had everywhere.
+            Section {
                 AgentBrowserSetupSection()
             }
-            Section("Computer Use") {
+            Section {
                 CuaDriverSetupSection()
             }
         }

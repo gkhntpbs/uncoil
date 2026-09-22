@@ -214,14 +214,16 @@ struct CLIToolRow: View {
     private var details: some View {
         VStack(alignment: .leading, spacing: 2) {
             if let path {
-                detailLine(String(localized: "path"), path)
+                SettingsDetailLine(label: String(localized: "path"), value: path)
             }
             if let realPath {
-                detailLine(String(localized: "resolves to"), realPath)
+                SettingsDetailLine(label: String(localized: "resolves to"), value: realPath)
             }
             switch plan {
             case .run(let command):
-                detailLine(String(localized: "updates with"), command, wraps: true)
+                SettingsDetailLine(
+                    label: String(localized: "updates with"), value: command, wraps: true
+                )
             case .cannot(let reason):
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("updates with")
@@ -236,25 +238,6 @@ struct CLIToolRow: View {
             }
         }
         .padding(.top, 2)
-    }
-
-    private func detailLine(
-        _ label: String, _ value: String, wraps: Bool = false
-    ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(Theme.textDim)
-                .frame(width: 76, alignment: .leading)
-            Text(value)
-                .font(.caption2.monospaced())
-                .foregroundStyle(Theme.textFaint)
-                .textSelection(.enabled)
-                .lineLimit(wraps ? 3 : 1)
-                .truncationMode(.middle)
-                .fixedSize(horizontal: false, vertical: wraps)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 
     private func message(for outcome: AgentUpdateOutcome) -> String {

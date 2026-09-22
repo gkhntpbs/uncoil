@@ -181,6 +181,33 @@ struct SettingsStatusLine: View {
     }
 }
 
+/// One fact about an installed thing: where it is, what version, what a
+/// command would run. Used by the agent CLI rows and the driver rows, so a
+/// binary Uncoil found is described the same way wherever it is described.
+struct SettingsDetailLine: View {
+    let label: String
+    let value: String
+    var wraps = false
+    var level: SettingsStatusLine.Level = .neutral
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(Theme.textDim)
+                .frame(width: 76, alignment: .leading)
+            Text(value)
+                .font(.caption2.monospaced())
+                .foregroundStyle(level == .neutral ? Theme.textFaint : level.color)
+                .textSelection(.enabled)
+                .lineLimit(wraps ? 3 : 1)
+                .truncationMode(.middle)
+                .fixedSize(horizontal: false, vertical: wraps)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 /// A text input: its label above it, the field full width underneath.
 ///
 /// Deliberately not the platform's own arrangement. A grouped form puts the
