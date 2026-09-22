@@ -24,6 +24,11 @@ struct SettingsPage<Content: View>: View {
                     Button(action: back.action) {
                         Label(back.title, systemImage: "chevron.left")
                             .font(.callout)
+                            // The row is the target, not the words in it: a
+                            // button the width of its label leaves most of the
+                            // card inert and the click lands on nothing.
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(Theme.highlight)

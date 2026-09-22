@@ -213,6 +213,13 @@ private struct AgentControlRow: View {
                 }
             }
         }
+        // The whole row opens the agent, not just the chevron. The buttons
+        // inside it keep working because a control is hit-tested before its
+        // container: only a click that lands on none of them reaches this
+        // gesture, which is the same boundary the sidebar's hosted rows rely
+        // on. The chevron stays as the thing that says the row is a door.
+        .contentShape(Rectangle())
+        .onTapGesture { onOpen?() }
         .accessibilityIdentifier("settings.agents.row.\(state.agent.rawValue)")
     }
 }
