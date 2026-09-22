@@ -49,14 +49,26 @@ struct NotificationSoundPicker: View {
     }
 }
 
-// MARK: - General
+// MARK: - The page
 
-/// Settings → Bildirimler → Genel: the master switch, the defaults every other
-/// page inherits from, and the delivery filters.
-struct NotificationGeneralPage: View {
+/// Settings › Notifications — all of it.
+///
+/// This was four pages: General, Events, Reminders, Quiet Hours. Notifications
+/// are one decision — *when should Uncoil interrupt me* — and splitting that
+/// decision across four pages meant no page could answer it. It also duplicated
+/// settings: an event's "Remind" switch existed both under the event and again
+/// as a list on the Reminders page, so the same value had two homes and the
+/// second one was the stale-looking copy.
+///
+/// The events are disclosures rather than seven expanded blocks: a switch per
+/// event is what people come for, and the priority and sound behind it are what
+/// they come for once.
+struct NotificationsSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
     private var prefs: NotificationPrefs { settings.notifications }
+    private var reminders: ReminderPrefs { prefs.reminders }
+    private var quiet: QuietHours { prefs.quietHours }
 
     var body: some View {
         SettingsPage(title: String(localized: "Notifications")) {
@@ -74,97 +86,132 @@ struct NotificationGeneralPage: View {
                 .settingsID("notifications.enabled")
             }
 
-            Section("Defaults") {
-                NotificationPriorityPicker(
-                    title: String(localized: "Priority"),
-                    value: Binding(
-                        get: { Optional(prefs.priority) },
-                        set: { newValue in
-                            settings.notifications.priority = newValue ?? .normal
-                            settings.save()
-                        }
-                    )
-                )
-                .settingsID("notifications.priority")
-
-                NotificationSoundPicker(
-                    title: String(localized: "Sound"),
-                    value: Binding(
-                        get: { Optional(prefs.sound) },
-                        set: { newValue in
-                            settings.notifications.sound = newValue ?? "default"
-                            settings.save()
-                        }
-                    )
-                )
-                .settingsID("notifications.sound")
-
-                SettingsNote(prefs.priority.detail)
-            }
-            .disabled(!prefs.enabled)
-
-            Section("Delivery") {
-                Toggle(isOn: bind(\.onlyWhenBackgrounded)) {
-                    SettingsLabel(
-                        title: String(localized: "Notify only while in the background"),
-                        detail: String(localized: "No banner is sent while Uncoil is in the foreground; the rows are still marked.")
-                    )
-                }
-                Toggle(isOn: bind(\.suppressForVisibleSession)) {
-                    SettingsLabel(
-                        title: String(localized: "Stay quiet about the session on screen"),
-                        detail: String(localized: "No banner is sent about the session already on screen.")
-                    )
-                }
-                Toggle(isOn: bind(\.groupByProject)) {
-                    SettingsLabel(
-                        title: String(localized: "Group by project"),
-                        detail: String(localized: "A project's notifications stack into one group in Notification Center.")
-                    )
-                }
-            }
-            .disabled(!prefs.enabled)
+            defaults
+            delivery
+            events
+            remindersSection
+            quietHoursSection
 
             Section {
                 Button("Send a Test Notification") {
                     Task { await NotificationAuthorization.shared.sendTestNotification() }
                 }
                 .settingsID("notifications.selfTest")
-            } footer: {
-                SettingsNote(String(localized: "Only one notification is sent per state change; repeats are handled by the Reminders page."))
             }
         }
     }
 
-    private func bind(_ keyPath: WritableKeyPath<NotificationPrefs, Bool>) -> Binding<Bool> {
-        Binding(
-            get: { settings.notifications[keyPath: keyPath] },
-            set: { newValue in
-                settings.notifications[keyPath: keyPath] = newValue
-                settings.save()
-            }
-        )
+    // MARK: Defaults and delivery
+
+    private var defaults: some View {
+        Section {
+            NotificationPriorityPicker(
+                title: String(localized: "Priority"),
+                value: Binding(
+                    get: { Optional(prefs.priority) },
+                    set: { newValue in
+                        settings.notifications.priority = newValue ?? .normal
+                        settings.save()
+                    }
+                )
+            )
+            .settingsID("notifications.priority")
+
+            NotificationSoundPicker(
+                title: String(localized: "Sound"),
+                value: Binding(
+                    get: { Optional(prefs.sound) },
+                    set: { newValue in
+                        settings.notifications.sound = newValue ?? "default"
+                        settings.save()
+                    }
+                )
+            )
+            .settingsID("notifications.sound")
+        } header: {
+            Text("Defaults")
+        } footer: {
+            SettingsNote(prefs.priority.detail)
+        }
+        .disabled(!prefs.enabled)
     }
 
-}
+    private var delivery: some View {
+        Section("Delivery") {
+            Toggle(isOn: bind(\.onlyWhenBackgrounded)) {
+                SettingsLabel(
+                    title: String(localized: "Notify only while in the background"),
+                    detail: String(localized: "No banner is sent while Uncoil is in the foreground; the rows are still marked.")
+                )
+            }
+            Toggle(isOn: bind(\.suppressForVisibleSession)) {
+                SettingsLabel(
+                    title: String(localized: "Stay quiet about the session on screen"),
+                    detail: String(localized: "No banner is sent about the session already on screen.")
+                )
+            }
+            Toggle(isOn: bind(\.groupByProject)) {
+                SettingsLabel(
+                    title: String(localized: "Group by project"),
+                    detail: String(localized: "A project's notifications stack into one group in Notification Center.")
+                )
+            }
+        }
+        .disabled(!prefs.enabled)
+    }
 
-// MARK: - Events
+    // MARK: Events
 
-/// Settings → Bildirimler → Olaylar: one row per thing Uncoil can announce,
-/// each with its own switch, priority, sound and reminder opt-in.
-struct NotificationEventsPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-    @State private var expanded: NotificationEvent?
-
-    private var prefs: NotificationPrefs { settings.notifications }
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Events"),
-            subtitle: String(localized: "Every event carries its own setting. While “Default” is selected, the value on the General page applies.")
-        ) {
+    private var events: some View {
+        Section {
             ForEach(NotificationEvent.allCases) { event in
-                Section {
+                DisclosureGroup {
+                    NotificationPriorityPicker(
+                        title: String(localized: "Priority"),
+                        value: Binding(
+                            get: { prefs.prefs(for: event).priority },
+                            set: { newValue in
+                                settings.notifications.update(event) { $0.priority = newValue }
+                                settings.save()
+                            }
+                        ),
+                        inheritedLabel: prefs.priority.label
+                    )
+                    .settingsID("notifications.event.priority.\(event.rawValue)")
+
+                    NotificationSoundPicker(
+                        title: String(localized: "Sound"),
+                        value: Binding(
+                            get: { prefs.prefs(for: event).sound },
+                            set: { newValue in
+                                settings.notifications.update(event) { $0.sound = newValue }
+                                settings.save()
+                            }
+                        ),
+                        inheritedLabel: NotificationPrefs.soundLabel(prefs.sound)
+                    )
+
+                    // Only for states that last until you act on them. There is
+                    // no state behind a finished turn, so there is nothing a
+                    // repeat could be about.
+                    if event.supportsReminder {
+                        Toggle(isOn: Binding(
+                            get: { prefs.prefs(for: event).remind ?? true },
+                            set: { newValue in
+                                settings.notifications.update(event) { $0.remind = newValue }
+                                settings.save()
+                            }
+                        )) {
+                            SettingsLabel(
+                                title: String(localized: "Remind"),
+                                detail: reminders.enabled
+                                    ? String(localized: "Repeated every \(reminders.intervalMinutes) minutes.")
+                                    : String(localized: "Inactive until reminders are turned on below.")
+                            )
+                        }
+                        .settingsID("notifications.event.remind.\(event.rawValue)")
+                    }
+                } label: {
                     Toggle(isOn: Binding(
                         get: { prefs.isEnabled(event) },
                         set: { newValue in
@@ -179,147 +226,62 @@ struct NotificationEventsPage: View {
                         )
                     }
                     .settingsID("notifications.event.\(event.rawValue)")
-
-                    if prefs.isEnabled(event) {
-                        NotificationPriorityPicker(
-                            title: String(localized: "Priority"),
-                            value: Binding(
-                                get: { prefs.prefs(for: event).priority },
-                                set: { newValue in
-                                    settings.notifications.update(event) { $0.priority = newValue }
-                                    settings.save()
-                                }
-                            ),
-                            inheritedLabel: prefs.priority.label
-                        )
-                        .settingsID("notifications.event.priority.\(event.rawValue)")
-
-                        NotificationSoundPicker(
-                            title: String(localized: "Sound"),
-                            value: Binding(
-                                get: { prefs.prefs(for: event).sound },
-                                set: { newValue in
-                                    settings.notifications.update(event) { $0.sound = newValue }
-                                    settings.save()
-                                }
-                            ),
-                            inheritedLabel: NotificationPrefs.soundLabel(prefs.sound)
-                        )
-
-                        if event.supportsReminder {
-                            Toggle(isOn: Binding(
-                                get: { prefs.prefs(for: event).remind ?? true },
-                                set: { newValue in
-                                    settings.notifications.update(event) { $0.remind = newValue }
-                                    settings.save()
-                                }
-                            )) {
-                                SettingsLabel(
-                                    title: String(localized: "Remind"),
-                                    detail: prefs.reminders.enabled
-                                        ? String(localized: "Repeated every \(prefs.reminders.intervalMinutes) minutes.")
-                                        : String(localized: "Inactive until it is turned on from the Reminders page.")
-                                )
-                            }
-                            .settingsID("notifications.event.remind.\(event.rawValue)")
-                        }
-                    }
                 }
             }
+        } header: {
+            Text("Events")
+        } footer: {
+            SettingsNote(String(localized: "Open an event to give it its own priority, sound and repeat. While “Default” is selected it follows the values above."))
         }
         .disabled(!prefs.enabled)
     }
-}
 
-// MARK: - Reminders
+    // MARK: Reminders
 
-/// Settings → Bildirimler → Hatırlatmalar.
-///
-/// The one thing a single banner cannot do: an agent that has been blocked for
-/// twenty minutes looks exactly like one that was blocked five seconds ago.
-struct NotificationRemindersPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-
-    private var reminders: ReminderPrefs { settings.notifications.reminders }
-
-    private var remindableEvents: [NotificationEvent] {
-        NotificationEvent.allCases.filter(\.supportsReminder)
-    }
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Reminders"),
-            subtitle: String(localized: "As long as an agent keeps waiting for an answer, Uncoil can repeat the notification. Miss the first banner and you hear about it a second and a third time.")
-        ) {
-            Section {
-                Toggle(isOn: bind(\.enabled)) {
-                    SettingsLabel(
-                        title: String(localized: "Reminders on"),
-                        detail: String(localized: "Only states that last until you act on them are repeated.")
-                    )
-                }
-                .settingsID("notifications.reminders.enabled")
-            }
-
-            Section {
-                Picker(selection: bind(\.intervalMinutes)) {
-                    ForEach([1, 2, 5, 10, 15, 30, 60], id: \.self) { minutes in
-                        Text(minutes < 60 ? "Every \(minutes) minutes" : "Hourly").tag(minutes)
-                    }
-                } label: {
-                    SettingsLabel(title: String(localized: "Repeat interval"))
-                }
-                .settingsID("notifications.reminders.interval")
-
-                Picker(selection: bind(\.maxCount)) {
-                    Text("Unlimited").tag(0)
-                    ForEach([1, 2, 3, 5, 10], id: \.self) { count in
-                        Text("\(count) times").tag(count)
-                    }
-                } label: {
-                    SettingsLabel(
-                        title: String(localized: "At most"),
-                        detail: String(localized: "How many times it is repeated after the first notification.")
-                    )
-                }
-                .settingsID("notifications.reminders.maxCount")
-            } header: {
-                Text("Frequency")
-            } footer: {
-                SettingsNote(summary)
-            }
-            .disabled(!reminders.enabled)
-
-            Section {
-                ForEach(remindableEvents) { event in
-                    Toggle(isOn: Binding(
-                        get: { settings.notifications.prefs(for: event).remind ?? true },
-                        set: { newValue in
-                            settings.notifications.update(event) { $0.remind = newValue }
-                            settings.save()
-                        }
-                    )) {
-                        SettingsLabel(
-                            title: event.title,
-                            detail: event.detail,
-                            symbol: event.symbolName
-                        )
-                    }
-                    .settingsID("notifications.reminders.event.\(event.rawValue)")
-                }
-            } header: {
-                Text("Which events")
-            } footer: {
-                SettingsNote(
-                    String(localized: "Momentary events such as a finished turn are not on the list: there is no state behind. A session that stops waiting drops its reminder too.")
+    private var remindersSection: some View {
+        Section {
+            Toggle(isOn: reminderBind(\.enabled)) {
+                SettingsLabel(
+                    title: String(localized: "Repeat while it keeps waiting"),
+                    detail: String(localized: "An agent blocked for twenty minutes looks exactly like one blocked five seconds ago. Only states that last until you act on them are repeated.")
                 )
             }
+            .settingsID("notifications.reminders.enabled")
+
+            Picker(selection: reminderBind(\.intervalMinutes)) {
+                ForEach([1, 2, 5, 10, 15, 30, 60], id: \.self) { minutes in
+                    Text(minutes < 60 ? "Every \(minutes) minutes" : "Hourly").tag(minutes)
+                }
+            } label: {
+                SettingsLabel(title: String(localized: "Repeat interval"))
+            }
+            .settingsID("notifications.reminders.interval")
             .disabled(!reminders.enabled)
+
+            Picker(selection: reminderBind(\.maxCount)) {
+                Text("Unlimited").tag(0)
+                ForEach([1, 2, 3, 5, 10], id: \.self) { count in
+                    Text("\(count) times").tag(count)
+                }
+            } label: {
+                SettingsLabel(
+                    title: String(localized: "At most"),
+                    detail: String(localized: "How many times it is repeated after the first notification.")
+                )
+            }
+            .settingsID("notifications.reminders.maxCount")
+            .disabled(!reminders.enabled)
+        } header: {
+            Text("Reminders")
+        } footer: {
+            // Which events repeat is set on the event itself, above: a second
+            // list of the same switches is the same setting with two homes.
+            SettingsNote(reminderSummary)
         }
-        .disabled(!settings.notifications.enabled)
+        .disabled(!prefs.enabled)
     }
 
-    private var summary: String {
+    private var reminderSummary: String {
         guard reminders.enabled else { return String(localized: "Reminders are off.") }
         let every = String(localized: "Every \(reminders.intervalMinutes) minutes")
         guard reminders.maxCount > 0 else {
@@ -329,57 +291,38 @@ struct NotificationRemindersPage: View {
         return String(localized: "\(every), up to \(reminders.maxCount) times — for about \(total) minutes.")
     }
 
-    private func bind<Value>(
-        _ keyPath: WritableKeyPath<ReminderPrefs, Value>
-    ) -> Binding<Value> {
-        Binding(
-            get: { settings.notifications.reminders[keyPath: keyPath] },
-            set: {
-                settings.notifications.reminders[keyPath: keyPath] = $0
-                settings.save()
+    // MARK: Quiet hours
+
+    /// Kept, rather than handed to macOS Focus as planned: Focus silences
+    /// everything, and the reason to have a window here is the exception —
+    /// letting through the events that stopped the work while suppressing the
+    /// ones that merely report it. Three rows behind one switch.
+    private var quietHoursSection: some View {
+        Section {
+            Toggle(isOn: quietBind(\.enabled)) {
+                SettingsLabel(
+                    title: String(localized: "Quiet hours"),
+                    detail: String(localized: "An agent working through the night will not wake you.")
+                )
             }
-        )
-    }
-}
+            .settingsID("notifications.quietHours.enabled")
 
-// MARK: - Quiet hours
-
-struct NotificationQuietHoursPage: View {
-    @EnvironmentObject private var settings: SettingsStore
-
-    private var quiet: QuietHours { settings.notifications.quietHours }
-
-    var body: some View {
-        SettingsPage(
-            title: String(localized: "Quiet Hours"),
-            subtitle: String(localized: "Notifications are silenced during the window you set. An agent working through the night will not wake you.")
-        ) {
-            Section {
-                Toggle(isOn: bind(\.enabled)) {
-                    SettingsLabel(title: String(localized: "Quiet hours on"))
-                }
-                .settingsID("notifications.quietHours.enabled")
-            }
-
-            Section {
-                minutePicker("Start", value: bind(\.startMinute))
-                .settingsID("notifications.quietHours.start")
-
-                minutePicker("End", value: bind(\.endMinute))
-                .settingsID("notifications.quietHours.end")
-
-                Toggle(isOn: bind(\.allowHighPriority)) {
+            if quiet.enabled {
+                minutePicker(String(localized: "Start"), value: quietBind(\.startMinute))
+                    .settingsID("notifications.quietHours.start")
+                minutePicker(String(localized: "End"), value: quietBind(\.endMinute))
+                    .settingsID("notifications.quietHours.end")
+                Toggle(isOn: quietBind(\.allowHighPriority)) {
                     SettingsLabel(
                         title: String(localized: "Let high-priority events through"),
                         detail: String(localized: "Events that stop the work, such as permission and login, are announced during quiet hours too.")
                     )
                 }
-            } footer: {
-                SettingsNote(summary)
             }
-            .disabled(!quiet.enabled)
+        } footer: {
+            SettingsNote(quietSummary)
         }
-        .disabled(!settings.notifications.enabled)
+        .disabled(!prefs.enabled)
     }
 
     private func minutePicker(_ title: String, value: Binding<Int>) -> some View {
@@ -392,7 +335,7 @@ struct NotificationQuietHoursPage: View {
         }
     }
 
-    private var summary: String {
+    private var quietSummary: String {
         guard quiet.enabled else { return String(localized: "Quiet hours off.") }
         let start = QuietHours.label(forMinute: quiet.startMinute)
         let end = QuietHours.label(forMinute: quiet.endMinute)
@@ -402,7 +345,31 @@ struct NotificationQuietHoursPage: View {
         return String(localized: "Quiet between \(start) and \(end).\(exception)")
     }
 
-    private func bind<Value>(
+    // MARK: Bindings
+
+    private func bind(_ keyPath: WritableKeyPath<NotificationPrefs, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { settings.notifications[keyPath: keyPath] },
+            set: { newValue in
+                settings.notifications[keyPath: keyPath] = newValue
+                settings.save()
+            }
+        )
+    }
+
+    private func reminderBind<Value>(
+        _ keyPath: WritableKeyPath<ReminderPrefs, Value>
+    ) -> Binding<Value> {
+        Binding(
+            get: { settings.notifications.reminders[keyPath: keyPath] },
+            set: {
+                settings.notifications.reminders[keyPath: keyPath] = $0
+                settings.save()
+            }
+        )
+    }
+
+    private func quietBind<Value>(
         _ keyPath: WritableKeyPath<QuietHours, Value>
     ) -> Binding<Value> {
         Binding(
@@ -414,7 +381,6 @@ struct NotificationQuietHoursPage: View {
         )
     }
 }
-
 // MARK: - Per project
 
 struct ProjectNotificationRows: View {

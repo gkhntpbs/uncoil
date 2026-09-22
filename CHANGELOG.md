@@ -20,6 +20,8 @@ release notes are written once, here.
 
 ### Changed
 
+- Notifications are one page. They were four — General, Events, Reminders, Quiet Hours — for a single decision: when should Uncoil interrupt you. Whether an event repeats is now set on the event itself, where its switch, priority and sound already are; it used to be a second list on the Reminders page, so the same value had two homes and one of them always looked out of date. Each event opens to show its own priority, sound and repeat, and stays a single switch until you need them.
+
 - Settings has a page per agent. Setting up Codex used to mean visiting four pages — Installed Agents, Accounts, CLI Tools, Run Parameters, Working Mode — each one a table of every agent against a single setting, so three quarters of every page was about some other agent. Now the page is the agent: its logins, what it does without asking, the parameters its sessions start with, and the CLI Uncoil runs, in one place — opened from the row in the Agents list that already says whether that CLI was found. The sidebar is unchanged, because a row per agent would grow it with every CLI installed. Links and palette entries written against the old pages open the Agents list, which still says which CLIs were found and where they live.
 
 - Quick Launch reaches every agent. The pill of agent marks over a project row now ends in a plus once the pointer is on it, and that opens the full list — the agents left out of your Quick Launch order, and the plain terminal, which until now could only be started from the command palette. The marks themselves are unchanged: one click starts that agent, right-click picks a second login.

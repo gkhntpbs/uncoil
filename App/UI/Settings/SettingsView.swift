@@ -35,7 +35,6 @@ struct SettingsView: View {
     enum Category: String, CaseIterable, Identifiable {
         case general
         case agents
-        case notifications
         case appearance
         case uncoil
         case about
@@ -46,7 +45,6 @@ struct SettingsView: View {
             switch self {
             case .general: String(localized: "General")
             case .agents: String(localized: "Agents")
-            case .notifications: String(localized: "Notifications")
             case .appearance: String(localized: "Appearance")
             case .uncoil: "Uncoil"
             case .about: String(localized: "About")
@@ -76,9 +74,6 @@ struct SettingsView: View {
         case blueprints
 
         case notifications
-        case notificationEvents
-        case reminders
-        case quietHours
 
         case theme
         case menuBar
@@ -102,9 +97,6 @@ struct SettingsView: View {
             case .presets: "presets"
             case .blueprints: "blueprints"
             case .notifications: "notifications"
-            case .notificationEvents: "notificationEvents"
-            case .reminders: "reminders"
-            case .quietHours: "quietHours"
             case .theme: "theme"
             case .menuBar: "menuBar"
             case .launcher: "launcher"
@@ -121,9 +113,8 @@ struct SettingsView: View {
         /// Everything that does not depend on what is installed. Reading order
         /// within a category is the order here.
         static let fixed: [Pane] = [
-            .general, .input,
+            .general, .input, .notifications,
             .agents, .presets, .blueprints,
-            .notifications, .notificationEvents, .reminders, .quietHours,
             .theme, .menuBar, .launcher,
             .permissions, .mcp, .hooks, .drivers, .github, .privacyData,
             .about,
@@ -150,9 +141,11 @@ struct SettingsView: View {
 
         var category: Category {
             switch self {
-            case .general, .input: .general
+            // When Uncoil may interrupt you is an app-wide preference, and it
+            // is one page now, so it sits beside the others rather than under
+            // a heading of its own.
+            case .general, .input, .notifications: .general
             case .agents, .agent, .presets, .blueprints: .agents
-            case .notifications, .notificationEvents, .reminders, .quietHours: .notifications
             // How Uncoil looks and what it puts in front of you.
             case .theme, .menuBar, .launcher: .appearance
             // Uncoil's own machinery: what it lets agents do, how it talks to
@@ -177,10 +170,7 @@ struct SettingsView: View {
             case .presets: String(localized: "Session Presets")
             case .blueprints: String(localized: "Blueprints")
             case .launcher: String(localized: "Quick Launch")
-            case .notifications: String(localized: "General")
-            case .notificationEvents: String(localized: "Events")
-            case .reminders: String(localized: "Reminders")
-            case .quietHours: String(localized: "Quiet Hours")
+            case .notifications: String(localized: "Notifications")
             case .menuBar: String(localized: "Menu Bar")
             case .theme: String(localized: "Theme and Colours")
             case .permissions: String(localized: "Permissions")
@@ -203,9 +193,6 @@ struct SettingsView: View {
             case .blueprints: "square.grid.2x2"
             case .launcher: "bolt"
             case .notifications: "bell"
-            case .notificationEvents: "list.bullet.rectangle"
-            case .reminders: "alarm"
-            case .quietHours: "moon"
             case .menuBar: "menubar.rectangle"
             case .theme: "paintpalette"
             case .permissions: "lock.shield"
@@ -235,10 +222,8 @@ struct SettingsView: View {
             case .presets: "preset alt agent child yetki capability prompt şablon template"
             case .blueprints: "blueprint şema plan iskelet scaffold kurulum setup yeni proje new project prompt şablon template klasör yapısı structure"
             case .launcher: "kısayol shortcut hızlı quick launch başlat strip şerit sırala reorder sürükle drag terminal agent"
-            case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background"
-            case .notificationEvents: "olay event izin permission girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority ses sound"
-            case .reminders: "hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor waiting"
-            case .quietHours: "sessiz saat quiet hours rahatsız etme do not disturb gece night odak focus"
+            // One page, so it answers to everything the four used to.
+            case .notifications: "bildirim notification izin permission ses sound gruplama grouping teslimat delivery arka plan background olay event girdi input tur tamamlandı turn hata error sorun görev task merge öncelik priority hatırlatma reminder tekrar repeat aralık interval ikinci kez bekliyor waiting sessiz saat quiet hours rahatsız etme do not disturb gece night odak focus"
             case .menuBar: "menü bar menubar ikon icon simge sayaç counter status durum çubuğu mark"
             case .theme: "tema theme renk color açık koyu light dark terminal palet palette"
             case .permissions: "izin permission mcp grant onay approval agent kontrol control computer use browser"
@@ -267,6 +252,9 @@ struct SettingsView: View {
             // A project's own notification settings moved beside the
             // project, into its settings sheet; the deep link lands on the
             // notification defaults they inherit from.
+            // Notifications were four pages: General, Events, Reminders,
+            // Quiet Hours. They are one.
+            case "notificationEvents", "reminders", "quietHours": return .notifications
             case "projectNotifications": return .notifications
             case "defaults": return .general
             case "notificationSounds": return .notifications
@@ -389,10 +377,7 @@ struct SettingsView: View {
         case .presets: SessionPresetsSettingsPage()
         case .blueprints: BlueprintsSettingsPage()
         case .launcher: LauncherSettingsPage()
-        case .notifications: NotificationGeneralPage()
-        case .notificationEvents: NotificationEventsPage()
-        case .reminders: NotificationRemindersPage()
-        case .quietHours: NotificationQuietHoursPage()
+        case .notifications: NotificationsSettingsPage()
         case .menuBar: MenuBarSettingsPage()
         case .theme: AppearanceSettingsPage()
         case .permissions:

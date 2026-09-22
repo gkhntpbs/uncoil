@@ -203,6 +203,16 @@ final class SettingsNavigationTests: XCTestCase {
         XCTAssertEqual(SettingsView.Pane.input.category, .general)
     }
 
+    /// Notifications were four pages — General, Events, Reminders, Quiet Hours
+    /// — and every link written against one of them still lands on the page
+    /// that now holds all four.
+    func testLinksToTheFourNotificationPagesStillResolve() {
+        for raw in ["notifications", "notificationEvents", "reminders", "quietHours",
+                    "notificationSounds", "projectNotifications"] {
+            XCTAssertEqual(SettingsView.Pane.resolve(raw), .notifications, raw)
+        }
+    }
+
     /// The keyboard and paste settings moved off the agent page, and a link
     /// written against the old one must still land somewhere sensible.
     func testLinksToTheSplitPageStillResolve() {
@@ -237,11 +247,11 @@ final class SettingsNavigationTests: XCTestCase {
         func search(_ query: String) -> [SettingsView.Pane] {
             SettingsView.Pane.searchable.filter { $0.searchText.contains(query.lowercased()) }
         }
-        XCTAssertTrue(search("hatırlatma").contains(.reminders))
-        XCTAssertTrue(search("ikinci kez").contains(.reminders))
+        XCTAssertTrue(search("hatırlatma").contains(.notifications))
+        XCTAssertTrue(search("ikinci kez").contains(.notifications))
         XCTAssertTrue(search("menü").contains(.menuBar))
         XCTAssertTrue(search("ikon").contains(.menuBar))
-        XCTAssertTrue(search("sessiz").contains(.quietHours))
+        XCTAssertTrue(search("sessiz").contains(.notifications))
         XCTAssertTrue(search("editor").contains(.general))
         XCTAssertTrue(search("transcript").contains(.privacyData))
         XCTAssertTrue(search("computer use").contains(.permissions))
