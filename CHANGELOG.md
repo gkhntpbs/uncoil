@@ -56,6 +56,8 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ### Fixed
 
+- Shift+Enter in a Codex session inserts a clean newline. Codex took the backslash Claude Code expects as text, so every line of a multi-line prompt ended in a stray `\`.
+
 - The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
 
 - A session on an account profile no longer breaks Codex. Project extension

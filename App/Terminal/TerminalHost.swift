@@ -663,6 +663,7 @@ final class TerminalRegistry {
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
         }
+        view.newlineSequence = provider.descriptor.newlineSequence
         view.handleImagePaste = Self.imagePasteHandler(
             record: record, project: project, settings: settings
         )
@@ -728,6 +729,7 @@ final class TerminalRegistry {
         view.resolveShiftEnterNewline = { [weak settings] in
             settings?.shiftEnterNewline(for: provider) ?? provider.defaultShiftEnterNewline
         }
+        view.newlineSequence = provider.descriptor.newlineSequence
         view.handleImagePaste = Self.imagePasteHandler(
             record: record, project: project, settings: settings
         )

@@ -93,4 +93,13 @@ final class TerminalKeyTranslationTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: dir)
     }
+
+    func testCodexNewlineIsALineFeedNotABackslash() {
+        XCTAssertEqual(AgentProvider.codex.descriptor.newlineSequence, [0x0a])
+        XCTAssertEqual(AgentProvider.claude.descriptor.newlineSequence, [0x5c, 0x0d])
+        let bytes = TerminalKeyTranslation.newlineBytes(
+            keyCode: returnKey, modifiers: .shift, shiftEnterNewline: true,
+            sequence: AgentProvider.codex.descriptor.newlineSequence)
+        XCTAssertEqual(bytes, [0x0a])
+    }
 }

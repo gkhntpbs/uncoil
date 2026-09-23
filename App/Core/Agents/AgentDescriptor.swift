@@ -80,6 +80,14 @@ struct AgentDescriptor: Equatable, Sendable, Identifiable {
     var resumesConversation: Bool
     /// Default for Shift+Enter inserting a literal newline.
     var defaultShiftEnterNewline: Bool
+    /// What that newline is on the wire. Agents disagree: Claude Code reads
+    /// backslash + CR, Codex reads a bare line feed and would keep the
+    /// backslash as text.
+    var newlineSequence: [UInt8] {
+        provider == .codex
+            ? TerminalKeyTranslation.lineFeedNewline
+            : TerminalKeyTranslation.newlineSequence
+    }
 
     /// The agent's own approval levels, in the order it presents them.
     var workingModes: [AgentWorkingMode]

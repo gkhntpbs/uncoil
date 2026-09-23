@@ -10,8 +10,11 @@ enum TerminalKeyTranslation {
     static let keypadEnterKeyCode: UInt16 = 76
 
     /// Backslash + carriage return — what `claude /terminal-setup` configures
-    /// terminals to send for an in-prompt newline (Claude Code / Codex TUI).
+    /// terminals to send for an in-prompt newline in Claude Code.
     static let newlineSequence: [UInt8] = [0x5c, 0x0d]
+    /// Line feed (⌃J). Codex's composer inserts a newline for it, but takes a
+    /// backslash literally — `\⏎` leaves a stray `\` on every line there.
+    static let lineFeedNewline: [UInt8] = [0x0a]
 
     static let leftArrowKeyCode: UInt16 = 123
     static let rightArrowKeyCode: UInt16 = 124
@@ -39,13 +42,14 @@ enum TerminalKeyTranslation {
     static func newlineBytes(
         keyCode: UInt16,
         modifiers: NSEvent.ModifierFlags,
-        shiftEnterNewline: Bool
+        shiftEnterNewline: Bool,
+        sequence: [UInt8] = newlineSequence
     ) -> [UInt8]? {
         guard shiftEnterNewline else { return nil }
         guard keyCode == returnKeyCode || keyCode == keypadEnterKeyCode else { return nil }
         let flags = modifiers.intersection(.deviceIndependentFlagsMask)
         guard flags.contains(.shift) || flags.contains(.option) else { return nil }
-        return newlineSequence
+        return sequence
     }
 
     /// The macOS text-editing shortcuts a terminal does not get on its own.
@@ -99,6 +103,8 @@ enum TerminalKeyTranslation {
 protocol ShiftEnterCapableTerminal: AnyObject {
     /// Resolved live from settings so a toggle change applies to open sessions.
     var resolveShiftEnterNewline: () -> Bool { get }
+    /// The bytes this terminal's agent reads as an in-prompt newline.
+    var newlineSequence: [UInt8] { get }
     /// SwiftTerm's own "Option is Meta" switch, read back so the key monitor
     /// knows whether ⌥←/→ already produce ⎋b/⎋f.
     var optionAsMetaKey: Bool { get set }
@@ -166,6 +172,7 @@ enum TerminalFocus {
 /// Daemon-backed terminal view.
 final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
+    var newlineSequence = TerminalKeyTranslation.newlineSequence
     var handleImagePaste: () -> Bool = { false }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
 
@@ -180,6 +187,7 @@ final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
 /// In-process fallback terminal view.
 final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapableTerminal {
     var resolveShiftEnterNewline: () -> Bool = { false }
+    var newlineSequence = TerminalKeyTranslation.newlineSequence
     var handleImagePaste: () -> Bool = { false }
     var onDataReceived: (Data) -> Void = { _ in }
     func sendNewline(_ bytes: [UInt8]) { send(bytes) }
@@ -214,7 +222,8 @@ enum TerminalKeyMonitor {
             if let bytes = TerminalKeyTranslation.newlineBytes(
                 keyCode: event.keyCode,
                 modifiers: event.modifierFlags,
-                shiftEnterNewline: terminal.resolveShiftEnterNewline()
+                shiftEnterNewline: terminal.resolveShiftEnterNewline(),
+                sequence: terminal.newlineSequence
             ) {
                 terminal.sendNewline(bytes)
                 return nil  // swallow: don't also submit the prompt

@@ -300,7 +300,7 @@ struct InputSettingsPage: View {
                 Text("Shift+Enter for a newline")
             } footer: {
                 SettingsNote(
-                    String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately.")
+                    String(localized: "Shift+Enter (and Option+Enter) inserts a newline in the prompt instead of submitting, using the sequence each agent expects (\\⏎ for Claude Code, ⌃J for Codex). Applies to open sessions immediately.")
                 )
             }
 
