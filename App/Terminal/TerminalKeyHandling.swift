@@ -52,6 +52,32 @@ enum TerminalKeyTranslation {
         return sequence
     }
 
+    /// The character an Option chord types, when the keyboard layout puts a
+    /// symbol there that has no other key — `@`, `#`, `[`, `|` on Turkish,
+    /// German and most European layouts.
+    ///
+    /// With Option as Meta, SwiftTerm turns every Option chord into ⎋ + key,
+    /// so on those layouts `@` could not be typed at all. Only ASCII symbols
+    /// are kept: on a US layout Option types `∫` or `ç`, nobody reaches for
+    /// those in a prompt, and ⌥B stays Meta-B there.
+    static func layoutSymbolBytes(
+        characters: String?,
+        charactersIgnoringModifiers: String?,
+        modifiers: NSEvent.ModifierFlags,
+        optionIsMeta: Bool
+    ) -> [UInt8]? {
+        guard optionIsMeta else { return nil }
+        let flags = modifiers.intersection([.command, .option, .control])
+        guard flags == .option,
+              let characters, characters != charactersIgnoringModifiers,
+              characters.unicodeScalars.count == 1,
+              let scalar = characters.unicodeScalars.first,
+              scalar.isASCII, scalar.value > 0x20, scalar.value < 0x7F,
+              !CharacterSet.alphanumerics.contains(scalar)
+        else { return nil }
+        return Array(characters.utf8)
+    }
+
     /// The macOS text-editing shortcuts a terminal does not get on its own.
     ///
     /// Command never reaches the terminal — AppKit keeps it for menus — so
@@ -235,6 +261,15 @@ enum TerminalKeyMonitor {
             ) {
                 terminal.sendNewline(bytes)
                 return nil  // swallow: ⌘⌫ would otherwise ring the system bell
+            }
+            if let bytes = TerminalKeyTranslation.layoutSymbolBytes(
+                characters: event.characters,
+                charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+                modifiers: event.modifierFlags,
+                optionIsMeta: terminal.optionAsMetaKey
+            ) {
+                terminal.sendNewline(bytes)
+                return nil  // swallow: SwiftTerm would send ⎋ + the base key
             }
             // ⌘V with an image on the clipboard. Everything else about ⌘V —
             // text, a path, a mixed selection — is left exactly alone; the

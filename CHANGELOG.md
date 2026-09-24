@@ -56,7 +56,8 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ### Fixed
 
-- Shift+Enter in a Codex session inserts a clean newline. Codex took the backslash Claude Code expects as text, so every line of a multi-line prompt ended in a stray `\`.
+- Shift+Enter inserts a clean newline in Codex, OpenCode, Grok, Hermes and Cursor. They took the backslash Claude Code expects as text — and in OpenCode the carriage return after it sent the prompt. They now get a line feed (⌃J).
+- Option symbols type again with Option as Meta on. On Turkish, German and other layouts `@`, `#`, `[` and `|` live behind Option, and every one of them arrived as a Meta chord instead of the character.
 
 - The Drivers page stops reporting a stale answer. Installing the Chromium runtime, or granting the Cua driver its macOS permissions, ended by re-probing the driver — but the probe refused to run while an action was in progress, and the action was still marked in progress when it asked. The page went on saying the runtime was missing until it was refreshed by hand. An installed driver now says where it is, which version answered, and — one row each — which macOS permissions it actually holds. The driver reports those in ticks and crosses; Uncoil reads that and says what it means, rather than pasting the tool's output onto the page.
 

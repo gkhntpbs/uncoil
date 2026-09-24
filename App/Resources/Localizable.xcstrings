@@ -1,70 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stable, test edilmiş sürümleri alır. Edge’den geçişte daha yeni bir Stable sürümü beklenir; uygulamanız veya verileriniz eski sürüme döndürülmez."
-          }
-        }
-      }
-    },
-    "Edge receives the newest developments before they reach Stable and may contain bugs.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edge receives the newest developments before they reach Stable and may contain bugs."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edge, en yeni geliştirmeleri Stable kanalından önce alır ve hatalar içerebilir."
-          }
-        }
-      }
-    },
-    "Update channel": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Update channel"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Güncelleme kanalı"
-          }
-        }
-      }
-    },
-    "Installed channel": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installed channel"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kurulu sürüm kanalı"
-          }
-        }
-      }
-    },
     "" : {
 
     },
@@ -5353,6 +5289,22 @@
         }
       }
     },
+    "Edge receives the newest developments before they reach Stable and may contain bugs." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edge receives the newest developments before they reach Stable and may contain bugs."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edge, en yeni geliştirmeleri Stable kanalından önce alır ve hatalar içerebilir."
+          }
+        }
+      }
+    },
     "Edit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6817,6 +6769,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uncoil tarafından kurulan"
+          }
+        }
+      }
+    },
+    "Installed channel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed channel"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurulu sürüm kanalı"
           }
         }
       }
@@ -12728,7 +12696,7 @@
         }
       }
     },
-    "Shift+Enter (and Option+Enter) inserts a newline in the prompt; sending to the agent sends a backslash + carriage return (\\⏎) instead. Applies to open sessions immediately." : {
+    "Shift+Enter (and Option+Enter) inserts a newline in the prompt instead of submitting, using the sequence each agent expects (\\⏎ for Claude Code, ⌃J for Codex). Applies to open sessions immediately." : {
 
     },
     "Shift+Enter for a newline" : {
@@ -13164,6 +13132,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kaynaklar ayrı gösterilir; birleştirilmez."
+          }
+        }
+      }
+    },
+    "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stable, test edilmiş sürümleri alır. Edge’den geçişte daha yeni bir Stable sürümü beklenir; uygulamanız veya verileriniz eski sürüme döndürülmez."
           }
         }
       }
@@ -15618,6 +15602,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "İncelenenlerin hepsini güncelle"
+          }
+        }
+      }
+    },
+    "Update channel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update channel"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncelleme kanalı"
           }
         }
       }

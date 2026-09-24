@@ -102,4 +102,29 @@ final class TerminalKeyTranslationTests: XCTestCase {
             sequence: AgentProvider.codex.descriptor.newlineSequence)
         XCTAssertEqual(bytes, [0x0a])
     }
+
+    func testOpenCodeNewlineIsALineFeed() {
+        XCTAssertEqual(AgentProvider.opencode.descriptor.newlineSequence, [0x0a])
+    }
+
+    func testOptionSymbolIsTypedEvenWithOptionAsMeta() {
+        // Turkish Q layout: ⌥Q is @, ⌥3 is #.
+        XCTAssertEqual(TerminalKeyTranslation.layoutSymbolBytes(
+            characters: "@", charactersIgnoringModifiers: "q",
+            modifiers: .option, optionIsMeta: true), Array("@".utf8))
+        XCTAssertEqual(TerminalKeyTranslation.layoutSymbolBytes(
+            characters: "#", charactersIgnoringModifiers: "3",
+            modifiers: .option, optionIsMeta: true), Array("#".utf8))
+        // US layout ⌥B is ∫: stays Meta-B.
+        XCTAssertNil(TerminalKeyTranslation.layoutSymbolBytes(
+            characters: "∫", charactersIgnoringModifiers: "b",
+            modifiers: .option, optionIsMeta: true))
+        // Meta off: SwiftTerm already types the character.
+        XCTAssertNil(TerminalKeyTranslation.layoutSymbolBytes(
+            characters: "@", charactersIgnoringModifiers: "q",
+            modifiers: .option, optionIsMeta: false))
+        XCTAssertNil(TerminalKeyTranslation.layoutSymbolBytes(
+            characters: "@", charactersIgnoringModifiers: "q",
+            modifiers: [.option, .command], optionIsMeta: true))
+    }
 }
