@@ -618,6 +618,7 @@ final class TerminalRegistry {
             }
         )
         let delegate = CodexStructuredTerminalDelegate(session: session, terminal: view)
+        session.draftHandler = { [weak delegate] in delegate?.prefill($0) }
         view.terminalDelegate = delegate
         delegates[record.id] = delegate
         codexSessions[record.id] = session
@@ -812,6 +813,7 @@ final class TerminalRegistry {
     func closeTerminal(for recordID: UUID) {
         codexSessions[recordID]?.stop()
         codexSessions[recordID] = nil
+        AgentEventHub.shared.end(recordID)
         RuntimeClient.shared.kill(sid: recordID)
         terminals[recordID] = nil
         delegates[recordID] = nil
@@ -854,30 +856,27 @@ final class TerminalRegistry {
         if LaunchConfig.shared.isUITesting {
             UITestJournal.append("SUBMIT", "\(recordID.uuidString)\t\(text)")
         }
-        if let session = codexSessions[recordID] {
-            session.submit(text)
-            return
-        }
-        await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
-        await RuntimeClient.shared.submitText(
-            deliverable(text, for: recordID), sid: recordID, provider: provider
-        )
+        await control(for: recordID, provider: provider).submit(text)
     }
 
     /// Types a prompt into the session without submitting it: the user reads,
-    /// edits, and presses Enter. The structured Codex session prefills its own
-    /// line editor; everything else gets the text bytes minus the submit key.
+    /// edits, and starts the turn themselves.
     func typeText(_ text: String, for recordID: UUID, provider: AgentProvider) async {
-        if codexSessions[recordID] != nil {
-            (delegates[recordID] as? CodexStructuredTerminalDelegate)?.prefill(text)
-            return
+        await control(for: recordID, provider: provider).draft(text)
+    }
+
+    /// The way into a session, whatever is behind it: the structured Codex
+    /// session when there is one, the terminal otherwise.
+    func control(for recordID: UUID, provider: AgentProvider) -> AgentSessionControl {
+        if let session = codexSessions[recordID] {
+            return session
         }
-        await RuntimeClient.shared.waitUntilInputReady(sid: recordID, provider: provider)
-        RuntimeClient.shared.sendText(
-            RuntimeClient.submissionParts(
-                deliverable(text, for: recordID), provider: provider
-            )[0],
-            sid: recordID
+        return PTYAgentSessionControl(
+            sessionID: recordID,
+            provider: provider,
+            bracketedPaste: { [weak self] in
+                self?.terminals[recordID]?.getTerminal().bracketedPasteMode == true
+            }
         )
     }
 
@@ -897,14 +896,8 @@ final class TerminalRegistry {
     /// Without it, runs of newlines are collapsed to single spaces. That loses
     /// the shape of the text, which is a real cost — but the alternative is
     /// losing all of it but the last paragraph.
-    private func deliverable(_ text: String, for recordID: UUID) -> String {
-        Self.deliverable(
-            text,
-            bracketedPaste: terminals[recordID]?.getTerminal().bracketedPasteMode == true
-        )
-    }
-
-    /// Pure half of the above, so both branches are testable without a PTY.
+    ///
+    /// Pure, so both branches are testable without a PTY.
     nonisolated static func deliverable(
         _ text: String, bracketedPaste: Bool
     ) -> String {
@@ -918,21 +911,11 @@ final class TerminalRegistry {
     }
 
     func sendRaw(_ data: Data, for recordID: UUID) {
-        guard codexSessions[recordID] == nil else {
-            if let text = String(data: data, encoding: .utf8) {
-                codexSessions[recordID]?.submit(text.trimmingCharacters(in: .newlines))
-            }
-            return
-        }
-        RuntimeClient.shared.sendText(data, sid: recordID)
+        control(for: recordID).sendRaw(data)
     }
 
     func interrupt(_ recordID: UUID) {
-        if let session = codexSessions[recordID] {
-            session.interrupt()
-        } else {
-            RuntimeClient.shared.interrupt(sid: recordID)
-        }
+        control(for: recordID).interrupt()
     }
 
     func respondToCodexApproval(
@@ -940,7 +923,12 @@ final class TerminalRegistry {
         request: CodexApprovalRequest,
         decision: String
     ) {
-        codexSessions[sessionID]?.respondToApproval(request, decision: decision)
+        control(for: sessionID).respond(toApproval: request.id, decision: decision)
+    }
+
+    /// For calls that don't depend on how a prompt is typed.
+    private func control(for recordID: UUID) -> AgentSessionControl {
+        control(for: recordID, provider: .terminal)
     }
 
     func output(for recordID: UUID) async -> Data? {

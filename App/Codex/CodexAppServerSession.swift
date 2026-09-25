@@ -4,8 +4,14 @@ import Foundation
 import SwiftTerm
 
 @MainActor
-final class CodexAppServerSession {
+final class CodexAppServerSession: AgentSessionControl {
     let recordID: UUID
+    var sessionID: UUID { recordID }
+    let capabilities: AgentControlCapabilities = [
+        .structuredTurns, .approvals, .events, .imageAttachments,
+    ]
+    /// Where a drafted prompt goes: the terminal's line editor, today.
+    var draftHandler: ((String) -> Void)?
 
     private let record: SessionRecord
     private let project: Project
@@ -27,9 +33,12 @@ final class CodexAppServerSession {
     private var continuations: [Int: CheckedContinuation<JSONValue, Error>] = [:]
     private var threadID: String?
     private var activeTurnID: String?
-    private var streamedAgentItems: Set<String> = []
-    private var startedItems: Set<String> = []
-    private var streamedOutputItems: Set<String> = []
+    /// The terminal's view of the event stream: what it has already drawn.
+    private var renderer = AgentTerminalRenderer()
+    /// Approvals Codex is waiting on, by `AgentApproval.id`.
+    private var pendingApprovals: [String: CodexApprovalRequest] = [:]
+    /// Images attached since the last turn; they go with the next one.
+    private var stagedImages: [AgentAttachment] = []
     private var capturedOutput = Data()
     private var stopped = false
     private var ready = false
@@ -75,7 +84,7 @@ final class CodexAppServerSession {
     }
 
     func start() {
-        feed("\u{001B}[2mChecking the Codex app-server…\u{001B}[0m\r\n")
+        publish(.notice(AgentNotice(level: .info, message: "Checking the Codex app-server…")))
         let binaryPath = binaryPath
         let environment = environment
         Task {
@@ -91,28 +100,64 @@ final class CodexAppServerSession {
         }
     }
 
-    func submit(_ text: String) {
+    func submit(_ prompt: String) async {
+        startTurn(prompt)
+    }
+
+    func draft(_ prompt: String) async {
+        draftHandler?(prompt)
+    }
+
+    func attach(_ attachments: [AgentAttachment]) async {
+        let images = attachments.filter { $0.kind == .image }
+        let files = attachments.filter { $0.kind == .file }
+        if !images.isEmpty {
+            stagedImages.append(contentsOf: images)
+            let names = images.map(\.displayName).joined(separator: ", ")
+            publish(.notice(AgentNotice(
+                level: .info,
+                message: "Attached \(names) — sent with your next prompt."
+            )))
+        }
+        // Codex takes no file input of its own; it reads the path from disk.
+        if !files.isEmpty {
+            draftHandler?(SessionImageDrop.promptFragment(relativePaths: files.map(\.promptPath)))
+        }
+    }
+
+    func sendRaw(_ data: Data) {
+        guard let text = String(data: data, encoding: .utf8) else { return }
+        startTurn(text.trimmingCharacters(in: .newlines))
+    }
+
+    @discardableResult
+    func respond(toApproval approvalID: String, decision: String) -> Bool {
+        guard let request = pendingApprovals[approvalID] else { return false }
+        respondToApproval(request, decision: decision)
+        return true
+    }
+
+    func startTurn(_ text: String) {
         guard ready, let threadID else {
-            feed("\r\n\u{001B}[31mThe structured Codex session is not ready yet.\u{001B}[0m\r\n")
+            publish(.notice(AgentNotice(level: .error, message: "The structured Codex session is not ready yet.")))
             return
         }
         sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
+        let images = stagedImages
+        stagedImages.removeAll()
         Task {
             do {
                 let result = try await request(
                     method: "turn/start",
                     params: .object([
                         "threadId": .string(threadID),
-                        "input": .array([
-                            .object([
-                                "type": .string("text"),
-                                "text": .string(text),
-                            ]),
-                        ]),
+                        "input": CodexEventNormalizer.turnInput(text: text, attachments: images),
                     ])
                 )
                 activeTurnID = result.objectValue?["turn"]?.objectValue?["id"]?.stringValue
             } catch {
+                // The turn never started; the images still belong to the next one.
+                stagedImages = images + stagedImages
                 display(error)
             }
         }
@@ -148,8 +193,10 @@ final class CodexAppServerSession {
         }
         do {
             try write(CodexAppServerJSON.response(id: request.requestID, result: result))
+            pendingApprovals[request.id] = nil
             sessionStore?.setCodexApproval(nil, for: recordID)
             sessionStore?.setStatus(.running, detail: String(localized: "Approval answered"), for: recordID)
+            publish(.approvalResolved(approvalID: request.id, decision: decision))
         } catch {
             display(error)
         }
@@ -293,7 +340,7 @@ final class CodexAppServerSession {
             try await openThread()
             await account
             ready = true
-            feed("\u{001B}[2mStructured Codex ready.\u{001B}[0m\r\n")
+            publish(.notice(AgentNotice(level: .info, message: "Structured Codex ready.")))
             sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), for: recordID)
         } catch {
             failToFallback(error)
@@ -306,9 +353,9 @@ final class CodexAppServerSession {
                 method: "account/read",
                 params: .object(["refreshToken": .bool(false)])
             )
-            applyAccount(result)
+            publish(.account(CodexEventNormalizer.account(result)))
         } catch {
-            sessionStore?.setCodexAuthentication(.error(error.localizedDescription), for: recordID)
+            publish(.account(.unavailable(error.localizedDescription)))
         }
     }
 
@@ -333,15 +380,11 @@ final class CodexAppServerSession {
             method = "thread/start"
         }
         let result = try await request(method: method, params: .object(params))
-        guard let id = result.objectValue?["thread"]?.objectValue?["id"]?.stringValue else {
+        let events = CodexEventNormalizer.threadOpened(result)
+        guard !events.isEmpty else {
             throw CodexAppServerProtocolError.invalidResponse
         }
-        threadID = id
-        _ = projectStore?.claimProviderSessionID(id, for: recordID)
-        let history = CodexStructuredFormatter.history(from: result)
-        if !history.isEmpty {
-            feed(history)
-        }
+        events.forEach(publish)
     }
 
     private func request(method: String, params: JSONValue) async throws -> JSONValue {
@@ -398,60 +441,8 @@ final class CodexAppServerSession {
             return
         }
         guard let method = message.method else { return }
-        let params = message.params ?? .object([:])
-        switch method {
-        case "thread/started":
-            if let id = params.objectValue?["thread"]?.objectValue?["id"]?.stringValue {
-                threadID = id
-                _ = projectStore?.claimProviderSessionID(id, for: recordID)
-            }
-        case "thread/status/changed":
-            applyThreadStatus(params)
-        case "turn/started":
-            activeTurnID = params.objectValue?["turn"]?.objectValue?["id"]?.stringValue
-            // Per-turn item bookkeeping; an interrupted or failed turn never
-            // delivers item/completed for its members, so these are reset at
-            // the turn boundaries rather than trusted to drain themselves.
-            streamedAgentItems.removeAll()
-            startedItems.removeAll()
-            streamedOutputItems.removeAll()
-            sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
-        case "turn/completed":
-            activeTurnID = nil
-            streamedAgentItems.removeAll()
-            startedItems.removeAll()
-            streamedOutputItems.removeAll()
-            let status = params.objectValue?["turn"]?.objectValue?["status"]?.stringValue
-            if status == "failed" {
-                sessionStore?.setStatus(.completed, detail: String(localized: "Codex turn failed"), for: recordID)
-                feed("\r\n\u{001B}[31mTurn failed.\u{001B}[0m\r\n")
-            } else {
-                sessionStore?.setStatus(.completed, detail: String(localized: "Codex finished"), for: recordID)
-            }
-        case "item/started":
-            handleItemStarted(params)
-        case "item/completed":
-            handleItemCompleted(params)
-        case "item/agentMessage/delta":
-            if let delta = params.objectValue?["delta"]?.stringValue {
-                if let itemID = params.objectValue?["itemId"]?.stringValue {
-                    streamedAgentItems.insert(itemID)
-                }
-                feed(delta)
-                sessionStore?.setStatus(.running, detail: String(localized: "Writing a reply"), for: recordID)
-            }
-        case "item/commandExecution/outputDelta":
-            if let delta = params.objectValue?["delta"]?.stringValue {
-                if let itemID = params.objectValue?["itemId"]?.stringValue {
-                    streamedOutputItems.insert(itemID)
-                }
-                feed(delta)
-            }
-        case "account/updated":
-            applyAccount(params)
-        default:
-            break
-        }
+        CodexEventNormalizer.events(method: method, params: message.params ?? .object([:]))
+            .forEach(publish)
     }
 
     private func handleApproval(method: String, id: JSONValue, params: JSONValue) {
@@ -490,87 +481,88 @@ final class CodexAppServerSession {
             permissions: object["permissions"],
             availableDecisions: decisions
         )
+        pendingApprovals[request.id] = request
         sessionStore?.setCodexApproval(request, for: recordID)
         sessionStore?.setStatus(.waitingForPermission, detail: title, for: recordID)
+        let approvalKind: AgentApproval.Kind = switch kind {
+        case .command: .command
+        case .fileChange: .fileChange
+        case .permissions: .permissions
+        }
+        publish(.approvalRequested(AgentApproval(
+            id: request.id,
+            kind: approvalKind,
+            title: title,
+            detail: request.detail,
+            decisions: decisions,
+            native: params
+        )))
         PermissionNotificationCenter.shared.post(request, projectID: record.projectID)
     }
 
-    private func handleItemStarted(_ params: JSONValue) {
-        guard let item = params.objectValue?["item"] else { return }
-        if let itemID = CodexStructuredFormatter.itemID(item) {
-            startedItems.insert(itemID)
+    /// Emits a normalized event: into the hub for every consumer, onto the
+    /// terminal through its renderer, and into the session's sidebar status.
+    private func publish(_ event: AgentEvent) {
+        AgentEventHub.shared.publish(event, sessionID: recordID, provider: .codex)
+        if let text = renderer.render(event) {
+            feed(text)
         }
-        if let output = CodexStructuredFormatter.startedItem(item) {
-            feed(output)
-        }
-        let type = item.objectValue?["type"]?.stringValue
-        let detail: String
-        switch type {
-        case "commandExecution":
-            detail = String(localized: "Running a command")
-        case "fileChange":
-            detail = String(localized: "Changing files")
-        case "mcpToolCall":
-            detail = String(localized: "Running an MCP tool")
-        case "dynamicToolCall", "collabAgentToolCall":
-            detail = String(localized: "Running a tool")
-        case "reasoning":
+        reflect(event)
+    }
+
+    /// What an event means for this session's own state and its status line.
+    private func reflect(_ event: AgentEvent) {
+        switch event {
+        case .sessionBound(let id):
+            threadID = id
+            _ = projectStore?.claimProviderSessionID(id, for: recordID)
+        case .turnStarted(let turnID):
+            activeTurnID = turnID
             sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
-            return
-        default:
-            detail = String(localized: "Codex running")
-        }
-        sessionStore?.setStatus(.running, detail: detail, for: recordID)
-    }
-
-    private func handleItemCompleted(_ params: JSONValue) {
-        guard let item = params.objectValue?["item"] else { return }
-        let itemID = CodexStructuredFormatter.itemID(item)
-        let streamed = itemID.map { streamedAgentItems.remove($0) != nil } ?? false
-        let type = item.objectValue?["type"]?.stringValue
-        if let itemID, startedItems.remove(itemID) != nil {
-            if type == "commandExecution",
-               streamedOutputItems.remove(itemID) == nil,
-               let output = item.objectValue?["aggregatedOutput"]?.stringValue,
-               !output.isEmpty {
-                feed(output.hasSuffix("\n") ? output : output + "\r\n")
+        case .turnCompleted(_, let outcome):
+            activeTurnID = nil
+            if case .failed = outcome {
+                sessionStore?.setStatus(.completed, detail: String(localized: "Codex turn failed"), for: recordID)
+            } else {
+                sessionStore?.setStatus(.completed, detail: String(localized: "Codex finished"), for: recordID)
             }
-            if type != "agentMessage" && type != "fileChange" {
+        case .itemStarted(let item):
+            let detail: String
+            switch item.kind {
+            case .command:
+                detail = String(localized: "Running a command")
+            case .fileChange:
+                detail = String(localized: "Changing files")
+            case .toolCall(let call):
+                if case .mcp = call.origin {
+                    detail = String(localized: "Running an MCP tool")
+                } else {
+                    detail = String(localized: "Running a tool")
+                }
+            case .reasoning:
+                sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
                 return
+            default:
+                detail = String(localized: "Codex running")
             }
-        }
-        if let output = CodexStructuredFormatter.completedItem(item, agentMessageWasStreamed: streamed) {
-            feed(output)
-        }
-    }
-
-    private func applyThreadStatus(_ params: JSONValue) {
-        let status = params.objectValue?["status"]?.stringValue
-            ?? params.objectValue?["thread"]?.objectValue?["status"]?.stringValue
-        switch status {
-        case "active":
+            sessionStore?.setStatus(.running, detail: detail, for: recordID)
+        case .itemDelta(_, .text, _):
+            sessionStore?.setStatus(.running, detail: String(localized: "Writing a reply"), for: recordID)
+        case .runState(.active):
             sessionStore?.setStatus(.running, detail: String(localized: "Codex running"), for: recordID)
-        case "idle":
+        case .runState(.idle):
             sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), for: recordID)
-        case "systemError":
+        case .runState(.systemError):
             sessionStore?.setStatus(.completed, detail: String(localized: "Codex system error"), for: recordID)
-        default:
-            break
-        }
-    }
-
-    private func applyAccount(_ value: JSONValue) {
-        let object = value.objectValue ?? [:]
-        if let account = object["account"]?.objectValue {
-            let label = account["email"]?.stringValue ?? account["type"]?.stringValue
+        case .account(.authenticated(let label)):
             sessionStore?.setCodexAuthentication(.authenticated(label), for: recordID)
-            return
-        }
-        if object["requiresOpenaiAuth"]?.boolValue == true {
+        case .account(.loginRequired):
             sessionStore?.setCodexAuthentication(.required, for: recordID)
             sessionStore?.setStatus(.waitingForInput, detail: String(localized: "Codex login required"), for: recordID)
-        } else {
-            sessionStore?.setCodexAuthentication(.authenticated(nil), for: recordID)
+        case .account(.unavailable(let message)):
+            sessionStore?.setCodexAuthentication(.error(message), for: recordID)
+        default:
+            break
         }
     }
 
@@ -605,12 +597,12 @@ final class CodexAppServerSession {
         continuations.values.forEach { $0.resume(throwing: error) }
         continuations.removeAll()
         let message = error.localizedDescription
-        feed("\r\n\u{001B}[33m\(message) Starting the PTY fallback.\u{001B}[0m\r\n")
+        publish(.notice(AgentNotice(level: .warning, message: "\(message) Starting the PTY fallback.")))
         fallback(message)
     }
 
     private func display(_ error: Error) {
-        feed("\r\n\u{001B}[31m\(error.localizedDescription)\u{001B}[0m\r\n")
+        publish(.notice(AgentNotice(level: .error, message: error.localizedDescription)))
         sessionStore?.setStatus(.completed, detail: error.localizedDescription, for: recordID)
     }
 
@@ -727,7 +719,7 @@ final class CodexStructuredTerminalDelegate: TerminalViewDelegate {
                 Task { @MainActor [weak session] in session?.interrupt() }
             case .submit(let prompt):
                 echo("\r\n")
-                Task { @MainActor [weak session] in session?.submit(prompt) }
+                Task { @MainActor [weak session] in session?.startTurn(prompt) }
             }
         }
     }

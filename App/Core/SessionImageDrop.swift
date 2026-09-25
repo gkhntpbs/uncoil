@@ -45,7 +45,7 @@ enum SessionImageDrop {
     /// they did not ask for. A `.gitignore` inside the directory ignores only
     /// the directory, and takes nothing with it if it is deleted.
     static let ignoreContents = """
-    # Images dropped onto an Uncoil session. Transient; not part of the project.
+    # Files dropped onto an Uncoil session. Transient; not part of the project.
     *
     """
 
@@ -62,6 +62,16 @@ enum SessionImageDrop {
         imageExtensions.contains(
             (fileName as NSString).pathExtension.lowercased()
         )
+    }
+
+    /// Whether a dropped file can be attached: any regular file. A folder is
+    /// not copied — a project directory dragged in by mistake would be
+    /// duplicated into the working tree whole.
+    static func isAttachable(_ url: URL) -> Bool {
+        guard url.isFileURL else { return false }
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            && !isDirectory.boolValue
     }
 
     /// A name that will not collide with what is already there.

@@ -28,8 +28,12 @@ enum SessionDropProgress: Equatable {
     }
 }
 
-/// Writes dropped images into a session's own drop directory and types their
-/// paths into its prompt.
+/// Writes dropped files and images into a session's own drop directory and
+/// hands them to the session as attachments.
+///
+/// How an attachment reaches the agent is the session's decision, not this
+/// one's: a terminal gets the paths typed into its prompt, a structured Codex
+/// session sends an image as an image.
 enum SessionImageDropService {
     /// Everything a drop can carry that this accepts.
     ///
@@ -38,8 +42,8 @@ enum SessionImageDropService {
     /// yet and the data itself is what arrives.
     static let acceptedTypes: [UTType] = [.fileURL, .image]
 
-    /// Handles a drop. Returns false when nothing in it was an image, so the
-    /// caller's other drop handlers still get their turn.
+    /// Handles a drop. Returns false when nothing in it was a file or an
+    /// image, so the caller's other drop handlers still get their turn.
     @MainActor
     @discardableResult
     static func handle(
@@ -61,7 +65,7 @@ enum SessionImageDropService {
 
         onProgress(.working(done: 0, total: candidates.count))
         Task { @MainActor in
-            var written: [String] = []
+            var written: [AgentAttachment] = []
             for (index, item) in candidates.enumerated() {
                 onProgress(.working(done: index, total: candidates.count))
                 guard let payload = await payload(of: item) else { continue }
@@ -71,28 +75,51 @@ enum SessionImageDropService {
                     write(payload, into: directory)
                 }.value
                 guard let name else { continue }
-                written.append(
-                    SessionImageDrop.relativePath(fileName: name, sessionID: sessionID)
-                )
+                written.append(attachment(named: name, in: directory, sessionID: sessionID))
             }
             guard !written.isEmpty else {
                 onProgress(.failed(String(localized: "Nothing in that drop could be attached.")))
                 return
             }
-            // Typed, not submitted: the drop is half a message, and the half
-            // that says what the image is *for* is still being written.
-            await TerminalRegistry.shared.typeText(
-                SessionImageDrop.promptFragment(relativePaths: written),
-                for: sessionID,
-                provider: provider
-            )
-            onProgress(.finished(
-                written.count == 1
-                    ? String(localized: "Attached \(written[0]).")
-                    : String(localized: "Attached \(written.count) images.")
-            ))
+            // Attached, not submitted: the drop is half a message, and the half
+            // that says what the file is *for* is still being written.
+            await TerminalRegistry.shared.control(for: sessionID, provider: provider)
+                .attach(written)
+            onProgress(.finished(summary(written, verb: .attached)))
         }
         return true
+    }
+
+    /// The attachment for a file just written into the drop directory.
+    nonisolated static func attachment(
+        named name: String, in directory: URL, sessionID: UUID
+    ) -> AgentAttachment {
+        AgentAttachment(
+            kind: SessionImageDrop.isImage(fileName: name) ? .image : .file,
+            url: directory.appendingPathComponent(name),
+            promptPath: SessionImageDrop.relativePath(fileName: name, sessionID: sessionID)
+        )
+    }
+
+    enum Verb { case attached, pasted }
+
+    /// What the drop overlay says once it is done.
+    static func summary(_ attachments: [AgentAttachment], verb: Verb) -> String {
+        if attachments.count == 1 {
+            let path = attachments[0].promptPath
+            return verb == .attached
+                ? String(localized: "Attached \(path).")
+                : String(localized: "Pasted \(path).")
+        }
+        let count = attachments.count
+        if attachments.allSatisfy({ $0.kind == .image }) {
+            return verb == .attached
+                ? String(localized: "Attached \(count) images.")
+                : String(localized: "Pasted \(count) images.")
+        }
+        return verb == .attached
+            ? String(localized: "Attached \(count) files.")
+            : String(localized: "Pasted \(count) files.")
     }
 
     /// What one dropped item turned out to be.
@@ -143,7 +170,7 @@ enum SessionImageDropService {
         // brings the image into memory at all.
         if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
            let url = await loadFileURL(provider),
-           SessionImageDrop.isImage(fileName: url.lastPathComponent) {
+           SessionImageDrop.isAttachable(url) {
             return Payload(name: url.lastPathComponent, source: url)
         }
         // No file: the image itself was dragged, so it is named after nothing
@@ -210,31 +237,22 @@ enum SessionImageDropService {
 
         onProgress(.working(done: 0, total: payloads.count))
         Task { @MainActor in
-            var written: [String] = []
+            var written: [AgentAttachment] = []
             for (index, payload) in payloads.enumerated() {
                 onProgress(.working(done: index, total: payloads.count))
                 let name = await Task.detached(priority: .userInitiated) {
                     write(payload, into: directory)
                 }.value
                 guard let name else { continue }
-                written.append(
-                    SessionImageDrop.relativePath(fileName: name, sessionID: sessionID)
-                )
+                written.append(attachment(named: name, in: directory, sessionID: sessionID))
             }
             guard !written.isEmpty else {
                 onProgress(.failed(String(localized: "That image could not be saved.")))
                 return
             }
-            await TerminalRegistry.shared.typeText(
-                SessionImageDrop.promptFragment(relativePaths: written),
-                for: sessionID,
-                provider: provider
-            )
-            onProgress(.finished(
-                written.count == 1
-                    ? String(localized: "Pasted \(written[0]).")
-                    : String(localized: "Pasted \(written.count) images.")
-            ))
+            await TerminalRegistry.shared.control(for: sessionID, provider: provider)
+                .attach(written)
+            onProgress(.finished(summary(written, verb: .pasted)))
         }
         return true
     }

@@ -310,7 +310,7 @@ private struct DropTargetOverlay: View {
         VStack {
             HStack(spacing: 6) {
                 TablerIcon(name: "photo-plus", size: 12, color: Theme.highlight)
-                Text("Drop to attach the image to this session's message")
+                Text("Drop to attach files to this session's message")
                     .font(Theme.mono(.small, .semibold))
                     .foregroundStyle(Theme.highlight)
             }

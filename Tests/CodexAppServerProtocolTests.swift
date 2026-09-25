@@ -86,7 +86,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
                 ]),
             ]),
         ])
-        let history = CodexStructuredFormatter.history(from: result)
+        let history = Self.render(.historyLoaded(CodexEventNormalizer.history(from: result)))
         XCTAssertTrue(history.contains("Durumu kontrol et"))
         XCTAssertTrue(history.contains("Done"))
 
@@ -95,7 +95,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
             "type": .string("commandExecution"),
             "command": .string("swift test"),
         ])
-        XCTAssertTrue(CodexStructuredFormatter.startedItem(command)?.contains("swift test") == true)
+        XCTAssertTrue(Self.renderStarted(command)?.contains("swift test") == true)
 
         let mcp: JSONValue = .object([
             "id": .string("mcp-1"),
@@ -103,7 +103,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
             "server": .string("uncoil"),
             "tool": .string("uncoil_sessions"),
         ])
-        XCTAssertTrue(CodexStructuredFormatter.startedItem(mcp)?.contains("uncoil_sessions") == true)
+        XCTAssertTrue(Self.renderStarted(mcp)?.contains("uncoil_sessions") == true)
     }
 
     func testFormatsInitialResumePage() {
@@ -122,7 +122,7 @@ final class CodexAppServerProtocolTests: XCTestCase {
                 ]),
             ]),
         ])
-        XCTAssertTrue(CodexStructuredFormatter.history(from: result).contains("Önceki yanıt"))
+        XCTAssertTrue(Self.render(.historyLoaded(CodexEventNormalizer.history(from: result))).contains("Önceki yanıt"))
     }
 
     func testWebSocketParserHandlesConsecutiveFramesAfterRemoveFirst() {
@@ -147,5 +147,17 @@ final class CodexAppServerProtocolTests: XCTestCase {
             CodexWebSocketFrameParser.parse(&data)?.payload,
             Data("hello".utf8)
         )
+    }
+
+    private static func render(_ event: AgentEvent) -> String {
+        var renderer = AgentTerminalRenderer()
+        return renderer.render(event) ?? ""
+    }
+
+    private static func renderStarted(_ item: JSONValue) -> String? {
+        CodexEventNormalizer.item(item).flatMap {
+            var renderer = AgentTerminalRenderer()
+            return renderer.render(.itemStarted($0))
+        }
     }
 }

@@ -2786,6 +2786,9 @@
     "Attached %@." : {
 
     },
+    "Attached %lld files." : {
+
+    },
     "Attached %lld images." : {
 
     },
@@ -5195,7 +5198,7 @@
         }
       }
     },
-    "Drop to attach the image to this session's message" : {
+    "Drop to attach files to this session's message" : {
 
     },
     "Duplicate" : {
@@ -10055,6 +10058,9 @@
     "Pasted %@." : {
 
     },
+    "Pasted %lld files." : {
+
+    },
     "Pasted %lld images." : {
 
     },
@@ -12696,7 +12702,7 @@
         }
       }
     },
-    "Shift+Enter (and Option+Enter) inserts a newline in the prompt instead of submitting, using the sequence each agent expects (\\⏎ for Claude Code, ⌃J for Codex). Applies to open sessions immediately." : {
+    "Shift+Enter (and Option+Enter) inserts a newline in the prompt instead of submitting, using the sequence each agent expects (\\⏎ for Claude Code and Gemini, ⌃J for the others). Applies to open sessions immediately." : {
 
     },
     "Shift+Enter for a newline" : {
