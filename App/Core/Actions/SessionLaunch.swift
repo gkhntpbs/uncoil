@@ -41,7 +41,7 @@ struct SessionLaunchRequest {
     /// account id on a shell session would put a usage ring and an account
     /// name on a window that has neither.
     var accountID: UUID? {
-        provider == .terminal ? nil : account?.id
+        provider.isAgent ? account?.id : nil
     }
 }
 
@@ -62,7 +62,7 @@ struct SessionLauncher {
     @discardableResult
     func launch(_ request: SessionLaunchRequest) -> SessionRecord {
         var request = request
-        if request.account == nil, request.provider != .terminal {
+        if request.account == nil, request.provider.isAgent {
             request.account = settings.defaultAccount(for: request.provider)
         }
         return projects.createSession(

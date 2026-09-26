@@ -22,8 +22,23 @@ struct AgentTimeline: Equatable {
     private(set) var pendingApprovals: [AgentApproval] = []
     private(set) var account: AgentAccountState?
     private(set) var notices: [AgentNotice] = []
+    /// What happened between items — a notice, a turn that did not finish, an
+    /// approval answered — each placed after the item it followed, so a reader
+    /// of the conversation sees it where it happened.
+    private(set) var markers: [AgentTimelineMarker] = []
     /// Sequence of the last event folded in.
     private(set) var sequence = 0
+    private var nextMarkerID = 0
+
+    static let markerLimit = 200
+
+    init() {}
+
+    /// An empty timeline whose sequence carries on from an earlier one, so a
+    /// consumer reading "everything after N" never sees the numbers go back.
+    init(continuingAfter sequence: Int) {
+        self.sequence = sequence
+    }
 
     func item(id: String) -> AgentItem? {
         items.first { $0.id == id }
@@ -47,6 +62,7 @@ struct AgentTimeline: Equatable {
             activeTurnID = nil
             turnInProgress = false
             lastTurnOutcome = outcome
+            mark(.turnEnded(outcome))
             // A turn that ends leaves nothing it started still running.
             for index in items.indices where items[index].status == .inProgress {
                 items[index].status = outcome == .completed ? .completed : .failed
@@ -69,13 +85,25 @@ struct AgentTimeline: Equatable {
         case .approvalRequested(let approval):
             pendingApprovals.removeAll { $0.id == approval.id }
             pendingApprovals.append(approval)
-        case .approvalResolved(let approvalID, _):
+        case .approvalResolved(let approvalID, let decision):
+            if let approval = pendingApprovals.first(where: { $0.id == approvalID }) {
+                mark(.approvalResolved(approval, decision: decision))
+            }
             pendingApprovals.removeAll { $0.id == approvalID }
         case .account(let state):
             account = state
         case .notice(let notice):
             notices.append(notice)
             if notices.count > 50 { notices.removeFirst(notices.count - 50) }
+            mark(.notice(notice))
+        }
+    }
+
+    private mutating func mark(_ kind: AgentTimelineMarker.Kind) {
+        nextMarkerID += 1
+        markers.append(AgentTimelineMarker(id: nextMarkerID, afterItemID: items.last?.id, kind: kind))
+        if markers.count > Self.markerLimit {
+            markers.removeFirst(markers.count - Self.markerLimit)
         }
     }
 
@@ -104,6 +132,9 @@ struct AgentTimeline: Equatable {
             items[index].kind = .agentMessage(text: current + text)
         case (.reasoning(let current), .text):
             items[index].kind = .reasoning(summary: current + text)
+        case (.plan(var plan), .text):
+            plan.text = (plan.text ?? "") + text
+            items[index].kind = .plan(plan)
         case (.command(let command, let current, let exitCode), .output):
             var output = current + text
             if output.utf8.count > Self.outputLimit {
@@ -114,6 +145,21 @@ struct AgentTimeline: Equatable {
             break
         }
     }
+}
+
+/// Something the timeline records between items rather than as one.
+struct AgentTimelineMarker: Equatable, Identifiable {
+    enum Kind: Equatable {
+        case notice(AgentNotice)
+        case turnEnded(AgentTurnOutcome)
+        case approvalResolved(AgentApproval, decision: String)
+    }
+
+    /// Increasing within a timeline.
+    let id: Int
+    /// The last item there was when it happened; nil when there was none.
+    let afterItemID: String?
+    let kind: Kind
 }
 
 /// Where agent events are published and where consumers find them.
@@ -197,6 +243,16 @@ final class AgentEventHub {
         return AgentEventObservation { [weak self] in
             self?.observers[sessionID]?[token] = nil
         }
+    }
+
+    /// The session starts over — a relaunch after its process ended. Its
+    /// conversation is read again from the provider, so the old timeline would
+    /// only hold it twice. Observers stay: whoever was watching the session is
+    /// still watching it, and sees the sequence start again.
+    func reset(_ sessionID: UUID) {
+        guard let old = timelines[sessionID] else { return }
+        timelines[sessionID] = AgentTimeline(continuingAfter: old.sequence)
+        recentRecords[sessionID] = nil
     }
 
     /// The session is gone; its timeline goes with it.

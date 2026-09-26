@@ -51,7 +51,7 @@ struct SessionPopoutWindow: View {
                             }
                         )
                     } else {
-                        TerminalHostView(
+                        SessionSurfaceView(
                             record: record,
                             project: project,
                             account: settings.account(id: record.accountID)

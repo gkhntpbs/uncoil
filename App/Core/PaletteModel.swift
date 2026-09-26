@@ -385,7 +385,7 @@ enum PaletteEngine {
         var items: [PaletteItem] = []
         let live = ctx.sessions
             .filter {
-                $0.projectID == pid && $0.provider != .terminal && $0.endedAt == nil
+                $0.projectID == pid && $0.provider.isAgent && $0.endedAt == nil
                     && (ctx.statuses[$0.id] ?? .unknown) != .terminated
             }
             .sorted { $0.lastActivityAt > $1.lastActivityAt }

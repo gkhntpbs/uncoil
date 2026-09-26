@@ -60,7 +60,7 @@ enum AgentCLIInstall {
         // script, not a Homebrew formula.
         case .hermes: ""
         case .cursor: ""
-        case .terminal: ""
+        case .terminal, .uncoil: ""
         }
     }
 
@@ -75,7 +75,7 @@ enum AgentCLIInstall {
         case .grok: ""
         case .cursor: ""
         case .hermes: ""
-        case .terminal: ""
+        case .terminal, .uncoil: ""
         }
     }
 
@@ -258,7 +258,7 @@ extension AgentCLIInstall {
             case .cursor: return .run("cursor-agent update")
             case .grok: return .run("grok update")
             case .opencode: return .run("opencode upgrade")
-            case .codex, .gemini, .terminal:
+            case .codex, .gemini, .terminal, .uncoil:
                 return .cannot(String(localized: "This tool has no updater Uncoil knows how to run."))
             }
 

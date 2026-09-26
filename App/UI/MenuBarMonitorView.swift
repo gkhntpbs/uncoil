@@ -167,7 +167,7 @@ struct MenuBarMonitorMenu: View {
         let record = projectStore.createSession(
             projectID: project.id,
             provider: provider,
-            accountID: provider == .terminal ? nil : account?.id,
+            accountID: provider.isAgent ? account?.id : nil,
             title: provider == .terminal ? "terminal" : String(localized: "\(provider.rawValue): new session")
         )
         Router.shared.go(to: .session(record.id))

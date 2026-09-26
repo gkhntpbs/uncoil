@@ -67,11 +67,18 @@ final class TerminalRegistry {
         if let existing = terminals[record.id], !deadSessions.contains(record.id) {
             return existing
         }
-        deadSessions.remove(record.id)
+        if deadSessions.remove(record.id) != nil {
+            // The provider hands the conversation back on relaunch; kept, the
+            // old timeline would show it twice.
+            AgentEventHub.shared.reset(record.id)
+        }
 
         let view: TerminalView
         let runtimePhase = RuntimeClient.shared.phase
-        if shouldUseCodexAppServer(record: record, settings: settings) {
+        if record.provider == .uncoil {
+            view = makeUncoilAutoTerminal(
+                record: record, settings: settings, sessionStore: sessionStore, projectStore: projectStore)
+        } else if shouldUseCodexAppServer(record: record, settings: settings) {
             view = makeCodexAppServerTerminal(
                 record: record,
                 project: project,
@@ -159,6 +166,71 @@ final class TerminalRegistry {
                 )
             }
         }
+        return view
+    }
+
+    // MARK: - Surface
+
+    /// What a session is drawn as. Uncoil Auto is a conversation and gets the
+    /// chat; every agent CLI keeps its own terminal, structured or not.
+    nonisolated static func surface(for provider: AgentProvider) -> SessionSurface {
+        provider == .uncoil ? .chat : .terminal
+    }
+
+    /// Starts the session without putting its terminal on screen — for a
+    /// surface that draws the session some other way. The terminal is still
+    /// made: it is what the session's lifecycle hangs on, and the view the
+    /// user gets if they switch to it.
+    func ensureSession(
+        for record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
+    ) {
+        _ = terminal(
+            for: record, project: project, account: account,
+            settings: settings, sessionStore: sessionStore, projectStore: projectStore
+        )
+    }
+
+    /// Where a structured session's drafted prompt goes: its chat when one is
+    /// open, its terminal's line editor otherwise.
+    private static func draftHandler(
+        for recordID: UUID, delegate: StructuredSessionTerminalDelegate
+    ) -> (String) -> Void {
+        { [weak delegate] text in
+            if !AgentChatDrafts.shared.deliver(text, to: recordID) {
+                delegate?.prefill(text)
+            }
+        }
+    }
+
+    /// Uncoil Auto runs in the app, never in a shell. The terminal view is
+    /// made all the same: it is what a session's lifecycle hangs on here.
+    /// Under `-chat-fixture` it plays a script instead, so every row the chat
+    /// can draw is reachable without a routing model.
+    private func makeUncoilAutoTerminal(
+        record: SessionRecord, settings: SettingsStore, sessionStore: SessionStore, projectStore: ProjectStore
+    ) -> TerminalView {
+        let view = UncoilTerminalView(frame: .zero)
+        applyTheme(view)
+        var session: any StructuredAgentSession = LaunchConfig.shared.chatFixture
+            ? FixtureAgentSession(record: record, terminal: view, sessionStore: sessionStore)
+            : UncoilAutoSession(
+                record: record,
+                terminal: view,
+                environment: .live(
+                    projectID: record.projectID, projects: projectStore,
+                    sessions: sessionStore, settings: settings),
+                store: UncoilAutoStore(url: UncoilAutoStore.url(for: record.id)))
+        let delegate = StructuredSessionTerminalDelegate(session: session, terminal: view)
+        session.draftHandler = Self.draftHandler(for: record.id, delegate: delegate)
+        view.terminalDelegate = delegate
+        delegates[record.id] = delegate
+        structuredSessions[record.id] = session
+        session.start()
         return view
     }
 

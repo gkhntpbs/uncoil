@@ -9,9 +9,9 @@ import XCTest
 /// These tests are the reason the lists can now be trusted: they are derived
 /// from the cases, so the next provider joins them by construction.
 final class AgentProviderListTests: XCTestCase {
-    func testEveryCaseIsEitherAnAgentOrAShell() {
+    func testEveryCaseIsAnAgentUncoilOrAShell() {
         XCTAssertEqual(
-            Set(AgentProvider.agents).union([.terminal]),
+            Set(AgentProvider.agents).union([.uncoil, .terminal]),
             Set(AgentProvider.allCases),
             "a new provider has to be classified, not silently dropped from both lists"
         )
@@ -29,12 +29,14 @@ final class AgentProviderListTests: XCTestCase {
     }
 
     /// Both lists are shown to the user, so their order is a design decision
-    /// rather than an accident of the enum: agents first, the plain shell last.
+    /// rather than an accident of the enum: agents first, then Uncoil Auto,
+    /// the plain shell last.
     func testTheShellIsOfferedLast() {
         XCTAssertEqual(AgentProvider.sessionKinds.last, .terminal)
         XCTAssertEqual(
-            Array(AgentProvider.sessionKinds.dropLast()), AgentProvider.agents
+            Array(AgentProvider.sessionKinds.dropLast(2)), AgentProvider.agents
         )
+        XCTAssertEqual(AgentProvider.sessionKinds.dropLast().last, .uncoil)
     }
 
     /// What separates the two lists, stated once: an agent is a thing Uncoil

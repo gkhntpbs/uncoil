@@ -31,6 +31,15 @@ enum CodexEventNormalizer {
             return delta(object, channel: .text)
         case "item/commandExecution/outputDelta":
             return delta(object, channel: .output)
+        case "item/reasoning/summaryTextDelta", "item/plan/delta":
+            return delta(object, channel: .text)
+        case "item/reasoning/summaryPartAdded":
+            // A second summary part starts a new paragraph of the same item.
+            guard (object["summaryIndex"]?.intValue ?? 0) > 0,
+                  let itemID = object["itemId"]?.stringValue else { return [] }
+            return [.itemDelta(itemID: itemID, channel: .text, text: "\n\n")]
+        case "turn/plan/updated":
+            return planUpdated(object)
         case "account/updated":
             return [.account(account(params))]
         default:
@@ -105,10 +114,9 @@ enum CodexEventNormalizer {
                 exitCode: object["exitCode"]?.intValue
             )
         case "fileChange":
-            let paths = object["changes"]?.arrayValue?
-                .compactMap { $0.objectValue?["path"]?.stringValue }
-                ?? []
-            return .fileChange(paths: paths)
+            return .fileChange((object["changes"]?.arrayValue ?? []).compactMap(fileChange))
+        case "plan":
+            return .plan(AgentPlan(text: object["text"]?.stringValue))
         case "mcpToolCall":
             return .toolCall(AgentToolCall(
                 origin: .mcp(server: object["server"]?.stringValue ?? "MCP"),
@@ -127,6 +135,39 @@ enum CodexEventNormalizer {
         default:
             return .other(type: type)
         }
+    }
+
+    /// One entry of a `fileChange` item's `changes`. The kind is an object
+    /// (`{"type":"update","move_path":…}`) in the current protocol and a bare
+    /// string in older ones.
+    private static func fileChange(_ value: JSONValue) -> AgentFileChange? {
+        guard let object = value.objectValue, let path = object["path"]?.stringValue else { return nil }
+        let kindName = object["kind"]?.objectValue?["type"]?.stringValue ?? object["kind"]?.stringValue
+        let diff = object["diff"]?.stringValue
+        return AgentFileChange(
+            path: path,
+            kind: kindName.flatMap(AgentFileChange.Kind.init(rawValue:)) ?? .update,
+            diff: diff?.isEmpty == false ? diff : nil
+        )
+    }
+
+    /// Codex's plan is turn state, not an item; it becomes one item per turn,
+    /// replaced whole each time the plan changes.
+    private static func planUpdated(_ object: [String: JSONValue]) -> [AgentEvent] {
+        let steps = (object["plan"]?.arrayValue ?? []).compactMap { value -> AgentPlan.Step? in
+            guard let step = value.objectValue, let text = step["step"]?.stringValue else { return nil }
+            let status = step["status"]?.stringValue.flatMap(AgentPlan.Step.Status.init(rawValue:)) ?? .pending
+            return AgentPlan.Step(text: text, status: status)
+        }
+        guard !steps.isEmpty else { return [] }
+        let turnID = object["turnId"]?.stringValue ?? "turn"
+        let done = steps.allSatisfy { $0.status == .completed }
+        return [.itemCompleted(AgentItem(
+            id: "plan-\(turnID)",
+            kind: .plan(AgentPlan(text: object["explanation"]?.stringValue, steps: steps)),
+            status: done ? .completed : .inProgress,
+            native: .object(object)
+        ))]
     }
 
     private static func status(_ value: String?) -> AgentItem.Status {

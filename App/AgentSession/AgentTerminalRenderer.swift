@@ -11,6 +11,8 @@ struct AgentTerminalRenderer {
     private var streamedMessages: Set<String> = []
     private var streamedOutputs: Set<String> = []
     private var startedItems: Set<String> = []
+    /// Items whose streamed text is reasoning, drawn dim like its summary.
+    private var reasoningItems: Set<String> = []
 
     /// Terminal bytes for the event, or nil when it draws nothing.
     mutating func render(_ event: AgentEvent) -> String? {
@@ -31,11 +33,15 @@ struct AgentTerminalRenderer {
             return nil
         case .itemStarted(let item):
             startedItems.insert(item.id)
+            if case .reasoning = item.kind { reasoningItems.insert(item.id) }
             return Self.text(for: item, includeAgentMessage: false)
         case .itemDelta(let itemID, let channel, let text):
             switch channel {
             case .text: streamedMessages.insert(itemID)
             case .output: streamedOutputs.insert(itemID)
+            }
+            if reasoningItems.contains(itemID) {
+                return "\u{001B}[2m\(text.replacingOccurrences(of: "\n", with: "\r\n"))\u{001B}[0m"
             }
             return text
         case .itemCompleted(let item):
@@ -62,10 +68,12 @@ struct AgentTerminalRenderer {
             case .agentMessage, .fileChange:
                 break
             default:
+                // A streamed reasoning summary still needs its line ended.
+                if streamed, reasoningItems.remove(item.id) != nil { return "\r\n" }
                 return output.isEmpty ? nil : output
             }
         }
-        if case .agentMessage = item.kind, streamed {
+        if streamed, case .agentMessage = item.kind {
             return "\r\n"
         }
         return Self.text(for: item, includeAgentMessage: true)
@@ -75,6 +83,7 @@ struct AgentTerminalRenderer {
         streamedMessages.removeAll()
         streamedOutputs.removeAll()
         startedItems.removeAll()
+        reasoningItems.removeAll()
     }
 
     static func text(for item: AgentItem, includeAgentMessage: Bool) -> String? {
@@ -93,9 +102,22 @@ struct AgentTerminalRenderer {
         case .command(let command, _, _):
             guard !command.isEmpty else { return nil }
             return "\r\n\u{001B}[1;33m$ \(command)\u{001B}[0m\r\n"
-        case .fileChange(let paths):
-            guard !paths.isEmpty else { return "\r\n\u{001B}[1;35mFile change\u{001B}[0m\r\n" }
-            return "\r\n\u{001B}[1;35mFile change:\u{001B}[0m \(paths.joined(separator: ", "))\r\n"
+        case .fileChange(let changes):
+            guard !changes.isEmpty else { return "\r\n\u{001B}[1;35mFile change\u{001B}[0m\r\n" }
+            let paths = changes.map(\.path).joined(separator: ", ")
+            return "\r\n\u{001B}[1;35mFile change:\u{001B}[0m \(paths)\r\n"
+        case .plan(let plan):
+            let steps = plan.steps.map { step in
+                let mark = switch step.status {
+                case .completed: "[x]"
+                case .inProgress: "[~]"
+                case .pending: "[ ]"
+                }
+                return "  \(mark) \(step.text)"
+            }
+            let lines = [plan.text].compactMap { $0 }.filter { !$0.isEmpty } + steps
+            guard !lines.isEmpty else { return nil }
+            return "\r\n\u{001B}[1;36mPlan\u{001B}[0m\r\n" + lines.joined(separator: "\r\n") + "\r\n"
         case .toolCall(let call):
             let prefix = switch call.origin {
             case .mcp(let server): server

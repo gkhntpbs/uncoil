@@ -8,12 +8,16 @@ import SwiftTerm
 /// what it has drawn.
 @MainActor
 protocol StructuredAgentSession: AgentSessionControl {
+    /// Begins the session once it is registered and wired to its terminal.
+    func start()
     /// Ends the session. `terminateServer` false leaves a server that outlives
     /// the app running, for a provider that has one.
     func stop(terminateServer: Bool)
     func prepareForApplicationTermination(terminateServer: Bool)
     /// What the terminal has shown, for `read_output` and summaries.
     func outputSnapshot() async -> Data
+    /// Where a drafted prompt goes: somewhere the user edits it before sending.
+    var draftHandler: ((String) -> Void)? { get set }
 }
 
 /// The terminal of a structured session: a line editor in front of the

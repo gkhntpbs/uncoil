@@ -113,7 +113,7 @@ struct ProviderMark: View {
         case .hermes: ("ProviderMarkHermes", true)
         case .cursor: ("ProviderMarkCursor", true)
         // A shell has no logo; the icon font's chevron-and-underscore says it.
-        case .terminal: nil
+        case .terminal, .uncoil: nil
         }
     }
 
@@ -127,7 +127,7 @@ struct ProviderMark: View {
                     .aspectRatio(contentMode: .fit)
                     .foregroundStyle(provider.color)
             } else {
-                TablerIcon(name: "terminal-2", size: size, color: provider.color)
+                TablerIcon(name: provider == .uncoil ? "sparkles" : "terminal-2", size: size, color: provider.color)
             }
         }
         .frame(width: size, height: size)

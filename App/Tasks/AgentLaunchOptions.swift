@@ -119,7 +119,7 @@ enum AgentLaunchCatalog {
                 result.efforts = reasoningLevels(fromHelp: helpText)
                     .map { AgentLaunchCapabilities.Option(id: $0, label: $0) }
             }
-        case .terminal:
+        case .terminal, .uncoil:
             break
         }
         return result
@@ -255,7 +255,7 @@ enum AgentLaunchCatalog {
             // `--reasoning LEVEL`.
             if let model = selection.model { arguments += ["-m", model] }
             if let effort = selection.effort { arguments += ["--reasoning", effort] }
-        case .terminal:
+        case .terminal, .uncoil:
             break
         }
         if let mode = selection.workingMode {

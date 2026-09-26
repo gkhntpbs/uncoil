@@ -35,6 +35,7 @@ struct SessionHeaderBar: View {
     /// because the chip's card is a popover, and a sheet raised from a view that
     /// is closing never appears.
     @State private var handoff: UsageAlert.Evaluation?
+    @AppStorage(UncoilAutoAgentsPanel.visibilityKey) private var agentsPanelVisible = true
 
     private var status: AgentSessionStatus { sessionStore.status(of: record.id) }
     private var account: AccountProfile? { settings.account(id: record.accountID) }
@@ -284,6 +285,22 @@ struct SessionHeaderBar: View {
                     onRestart: onRestart,
                     onHandoff: usageAlert.map { alert in { handoff = alert } }
                 )
+
+                // Last, at the edge the panel opens from — and in the same
+                // place whether it is open or not, like the sidebar's toggle.
+                if record.provider == .uncoil {
+                    Rectangle().fill(Theme.border).frame(width: 1, height: 16)
+                    ControlButton(
+                        iconName: "layout-sidebar-right",
+                        help: agentsPanelVisible
+                            ? String(localized: "Hide the agents panel (⌥⌘B)")
+                            : String(localized: "Show the agents panel (⌥⌘B)"),
+                        identifier: "session.agentsPanelToggle",
+                        tint: agentsPanelVisible ? Theme.highlight : nil
+                    ) {
+                        agentsPanelVisible.toggle()
+                    }
+                }
             }
             .padding(3)
             .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))

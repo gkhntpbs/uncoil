@@ -516,7 +516,7 @@ struct MainWindow: View {
         let record = projectStore.createSession(
             projectID: projectID,
             provider: provider,
-            accountID: provider == .terminal ? nil : account?.id,
+            accountID: provider.isAgent ? account?.id : nil,
             title: provider == .terminal ? "terminal" : String(localized: "\(provider.rawValue): new session")
         )
         selection = .session(record.id)

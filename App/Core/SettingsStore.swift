@@ -424,7 +424,7 @@ final class SettingsStore: ObservableObject {
         // which provider the user signed in to. `HermesAdapter` still
         // reports the file's presence as "somebody signed in", which is
         // all it can honestly say.
-        case .gemini, .opencode, .grok, .cursor, .hermes, .terminal:
+        case .gemini, .opencode, .grok, .cursor, .hermes, .terminal, .uncoil:
             return nil
         }
     }

@@ -25,6 +25,9 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
     case grok
     case hermes
     case cursor
+    /// Uncoil's own session: a conversation hosted in the app rather than a
+    /// CLI in a terminal — the place to direct a project's agents from.
+    case uncoil
     case terminal
 
     var id: String { rawValue }
@@ -55,6 +58,7 @@ enum AgentProvider: String, Codable, CaseIterable, Identifiable {
         case .hermes: Theme.hermes
         case .cursor: Theme.cursor
         case .terminal: Theme.terminal
+        case .uncoil: Theme.brand
         }
     }
 
@@ -333,7 +337,7 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         // config.yaml, .env, auth.json and the session store together — which
         // is exactly what an isolated account profile needs.
         case .hermes: "HERMES_HOME"
-        case .terminal: nil
+        case .terminal, .uncoil: nil
         }
     }
 }

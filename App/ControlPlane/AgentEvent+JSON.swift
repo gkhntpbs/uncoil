@@ -39,8 +39,16 @@ enum AgentWire {
             object["command"] = .string(command)
             text("output", output)
             object["exit_code"] = exitCode.map(JSONValue.int) ?? .null
-        case .fileChange(let paths):
-            object["paths"] = .array(paths.map(JSONValue.string))
+        case .fileChange(let changes):
+            object["paths"] = .array(changes.map { .string($0.path) })
+            object["changes"] = .array(changes.map { change in
+                .object(["path": .string(change.path), "change": .string(change.kind.rawValue)])
+            })
+        case .plan(let plan):
+            if let body = plan.text { text("text", body) }
+            object["steps"] = .array(plan.steps.map { step in
+                .object(["text": .string(step.text), "status": .string(step.status.rawValue)])
+            })
         case .toolCall(let call):
             object["tool"] = .string(call.name)
             switch call.origin {
@@ -55,8 +63,18 @@ enum AgentWire {
         case .other:
             break
         }
+        if let source = item.source { object["source"] = self.source(source) }
+        if let recipients = item.recipients { object["recipients"] = .array(recipients.map(self.source)) }
         if options.includeNative, let native = item.native { object["native"] = native }
         return .object(object)
+    }
+
+    static func source(_ source: AgentItemSource) -> JSONValue {
+        .object([
+            "session_id": .string(source.sessionID.uuidString),
+            "provider": .string(source.provider.rawValue),
+            "handle": .string(source.handle),
+        ])
     }
 
     static func attachment(_ attachment: AgentAttachment) -> JSONValue {

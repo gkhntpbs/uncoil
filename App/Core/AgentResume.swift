@@ -175,17 +175,26 @@ enum CodexSessionStore {
         threadID: String,
         manager: FileManager = .default
     ) -> Bool {
+        transcriptURL(codexHome: codexHome, threadID: threadID, manager: manager) != nil
+    }
+
+    /// Where the thread's rollout file is, found the same way.
+    static func transcriptURL(
+        codexHome: URL,
+        threadID: String,
+        manager: FileManager = .default
+    ) -> URL? {
         let root = codexHome.appendingPathComponent("sessions", isDirectory: true)
         guard let walker = manager.enumerator(
             at: root,
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else { return false }
+        ) else { return nil }
         let suffix = "-\(threadID).jsonl"
         for case let url as URL in walker where url.lastPathComponent.hasSuffix(suffix) {
-            return true
+            return url
         }
-        return false
+        return nil
     }
 
     static func state(codexHome: URL, threadID: String) -> AgentResumeState {

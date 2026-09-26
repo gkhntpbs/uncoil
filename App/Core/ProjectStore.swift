@@ -828,6 +828,13 @@ final class SessionStore: ObservableObject {
                 missedHandshakes[record.id] = nil
                 continue
             }
+            // Uncoil Auto lives in the app, not in the daemon: it has no
+            // process to be missing, and its absence from the list says nothing.
+            if record.provider == .uncoil {
+                missedHandshakes[record.id] = nil
+                if !status(of: record.id).isKnownLive { setStatus(.idle, for: record.id) }
+                continue
+            }
             // A sleeping session is absent from the daemon on purpose — a
             // hibernated one has no process at all — so the daemon's list says
             // nothing about it. Reconciling it would answer "I put this to

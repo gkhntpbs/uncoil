@@ -34,7 +34,7 @@ enum RunRepair {
     /// terminal) in this project, most recently active first.
     static func candidateSession(project: Project, projectStore: ProjectStore) -> SessionRecord? {
         projectStore.sessions
-            .filter { $0.projectID == project.id && $0.provider != .terminal && $0.endedAt == nil }
+            .filter { $0.projectID == project.id && $0.provider.isAgent && $0.endedAt == nil }
             .max { $0.lastActivityAt < $1.lastActivityAt }
     }
 

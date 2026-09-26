@@ -38,8 +38,10 @@ struct SessionDetailView: View {
                     .padding(.bottom, 12)
 
                 if let approval = sessionStore.codexApprovals[record.id] {
-                    CodexApprovalPanel(
-                        request: approval,
+                    ApprovalPanel(
+                        title: approval.title,
+                        detail: approval.detail,
+                        decisions: approval.availableDecisions,
                         respond: { decision in
                             if LaunchConfig.shared.codexApprovalFixture {
                                 sessionStore.setCodexApproval(nil, for: record.id)
@@ -80,7 +82,7 @@ struct SessionDetailView: View {
                     // Selecting a session always (re)starts its agent: the registry
                     // reuses a live terminal or launches fresh (resuming Claude when
                     // a provider session id is known). No "restart" screen.
-                    TerminalHostView(record: record, project: project, account: account)
+                    SessionSurfaceView(record: record, project: project, account: account)
                         .id(sessionStore.restartCounter[record.id] ?? 0)
                         .padding(.horizontal, 10)
                         .padding(.bottom, 10)
@@ -172,53 +174,6 @@ struct SessionDetailView: View {
     }
 }
 
-private struct CodexApprovalPanel: View {
-    let request: CodexApprovalRequest
-    let respond: (String) -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            TablerIcon(name: "shield-lock", size: 16, color: Theme.warn)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(request.title)
-                    .font(Theme.mono(.body, .semibold))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(2)
-                if let detail = request.detail {
-                    Text(detail)
-                        .font(Theme.mono(.small))
-                        .foregroundStyle(Theme.textDim)
-                        .lineLimit(2)
-                }
-            }
-            Spacer()
-            if request.availableDecisions.contains("decline") {
-                Button("Deny") { respond("decline") }
-                    .buttonStyle(GhostButtonStyle())
-                    .accessibilityIdentifier("session.codexApproval.decline")
-            }
-            if request.availableDecisions.contains("acceptForSession") {
-                Button("For the Session") { respond("acceptForSession") }
-                    .buttonStyle(GhostButtonStyle())
-                    .accessibilityIdentifier("session.codexApproval.session")
-            }
-            if request.availableDecisions.contains("accept") {
-                Button("Allow Once") { respond("accept") }
-                    .buttonStyle(AccentButtonStyle())
-                    .accessibilityIdentifier("session.codexApproval.accept")
-            }
-        }
-        .padding(12)
-        .background(Theme.warn.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.warn.opacity(0.35), lineWidth: 1)
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("session.codexApproval")
-    }
-}
-
 private struct CodexAuthenticationBanner: View {
     var body: some View {
         HStack(spacing: 10) {
@@ -283,7 +238,7 @@ struct SplitSessionPane: View {
             .padding(.top, 8)
             .padding(.bottom, 10)
 
-            TerminalHostView(
+            SessionSurfaceView(
                 record: record,
                 project: project,
                 account: settings.account(id: record.accountID)

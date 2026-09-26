@@ -24,8 +24,8 @@ enum BlueprintRunner {
         let record = projectStore.createSession(
             projectID: project.id,
             provider: provider,
-            accountID: provider == .terminal
-                ? nil : settings.defaultAccount(for: provider)?.id,
+            accountID: provider.isAgent
+                ? settings.defaultAccount(for: provider)?.id : nil,
             title: String(localized: "\(provider.rawValue): \(blueprint.name)")
         )
         Router.shared.go(to: .session(record.id))

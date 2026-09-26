@@ -251,8 +251,21 @@ struct ClaudeEventNormalizer {
         case "Bash":
             return .command(command: input["command"]?.stringValue ?? "", output: "", exitCode: nil)
         case "Edit", "Write", "MultiEdit", "NotebookEdit":
-            let path = input["file_path"]?.stringValue ?? input["notebook_path"]?.stringValue
-            return .fileChange(paths: path.map { [$0] } ?? [])
+            guard let path = input["file_path"]?.stringValue ?? input["notebook_path"]?.stringValue else {
+                return .fileChange([])
+            }
+            return .fileChange([AgentFileChange(path: path, kind: .update, diff: editDiff(name: name, input: input))])
+        case "TodoWrite":
+            return .plan(AgentPlan(steps: (input["todos"]?.arrayValue ?? []).compactMap { todo in
+                guard let object = todo.objectValue,
+                      let text = object["content"]?.stringValue else { return nil }
+                let status: AgentPlan.Step.Status = switch object["status"]?.stringValue {
+                case "completed": .completed
+                case "in_progress": .inProgress
+                default: .pending
+                }
+                return AgentPlan.Step(text: text, status: status)
+            }))
         case "Task", "Agent":
             return .toolCall(AgentToolCall(
                 origin: .delegation, name: input["subagent_type"]?.stringValue ?? name))
@@ -271,6 +284,29 @@ struct ClaudeEventNormalizer {
         }
     }
 
+    /// What an edit tool's input says it changed. Claude sends the text before
+    /// and after, not a patch, so the diff is made from those.
+    private static func editDiff(name: String, input: [String: JSONValue]) -> String? {
+        switch name {
+        case "Edit":
+            guard let old = input["old_string"]?.stringValue,
+                  let new = input["new_string"]?.stringValue else { return nil }
+            return AgentFileChange.replacementDiff(old: old, new: new)
+        case "MultiEdit":
+            let edits = (input["edits"]?.arrayValue ?? []).compactMap { edit -> String? in
+                guard let object = edit.objectValue,
+                      let old = object["old_string"]?.stringValue,
+                      let new = object["new_string"]?.stringValue else { return nil }
+                return AgentFileChange.replacementDiff(old: old, new: new)
+            }
+            return edits.isEmpty ? nil : edits.joined(separator: "\n@@\n")
+        case "Write":
+            return input["content"]?.stringValue.map { AgentFileChange.replacementDiff(old: "", new: $0) }
+        default:
+            return nil
+        }
+    }
+
     // MARK: - Approvals
 
     /// The approval a `can_use_tool` control request asks for.
@@ -283,9 +319,9 @@ struct ClaudeEventNormalizer {
         case .command(let command, _, _):
             kind = .command
             title = command.isEmpty ? tool : command
-        case .fileChange(let paths):
+        case .fileChange(let changes):
             kind = .fileChange
-            title = paths.isEmpty ? tool : "\(tool) \(paths.joined(separator: ", "))"
+            title = changes.isEmpty ? tool : "\(tool) \(changes.map(\.path).joined(separator: ", "))"
         default:
             kind = .permissions
             title = request["display_name"]?.stringValue ?? tool
@@ -338,7 +374,7 @@ struct ClaudeEventNormalizer {
 
     /// The text of a message the user typed, or nil for a tool result or an
     /// interrupt marker.
-    private static func promptText(_ object: [String: JSONValue]) -> String? {
+    static func promptText(_ object: [String: JSONValue]) -> String? {
         let content = object["message"]?.objectValue?["content"]
         let text: String
         if let string = content?.stringValue {

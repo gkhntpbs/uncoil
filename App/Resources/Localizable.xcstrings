@@ -82,6 +82,9 @@
         }
       }
     },
+    "›" : {
+
+    },
     "“%@” is already installed outside Uncoil. Adopt it on the Skills screen first." : {
 
     },
@@ -129,6 +132,12 @@
       }
     },
     "(%@)" : {
+
+    },
+    "@%@" : {
+
+    },
+    "@%@ is waiting for you in its terminal" : {
 
     },
     "#%lld" : {
@@ -531,6 +540,9 @@
     "%@ is used up" : {
 
     },
+    "%@ is working" : {
+
+    },
     "%@ is working in this tree" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -915,6 +927,9 @@
         }
       }
     },
+    "%lld earlier lines not shown" : {
+
+    },
     "%lld extensions have a broken link." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -992,6 +1007,9 @@
         }
       }
     },
+    "%lld more lines" : {
+
+    },
     "%lld new" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1009,6 +1027,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld of %2$lld containers stopped"
+          }
+        }
+      }
+    },
+    "%lld of %lld done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld done"
           }
         }
       }
@@ -1390,6 +1418,9 @@
           }
         }
       }
+    },
+    "−%lld" : {
+
     },
     "⌘V is passed straight through. Better when the agent reads pasted images well, and nothing at all when it does not." : {
 
@@ -2322,6 +2353,12 @@
           }
         }
       }
+    },
+    "Allowed for the session" : {
+
+    },
+    "Allowed once" : {
+
     },
     "Already announced for this state" : {
       "extractionState" : "manual",
@@ -3424,6 +3461,9 @@
         }
       }
     },
+    "Changed files" : {
+
+    },
     "Changes requested" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3742,6 +3782,9 @@
           }
         }
       }
+    },
+    "Clear this conversation" : {
+
     },
     "CLI arguments" : {
       "extractionState" : "manual",
@@ -4577,6 +4620,9 @@
         }
       }
     },
+    "Created %@" : {
+
+    },
     "Created in Uncoil's own store; attached to the agents you pick." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4737,6 +4783,9 @@
         }
       }
     },
+    "declined" : {
+
+    },
     "Deep scan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4824,6 +4873,9 @@
           }
         }
       }
+    },
+    "Delegated to %@" : {
+
     },
     "Delete" : {
       "extractionState" : "manual",
@@ -4945,6 +4997,9 @@
           }
         }
       }
+    },
+    "Deleted %@" : {
+
     },
     "Deleting and merging tasks" : {
 
@@ -5070,6 +5125,9 @@
           }
         }
       }
+    },
+    "Direct this project's agents from here" : {
+
     },
     "Disconnect" : {
 
@@ -5359,6 +5417,12 @@
     "Edit…" : {
 
     },
+    "Edited %@" : {
+
+    },
+    "Edited %lld files" : {
+
+    },
     "Editor" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5625,6 +5689,9 @@
           }
         }
       }
+    },
+    "exit %lld" : {
+
     },
     "Exit code" : {
 
@@ -5897,6 +5964,9 @@
         }
       }
     },
+    "Fixture approval" : {
+
+    },
     "Fixture approval: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5907,6 +5977,15 @@
           }
         }
       }
+    },
+    "Fixture finished" : {
+
+    },
+    "Fixture session ready" : {
+
+    },
+    "Fixture thinking" : {
+
     },
     "Folder" : {
       "extractionState" : "manual",
@@ -6332,6 +6411,9 @@
         }
       }
     },
+    "Hide Agents Panel" : {
+
+    },
     "Hide all sessions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6367,6 +6449,9 @@
           }
         }
       }
+    },
+    "Hide the agents panel (⌥⌘B)" : {
+
     },
     "Hide the details" : {
 
@@ -6939,6 +7024,9 @@
         }
       }
     },
+    "Interrupted" : {
+
+    },
     "Irreversible deletion with rm -rf." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6984,6 +7072,9 @@
 
     },
     "its project is gone" : {
+
+    },
+    "Jump to the latest message" : {
 
     },
     "just now" : {
@@ -7172,6 +7263,9 @@
         }
       }
     },
+    "Latest" : {
+
+    },
     "Latest version" : {
 
     },
@@ -7279,6 +7373,9 @@
           }
         }
       }
+    },
+    "List the agents in this project" : {
+
     },
     "Listing in a catalog is not a safety guarantee; the plan shows every change first." : {
 
@@ -7717,6 +7814,9 @@
         }
       }
     },
+    "Mention @%@" : {
+
+    },
     "Menu Bar" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7802,6 +7902,12 @@
           }
         }
       }
+    },
+    "Message %@…" : {
+
+    },
+    "Message your agents — @ to choose one, / for commands" : {
+
     },
     "Minified or obfuscated content." : {
       "extractionState" : "manual",
@@ -8364,6 +8470,9 @@
 
     },
     "No agent CLI was found in any of the usual install locations." : {
+
+    },
+    "No agents in this project yet. Start one with + or /new." : {
 
     },
     "No banner is sent about the session already on screen." : {
@@ -9141,6 +9250,9 @@
         }
       }
     },
+    "not drawn in chat yet" : {
+
+    },
     "Not for this project" : {
 
     },
@@ -9627,6 +9739,12 @@
         }
       }
     },
+    "Open @%@'s own terminal in a window" : {
+
+    },
+    "Open @%@'s Terminal" : {
+
+    },
     "Open a new agent session on these failures" : {
 
     },
@@ -9757,6 +9875,15 @@
           }
         }
       }
+    },
+    "Open terminal" : {
+
+    },
+    "Open Terminal" : {
+
+    },
+    "Open Terminal Window" : {
+
     },
     "Open the command palette (⌘K)" : {
       "extractionState" : "manual",
@@ -10319,6 +10446,19 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Doğrudan `SKILL.md` klasörleri Bumblebee taramasının kapsamı dışında."
+          }
+        }
+      }
+    },
+    "Plan" : {
+
+    },
+    "Plan: %lld of %lld done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Plan: %1$lld of %2$lld done"
           }
         }
       }
@@ -12332,6 +12472,9 @@
         }
       }
     },
+    "Send (Return)" : {
+
+    },
     "Send a test" : {
 
     },
@@ -12750,6 +12893,9 @@
         }
       }
     },
+    "Show Agents Panel" : {
+
+    },
     "Show all sessions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12830,6 +12976,9 @@
     "Show That Window" : {
 
     },
+    "Show the agents panel (⌥⌘B)" : {
+
+    },
     "Show the details" : {
 
     },
@@ -12851,6 +13000,9 @@
 
     },
     "Show this repository's GitHub issues" : {
+
+    },
+    "Show what Uncoil Auto understands" : {
 
     },
     "Shown as a number next to the icon." : {
@@ -13206,6 +13358,12 @@
         }
       }
     },
+    "Start a new agent session in this project" : {
+
+    },
+    "Start an agent in this project" : {
+
+    },
     "Start and Verify" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13407,6 +13565,9 @@
     "Stop" : {
 
     },
+    "Stop (Esc)" : {
+
+    },
     "Stop the Orchestrator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13417,6 +13578,9 @@
           }
         }
       }
+    },
+    "Stop what the agents are doing" : {
+
     },
     "stopped" : {
       "extractionState" : "manual",
@@ -14477,6 +14641,9 @@
         }
       }
     },
+    "The session is not running" : {
+
+    },
     "The session is not running." : {
 
     },
@@ -14652,6 +14819,12 @@
       }
     },
     "The Tasks tab hands work out from TODO.md, and your agents can reach back into Uncoil through its MCP tools. Both are tunable in Settings." : {
+
+    },
+    "The turn failed: %@" : {
+
+    },
+    "The turn failed." : {
 
     },
     "The Uncoil mark, coloured by state." : {
@@ -14938,6 +15111,9 @@
     "This tool is not published on npm." : {
 
     },
+    "Thought" : {
+
+    },
     "Three things Uncoil can use but does not ship. Each is a download, so each is a button — nothing here installs itself, and no install script is ever run." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15112,6 +15288,9 @@
           }
         }
       }
+    },
+    "typed in the agent's terminal" : {
+
     },
     "Types its prompt in and waits for you to send it." : {
 
@@ -16025,6 +16204,9 @@
         }
       }
     },
+    "What should %@ work on?" : {
+
+    },
     "What should happen?" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16172,6 +16354,9 @@
           }
         }
       }
+    },
+    "Withdrawn" : {
+
     },
     "Working directory '%@' doesn't exist under the project root; fix 'cwd' in .uncoil/run.json." : {
       "extractionState" : "manual",

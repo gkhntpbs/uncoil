@@ -12,6 +12,7 @@ import SwiftUI
 ///   -run-start <config id> start that run configuration when the Run screen opens
 ///   -issues-expand <number> open that issue's details when the Issues screen opens
 ///   -route <route>         "project" (default) | "session" | "extensions" | "onboarding"
+///   -chat-fixture          Uncoil Auto sessions play a scripted conversation
 ///   -onboarding-step <id>  step the first-run window opens on
 ///   -extensions-section <name>  section to show when routing to extensions
 ///   -extensions-query <text>    prefills the Extensions search bar
@@ -55,6 +56,10 @@ struct LaunchConfig {
     /// Claude sessions over `claude -p` stream-json instead of the TUI.
     let claudeStructuredEnabled: Bool
     let codexApprovalFixture: Bool
+    /// Uncoil Auto sessions play a script instead of waiting for routing, so
+    /// every row the chat draws — streaming, commands, a diff, a plan, an
+    /// approval, a failed turn — can be looked at and driven.
+    let chatFixture: Bool
     let attentionFixture: Bool
     /// Seeds synthetic usage snapshots and opens the usage card.
     let usageFixture: Bool
@@ -94,6 +99,7 @@ struct LaunchConfig {
         claudeStructuredEnabled = arguments.contains("-claude-structured")
         codexApprovalFixture = isUITesting
             && arguments.contains("-codex-approval-fixture")
+        chatFixture = isUITesting && arguments.contains("-chat-fixture")
         attentionFixture = isUITesting
             && arguments.contains("-attention-fixture")
         // Usage figures come from the provider's own account, so on a machine

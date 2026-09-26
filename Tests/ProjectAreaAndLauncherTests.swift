@@ -96,10 +96,10 @@ final class LauncherPrefsTests: XCTestCase {
         XCTAssertFalse(resolved.contains(.gemini))
     }
 
-    /// A shell needs no CLI of its own, so it is always available even on a
-    /// machine with no agent at all.
+    /// A shell needs no CLI of its own, and neither does Uncoil Auto, so both
+    /// are available even on a machine with no agent at all.
     func testWithNoAgentInstalledTheTerminalRemains() {
-        XCTAssertEqual(LauncherPrefs.resolved(.default, installed: []), [.terminal])
+        XCTAssertEqual(LauncherPrefs.resolved(.default, installed: []), [.uncoil, .terminal])
     }
 
     func testAConfiguredOrderIsHonouredAsWritten() {

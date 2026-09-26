@@ -360,6 +360,29 @@ enum AgentRegistry {
                 unattendedMode: .providerDefault,
                 extensionAgentID: nil
             )
+        case .uncoil:
+            AgentDescriptor(
+                provider: .uncoil,
+                displayName: "Uncoil Auto",
+                fullName: "Uncoil Auto",
+                // Nothing is launched: the session lives in the app.
+                launchCommand: nil,
+                loginCommand: nil,
+                cliBinaryName: nil,
+                defaultConfigDirectory: nil,
+                // Not an agent CLI: no login, no usage, no hooks, and nothing
+                // for the control plane to start or hand a socket to.
+                isAgent: false,
+                statusSource: .none,
+                controlPlane: .none,
+                extensionScoping: .none,
+                hasBuiltInUpdater: false,
+                resumesConversation: false,
+                defaultShiftEnterNewline: false,
+                workingModes: [.providerDefault],
+                unattendedMode: .providerDefault,
+                extensionAgentID: nil
+            )
         }
     }
 }

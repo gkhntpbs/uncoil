@@ -20,6 +20,7 @@ struct UncoilApp: App {
     @StateObject private var usage = UsageStore()
     @ObservedObject private var attention = AttentionStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
+    @AppStorage(UncoilAutoAgentsPanel.visibilityKey) private var agentsPanelVisible = true
 
     init() {
         LaunchConfig.shared.prepareEnvironment()
@@ -85,6 +86,10 @@ struct UncoilApp: App {
                     sidebarVisible.toggle()
                 }
                 .keyboardShortcut("b", modifiers: .command)
+                Button(agentsPanelVisible ? "Hide Agents Panel" : "Show Agents Panel") {
+                    agentsPanelVisible.toggle()
+                }
+                .keyboardShortcut("b", modifiers: [.command, .option])
             }
         }
 

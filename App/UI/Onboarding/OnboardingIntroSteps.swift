@@ -223,7 +223,7 @@ struct OnboardingCLIStep: View {
         case .grok: URL(string: "https://docs.x.ai/docs/grok-cli")
         case .hermes: URL(string: "https://hermes-agent.nousresearch.com/docs")
         case .cursor: URL(string: "https://cursor.com/docs/cli")
-        case .terminal: nil
+        case .terminal, .uncoil: nil
         }
     }
 
