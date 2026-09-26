@@ -299,7 +299,8 @@ final class CapabilityRouterTests: XCTestCase {
     private func request(_ capability: String, _ action: String,
                          args: [String: JSONValue] = [:], caller withCaller: Bool = true) -> ControlRequest {
         ControlRequest(capability: capability, action: action, args: args,
-                       caller_session_id: withCaller ? caller.id.uuidString : nil)
+                       caller_session_id: withCaller ? caller.id.uuidString : nil,
+                       session_token: withCaller ? router.credentials.token(for: caller.id) : nil)
     }
 
     func testUnknownActionListsValidActions() async {

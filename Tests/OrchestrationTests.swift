@@ -163,7 +163,7 @@ final class OrchestrationRouterTests: XCTestCase {
 
     private func req(_ action: String, args: [String: JSONValue] = [:], caller c: SessionRecord? = nil) -> ControlRequest {
         ControlRequest(capability: "uncoil_sessions", action: action, args: args,
-                       caller_session_id: (c ?? caller).id.uuidString)
+                       caller_session_id: (c ?? caller).id.uuidString, session_token: router.credentials.token(for: (c ?? caller).id))
     }
 
     func testCreateChildDeniedWithoutGrant() async {
@@ -244,7 +244,7 @@ final class OrchestrationRouterTests: XCTestCase {
         let report = await router.handle(ControlRequest(
             capability: "uncoil_sessions", action: "report_to_parent",
             args: ["message": .string("done"), "data": .object(["k": .int(1)])],
-            caller_session_id: child.id.uuidString))
+            caller_session_id: child.id.uuidString, session_token: router.credentials.token(for: child.id)))
         XCTAssertTrue(report.ok, "\(String(describing: report.error))")
         // Parent sees pending_reports via inspect.
         let inspect = await router.handle(req("inspect"))
@@ -269,7 +269,7 @@ final class OrchestrationRouterTests: XCTestCase {
         let huge = String(repeating: "x", count: 9000)
         let env = await router.handle(ControlRequest(
             capability: "uncoil_sessions", action: "report_to_parent",
-            args: ["message": .string(huge)], caller_session_id: child.id.uuidString))
+            args: ["message": .string(huge)], caller_session_id: child.id.uuidString, session_token: router.credentials.token(for: child.id)))
         XCTAssertFalse(env.ok)
         XCTAssertEqual(env.error?.code, "INVALID_ARGUMENT")
     }
@@ -277,7 +277,7 @@ final class OrchestrationRouterTests: XCTestCase {
     func testListPresetsReturnsBuiltIns() async {
         let env = await router.handle(ControlRequest(
             capability: "uncoil_projects", action: "list_presets",
-            caller_session_id: caller.id.uuidString))
+            caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id)))
         XCTAssertTrue(env.ok)
         if case let .object(data)? = env.data, case let .array(presets)? = data["presets"] {
             XCTAssertEqual(presets.count, 3)
@@ -297,6 +297,8 @@ final class OrchestrationRouterTests: XCTestCase {
         }
         caller = store.sessions.first { $0.id == caller.id }
         let other = store.createSession(projectID: store.projects[0].id, provider: .claude, accountID: nil, title: "claude: other")
+        let running = FakeAgentSessionControl.terminal(other.id)
+        router.sessionControl = { $0.id == other.id ? running : nil }
         let denied = await router.handle(req("send_text", args: [
             "session_id": .string(other.id.uuidString), "text": .string("hi")]))
         XCTAssertEqual(denied.error?.code, "PERMISSION_REQUIRED")
@@ -306,5 +308,6 @@ final class OrchestrationRouterTests: XCTestCase {
         let allowed = await router.handle(req("send_text", args: [
             "session_id": .string(other.id.uuidString), "text": .string("hi")]))
         XCTAssertTrue(allowed.ok, "\(String(describing: allowed.error))")
+        XCTAssertEqual(running.submitted, ["hi"], "only the permitted call reaches the session")
     }
 }

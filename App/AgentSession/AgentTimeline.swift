@@ -127,7 +127,13 @@ final class AgentEventHub {
 
     typealias Observer = (AgentEventRecord) -> Void
 
+    /// Records kept per session for "everything after N". A timeline is the
+    /// folded answer and has no limit on age; this is the recent stream, for a
+    /// consumer catching up, and is bounded because deltas arrive by the word.
+    static let recordLimit = 2_000
+
     private var timelines: [UUID: AgentTimeline] = [:]
+    private var recentRecords: [UUID: [AgentEventRecord]] = [:]
     private var observers: [UUID: [UUID: Observer]] = [:]
     private let now: () -> Date
 
@@ -156,10 +162,31 @@ final class AgentEventHub {
         )
         timeline.apply(record)
         timelines[sessionID] = timeline
+        var recent = recentRecords[sessionID] ?? []
+        recent.append(record)
+        if recent.count > Self.recordLimit {
+            recent.removeFirst(recent.count - Self.recordLimit)
+        }
+        recentRecords[sessionID] = recent
         for observer in Array((observers[sessionID] ?? [:]).values) {
             observer(record)
         }
         return record
+    }
+
+    /// Records published after `sequence`, oldest first, at most `limit`.
+    ///
+    /// `gap` is true when records after `sequence` have already been dropped:
+    /// the caller has missed events and should reread the timeline rather
+    /// than trust that the stream is complete.
+    func records(
+        for sessionID: UUID, after sequence: Int, limit: Int
+    ) -> (records: [AgentEventRecord], gap: Bool, oldest: Int?) {
+        let recent = recentRecords[sessionID] ?? []
+        let oldest = recent.first?.sequence
+        let gap = oldest.map { sequence + 1 < $0 } ?? false
+        let after = recent.drop { $0.sequence <= sequence }
+        return (Array(after.prefix(max(0, limit))), gap, oldest)
     }
 
     /// Delivers every event published for the session from now on. Keep the
@@ -175,6 +202,7 @@ final class AgentEventHub {
     /// The session is gone; its timeline goes with it.
     func end(_ sessionID: UUID) {
         timelines[sessionID] = nil
+        recentRecords[sessionID] = nil
         observers[sessionID] = nil
     }
 }

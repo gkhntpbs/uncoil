@@ -16,7 +16,9 @@ final class TerminalRegistry {
 
     private var terminals: [UUID: TerminalView] = [:]
     private var delegates: [UUID: AnyObject] = [:]
-    private var codexSessions: [UUID: CodexAppServerSession] = [:]
+    /// Sessions driven over a provider's structured protocol, whichever
+    /// provider it is.
+    private var structuredSessions: [UUID: any StructuredAgentSession] = [:]
     /// Sessions whose process exited; the next request recreates the terminal
     /// (auto-relaunch — the user never sees a "restart" screen).
     private var deadSessions: Set<UUID> = []
@@ -78,6 +80,15 @@ final class TerminalRegistry {
                 sessionStore: sessionStore,
                 projectStore: projectStore
             )
+        } else if shouldUseClaudeStream(record: record, settings: settings) {
+            view = makeClaudeStreamTerminal(
+                record: record,
+                project: project,
+                account: account,
+                settings: settings,
+                sessionStore: sessionStore,
+                projectStore: projectStore
+            )
         } else if runtimePhase == .connecting || runtimePhase == .ready {
             view = makeRuntimeTerminal(record: record, project: project, account: account,
                                        settings: settings, sessionStore: sessionStore,
@@ -88,7 +99,7 @@ final class TerminalRegistry {
                                          projectStore: projectStore)
         }
         terminals[record.id] = view
-        if codexSessions[record.id] == nil {
+        if structuredSessions[record.id] == nil {
             discoverCodexSessionID(
                 for: record,
                 project: project,
@@ -156,6 +167,17 @@ final class TerminalRegistry {
               LaunchConfig.shared.codexAppServerEnabled,
               settings.binaryPath(for: .codex) != nil else { return false }
         let providerArguments = settings.extraArguments[AgentProvider.codex.rawValue]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return providerArguments?.isEmpty != false && (record.extraArguments?.isEmpty ?? true)
+    }
+
+    /// The same rule as Codex's: free-form extra arguments are written for the
+    /// TUI, and passing them to `claude -p` could change what it is.
+    private func shouldUseClaudeStream(record: SessionRecord, settings: SettingsStore) -> Bool {
+        guard record.provider == .claude,
+              LaunchConfig.shared.claudeStructuredEnabled,
+              settings.binaryPath(for: .claude) != nil else { return false }
+        let providerArguments = settings.extraArguments[AgentProvider.claude.rawValue]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return providerArguments?.isEmpty != false && (record.extraArguments?.isEmpty ?? true)
     }
@@ -230,9 +252,9 @@ final class TerminalRegistry {
         // Control-plane wiring: agent sessions learn their identity and the
         // control socket so the bundled uncoil-mcp server can reach the app.
         if record.provider.wiresControlPlane {
-            env.append("UNCOIL_SESSION_ID=\(record.id.uuidString)")
-            env.append("UNCOIL_PROJECT_ID=\(record.projectID.uuidString)")
-            env.append("UNCOIL_CONTROL_SOCKET=\(ControlPlaneServer.defaultSocketPath())")
+            let mcp = ControlProtocol.mcpEnvironment(
+                for: record, socketPath: ControlPlaneServer.defaultSocketPath())
+            for key in mcp.keys.sorted() { env.append("\(key)=\(mcp[key]!)") }
         }
         // OpenCode has no per-session config flag, but it merges the JSON in
         // `OPENCODE_CONFIG_CONTENT` over the user's own file. That is what
@@ -264,11 +286,8 @@ final class TerminalRegistry {
                 "type": "local",
                 "command": [binaryPath],
                 "enabled": true,
-                "environment": [
-                    "UNCOIL_SESSION_ID": record.id.uuidString,
-                    "UNCOIL_PROJECT_ID": record.projectID.uuidString,
-                    "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
-                ],
+                "environment": ControlProtocol.mcpEnvironment(
+                    for: record, socketPath: ControlPlaneServer.defaultSocketPath()),
             ],
         ]
         // The content is merged over the user's own file, so naming a server
@@ -318,11 +337,8 @@ final class TerminalRegistry {
         var servers: [String: Any] = [
             ControlPlaneMCPName: [
                 "command": binaryPath,
-                "env": [
-                    "UNCOIL_SESSION_ID": record.id.uuidString,
-                    "UNCOIL_PROJECT_ID": record.projectID.uuidString,
-                    "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
-                ],
+                "env": ControlProtocol.mcpEnvironment(
+                    for: record, socketPath: ControlPlaneServer.defaultSocketPath()),
             ],
         ]
         // The project's allow-list only has to be spelled out when the file is
@@ -411,11 +427,8 @@ final class TerminalRegistry {
                 writeMCPConfig(for: record, binaryPath: $0, scoped: scoped)
             }
             : nil
-        let mcpEnvironment = [
-            "UNCOIL_CONTROL_SOCKET": ControlPlaneServer.defaultSocketPath(),
-            "UNCOIL_PROJECT_ID": record.projectID.uuidString,
-            "UNCOIL_SESSION_ID": record.id.uuidString,
-        ]
+        let mcpEnvironment = ControlProtocol.mcpEnvironment(
+            for: record, socketPath: ControlPlaneServer.defaultSocketPath())
         // Asked of the provider's own store rather than assumed from having an
         // id: a resume flag the CLI cannot honour is not a degraded launch, it
         // is a session that dies on its first line.
@@ -565,11 +578,9 @@ final class TerminalRegistry {
         if let mcpBinaryPath = bundledMCPBinaryPath() {
             mcpServers[ControlPlaneMCPName] = .object([
                 "command": .string(mcpBinaryPath),
-                "env": .object([
-                    "UNCOIL_CONTROL_SOCKET": .string(ControlPlaneServer.defaultSocketPath()),
-                    "UNCOIL_PROJECT_ID": .string(record.projectID.uuidString),
-                    "UNCOIL_SESSION_ID": .string(record.id.uuidString),
-                ]),
+                "env": .object(ControlProtocol.mcpEnvironment(
+                    for: record, socketPath: ControlPlaneServer.defaultSocketPath()
+                ).mapValues(JSONValue.string)),
             ])
         }
         for name in scope.excludedMCPNames where name != ControlPlaneMCPName {
@@ -604,7 +615,7 @@ final class TerminalRegistry {
             projectStore: projectStore,
             fallback: { [weak view, weak settings, weak sessionStore, weak projectStore] reason in
                 guard let view, let settings, let sessionStore, let projectStore else { return }
-                TerminalRegistry.shared.codexSessions[recordID] = nil
+                TerminalRegistry.shared.structuredSessions[recordID] = nil
                 TerminalRegistry.shared.configureRuntimeTerminal(
                     view,
                     record: record,
@@ -617,11 +628,89 @@ final class TerminalRegistry {
                 sessionStore.setStatus(.idle, detail: String(localized: "PTY fallback: \(reason)"), for: recordID)
             }
         )
-        let delegate = CodexStructuredTerminalDelegate(session: session, terminal: view)
+        let delegate = StructuredSessionTerminalDelegate(session: session, terminal: view)
         session.draftHandler = { [weak delegate] in delegate?.prefill($0) }
         view.terminalDelegate = delegate
         delegates[record.id] = delegate
-        codexSessions[record.id] = session
+        structuredSessions[record.id] = session
+        session.start()
+        return view
+    }
+
+    private func makeClaudeStreamTerminal(
+        record: SessionRecord,
+        project: Project,
+        account: AccountProfile?,
+        settings: SettingsStore,
+        sessionStore: SessionStore,
+        projectStore: ProjectStore
+    ) -> TerminalView {
+        guard let binaryPath = settings.binaryPath(for: .claude) else {
+            return makeRuntimeTerminal(
+                record: record, project: project, account: account,
+                settings: settings, sessionStore: sessionStore, projectStore: projectStore)
+        }
+        let view = UncoilTerminalView(frame: .zero)
+        applyTheme(view)
+        applyOptionAsMeta(view, settings: settings)
+        let configDirectory = account?.configDirectory(profilesRoot: settings.profilesRootURL)
+        let cwd = record.workingDirectory(in: project)
+        let scoped = ProjectScopeService.shared.resolve(
+            for: record.provider, projectID: record.projectID, configDirectory: configDirectory)
+        // Asked of Claude's own store, exactly as the terminal launch asks: a
+        // resume flag for a transcript that is gone ends the session at once.
+        let resume = Self.resumeDecision(for: record, cwd: cwd, configDirectory: configDirectory)
+        let providerSessionID = resume.sessionID ?? UUID().uuidString.lowercased()
+        let arguments = ClaudeStreamProtocol.arguments(
+            record: record,
+            resume: resume,
+            newSessionID: providerSessionID,
+            mcpConfigPath: bundledMCPBinaryPath().flatMap {
+                writeMCPConfig(for: record, binaryPath: $0, scoped: scoped)
+            },
+            scope: scoped.scope,
+            modeArguments: settings.workingModeArguments(for: .claude))
+        let transport = ClaudeProcessTransport(
+            executable: binaryPath,
+            arguments: arguments,
+            directory: cwd,
+            environment: environmentDictionary(for: account, settings: settings, record: record))
+        let transcript = resume.sessionID.map {
+            ClaudeSessionStore.transcriptURL(
+                configDirectory: configDirectory ?? ClaudeSessionStore.defaultConfigDirectory(),
+                cwd: cwd, sessionID: $0)
+        }
+        let recordID = record.id
+        let obstacle = resume.obstacle
+        let session = ClaudeStreamSession(
+            record: record,
+            providerSessionID: providerSessionID,
+            startNotice: obstacle?.message(for: .claude),
+            transport: transport,
+            history: {
+                guard let transcript else { return [] }
+                return await Task.detached(priority: .userInitiated) {
+                    guard let text = try? String(contentsOf: transcript, encoding: .utf8) else { return [] }
+                    return ClaudeEventNormalizer.history(transcript: text)
+                }.value
+            },
+            terminal: view,
+            settings: settings,
+            sessionStore: sessionStore,
+            projectStore: projectStore,
+            fallback: { [weak view, weak settings, weak sessionStore, weak projectStore] reason in
+                guard let view, let settings, let sessionStore, let projectStore else { return }
+                TerminalRegistry.shared.structuredSessions[recordID] = nil
+                TerminalRegistry.shared.configureRuntimeTerminal(
+                    view, record: record, project: project, account: account,
+                    settings: settings, sessionStore: sessionStore, projectStore: projectStore)
+                sessionStore.setStatus(.idle, detail: String(localized: "PTY fallback: \(reason)"), for: recordID)
+            })
+        let delegate = StructuredSessionTerminalDelegate(session: session, terminal: view)
+        session.draftHandler = { [weak delegate] in delegate?.prefill($0) }
+        view.terminalDelegate = delegate
+        delegates[record.id] = delegate
+        structuredSessions[record.id] = session
         session.start()
         return view
     }
@@ -811,8 +900,8 @@ final class TerminalRegistry {
     }
 
     func closeTerminal(for recordID: UUID) {
-        codexSessions[recordID]?.stop()
-        codexSessions[recordID] = nil
+        structuredSessions[recordID]?.stop(terminateServer: true)
+        structuredSessions[recordID] = nil
         AgentEventHub.shared.end(recordID)
         RuntimeClient.shared.kill(sid: recordID)
         terminals[recordID] = nil
@@ -822,10 +911,10 @@ final class TerminalRegistry {
     }
 
     func prepareForApplicationTermination(terminateSessions: Bool) {
-        codexSessions.values.forEach {
+        structuredSessions.values.forEach {
             $0.prepareForApplicationTermination(terminateServer: terminateSessions)
         }
-        codexSessions.removeAll()
+        structuredSessions.removeAll()
     }
 
     /// Submits a prompt into a session.
@@ -868,7 +957,7 @@ final class TerminalRegistry {
     /// The way into a session, whatever is behind it: the structured Codex
     /// session when there is one, the terminal otherwise.
     func control(for recordID: UUID, provider: AgentProvider) -> AgentSessionControl {
-        if let session = codexSessions[recordID] {
+        if let session = structuredSessions[recordID] {
             return session
         }
         return PTYAgentSessionControl(
@@ -932,7 +1021,7 @@ final class TerminalRegistry {
     }
 
     func output(for recordID: UUID) async -> Data? {
-        if let session = codexSessions[recordID] {
+        if let session = structuredSessions[recordID] {
             return await session.outputSnapshot()
         }
         return await RuntimeClient.shared.peek(sid: recordID)

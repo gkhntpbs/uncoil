@@ -4,13 +4,17 @@ extension CapabilityRouter {
     func handleSystem(_ request: ControlRequest) -> ControlEnvelope {
         switch request.action {
         case "status":
-            let caller = caller(of: request)
+            let context = callContext(request)
             return .success(request, data: .object([
                 "ok": .bool(true),
                 "protocol_version": .int(ControlProtocol.version),
-                "caller_session_id": .string(optional: request.caller_session_id),
-                "project_id": .string(optional: caller?.projectID.uuidString),
-            ]), project_id: caller?.projectID.uuidString)
+                "caller_session_id": .string(optional: context.caller?.id.uuidString),
+                "caller_verification": .string(context.verification.rawValue),
+                "project_id": .string(optional: context.projectID?.uuidString),
+            ]), project_id: context.projectID?.uuidString)
+
+        case "describe":
+            return .success(request, data: describe(callContext(request)))
 
         case "version":
             return .success(request, data: .object([
@@ -33,7 +37,8 @@ extension CapabilityRouter {
                 return .failure(request, code: .controlPlaneUnavailable,
                     message: "permission service unavailable")
             }
-            let from = request.caller_session_id ?? "unknown"
+            // Reaching this means the identity gate verified the caller.
+            let from = callContext(request).caller?.id.uuidString ?? "unknown"
             let record = permissions.request(grantKey: grantKey, from: from, target: target)
             return .success(request, data: .object([
                 "request_id": .string(record.id),
@@ -58,6 +63,42 @@ extension CapabilityRouter {
         default:
             return .failure(request, code: .invalidAction, message: "unsupported system action")
         }
+    }
+
+    /// The contract, as this build implements it. Read from the same tables
+    /// the router enforces, so it cannot describe a different control plane.
+    func describe(_ context: ControlCallContext) -> JSONValue {
+        let capabilities = HelpRegistry.capabilityNames.compactMap { name -> JSONValue? in
+            guard let doc = HelpRegistry.capabilities[name] else { return nil }
+            return .object([
+                "name": .string(name),
+                "overview": .string(doc.overview),
+                "actions": .array(doc.actions.map { action in
+                    .object([
+                        "name": .string(action.action),
+                        "kind": .string(doc.isRead(action.action) ? "read" : "effect"),
+                        "summary": .string(action.summary),
+                    ])
+                }),
+            ])
+        }
+        return .object([
+            "protocol": .object([
+                "version": .int(ControlProtocol.version),
+                "minimum_version": .int(ControlProtocol.minimumVersion),
+            ]),
+            "app_version": .string(appVersion),
+            "features": .array([
+                "session_tokens", "idempotency_keys", "cancellation", "event_pagination",
+                "event_long_poll", "session_capabilities", "structured_submit",
+            ].map(JSONValue.string)),
+            "capabilities": .array(capabilities),
+            "effects": .array(PolicyEngine.Effect.allCases.map { .string($0.rawValue) }),
+            "session_operations": .array(
+                SessionCapabilityReport.Operation.allCases.map { .string($0.rawValue) }),
+            "error_codes": .array(ControlErrorCode.allCases.map { .string($0.rawValue) }),
+            "caller": context.asJSON,
+        ])
     }
 
     private func dependencyStatus(_ info: DependencyInfo) -> JSONValue {

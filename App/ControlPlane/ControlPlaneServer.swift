@@ -16,6 +16,10 @@ final class ControlPlaneServer: @unchecked Sendable {
     private var acceptSource: DispatchSourceRead?
     private var clientSources: [Int32: DispatchSourceRead] = [:]
     private var clientBuffers: [Int32: Data] = [:]
+    /// Requests still being answered, per connection. A client that hangs up
+    /// — `uncoil-mcp` does when the agent cancels a call — cancels them, so a
+    /// wait nobody is listening to ends instead of running out its clock.
+    private var clientTasks: [Int32: [UUID: Task<Void, Never>]] = [:]
     private var ownsSocket = false
     private let queue = DispatchQueue(label: "com.gokhantopbas.uncoil.control-server")
 
@@ -102,6 +106,8 @@ final class ControlPlaneServer: @unchecked Sendable {
     private func stopLocked() {
         acceptSource?.cancel()
         acceptSource = nil
+        for tasks in clientTasks.values { tasks.values.forEach { $0.cancel() } }
+        clientTasks.removeAll()
         for source in clientSources.values { source.cancel() }
         clientSources.removeAll()
         clientBuffers.removeAll()
@@ -167,11 +173,16 @@ final class ControlPlaneServer: @unchecked Sendable {
             return
         }
         let router = self.router
-        Task { @MainActor [weak self] in
+        let token = UUID()
+        let task = Task { @MainActor [weak self] in
             let envelope = await router.handle(request)
             guard let self else { return }
-            self.queue.async { self.send(envelope, to: fd) }
+            self.queue.async {
+                self.clientTasks[fd]?[token] = nil
+                self.send(envelope, to: fd)
+            }
         }
+        clientTasks[fd, default: [:]][token] = task
     }
 
     private func send(_ envelope: ControlEnvelope, to fd: Int32) {
@@ -187,6 +198,8 @@ final class ControlPlaneServer: @unchecked Sendable {
     }
 
     private func dropClient(_ fd: Int32) {
+        for task in (clientTasks[fd] ?? [:]).values { task.cancel() }
+        clientTasks[fd] = nil
         clientSources[fd]?.cancel()
         clientSources[fd] = nil
         clientBuffers[fd] = nil

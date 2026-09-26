@@ -31,7 +31,8 @@ final class AuditLog {
         target: String?,
         decision: String,
         errorCode: String? = nil,
-        argKeys: [String] = []
+        argKeys: [String] = [],
+        verification: String? = nil
     ) {
         var entry: [String: Any] = [
             "ts": Self.isoFormatter.string(from: Date()),
@@ -44,6 +45,7 @@ final class AuditLog {
             "arg_keys": argKeys.sorted(),
         ]
         if let errorCode { entry["error_code"] = errorCode }
+        if let verification { entry["caller_verification"] = verification }
 
         let day = Self.dayFormatter.string(from: Date())
         let fileURL = directory.appendingPathComponent("\(day).jsonl")

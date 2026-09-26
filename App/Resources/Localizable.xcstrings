@@ -3665,6 +3665,18 @@
         }
       }
     },
+    "Claude finished" : {
+
+    },
+    "Claude interrupted" : {
+
+    },
+    "Claude thinking" : {
+
+    },
+    "Claude turn failed" : {
+
+    },
     "claude: organise sessions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13322,6 +13334,9 @@
         }
       }
     },
+    "Starting structured Claude" : {
+
+    },
     "Startup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13435,6 +13450,9 @@
           }
         }
       }
+    },
+    "Structured Claude ready" : {
+
     },
     "Structured Codex ready" : {
       "extractionState" : "manual",

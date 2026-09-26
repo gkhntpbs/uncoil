@@ -194,6 +194,18 @@ final class AppServices {
             appVersion: version
         )
         router.hookServerRunning = { [weak sessionStore] in sessionStore?.hookServer != nil }
+        // What a session created through the control plane may ask for is
+        // what the new-session sheet offers: the installed CLIs and the
+        // options each one documents.
+        router.providerInstalled = { [weak settings] provider in
+            if settings?.binaryPath(for: provider) != nil { return true }
+            guard let name = provider.descriptor.cliBinaryName else { return false }
+            return AgentAdapterSupport.locateBinary(name) != nil
+        }
+        router.launchCapabilities = { [weak settings] provider in
+            await AgentLaunchCatalog.detect(
+                provider: provider, binaryPath: settings?.binaryPath(for: provider))
+        }
 
         // Directional permission service, shared with the Settings → İzinler pane.
         let permissions = PermissionService(dataDirectory: dataDir)

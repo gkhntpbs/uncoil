@@ -7,11 +7,43 @@ import Foundation
 /// Compiled into BOTH the `Uncoil` app target and the `uncoil-mcp` tool so
 /// the request/response shapes stay identical on both ends.
 enum ControlProtocol {
-    /// Bumped on any breaking change to request/response shapes.
-    static let version = 1
+    /// The request shape this build speaks.
+    ///
+    /// Version 2 added `session_token` and `client` to the request, both
+    /// optional. The rule for every version after it is the same: fields are
+    /// added, never renamed or repurposed, so a server decodes any request from
+    /// `minimumVersion` up and a client can talk to a newer server unchanged.
+    static let version = 2
+    /// The oldest request shape the server still accepts.
+    static let minimumVersion = 1
     static let socketName = "control.sock"
     /// Default per-call timeout the MCP server enforces.
     static let defaultTimeout: TimeInterval = 30
+    /// The longest a single call may wait on the app — the ceiling on every
+    /// action's own `timeout_s`, plus the time it takes to answer.
+    static let maximumTimeout: TimeInterval = 330
+
+    /// How long the MCP server waits for the app to answer one call: the
+    /// action's own wait, when it has one, plus a margin to report it.
+    ///
+    /// A fixed 30 s used to cut every longer wait short — `wait_for_children`
+    /// defaults to 120 s, so it could only ever end in a client-side TIMEOUT
+    /// while the app went on waiting for nobody.
+    static func callTimeout(args: [String: JSONValue]) -> TimeInterval {
+        let requested = args["timeout_s"]?.doubleValue
+            ?? args["wait_s"]?.doubleValue
+            ?? 0
+        return min(maximumTimeout, max(defaultTimeout, requested + 15))
+    }
+
+    /// Environment the MCP server reads its session from. One set of names for
+    /// every provider: a provider's own config only decides how they arrive.
+    enum Environment {
+        static let sessionID = "UNCOIL_SESSION_ID"
+        static let sessionToken = "UNCOIL_SESSION_TOKEN"
+        static let projectID = "UNCOIL_PROJECT_ID"
+        static let controlSocket = "UNCOIL_CONTROL_SOCKET"
+    }
 }
 
 // MARK: - JSON value
@@ -107,6 +139,12 @@ struct ControlRequest: Codable, Equatable {
     var action: String
     var args: [String: JSONValue]
     var caller_session_id: String?
+    /// Proof that the caller is the session it names. Issued by the app when
+    /// it launches the session; see `SessionCredentials`. Absent from
+    /// version-1 clients, which are treated as unverified.
+    var session_token: String?
+    /// Who is on the other end, for the audit log: `uncoil-mcp/2`.
+    var client: String?
     var request_id: String
 
     init(
@@ -115,6 +153,8 @@ struct ControlRequest: Codable, Equatable {
         action: String,
         args: [String: JSONValue] = [:],
         caller_session_id: String? = nil,
+        session_token: String? = nil,
+        client: String? = nil,
         request_id: String = UUID().uuidString
     ) {
         self.version = version
@@ -122,7 +162,28 @@ struct ControlRequest: Codable, Equatable {
         self.action = action
         self.args = args
         self.caller_session_id = caller_session_id
+        self.session_token = session_token
+        self.client = client
         self.request_id = request_id
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, capability, action, args, caller_session_id, session_token, client, request_id
+    }
+
+    /// Only `capability` and `action` are required. Everything else has a
+    /// meaning when absent, so a minimal or older client is read rather than
+    /// refused: no version is version 1, no args is none, no id gets one.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        capability = try container.decode(String.self, forKey: .capability)
+        action = try container.decode(String.self, forKey: .action)
+        args = try container.decodeIfPresent([String: JSONValue].self, forKey: .args) ?? [:]
+        caller_session_id = try container.decodeIfPresent(String.self, forKey: .caller_session_id)
+        session_token = try container.decodeIfPresent(String.self, forKey: .session_token)
+        client = try container.decodeIfPresent(String.self, forKey: .client)
+        request_id = try container.decodeIfPresent(String.self, forKey: .request_id) ?? UUID().uuidString
     }
 }
 
@@ -154,6 +215,19 @@ enum ControlErrorCode: String, Codable, CaseIterable {
     case invalidArgument = "INVALID_ARGUMENT"
     case ioError = "IO_ERROR"
     case internalError = "INTERNAL_ERROR"
+    /// The caller could not be shown to be the session it names — no token, a
+    /// wrong one, or no session at all. `details.reason` says which.
+    case identityUnverified = "IDENTITY_UNVERIFIED"
+    /// The session exists and is running, but does not offer this operation.
+    /// Read `sessions capabilities` instead of retrying.
+    case unsupportedCapability = "UNSUPPORTED_CAPABILITY"
+    /// The session's agent cannot take the call right now: not connected yet,
+    /// crashed, or restarting. Retryable.
+    case providerUnavailable = "PROVIDER_UNAVAILABLE"
+    /// An `idempotency_key` was reused with different arguments.
+    case idempotencyConflict = "IDEMPOTENCY_CONFLICT"
+    /// The request's `version` is newer than this app understands.
+    case unsupportedVersion = "UNSUPPORTED_VERSION"
 }
 
 struct ControlErrorBody: Codable, Equatable {

@@ -56,6 +56,12 @@ enum PolicyEngine {
         // session the user opened in order to write blueprints — not to every
         // agent that happens to be running.
         "blueprints.write",
+        // Answering another session's approval is deciding, on the user's
+        // behalf, that a command may run or a file may change. An agent that
+        // can do that for any session it controls can approve its own work by
+        // way of a child, so it is granted deliberately — or asked for, per
+        // target, through the user.
+        "sessions.approve",
     ]
 
     static func grants(for record: SessionRecord) -> Set<String> {
@@ -139,6 +145,79 @@ enum PolicyEngine {
         grants.contains("sessions.create_children")
             ? .allow
             : .deny(.capabilityDisabled, "sessions.create_children is not granted")
+    }
+
+    // MARK: - Effects
+
+    /// Everything a call can *do* to a session, as opposed to reading it.
+    ///
+    /// Every handler that acts asks `authorize` with one of these, so what
+    /// "may this caller interrupt that session" means is decided here once, not
+    /// re-derived in each action. The raw values are stable: they are what the
+    /// audit log and `describe` report.
+    enum Effect: String, CaseIterable {
+        case read
+        /// Input that starts or steers work: submit, send_text, send_raw.
+        case control
+        case interrupt
+        case respondToApproval = "respond_to_approval"
+        case createSession = "create_session"
+        case resume
+        case close
+    }
+
+    enum EffectDecision: Equatable {
+        case allow
+        case deny(ControlErrorCode, String)
+        /// Policy says no, but the user may say yes for this caller → target
+        /// under this grant key (`PermissionService`).
+        case requiresPermission(String)
+    }
+
+    /// The one answer to "may this caller cause this effect on this target".
+    ///
+    /// Pure: identity has already been established (`ControlCallContext`), and
+    /// the user's directional permissions are consulted by the caller of this
+    /// only when the answer is `requiresPermission`.
+    static func authorize(
+        _ effect: Effect,
+        caller: SessionRecord,
+        target: SessionRecord?,
+        grants: Set<String>,
+        in all: [UUID: SessionRecord]
+    ) -> EffectDecision {
+        if effect == .createSession {
+            let decision = canCreateChild(grants: grants)
+            return decision.allowed ? .allow : .deny(decision.code ?? .capabilityDisabled, decision.message ?? "")
+        }
+        guard let target else { return .deny(.unknownSession, "session not found") }
+        let relation = self.relation(of: target, to: caller, in: all)
+        switch effect {
+        case .read:
+            let decision = canRead(target: target, caller: caller, relation: relation, grants: grants)
+            return decision.allowed ? .allow : .deny(decision.code ?? .permissionDenied, decision.message ?? "")
+        case .close:
+            let decision = canClose(relation: relation, grants: grants)
+            if decision.allowed { return .allow }
+            return decision.code == .permissionDenied
+                ? .requiresPermission("sessions.close")
+                : .deny(decision.code ?? .permissionDenied, decision.message ?? "")
+        case .control, .interrupt, .resume, .respondToApproval:
+            let decision = canControl(relation: relation, grants: grants)
+            if !decision.allowed {
+                // A missing grant is the session's configuration and final; a
+                // relationship policy does not cover is the user's to lift.
+                return decision.code == .permissionDenied
+                    ? .requiresPermission("sessions.control")
+                    : .deny(decision.code ?? .permissionDenied, decision.message ?? "")
+            }
+            if effect == .respondToApproval, !grants.contains("sessions.approve") {
+                return .requiresPermission("sessions.approve")
+            }
+            return .allow
+        case .createSession:
+            return .allow
+        }
     }
 
     /// Intersects a requested capability set with what the preset allows and

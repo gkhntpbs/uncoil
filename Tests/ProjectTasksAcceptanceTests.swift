@@ -100,7 +100,7 @@ final class ProjectTasksAcceptanceTests: XCTestCase {
         }
         return await router.handle(ControlRequest(
             capability: "uncoil_tasks", action: action, args: args,
-            caller_session_id: caller.id.uuidString
+            caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id)
         ))
     }
 
@@ -413,7 +413,7 @@ final class ProjectTasksAcceptanceTests: XCTestCase {
         let refused = await router.handle(ControlRequest(
             capability: "uncoil_tasks", action: "claim_task",
             args: ["task_id": .string(id)],
-            caller_session_id: other.id.uuidString
+            caller_session_id: other.id.uuidString, session_token: router.credentials.token(for: other.id)
         ))
         XCTAssertFalse(refused.ok, "a live claim is exclusive")
     }

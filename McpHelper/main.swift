@@ -5,29 +5,54 @@ import Foundation
 /// Uncoil.app and registered with agent CLIs per session.
 ///
 /// JSON-RPC 2.0 over newline-delimited stdin/stdout. Handles `initialize`,
-/// `tools/list`, `tools/call`; ignores notifications. Every `tools/call`
-/// forwards `{capability, action, args, caller_session_id}` as one line-JSON
-/// request to the in-app control plane over UNCOIL_CONTROL_SOCKET and returns
-/// the app's JSON response envelope verbatim as the tool result text.
+/// `tools/list`, `tools/call`, `ping` and `notifications/cancelled`. Every
+/// `tools/call` forwards `{capability, action, args, caller_session_id,
+/// session_token}` as one line-JSON request to the in-app control plane over
+/// UNCOIL_CONTROL_SOCKET and returns the app's JSON response envelope verbatim
+/// as the tool result text.
 ///
-/// Env: UNCOIL_SESSION_ID, UNCOIL_PROJECT_ID, UNCOIL_CONTROL_SOCKET.
+/// Provider-neutral by construction: the same binary, the same tools and the
+/// same environment names serve every agent. Who is calling is read from the
+/// environment at runtime; the provider's own config only decides how that
+/// environment arrives.
+///
+/// Calls run concurrently. The stdin loop never waits on the app, so a long
+/// `wait_for_children` does not stop the server from reading the client's
+/// next call — or its cancellation, which closes that call's socket; the app
+/// sees the hang-up and cancels the work.
+///
+/// Env: UNCOIL_SESSION_ID, UNCOIL_SESSION_TOKEN, UNCOIL_PROJECT_ID,
+/// UNCOIL_CONTROL_SOCKET.
 
-let protocolVersion = "2025-06-18"
-let serverVersion = "0.1.0"
+/// MCP revisions this server answers in, newest first. A client asking for
+/// one of these gets it; anything else gets the newest.
+let supportedProtocolVersions = ["2025-06-18", "2025-03-26", "2024-11-05"]
+let serverVersion = "\(ControlProtocol.version).0.0"
+let clientName = "uncoil-mcp/\(ControlProtocol.version)"
 
 let env = ProcessInfo.processInfo.environment
-let callerSessionID = env["UNCOIL_SESSION_ID"]
-let controlSocketPath = env["UNCOIL_CONTROL_SOCKET"]
+let callerSessionID = env[ControlProtocol.Environment.sessionID].flatMap { $0.isEmpty ? nil : $0 }
+let sessionToken = env[ControlProtocol.Environment.sessionToken].flatMap { $0.isEmpty ? nil : $0 }
+let controlSocketPath = env[ControlProtocol.Environment.controlSocket]
+
+let instructions = """
+Uncoil's control plane. One tool per domain; every call is {"action": ..., ...}. \
+Call {"action":"help"} on a tool for its actions, or uncoil_system {"action":"describe"} \
+for the whole contract. Prefer structured session actions (capabilities, timeline, \
+events, submit) over reading terminal output.
+"""
 
 // MARK: - Tool catalogue (kept small; full docs live behind the `help` action)
 
 struct ToolDef { let name: String; let description: String }
 
 let tools: [ToolDef] = [
+    ToolDef(name: "uncoil_sessions",
+            description: "Inspect agent sessions and what each supports, read structured timelines and events, submit prompts, interrupt turns, answer approvals, and create sessions with a chosen agent, account, model and effort. Call {\"action\":\"help\"} for full documentation."),
+    ToolDef(name: "uncoil_agents",
+            description: "Discover the agents Uncoil can run: installed providers, their accounts, and the models, efforts and working modes each offers. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_projects",
             description: "Inspect Uncoil projects and their git worktrees, create new worktrees, and read or write the project blueprints a new project can be set up from. Call {\"action\":\"help\"} for full documentation."),
-    ToolDef(name: "uncoil_sessions",
-            description: "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_artifacts",
             description: "List, read, and register text artifacts inside session artifact roots. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_tasks",
@@ -35,7 +60,7 @@ let tools: [ToolDef] = [
     ToolDef(name: "uncoil_run",
             description: "Project run / dev preview: detect the project's dev workflows into the repo-owned .uncoil/run.json, then start/stop/restart them, read structured status and log tails, and repair configurations. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_system",
-            description: "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics. Call {\"action\":\"help\"} for full documentation."),
+            description: "Report Uncoil control-plane status, version, the full contract (describe), granted capabilities, and health diagnostics. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_browser",
             description: "Drive an isolated headless browser (open, snapshot, click element refs, fill, screenshot) via the optional agent-browser CLI; needs the browser.use grant. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_computer",
@@ -44,12 +69,15 @@ let tools: [ToolDef] = [
 
 // MARK: - stdout
 
-let stdoutHandle = FileHandle.standardOutput
+let stdoutLock = NSLock()
 
 func writeMessage(_ object: [String: Any]) {
     guard var data = try? JSONSerialization.data(withJSONObject: object, options: []) else { return }
     data.append(UInt8(ascii: "\n"))
-    stdoutHandle.write(data)
+    // Calls finish on their own threads; one line at a time, whole.
+    stdoutLock.lock()
+    FileHandle.standardOutput.write(data)
+    stdoutLock.unlock()
 }
 
 func respond(id: Any, result: [String: Any]) {
@@ -58,6 +86,46 @@ func respond(id: Any, result: [String: Any]) {
 
 func respondError(id: Any, code: Int, message: String) {
     writeMessage(["jsonrpc": "2.0", "id": id, "error": ["code": code, "message": message]])
+}
+
+// MARK: - In-flight calls
+
+/// Calls being answered, by JSON-RPC id, so a cancellation can find the
+/// socket to close.
+final class InFlight: @unchecked Sendable {
+    private let lock = NSLock()
+    private var sockets: [String: Int32] = [:]
+    private var cancelled: Set<String> = []
+
+    /// False when the call was cancelled before it got a socket.
+    func register(_ key: String, fd: Int32) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard !cancelled.contains(key) else { return false }
+        sockets[key] = fd
+        return true
+    }
+
+    func cancel(_ key: String) {
+        lock.lock(); defer { lock.unlock() }
+        cancelled.insert(key)
+        // Wakes the blocked read and tells the app nobody is listening.
+        if let fd = sockets[key] { shutdown(fd, SHUT_RDWR) }
+    }
+
+    /// Ends the call; true when it was cancelled and must not be answered.
+    func finish(_ key: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        sockets[key] = nil
+        return cancelled.remove(key) != nil
+    }
+}
+
+let inFlight = InFlight()
+let callQueue = DispatchQueue(label: "uncoil-mcp.calls", attributes: .concurrent)
+
+func rpcKey(_ id: Any) -> String {
+    if let number = id as? NSNumber { return "n:\(number.stringValue)" }
+    return "s:\(id)"
 }
 
 // MARK: - Control-plane forwarding
@@ -80,28 +148,39 @@ func errorEnvelopeText(capability: String, action: String, code: String, message
     return String(decoding: data, as: UTF8.self)
 }
 
+/// How long to wait for the app: `ControlProtocol.callTimeout`, read from the
+/// same arguments the app will see.
+func callTimeout(_ args: [String: Any]) -> TimeInterval {
+    let decoded = (try? JSONSerialization.data(withJSONObject: args))
+        .flatMap { try? JSONDecoder().decode([String: JSONValue].self, from: $0) } ?? [:]
+    return ControlProtocol.callTimeout(args: decoded)
+}
+
 /// Connects, sends one request line, reads one response line. Returns the raw
-/// response JSON, or nil on connect/timeout failure (caller substitutes an
-/// error envelope).
-func forwardToControlPlane(capability: String, action: String, args: [String: Any]) -> (text: String, isError: Bool) {
+/// response JSON, or a locally made error envelope on failure.
+func forwardToControlPlane(
+    key: String, capability: String, action: String, args: [String: Any]
+) -> (text: String, isError: Bool) {
+    func failure(_ code: String, _ message: String, retryable: Bool) -> (String, Bool) {
+        (errorEnvelopeText(capability: capability, action: action, code: code,
+                           message: message, retryable: retryable), true)
+    }
     guard let path = controlSocketPath, !path.isEmpty else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "UNCOIL_CONTROL_SOCKET is not set", retryable: false), true)
+        return failure("CONTROL_PLANE_UNAVAILABLE", "UNCOIL_CONTROL_SOCKET is not set", retryable: false)
     }
 
     let sock = socket(AF_UNIX, SOCK_STREAM, 0)
-    guard sock >= 0 else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "socket() failed", retryable: true), true)
-    }
+    guard sock >= 0 else { return failure("CONTROL_PLANE_UNAVAILABLE", "socket() failed", retryable: true) }
     defer { close(sock) }
+    guard inFlight.register(key, fd: sock) else {
+        return failure("CANCELLED", "the request was cancelled", retryable: false)
+    }
 
     var address = sockaddr_un()
     address.sun_family = sa_family_t(AF_UNIX)
     let pathBytes = path.utf8CString
     guard pathBytes.count <= MemoryLayout.size(ofValue: address.sun_path) else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "socket path too long", retryable: false), true)
+        return failure("CONTROL_PLANE_UNAVAILABLE", "socket path too long", retryable: false)
     }
     withUnsafeMutableBytes(of: &address.sun_path) { raw in
         pathBytes.withUnsafeBytes { raw.copyMemory(from: $0) }
@@ -112,25 +191,25 @@ func forwardToControlPlane(capability: String, action: String, args: [String: An
         }
     }
     guard connected == 0 else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "cannot reach Uncoil control plane", retryable: true), true)
+        return failure("CONTROL_PLANE_UNAVAILABLE", "cannot reach Uncoil control plane", retryable: true)
     }
 
-    // 30s receive timeout → typed TIMEOUT error.
-    var timeout = timeval(tv_sec: 30, tv_usec: 0)
+    let limit = callTimeout(args)
+    var timeout = timeval(tv_sec: Int(limit), tv_usec: 0)
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 
     var request: [String: Any] = [
-        "version": 1,
+        "version": ControlProtocol.version,
         "capability": capability,
         "action": action,
         "args": args,
+        "client": clientName,
         "request_id": UUID().uuidString,
     ]
     if let callerSessionID { request["caller_session_id"] = callerSessionID }
+    if let sessionToken { request["session_token"] = sessionToken }
     guard var payload = try? JSONSerialization.data(withJSONObject: request) else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "INVALID_ARGUMENT", message: "could not encode request", retryable: false), true)
+        return failure("INVALID_ARGUMENT", "could not encode request", retryable: false)
     }
     payload.append(UInt8(ascii: "\n"))
     let writeOK = payload.withUnsafeBytes { raw -> Bool in
@@ -142,10 +221,7 @@ func forwardToControlPlane(capability: String, action: String, args: [String: An
         }
         return true
     }
-    guard writeOK else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "write failed", retryable: true), true)
-    }
+    guard writeOK else { return failure("CONTROL_PLANE_UNAVAILABLE", "write failed", retryable: true) }
 
     // Read one newline-terminated response.
     var response = Data()
@@ -158,20 +234,18 @@ func forwardToControlPlane(capability: String, action: String, args: [String: An
         } else if count == 0 {
             break
         } else {
+            if errno == EINTR { continue }
             // errno EAGAIN/EWOULDBLOCK from SO_RCVTIMEO ⇒ timeout.
             if errno == EAGAIN || errno == EWOULDBLOCK {
-                return (errorEnvelopeText(capability: capability, action: action,
-                    code: "TIMEOUT", message: "control plane did not respond within 30s", retryable: true), true)
+                return failure("TIMEOUT", "control plane did not respond within \(Int(limit))s", retryable: true)
             }
             break
         }
     }
     guard !response.isEmpty else {
-        return (errorEnvelopeText(capability: capability, action: action,
-            code: "CONTROL_PLANE_UNAVAILABLE", message: "empty response", retryable: true), true)
+        return failure("CONTROL_PLANE_UNAVAILABLE", "empty response", retryable: true)
     }
     let text = String(decoding: response, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-    // Determine isError from the envelope's `ok` field.
     var isError = false
     if let obj = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
        let ok = obj["ok"] as? Bool {
@@ -192,11 +266,16 @@ func handleToolsCall(id: Any, params: [String: Any]) {
     var args = arguments
     args.removeValue(forKey: "action")
 
-    let result = forwardToControlPlane(capability: name, action: action, args: args)
-    respond(id: id, result: [
-        "content": [["type": "text", "text": result.text]],
-        "isError": result.isError,
-    ])
+    let key = rpcKey(id)
+    callQueue.async {
+        let result = forwardToControlPlane(key: key, capability: name, action: action, args: args)
+        // A cancelled call gets no response: the client has already moved on.
+        guard !inFlight.finish(key) else { return }
+        respond(id: id, result: [
+            "content": [["type": "text", "text": result.text]],
+            "isError": result.isError,
+        ])
+    }
 }
 
 func toolListEntry(_ tool: ToolDef) -> [String: Any] {
@@ -217,7 +296,14 @@ func dispatch(_ message: [String: Any]) {
     let id = message["id"]
 
     // Notifications carry no id and expect no reply.
-    guard let id else { return }
+    guard let id else {
+        if method == "notifications/cancelled",
+           let params = message["params"] as? [String: Any],
+           let requestID = params["requestId"] {
+            inFlight.cancel(rpcKey(requestID))
+        }
+        return
+    }
     guard let method else {
         respondError(id: id, code: -32600, message: "missing method")
         return
@@ -225,10 +311,14 @@ func dispatch(_ message: [String: Any]) {
 
     switch method {
     case "initialize":
+        let requested = (message["params"] as? [String: Any])?["protocolVersion"] as? String
+        let version = requested.flatMap { supportedProtocolVersions.contains($0) ? $0 : nil }
+            ?? supportedProtocolVersions[0]
         respond(id: id, result: [
-            "protocolVersion": protocolVersion,
+            "protocolVersion": version,
             "serverInfo": ["name": "uncoil", "version": serverVersion],
             "capabilities": ["tools": [:] as [String: Any]],
+            "instructions": instructions,
         ])
     case "tools/list":
         respond(id: id, result: ["tools": tools.map(toolListEntry)])
@@ -251,3 +341,6 @@ while let line = readLine(strippingNewline: true) {
     }
     dispatch(message)
 }
+
+// stdin closed: let calls already on their way finish writing.
+callQueue.sync(flags: .barrier) {}

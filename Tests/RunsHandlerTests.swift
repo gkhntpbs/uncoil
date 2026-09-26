@@ -45,7 +45,7 @@ final class RunsHandlerTests: XCTestCase {
         }
         return await router.handle(ControlRequest(
             capability: "uncoil_run", action: action, args: args,
-            caller_session_id: caller.id.uuidString
+            caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id)
         ))
     }
 

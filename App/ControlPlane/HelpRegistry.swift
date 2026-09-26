@@ -22,11 +22,53 @@ enum HelpRegistry {
             actions.first { $0.action == name }
         }
         var actionNames: [String] { actions.map(\.action) }
+
+        /// Whether the action only reads. Anything not listed as a read is an
+        /// effect — the safe default for an action nobody classified.
+        func isRead(_ action: String) -> Bool {
+            action == "help" || (HelpRegistry.readActions[capability]?.contains(action) ?? false)
+        }
+    }
+
+    /// The actions that change nothing, per capability. The line between these
+    /// and everything else is the line identity is checked at: an unverified
+    /// caller may read, and only a verified one may act.
+    static let readActions: [String: Set<String>] = [
+        "uncoil_projects": [
+            "current", "list", "inspect", "list_worktrees", "list_presets", "inspect_preset",
+            "list_blueprints", "inspect_blueprint",
+        ],
+        "uncoil_sessions": [
+            "current", "list", "inspect", "read_output", "list_children", "wait_for_status",
+            "inspect_child", "wait_for_children", "summarize_children", "read_reports",
+            "list_groups", "capabilities", "timeline", "events",
+        ],
+        "uncoil_agents": ["list", "inspect"],
+        "uncoil_artifacts": ["list", "inspect", "read_text", "resolve_path"],
+        "uncoil_tasks": [
+            "list_todo_files", "list_tasks", "get_task", "get_task_context", "get_board",
+            "list_task_sessions", "list_unassigned_tasks", "list_blocked_tasks",
+            "list_tasks_by_status", "get_task_diff", "wait_for_task_agents",
+            "summarize_task_results", "get_task_results",
+        ],
+        "uncoil_system": ["status", "version", "capabilities", "doctor", "dependencies", "describe"],
+        "uncoil_browser": ["status"],
+        "uncoil_computer": [
+            "status", "doctor", "permissions", "list_apps", "list_windows", "inspect_window",
+            "snapshot", "screenshot",
+        ],
+        "uncoil_run": ["list", "get", "status", "logs", "history", "test_list", "test_results"],
+    ]
+
+    /// Actions that answer without knowing who is asking: what the control
+    /// plane is and whether it is up. Everything else needs a caller.
+    static func isIdentityFree(capability: String, action: String) -> Bool {
+        capability == "uncoil_system" && ["status", "version", "describe", "doctor"].contains(action)
     }
 
     static let capabilities: [String: CapabilityDoc] = {
         var map: [String: CapabilityDoc] = [:]
-        for doc in [projects, sessions, artifacts, tasks, system, browser, computer, run] {
+        for doc in [projects, sessions, agents, artifacts, tasks, system, browser, computer, run] {
             map[doc.capability] = doc
         }
         return map
@@ -124,8 +166,10 @@ enum HelpRegistry {
                      "create_child", "inspect_child", "wait_for_children",
                      "summarize_children", "report_to_parent", "read_reports",
                      "list_groups", "create_group", "rename_group", "assign_group",
-                     "delete_group"]
-        let overview = "Inspect agent sessions, read their output, spawn and coordinate child sessions from presets, and (for direct children) send input or stop them."
+                     "delete_group",
+                     "capabilities", "timeline", "events", "submit", "respond_approval",
+                     "resume", "create_session"]
+        let overview = "Inspect agent sessions and what each one supports, read structured timelines and events, submit prompts, interrupt turns and answer approvals, create sessions with a chosen agent, account, model and effort, and coordinate the children you start."
         return CapabilityDoc(
             capability: "uncoil_sessions",
             overview: overview,
@@ -141,8 +185,8 @@ enum HelpRegistry {
                     doc: "# read_output\nArgs: `session_id` (optional), `bytes` (int, default 8192, max 262144). Returns the last N bytes of the PTY replay buffer without attaching. `SESSION_NOT_RUNNING` if the daemon has no live PTY."),
                 ActionDoc(action: "send_text", summary: "Send input to a direct-child session.",
                     doc: "# send_text\nRequires `sessions.control_children` and a child relationship. Args: `session_id` (required), `text` (required), `raw` (bool, default false — a newline is appended unless raw)."),
-                ActionDoc(action: "interrupt", summary: "Send Ctrl-C to a direct-child session.",
-                    doc: "# interrupt\nRequires `sessions.control_children` and a child relationship. Args: `session_id` (required). Sends 0x03."),
+                ActionDoc(action: "interrupt", summary: "Stop the turn a session is running.",
+                    doc: "# interrupt\nEffect `interrupt`. Args: `session_id` (required), `idempotency_key` (optional). A structured session interrupts its turn through the provider; a terminal gets Ctrl-C. `SESSION_NOT_RUNNING` when nothing is running. Returns `{interrupted, via}`."),
                 ActionDoc(action: "list_children", summary: "Direct children of a session.",
                     doc: "# list_children\nArgs: `session_id` (optional, defaults to caller). Returns child sessions."),
                 ActionDoc(action: "wait_for_status", summary: "Block until a session reaches a status.",
@@ -150,7 +194,7 @@ enum HelpRegistry {
                 ActionDoc(action: "stop", summary: "Terminate self or a direct-child session.",
                     doc: "# stop\nStops the caller's own session or a direct child (`sessions.control_children`). Args: `session_id` (optional, defaults to caller). Sends SIGTERM via the daemon. Stopping an unrelated session needs a user permission grant (PERMISSION_REQUIRED)."),
                 ActionDoc(action: "create_child", summary: "Spawn a child session from a preset.",
-                    doc: "# create_child\nRequires the `sessions.create_children` grant. Args: `preset_id` (required — see uncoil_projects list_presets), `project_id` (optional, defaults to caller's; cross-project needs `sessions.cross_project`), `worktree_path`/`worktree_id` (optional, must be an existing worktree of that project), `initial_prompt` (optional, ≤4000 chars, sanitized), `capabilities` (optional array — intersected with preset.granted_capabilities and the caller's own grants, never escalates), `idempotency_key` (optional — a matching prior child is returned instead of duplicated). NO raw shell commands. Returns `{child_session_id, status, capabilities, …}`. The child appears in the sidebar like any session."),
+                    doc: "# create_child\n`create_session` with `preset_id` required; it accepts the same arguments. Requires the `sessions.create_children` grant. Args: `preset_id` (required — see uncoil_projects list_presets), `project_id` (optional, defaults to caller's; cross-project needs `sessions.cross_project`), `worktree_path`/`worktree_id` (optional, must be an existing worktree of that project), `initial_prompt` (optional, ≤4000 chars, sanitized), `capabilities` (optional array — intersected with preset.granted_capabilities and the caller's own grants, never escalates), `idempotency_key` (optional — a matching prior child is returned instead of duplicated). NO raw shell commands. Returns `{child_session_id, status, capabilities, …}`. The child appears in the sidebar like any session."),
                 ActionDoc(action: "inspect_child", summary: "Inspect a direct child (relationship-checked).",
                     doc: "# inspect_child\nArgs: `session_id` (required). Sugar for `inspect` that requires the target be a direct child (else INVALID_RELATIONSHIP)."),
                 ActionDoc(action: "wait_for_children", summary: "Block until children settle.",
@@ -171,6 +215,55 @@ enum HelpRegistry {
                     doc: "# assign_group\nRequires `sessions.organize`. Args: `session_ids` (required array), `group_id` (optional; omit to ungroup), `project_id` (optional). All sessions must belong to the project."),
                 ActionDoc(action: "delete_group", summary: "Delete a group without deleting its sessions.",
                     doc: "# delete_group\nRequires `sessions.organize`. Args: `group_id` and optional `project_id`. Sessions become ungrouped."),
+                ActionDoc(action: "capabilities", summary: "What a session supports right now.",
+                    doc: """
+                    # capabilities
+                    Args: `session_id` (optional, defaults to caller). Returns `{running, ready, runtime: structured|terminal|none, supported:[…], operations:{<op>:{supported, via, reason}}, control_capabilities, provider_facts}`.
+                    Operations: `read_output`, `timeline`, `events`, `submit`, `interrupt`, `respond_approval`, `send_raw`, `resume`. Check `operations.<op>.supported` instead of inferring from the provider name.
+                    """),
+                ActionDoc(action: "timeline", summary: "The structured conversation so far.",
+                    doc: """
+                    # timeline
+                    Args: `session_id` (optional), `limit` (int, default 50, max 500 — newest items), `before_item_id` (page backwards from an item), `text_limit` (bytes per text field, default 16384), `include_native` (bool). Returns `{state:{sequence, turn_in_progress, active_turn_id, last_turn_outcome, run_state, pending_approvals, account, notices, item_count}, items:[{id, kind, status, …}], has_more, next_before_item_id}`.
+                    Item kinds: user_message, agent_message, reasoning, command, file_change, tool_call, or a provider-named kind. `UNSUPPORTED_CAPABILITY` for a session with no structured events — use read_output.
+                    """),
+                ActionDoc(action: "events", summary: "Events after a sequence number; can wait.",
+                    doc: """
+                    # events
+                    Args: `session_id` (optional), `after_sequence` (int, default 0), `limit` (default 100, max 1000), `wait_s` (0–120: wait until at least one event arrives), `include_native` (bool). Returns `{events:[{sequence, date, event:{type, …}}], next_after_sequence, gap, oldest_sequence, running}`.
+                    `gap: true` means events after your sequence were already dropped — reread `timeline`. A wait ends early when the session stops (`running: false`). Event types: session_bound, history_loaded, turn_started, turn_completed, item_started, item_delta, item_completed, run_state, approval_requested, approval_resolved, account, notice.
+                    """),
+                ActionDoc(action: "submit", summary: "Start a turn in another session.",
+                    doc: """
+                    # submit
+                    Effect `control`. Args: `session_id` (required, not the caller), `input` (required, ≤16000 chars; control characters are stripped), `idempotency_key` (optional — a retry with the same key returns the first answer instead of submitting twice).
+                    Structured sessions start a turn through the provider; terminal sessions get the text typed and Enter pressed. Returns `{accepted, via, after_sequence}`: pass `after_sequence` to `events` to follow the turn. `SESSION_NOT_RUNNING` (stale), `PROVIDER_UNAVAILABLE` (not ready yet — retryable).
+                    """),
+                ActionDoc(action: "respond_approval", summary: "Answer an approval a session is waiting on.",
+                    doc: """
+                    # respond_approval
+                    Effect `respond_to_approval`: needs control of the target and the `sessions.approve` grant (else PERMISSION_REQUIRED for this target). Args: `session_id` (required), `approval_id` (required — from `timeline` state.pending_approvals or an approval_requested event), `decision` (required — one of that approval's `decisions`), `idempotency_key` (optional).
+                    `UNSUPPORTED_CAPABILITY` when the session answers approvals in its own interface.
+                    """),
+                ActionDoc(action: "resume", summary: "Start a stopped session again, back in its conversation.",
+                    doc: """
+                    # resume
+                    Effect `resume`. Args: `session_id` (required), `input` (optional prompt to deliver once it is running). Only for a session that is not running and whose agent resumes conversations (see `capabilities` operations.resume).
+                    """),
+                ActionDoc(action: "create_session", summary: "Create a session with a chosen agent, account, model and effort.",
+                    doc: """
+                    # create_session
+                    Effect `create_session` (grant `sessions.create_children`). The new session is the caller's child and starts through the same path as one the user opens. Args, all optional:
+                    - `provider` — an agent (`uncoil_agents list`); default: the preset's, else the caller's. Plain shells are never started.
+                    - `account_id` — one of that provider's accounts; default: its default account.
+                    - `model`, `effort`, `working_mode` — as offered by `uncoil_agents inspect`; an effort or working mode the CLI does not offer is INVALID_ARGUMENT.
+                    - `project_id` (cross-project needs `sessions.cross_project`), `worktree_path` (an existing worktree of that project).
+                    - `initial_prompt` (≤16000 chars), `title`.
+                    - `preset_id` — a role that bounds the new session's grants; `capabilities` narrows them further. Never more than the caller holds.
+                    - `mode` — `fresh` (the only mode; to go back into a conversation use `resume`).
+                    - `idempotency_key` — a retry returns the session already created.
+                    Returns `{session_id, child_session_id, provider, account_id, launch:{model, effort, working_mode}, capabilities, status, …}`; follow it with `capabilities` / `events`.
+                    """),
             ])
     }()
 
@@ -301,11 +394,28 @@ enum HelpRegistry {
             ])
     }()
 
+    // MARK: - uncoil_agents
+
+    static let agents: CapabilityDoc = {
+        let names = ["help", "list", "inspect"]
+        let overview = "Discover the agents Uncoil can run: which are installed, their accounts, the models, efforts and working modes each one offers, and how Uncoil talks to it."
+        return CapabilityDoc(
+            capability: "uncoil_agents",
+            overview: overview,
+            actions: [
+                helpAction(overview, names),
+                ActionDoc(action: "list", summary: "Every agent provider, with accounts and facts.",
+                    doc: "# list\nNeeds `projects.read`. Returns `agents:[{provider, display_name, full_name, installed, status_source, control_plane, resumes_conversation, working_modes, accounts:[{id, name, is_default}]}]`."),
+                ActionDoc(action: "inspect", summary: "One provider, including what its CLI offers.",
+                    doc: "# inspect\nNeeds `projects.read`. Args: `provider` (required). Returns the `list` entry plus `launch:{models:[{id,label}], efforts:[{id,label}], working_modes, default_model}` — the values `uncoil_sessions create_session` accepts for `model`, `effort` and `working_mode`."),
+            ])
+    }()
+
     // MARK: - uncoil_system
 
     static let system: CapabilityDoc = {
         let names = ["help", "status", "version", "capabilities", "doctor", "dependencies",
-                     "request_permission"]
+                     "request_permission", "describe"]
         let overview = "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics."
         return CapabilityDoc(
             capability: "uncoil_system",
@@ -322,8 +432,10 @@ enum HelpRegistry {
                     doc: "# doctor\nRuns checks (control socket, runtime daemon, git, data dir, hook server) returning `{name, ok, detail, remedy}` for each."),
                 ActionDoc(action: "dependencies", summary: "External driver integration status.",
                     doc: "# dependencies\nReports the optional external drivers `agent-browser` and `cua-driver` with `{installed, path, version, remedy}` (or `not_installed`)."),
+                ActionDoc(action: "describe", summary: "The control-plane contract: versions, domains, actions, errors, caller.",
+                    doc: "# describe\nReturns `{protocol:{version, minimum_version}, app_version, features:[…], capabilities:[{name, actions:[{name, kind: read|effect, summary}]}], effects:[…], error_codes:[…], caller:{caller_session_id, verification, provider, project_id, account_id, grants, may_act}}`. Needs no caller; use it to discover what this Uncoil supports before relying on it."),
                 ActionDoc(action: "request_permission", summary: "Ask the user to authorize a denied action.",
-                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → Permissions. Grants are revocable and pending requests auto-expire after 10 minutes."),
+                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`, `sessions.approve`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → Permissions. Grants are revocable and pending requests auto-expire after 10 minutes."),
             ])
     }()
 

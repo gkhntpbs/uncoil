@@ -39,6 +39,16 @@ final class LaunchConfigTests: XCTestCase {
         XCTAssertTrue(uiOptIn.codexApprovalFixture)
     }
 
+    /// Claude sessions run the TUI unless the structured interface is asked
+    /// for by name, and asking for it does not change Codex.
+    func testStructuredClaudeRequiresExplicitOptIn() {
+        XCTAssertFalse(LaunchConfig(arguments: ["Uncoil"]).claudeStructuredEnabled)
+        XCTAssertFalse(LaunchConfig(arguments: ["Uncoil", "-codex-app-server"]).claudeStructuredEnabled)
+        let optIn = LaunchConfig(arguments: ["Uncoil", "-claude-structured"])
+        XCTAssertTrue(optIn.claudeStructuredEnabled)
+        XCTAssertFalse(optIn.codexAppServerEnabled)
+    }
+
     func testAttentionFixtureRequiresUITesting() {
         XCTAssertFalse(
             LaunchConfig(arguments: ["Uncoil", "-attention-fixture"]).attentionFixture

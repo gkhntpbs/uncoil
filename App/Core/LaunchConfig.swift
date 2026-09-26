@@ -52,6 +52,8 @@ struct LaunchConfig {
     let disableAnimations: Bool
     let runtimeMismatchFixture: Bool
     let codexAppServerEnabled: Bool
+    /// Claude sessions over `claude -p` stream-json instead of the TUI.
+    let claudeStructuredEnabled: Bool
     let codexApprovalFixture: Bool
     let attentionFixture: Bool
     /// Seeds synthetic usage snapshots and opens the usage card.
@@ -85,6 +87,11 @@ struct LaunchConfig {
         // this flag rather than being deleted: it is what structured approvals
         // and turn state are built on, and it is still covered by tests.
         codexAppServerEnabled = arguments.contains("-codex-app-server")
+        // The same bargain for Claude: its structured interface is what puts
+        // Claude's turns, tool calls and approvals on the AgentSession model,
+        // and it trades away the TUI's own prompt, slash commands and
+        // rendering. Opt-in until a surface of Uncoil's own replaces them.
+        claudeStructuredEnabled = arguments.contains("-claude-structured")
         codexApprovalFixture = isUITesting
             && arguments.contains("-codex-approval-fixture")
         attentionFixture = isUITesting

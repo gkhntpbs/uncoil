@@ -4,12 +4,13 @@ import Foundation
 import SwiftTerm
 
 @MainActor
-final class CodexAppServerSession: AgentSessionControl {
+final class CodexAppServerSession: StructuredAgentSession {
     let recordID: UUID
     var sessionID: UUID { recordID }
     let capabilities: AgentControlCapabilities = [
         .structuredTurns, .approvals, .events, .imageAttachments,
     ]
+    var isReady: Bool { ready && threadID != nil && !stopped }
     /// Where a drafted prompt goes: the terminal's line editor, today.
     var draftHandler: ((String) -> Void)?
 
@@ -690,64 +691,5 @@ final class CodexAppServerSession: AgentSessionControl {
         } catch {
             return CodexAppServerCompatibility(version: error.localizedDescription, isSupported: false)
         }
-    }
-}
-
-final class CodexStructuredTerminalDelegate: TerminalViewDelegate {
-    private weak var session: CodexAppServerSession?
-    private weak var terminal: TerminalView?
-    private var editor = PromptLineEditor()
-
-    init(session: CodexAppServerSession, terminal: TerminalView) {
-        self.session = session
-        self.terminal = terminal
-    }
-
-    /// Puts a dispatched prompt into the line editor without submitting it, so
-    /// the user starts the turn themselves.
-    func prefill(_ text: String) {
-        editor.prefill(text)
-        redraw()
-    }
-
-    func send(source: TerminalView, data: ArraySlice<UInt8>) {
-        let actions = editor.consume(data)
-        redraw()
-        for action in actions {
-            switch action {
-            case .interrupt:
-                Task { @MainActor [weak session] in session?.interrupt() }
-            case .submit(let prompt):
-                echo("\r\n")
-                Task { @MainActor [weak session] in session?.startTurn(prompt) }
-            }
-        }
-    }
-
-    /// Repaints the prompt line from the editor's state, which is what lets an
-    /// edit happen anywhere in the line rather than only at its end.
-    private func redraw() {
-        echo(PromptLineRenderer.render(text: editor.text, cursor: editor.cursor))
-    }
-
-    func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {}
-    func setTerminalTitle(source: TerminalView, title: String) {}
-    func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
-    func scrolled(source: TerminalView, position: Double) {}
-    func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
-        if let url = URL(string: link) { NSWorkspace.shared.open(url) }
-    }
-    func clipboardCopy(source: TerminalView, content: Data) {
-        if let text = String(data: content, encoding: .utf8) {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-        }
-    }
-    func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
-    func bell(source: TerminalView) {}
-    func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) {}
-
-    private func echo(_ text: String) {
-        terminal?.feed(byteArray: ArraySlice([UInt8](text.utf8)))
     }
 }

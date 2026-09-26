@@ -13,6 +13,10 @@ import Foundation
 protocol AgentSessionControl: AnyObject {
     var sessionID: UUID { get }
     var capabilities: AgentControlCapabilities { get }
+    /// Whether a prompt submitted now would reach the agent. A structured
+    /// session is not ready until its protocol handshake is done; a terminal
+    /// takes keystrokes as soon as it exists.
+    var isReady: Bool { get }
 
     /// Starts a turn with the prompt.
     func submit(_ prompt: String) async
@@ -30,6 +34,10 @@ protocol AgentSessionControl: AnyObject {
     /// Bytes as if typed. Only meaningful with `.rawInput`; a structured
     /// session reads them as a prompt.
     func sendRaw(_ data: Data)
+}
+
+extension AgentSessionControl {
+    var isReady: Bool { true }
 }
 
 struct AgentControlCapabilities: OptionSet, Equatable {

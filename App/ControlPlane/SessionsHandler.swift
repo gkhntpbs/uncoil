@@ -2,11 +2,16 @@ import Foundation
 
 extension CapabilityRouter {
     func handleSessions(_ request: ControlRequest) async -> ControlEnvelope {
-        guard let caller = caller(of: request) else {
+        let context = callContext(request)
+        guard let caller = context.caller else {
             return .failure(request, code: .unknownSession, message: "caller session not found")
         }
         let all = sessionMap()
-        let grants = PolicyEngine.grants(for: caller)
+        let grants = context.grants
+
+        if let structured = await handleSessionsStructured(request, context: context) {
+            return structured
+        }
 
         if let grouped = handleSessionGroups(request, caller: caller, grants: grants) {
             return grouped
@@ -77,36 +82,34 @@ extension CapabilityRouter {
             ]), project_id: target.projectID.uuidString, target_session_id: target.id.uuidString)
 
         case "send_text":
-            return await controlWrite(request, caller: caller, all: all, grants: grants) { target in
-                guard let text = request.args["text"]?.stringValue else {
-                    return .failure(request, code: .invalidArgument, message: "'text' is required",
-                                    target_session_id: target.id.uuidString)
-                }
-                let raw = request.args["raw"]?.boolValue ?? false
-                let sentBytes: Int
-                if raw {
-                    let payload = Data(text.utf8)
-                    TerminalRegistry.shared.sendRaw(payload, for: target.id)
-                    sentBytes = payload.count
-                } else {
-                    let parts = RuntimeClient.submissionParts(text, provider: target.provider)
-                    await TerminalRegistry.shared.submitText(
-                        text, for: target.id, provider: target.provider,
-                        namesTheSession: false)
-                    sentBytes = parts.reduce(0) { $0 + $1.count }
-                }
-                return .success(request, data: .object(["sent_bytes": .int(sentBytes)]),
-                                project_id: target.projectID.uuidString,
+            // The oldest way to drive a session, kept for callers written
+            // against it; `submit` is the same effect with a structured answer.
+            guard let raw = request.args["session_id"]?.stringValue, let target = session(id: raw) else {
+                return .failure(request, code: .unknownSession, message: "'session_id' is required and must exist")
+            }
+            if let refused = authorize(.control, request, context: context, target: target) {
+                return refused
+            }
+            guard let text = request.args["text"]?.stringValue else {
+                return .failure(request, code: .invalidArgument, message: "'text' is required",
                                 target_session_id: target.id.uuidString)
             }
-
-        case "interrupt":
-            return await controlWrite(request, caller: caller, all: all, grants: grants) { target in
-                TerminalRegistry.shared.interrupt(target.id)
-                return .success(request, data: .object(["interrupted": .bool(true)]),
-                                project_id: target.projectID.uuidString,
+            guard let control = sessionControl(target) else {
+                return .failure(request, code: .sessionNotRunning, message: "session is not running",
                                 target_session_id: target.id.uuidString)
             }
+            let sentBytes: Int
+            if request.args["raw"]?.boolValue ?? false {
+                let payload = Data(text.utf8)
+                control.sendRaw(payload)
+                sentBytes = payload.count
+            } else {
+                await control.submit(text)
+                sentBytes = text.utf8.count
+            }
+            return .success(request, data: .object(["sent_bytes": .int(sentBytes)]),
+                            project_id: target.projectID.uuidString,
+                            target_session_id: target.id.uuidString)
 
         case "list_children":
             let target = resolveSession(request, caller: caller) ?? caller
@@ -138,6 +141,9 @@ extension CapabilityRouter {
                     return .success(request, data: .object(["status": .string(wantedStatus.rawValue)]),
                                     target_session_id: target.id.uuidString)
                 }
+                // A cancelled sleep returns at once, so without this a
+                // cancelled wait would spin on the main actor until its deadline.
+                if Task.isCancelled { return cancelled(request, target) }
                 try? await Task.sleep(nanoseconds: 200_000_000)
             }
             return .failure(request, code: .timeout,
@@ -146,17 +152,8 @@ extension CapabilityRouter {
 
         case "stop":
             let target = resolveSession(request, caller: caller) ?? caller
-            let relation = PolicyEngine.relation(of: target, to: caller, in: all)
-            let close = PolicyEngine.canClose(relation: relation, grants: grants)
-            if !close.allowed {
-                if close.code == .permissionDenied {
-                    if let gate = permissionOutcome(request, caller: caller, target: target, grantKey: "sessions.close") {
-                        return gate
-                    }
-                } else {
-                    return .failure(request, code: close.code ?? .permissionDenied,
-                        message: close.message ?? "close denied", target_session_id: target.id.uuidString)
-                }
+            if let refused = authorize(.close, request, context: context, target: target) {
+                return refused
             }
             RuntimeClient.shared.kill(sid: target.id)
             sessionStore.setStatus(.terminated, for: target.id)
@@ -171,36 +168,6 @@ extension CapabilityRouter {
     }
 
     // MARK: - Helpers
-
-    /// Shared control-path guard for send_text/interrupt: requires an explicit
-    /// target, control grant, and a direct-child relationship.
-    private func controlWrite(
-        _ request: ControlRequest,
-        caller: SessionRecord,
-        all: [UUID: SessionRecord],
-        grants: Set<String>,
-        _ body: (SessionRecord) async -> ControlEnvelope
-    ) async -> ControlEnvelope {
-        guard let raw = request.args["session_id"]?.stringValue, let target = session(id: raw) else {
-            return .failure(request, code: .unknownSession, message: "'session_id' is required and must exist")
-        }
-        let relation = PolicyEngine.relation(of: target, to: caller, in: all)
-        let control = PolicyEngine.canControl(relation: relation, grants: grants)
-        if !control.allowed {
-            // A missing grant is a hard capability failure; a wrong relationship
-            // (sibling/unrelated) can be lifted by an explicit user permission.
-            if control.code == .permissionDenied {
-                if let gate = permissionOutcome(request, caller: caller, target: target, grantKey: "sessions.control") {
-                    return gate  // PERMISSION_REQUIRED (or DENIED when no service)
-                }
-                // else: an active grant authorizes it — fall through to body.
-            } else {
-                return .failure(request, code: control.code ?? .permissionDenied,
-                    message: control.message ?? "control denied", target_session_id: target.id.uuidString)
-            }
-        }
-        return await body(target)
-    }
 
     /// Consults the PermissionService for a relationship that policy would
     /// otherwise deny. Returns:

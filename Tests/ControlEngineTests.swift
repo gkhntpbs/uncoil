@@ -204,7 +204,7 @@ final class BrowserHandlerTests: XCTestCase {
     }
     private func req(_ action: String, _ args: [String: JSONValue] = [:]) -> ControlRequest {
         ControlRequest(capability: "uncoil_browser", action: action, args: args,
-                       caller_session_id: caller.id.uuidString)
+                       caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id))
     }
 
     func testDisabledWithoutGrant() async {
@@ -286,7 +286,7 @@ final class BrowserHandlerTests: XCTestCase {
         // Both save state (writes an artifact under each session's states dir).
         _ = await router.handle(req("save_state"))
         let otherReq = ControlRequest(capability: "uncoil_browser", action: "save_state",
-                                      caller_session_id: other.id.uuidString)
+                                      caller_session_id: other.id.uuidString, session_token: router.credentials.token(for: other.id))
         _ = await router.handle(otherReq)
 
         let otherStates = other.artifactRoot(dataDirectory: tempDir)
@@ -348,7 +348,7 @@ final class ComputerHandlerTests: XCTestCase {
     }
     private func req(_ action: String, _ args: [String: JSONValue] = [:]) -> ControlRequest {
         ControlRequest(capability: "uncoil_computer", action: action, args: args,
-                       caller_session_id: caller.id.uuidString)
+                       caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id))
     }
 
     func testInspectRequiresGrant() async {

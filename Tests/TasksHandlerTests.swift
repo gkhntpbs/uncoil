@@ -71,7 +71,7 @@ final class TasksHandlerTests: XCTestCase {
         }
         return await router.handle(ControlRequest(
             capability: "uncoil_tasks", action: action, args: args,
-            caller_session_id: caller.id.uuidString
+            caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id)
         ))
     }
 
@@ -275,7 +275,7 @@ final class TasksHandlerTests: XCTestCase {
         )
         let blocked = await router.handle(ControlRequest(
             capability: "uncoil_tasks", action: "claim_task",
-            args: ["task_id": .string(id)], caller_session_id: other.id.uuidString
+            args: ["task_id": .string(id)], caller_session_id: other.id.uuidString, session_token: router.credentials.token(for: other.id)
         ))
         XCTAssertFalse(blocked.ok)
         XCTAssertEqual(blocked.error?.code, ControlErrorCode.permissionDenied.rawValue)
@@ -283,7 +283,7 @@ final class TasksHandlerTests: XCTestCase {
         _ = await call("release_task", ["task_id": .string(id)])
         let afterRelease = await router.handle(ControlRequest(
             capability: "uncoil_tasks", action: "claim_task",
-            args: ["task_id": .string(id)], caller_session_id: other.id.uuidString
+            args: ["task_id": .string(id)], caller_session_id: other.id.uuidString, session_token: router.credentials.token(for: other.id)
         ))
         XCTAssertTrue(afterRelease.ok)
     }
@@ -328,6 +328,30 @@ final class TasksHandlerTests: XCTestCase {
             XCTAssertFalse(refused.ok, action)
             XCTAssertEqual(refused.error?.code, ControlErrorCode.capabilityDisabled.rawValue, action)
         }
+    }
+
+    /// Dispatching goes through `create_child`, and used to read the new
+    /// session's id from a field `create_child` never returned — so the agent
+    /// started but the task was never assigned to it.
+    func testDispatchingATaskStartsAnAgentAndAssignsTheTaskToIt() async throws {
+        router = CapabilityRouter(
+            projectStore: store, sessionStore: sessionStore,
+            settings: SettingsStore(directory: dataDir),
+            audit: AuditLog(dataDirectory: dataDir), dataDirectory: dataDir
+        )
+        var launched: [SessionRecord] = []
+        router.childLauncher = { record, _ in launched.append(record) }
+        let id = try await taskID("ilk görev")
+        let envelope = await call(
+            "dispatch_task", ["task_id": .string(id)],
+            capabilities: Array(PolicyEngine.defaultGrants) + ["tasks.orchestrate"]
+        )
+        XCTAssertTrue(envelope.ok, "\(String(describing: envelope.error))")
+        let data = try XCTUnwrap(envelope.data?.objectValue)
+        XCTAssertNotNil(data["assignment_id"], "the task must be assigned to the session it started")
+        XCTAssertEqual(launched.count, 1)
+        XCTAssertEqual(data["session_id"], .string(launched.first?.id.uuidString ?? ""))
+        XCTAssertTrue(launched.first?.title.contains("ilk görev") ?? false, "the task names the session")
     }
 
     func testMergeReportsReadinessRatherThanMerging() async throws {

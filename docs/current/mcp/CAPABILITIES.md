@@ -1,6 +1,8 @@
 # MCP control plane — capabilities & actions
 
-Six MCP tools (capabilities). Every call is `{"action": "...", ...args}`. Each tool
+Nine MCP tools (capabilities): `uncoil_sessions`, `uncoil_agents`, `uncoil_projects`,
+`uncoil_artifacts`, `uncoil_tasks`, `uncoil_run`, `uncoil_system`, `uncoil_browser`,
+`uncoil_computer`. Every call is `{"action": "...", ...args}`. Each tool
 also exposes `{"action":"help"}` (whole tool) and `{"action":"help","for_action":"x"}`
 (one action) — the authoritative, always-current docs live in `HelpRegistry.swift`;
 this file summarizes them.
@@ -18,11 +20,33 @@ Failure: `{ok:false, ..., error:{code, message, retryable, details?}}`.
 `BROWSER_UNAVAILABLE`, `COMPUTER_UNAVAILABLE`, `STALE_ELEMENT_REFERENCE`,
 `STALE_WINDOW_BINDING`, `TARGET_CHANGED`, `TIMEOUT`, `CANCELLED`,
 `DEPENDENCY_VERSION_MISMATCH`, `UNSUPPORTED_PLATFORM`, `INVALID_ACTION`,
-`INVALID_STATE_TRANSITION`, `CONTROL_PLANE_UNAVAILABLE`, `INVALID_ARGUMENT`.
+`INVALID_STATE_TRANSITION`, `CONTROL_PLANE_UNAVAILABLE`, `INVALID_ARGUMENT`,
+`IO_ERROR`, `INTERNAL_ERROR`, `IDENTITY_UNVERIFIED`, `UNSUPPORTED_CAPABILITY`,
+`PROVIDER_UNAVAILABLE`, `IDEMPOTENCY_CONFLICT`, `UNSUPPORTED_VERSION`.
+
+`uncoil_system describe` lists them at runtime, together with every action and
+whether it is a `read` or an `effect`.
 
 `CAPABILITY_DISABLED` = the grant is missing (opt-in per session). `PERMISSION_DENIED`
 = structurally not allowed. `PERMISSION_REQUIRED` = a user could authorize it via
 `uncoil_system request_permission` (details carry `{grant_key, target}`).
+`IDENTITY_UNVERIFIED` = the caller could not prove it is the session it names
+(`details.reason`: `mismatch` — wrong token, refused for everything; `unverified` —
+no token, may read but not act). `UNSUPPORTED_CAPABILITY` = the session is running
+but does not offer that operation (see `uncoil_sessions capabilities`).
+`PROVIDER_UNAVAILABLE` = the agent is not installed or not ready yet (retryable when
+`retryable` says so).
+
+## Reads and effects
+
+Every action is either a **read** or an **effect** (`describe` reports which). An
+effect needs a verified caller and passes through one policy gate,
+`PolicyEngine.authorize(effect, …)`, with these effects: `read`, `control`
+(submit/send_text), `interrupt`, `respond_to_approval`, `create_session`, `resume`,
+`close`. An effect sent with `idempotency_key` runs once: a retry with the same key
+returns the first answer (with an `idempotent_replay` warning), the same key with
+different arguments is `IDEMPOTENCY_CONFLICT`, and a retryable failure is not
+remembered.
 
 ---
 
@@ -55,7 +79,11 @@ until a person has opened and kept it. See `../extensions/BLUEPRINTS.md`.
 
 ## uncoil_sessions
 
-Inspect sessions, read output, spawn/coordinate children, control direct children.
+Inspect sessions and what they support, read structured timelines and events,
+drive sessions through semantic effects, create sessions, coordinate children. The
+structured actions work on `AgentSessionControl` and the `AgentEvent` timeline and
+never branch on provider: a Codex app-server session and a terminal-only session
+answer the same calls, and `capabilities` says what differs.
 
 | action | grant | params | returns |
 |---|---|---|---|
@@ -63,12 +91,19 @@ Inspect sessions, read output, spawn/coordinate children, control direct childre
 | `list` | sessions.read (`all` → sessions.read_all) | `all?` | `sessions:[{id,title,provider,status,relation_to_caller}]` |
 | `inspect` | sessions.read | `session_id?` | status + `{can_read,can_control,can_close,can_create_child,pending_reports,relation_to_caller}` |
 | `read_output` | sessions.read | `session_id?`, `bytes?` (≤262144) | tail of PTY replay; `SESSION_NOT_RUNNING` if no live PTY |
-| `send_text` | **sessions.control_children** (child) | `session_id`, `text`, `raw?` | `{sent_bytes}`; non-child → `PERMISSION_REQUIRED` |
-| `interrupt` | **sessions.control_children** (child) | `session_id` | sends 0x03 |
+| `capabilities` | sessions.read | `session_id?` | `{running, ready, runtime, supported[], operations{<op>:{supported,via,reason}}, control_capabilities, provider_facts}` |
+| `timeline` | sessions.read | `session_id?`, `limit?` (≤500), `before_item_id?`, `text_limit?`, `include_native?` | `{state, items[], has_more, next_before_item_id}` |
+| `events` | sessions.read | `session_id?`, `after_sequence?`, `limit?` (≤1000), `wait_s?` (≤120), `include_native?` | `{events[], next_after_sequence, gap, oldest_sequence, sequence, running}` |
+| `submit` | effect `control` | `session_id`, `input` (≤16000), `idempotency_key?` | `{accepted, via, after_sequence}`; stale → `SESSION_NOT_RUNNING`, not ready → `PROVIDER_UNAVAILABLE` |
+| `interrupt` | effect `interrupt` | `session_id`, `idempotency_key?` | `{interrupted, via}` — the provider's own interrupt, or Ctrl-C for a terminal |
+| `respond_approval` | effect `respond_to_approval` (+ **sessions.approve**) | `session_id`, `approval_id`, `decision`, `idempotency_key?` | `{answered}`; terminal-only sessions → `UNSUPPORTED_CAPABILITY` |
+| `resume` | effect `resume` | `session_id`, `input?` | starts a stopped session back in its recorded conversation |
+| `create_session` | effect `create_session` (**sessions.create_children**) | `provider?`, `account_id?`, `model?`, `effort?`, `working_mode?`, `project_id?`, `worktree_path?`, `initial_prompt?`, `title?`, `preset_id?`, `capabilities?`, `mode?` (`fresh`), `idempotency_key?` | `{session_id, child_session_id, provider, account_id, launch, capabilities, …}` |
+| `send_text` | effect `control` | `session_id`, `text`, `raw?` | `{sent_bytes}`; kept for older callers — prefer `submit` |
 | `list_children` | sessions.read | `session_id?` | direct children |
 | `wait_for_status` | sessions.read | `session_id?`, `status`, `timeout_s?` (≤120) | `{status}` or `TIMEOUT` |
 | `stop` | self, or **sessions.control_children** (child) | `session_id?` | SIGTERM; unrelated → `PERMISSION_REQUIRED` |
-| `create_child` | **sessions.create_children** | `preset_id`, `project_id?` (cross → **sessions.cross_project**), `worktree_path?`/`worktree_id?`, `initial_prompt?` (≤4000), `capabilities?`, `idempotency_key?` | `{child_session_id,status,capabilities,…}` |
+| `create_child` | **sessions.create_children** | as `create_session`, with `preset_id` required | same as `create_session` |
 | `inspect_child` | sessions.read | `session_id` | child inspect; `INVALID_RELATIONSHIP` if not a direct child |
 | `wait_for_children` | sessions.read | `session_ids?`, `until` (`completed_or_waiting`), `timeout_s?` (≤300) | `{settled,pending}` or `TIMEOUT` with pending ids |
 | `summarize_children` | sessions.read | — | per child `{id,title,status,output_tail(≤2KB),artifact_count}` |
@@ -83,9 +118,32 @@ Inspect sessions, read output, spawn/coordinate children, control direct childre
 Settled statuses for `wait_for_children`: `idle`, `waitingForInput`,
 `waitingForPermission`, `completed`, `terminated`.
 
-`create_child` never accepts raw shell commands — the provider, arguments, and the
-grantable capability ceiling all come from the named preset. The effective child grants
-= `requested ∩ preset.granted_capabilities ∩ caller's own grants` (never escalates).
+Session operations reported by `capabilities`: `read_output`, `timeline`, `events`,
+`submit`, `interrupt`, `respond_approval`, `send_raw`, `resume`. Check
+`operations.<op>.supported` rather than the provider name.
+
+`events` is the way to follow work without polling terminal output: pass the
+`after_sequence` a `submit` returned, and `wait_s` to wait for the next event.
+`gap: true` means events after your sequence were already dropped (the hub keeps the
+last 2000 per session) or the timeline was replaced — reread `timeline`. A wait ends
+early when the session stops (`running: false`).
+
+`create_session` starts a session exactly as the app does: the same record, launch
+selection (model, effort, working mode), account isolation and sidebar row. It never
+starts a plain shell, validates `effort` and `working_mode` against what the installed
+CLI offers (`uncoil_agents inspect`), and the new session's grants are
+`requested ∩ role ∩ caller's own grants`, where the role is `preset_id`'s grants or the
+default session profile — never more than the caller holds. The new session is the
+caller's child, which is what lets the caller control it without asking the user.
+
+## uncoil_agents
+
+What can be run, before anything is. Both actions need `projects.read`.
+
+| action | params | returns |
+|---|---|---|
+| `list` | — | `agents:[{provider, display_name, full_name, installed, status_source, control_plane, resumes_conversation, working_modes, accounts:[{id,name,is_default}]}]` |
+| `inspect` | `provider` | the `list` entry + `launch:{models, efforts, working_modes, default_model}` |
 
 ## uncoil_artifacts
 
@@ -103,7 +161,8 @@ Session-scoped text artifacts (path-contained, symlink-safe).
 
 | action | params | returns |
 |---|---|---|
-| `status` | — | `{ok,protocol_version,caller_session_id,project_id}` |
+| `status` | — | `{ok,protocol_version,caller_session_id,caller_verification,project_id}` |
+| `describe` | — | `{protocol{version,minimum_version}, app_version, features, capabilities[{name,actions[{name,kind,summary}]}], effects, session_operations, error_codes, caller}` — needs no caller |
 | `version` | — | `{app_version,protocol_version}` |
 | `capabilities` | — | the caller's granted capability strings |
 | `doctor` | — | `checks:[{name,ok,detail,remedy}]` |

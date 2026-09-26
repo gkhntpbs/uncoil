@@ -1,8 +1,9 @@
 import Foundation
 
-/// Milestone 5 orchestration: create_child, child coordination
+/// Milestone 5 orchestration: child coordination
 /// (inspect_child / wait_for_children / summarize_children), and the
-/// child→parent report inbox (report_to_parent / read_reports).
+/// child→parent report inbox (report_to_parent / read_reports). Creating a
+/// child is `create_session`, in SessionsHandler+Structured.
 extension CapabilityRouter {
 
     // MARK: - Dispatch (called from handleSessions before its default case)
@@ -16,8 +17,6 @@ extension CapabilityRouter {
         grants: Set<String>
     ) async -> ControlEnvelope? {
         switch request.action {
-        case "create_child":
-            return await createChild(request, caller: caller, grants: grants)
         case "inspect_child":
             return inspectChild(request, caller: caller, all: all, grants: grants)
         case "wait_for_children":
@@ -33,124 +32,16 @@ extension CapabilityRouter {
         }
     }
 
-    // MARK: - create_child
-
-    private func createChild(
-        _ request: ControlRequest, caller: SessionRecord, grants: Set<String>
-    ) async -> ControlEnvelope {
-        guard let settings else {
-            return .failure(request, code: .controlPlaneUnavailable, message: "settings unavailable")
-        }
-        let create = PolicyEngine.canCreateChild(grants: grants)
-        guard create.allowed else {
-            return .failure(request, code: create.code ?? .permissionDenied,
-                message: create.message ?? "create_child denied")
-        }
-        guard let presetID = request.args["preset_id"]?.stringValue else {
-            return .failure(request, code: .invalidArgument, message: "'preset_id' is required")
-        }
-        guard let preset = settings.preset(id: presetID) else {
-            return .failure(request, code: .invalidArgument,
-                message: "unknown preset_id '\(presetID)'")
-        }
-
-        // Idempotency: an existing child for this (caller, key) is returned.
-        var idempotencyMapKey: String?
-        if let key = request.args["idempotency_key"]?.stringValue {
-            let mapKey = "\(caller.id.uuidString):\(key)"
-            idempotencyMapKey = mapKey
-            if let existingID = childIdempotency[mapKey],
-               let existing = projectStore.sessions.first(where: { $0.id == existingID }) {
-                return .success(request, data: childData(existing, idempotent: true),
-                                project_id: existing.projectID.uuidString,
-                                target_session_id: existing.id.uuidString)
-            }
-        }
-
-        // Project resolution + cross-project gating.
-        var projectID = caller.projectID
-        if let raw = request.args["project_id"]?.stringValue {
-            guard let pid = UUID(uuidString: raw), project(id: pid) != nil else {
-                return .failure(request, code: .unknownProject, message: "project not found")
-            }
-            if pid != caller.projectID {
-                guard grants.contains("sessions.cross_project") else {
-                    return .failure(request, code: .permissionDenied,
-                        message: "cross-project child requires the sessions.cross_project grant")
-                }
-                projectID = pid
-            }
-        }
-        guard let project = project(id: projectID) else {
-            return .failure(request, code: .unknownProject, message: "project not found")
-        }
-
-        // Worktree validation against the project's real worktrees.
-        var worktreePath: String?
-        if let wp = request.args["worktree_path"]?.stringValue
-            ?? request.args["worktree_id"]?.stringValue {
-            let worktrees = GitService.worktrees(repoPath: project.rootPath)
-            guard let match = worktrees.first(where: { $0.path == wp }) else {
-                return .failure(request, code: .invalidArgument,
-                    message: "worktree is not a known worktree of this project")
-            }
-            worktreePath = match.path
-        }
-
-        // Initial prompt: caller-supplied (sanitized) or the preset template.
-        var initialPrompt: String? = preset.initialPromptTemplate
-        if let raw = request.args["initial_prompt"]?.stringValue {
-            guard raw.count <= 4000 else {
-                return .failure(request, code: .invalidArgument,
-                    message: "initial_prompt exceeds 4000 characters")
-            }
-            initialPrompt = Self.sanitizePrompt(raw)
-        }
-
-        // Capabilities: never escalate beyond preset ∩ caller.
-        let requested = request.args["capabilities"]?.arrayValue?.compactMap { $0.stringValue }
-        let caps = PolicyEngine.childCapabilities(
-            requested: requested, preset: preset.grantedCapabilities, callerGrants: grants)
-
-        let account = preset.provider == .terminal ? nil : settings.defaultAccount(for: preset.provider)
-        let record = projectStore.createSession(
-            projectID: projectID, provider: preset.provider, accountID: account?.id,
-            title: "\(preset.provider.rawValue): \(preset.name)", worktreePath: worktreePath)
-        projectStore.updateSession(record.id) {
-            $0.parentSessionID = caller.id
-            $0.capabilities = caps
-            $0.extraArguments = preset.extraArguments.isEmpty ? nil : preset.extraArguments
-        }
-        let launched = projectStore.sessions.first(where: { $0.id == record.id }) ?? record
-        _ = project  // captured by the launcher via projectStore
-        childLauncher?(launched, initialPrompt)
-
-        if let idempotencyMapKey { childIdempotency[idempotencyMapKey] = launched.id }
-
-        return .success(request, data: childData(launched, idempotent: false),
-                        project_id: launched.projectID.uuidString,
-                        target_session_id: launched.id.uuidString,
-                        next_actions: ["wait_for_children", "summarize_children", "inspect_child"])
-    }
-
-    private func childData(_ record: SessionRecord, idempotent: Bool) -> JSONValue {
-        .object([
-            "child_session_id": .string(record.id.uuidString),
-            "project_id": .string(record.projectID.uuidString),
-            "provider": .string(record.provider.rawValue),
-            "title": .string(record.displayTitle),
-            "status": .string(sessionStore.status(of: record.id).rawValue),
-            "capabilities": .array((record.capabilities ?? []).map(JSONValue.string)),
-            "worktree_path": .string(optional: record.worktreePath),
-            "idempotent_hit": .bool(idempotent),
-        ])
-    }
+    // MARK: - Prompts
 
     /// Strips control characters (except tab/newline) and trims; length is
-    /// bounded by the caller. Defends the child PTY against injected escapes.
+    /// bounded by the caller. Defends the child PTY against injected escapes —
+    /// C1 controls included, since a terminal reads 0x9B as the start of an
+    /// escape sequence just as it reads ESC [.
     nonisolated static func sanitizePrompt(_ raw: String) -> String {
         String(raw.unicodeScalars.filter { scalar in
-            scalar == "\n" || scalar == "\t" || scalar.value >= 0x20
+            scalar == "\n" || scalar == "\t"
+                || (scalar.value >= 0x20 && scalar.value != 0x7F && !(0x80...0x9F).contains(scalar.value))
         }).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -203,6 +94,7 @@ extension CapabilityRouter {
         }
         while Date() < deadline {
             if pending().isEmpty { break }
+            if Task.isCancelled { return cancelled(request) }
             try? await Task.sleep(nanoseconds: 250_000_000)
         }
         let stillPending = pending()
