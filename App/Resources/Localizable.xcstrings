@@ -137,6 +137,9 @@
     "@%@" : {
 
     },
+    "@%@ — start a new session" : {
+
+    },
     "@%@ is waiting for you in its terminal" : {
 
     },
@@ -174,6 +177,9 @@
           }
         }
       }
+    },
+    "%@ — off in Settings" : {
+
     },
     "%@ — open in %@" : {
       "extractionState" : "manual",
@@ -395,6 +401,9 @@
       }
     },
     "%@ failed" : {
+
+    },
+    "%@ failed. See the log for details." : {
 
     },
     "%@ findings" : {
@@ -699,6 +708,9 @@
         }
       }
     },
+    "%@ takes its effort at launch; it applies to new sessions." : {
+
+    },
     "%@ was added as a source. Adding an extension needs discovery." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -857,6 +869,9 @@
         }
       }
     },
+    "%@…" : {
+
+    },
     "%@#%lld" : {
       "localizations" : {
         "en" : {
@@ -914,6 +929,9 @@
 
     },
     "%lld commit · " : {
+
+    },
+    "%lld decisions" : {
 
     },
     "%lld drifted." : {
@@ -1439,6 +1457,9 @@
         }
       }
     },
+    "20%" : {
+
+    },
     "30 days" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1449,6 +1470,15 @@
           }
         }
       }
+    },
+    "30%" : {
+
+    },
+    "50%" : {
+
+    },
+    "70%" : {
+
     },
     "99+" : {
 
@@ -1638,6 +1668,12 @@
           }
         }
       }
+    },
+    "A structured Claude session takes its effort at launch." : {
+
+    },
+    "A System 1 decision model on this Mac, via MLX. Falls back to the heuristic while it is not running." : {
+
     },
     "A task branch is ready to merge." : {
       "extractionState" : "manual",
@@ -2290,6 +2326,9 @@
         }
       }
     },
+    "Agents Uncoil Auto can reach" : {
+
+    },
     "Agents were found, but none of them can be connected yet." : {
 
     },
@@ -2380,6 +2419,9 @@
     "Already paused." : {
 
     },
+    "Always" : {
+
+    },
     "Ambiguous: %lld candidates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2398,6 +2440,9 @@
 
     },
     "An agent that finished, or that is stuck waiting for an answer, is worth knowing about without watching the window." : {
+
+    },
+    "An agent turned off here cannot be addressed or started from any Uncoil Auto conversation. Each conversation can narrow this further from its agents panel." : {
 
     },
     "An agent was assigned to the task" : {
@@ -2545,6 +2590,9 @@
     "Applies from the next session on; open sessions are unaffected." : {
 
     },
+    "Applies only to agents an Uncoil Auto conversation has spoken to. Every other session notifies exactly as set in Notifications." : {
+
+    },
     "Apply" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2563,6 +2611,19 @@
 
     },
     "Apply Blueprint… [%@]" : {
+
+    },
+    "Apply sends /effort %@ to @%@. Claude saves it as its default for this model." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apply sends /effort %1$@ to @%2$@. Claude saves it as its default for this model."
+          }
+        }
+      }
+    },
+    "Apply starts @%@ at this effort." : {
 
     },
     "Applying…" : {
@@ -2625,6 +2686,9 @@
           }
         }
       }
+    },
+    "As usual" : {
+
     },
     "Ask an agent…" : {
       "extractionState" : "manual",
@@ -3629,6 +3693,12 @@
         }
       }
     },
+    "Choose which agent messages without @ go to" : {
+
+    },
+    "Choose which agents this conversation can reach" : {
+
+    },
     "Choose your agent CLIs" : {
 
     },
@@ -3858,6 +3928,9 @@
           }
         }
       }
+    },
+    "Close to This Conversation" : {
+
     },
     "Closed" : {
       "extractionState" : "manual",
@@ -4349,6 +4422,12 @@
         }
       }
     },
+    "Control plane off" : {
+
+    },
+    "Control plane up" : {
+
+    },
     "Copied" : {
 
     },
@@ -4782,6 +4861,9 @@
           }
         }
       }
+    },
+    "Decision log" : {
+
     },
     "declined" : {
 
@@ -5362,6 +5444,12 @@
         }
       }
     },
+    "Each sent prompt, the suggestion and how the turn went, one line each. It stays on this Mac; it is what a fine-tuned model would learn from." : {
+
+    },
+    "Edge" : {
+
+    },
     "Edge receives the newest developments before they reach Stable and may contain bugs." : {
       "localizations" : {
         "en" : {
@@ -5448,6 +5536,15 @@
     "Effort" : {
 
     },
+    "effort %@" : {
+
+    },
+    "Effort advisor" : {
+
+    },
+    "Effort range per agent" : {
+
+    },
     "Effort: %@ — %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5516,6 +5613,9 @@
           }
         }
       }
+    },
+    "Engine" : {
+
     },
     "Entrypoint changed: %@ → %@" : {
       "extractionState" : "manual",
@@ -5728,6 +5828,9 @@
           }
         }
       }
+    },
+    "Experimental. Picks within the range you allow below, so simple prompts do not spend your plan on high effort." : {
+
     },
     "Expired" : {
       "extractionState" : "manual",
@@ -6383,6 +6486,9 @@
         }
       }
     },
+    "Held back while you are looking at the conversation that directs the agent; it shows them there." : {
+
+    },
     "Helper binary" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6395,6 +6501,9 @@
       }
     },
     "Hermes reads config.yaml at startup; open sessions must be restarted." : {
+
+    },
+    "Heuristic" : {
 
     },
     "Hibernate" : {
@@ -6570,6 +6679,9 @@
           }
         }
       }
+    },
+    "How much of the model's probability lands on the suggested level." : {
+
     },
     "How much of the tightest limit has to be left before Uncoil says something." : {
 
@@ -6828,6 +6940,9 @@
     "Install into" : {
 
     },
+    "Install uses uv to create a Python environment and download about 1.4 GB of model weights, all inside the location above. Nothing is downloaded until you click Install. The server listens on 127.0.0.1 only and stops when Uncoil quits." : {
+
+    },
     "Install…" : {
 
     },
@@ -6925,6 +7040,9 @@
       }
     },
     "Installed version" : {
+
+    },
+    "Installed; starts when a conversation asks for a suggestion." : {
 
     },
     "Installed: %@" : {
@@ -7090,6 +7208,9 @@
           }
         }
       }
+    },
+    "Keep a decision log" : {
+
     },
     "Keep sessions running" : {
       "extractionState" : "manual",
@@ -7269,6 +7390,9 @@
     "Latest version" : {
 
     },
+    "Laya (local model)" : {
+
+    },
     "left" : {
 
     },
@@ -7302,6 +7426,9 @@
 
     },
     "Lets an agent see this Mac's screen and use it — the daemon and the macOS permissions it needs." : {
+
+    },
+    "Levels are read from each installed CLI. An agent without an effort setting gets no suggestion." : {
 
     },
     "License" : {
@@ -7725,6 +7852,9 @@
         }
       }
     },
+    "MCP" : {
+
+    },
     "MCP & Skills" : {
 
     },
@@ -7903,10 +8033,16 @@
         }
       }
     },
+    "Message @%@ — @ for another agent, / for commands" : {
+
+    },
     "Message %@…" : {
 
     },
     "Message your agents — @ to choose one, / for commands" : {
+
+    },
+    "Messages without @ go to @%@. Click to change." : {
 
     },
     "Minified or obfuscated content." : {
@@ -7959,6 +8095,9 @@
     "Model" : {
 
     },
+    "Model runtime" : {
+
+    },
     "Model: %@ — %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7980,6 +8119,9 @@
           }
         }
       }
+    },
+    "Models" : {
+
     },
     "Modified" : {
       "extractionState" : "manual",
@@ -8469,7 +8611,13 @@
     "No agent CLI found on this machine." : {
 
     },
+    "No agent CLI is installed yet." : {
+
+    },
     "No agent CLI was found in any of the usual install locations." : {
+
+    },
+    "No agent is open to this conversation" : {
 
     },
     "No agents in this project yet. Start one with + or /new." : {
@@ -8570,6 +8718,9 @@
         }
       }
     },
+    "No effort control in this CLI." : {
+
+    },
     "No executable named “%1$@” under %2$@, so nothing was changed." : {
 
     },
@@ -8649,6 +8800,9 @@
           }
         }
       }
+    },
+    "No free local port for the model server." : {
+
     },
     "No icon matches “%@”." : {
 
@@ -9191,6 +9345,9 @@
         }
       }
     },
+    "none" : {
+
+    },
     "None yet. Write one below, or let an agent write it with you." : {
 
     },
@@ -9301,10 +9458,16 @@
     "Not installed — hidden from the strip until it is" : {
 
     },
+    "Not installed — suggestions use the heuristic." : {
+
+    },
     "Not installed on this machine" : {
 
     },
     "Not installed." : {
+
+    },
+    "Not open to this conversation" : {
 
     },
     "not refreshed, %@" : {
@@ -9357,6 +9520,9 @@
           }
         }
       }
+    },
+    "Not while the conversation is on screen" : {
+
     },
     "not wired" : {
       "extractionState" : "manual",
@@ -9469,6 +9635,9 @@
     "Notifications arrive at any hour." : {
 
     },
+    "Notifications from directed agents" : {
+
+    },
     "Notifications off" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9545,6 +9714,9 @@
           }
         }
       }
+    },
+    "now %@" : {
+
     },
     "npm" : {
 
@@ -9713,6 +9885,9 @@
           }
         }
       }
+    },
+    "Only permission requests" : {
+
     },
     "Only states that last until you act on them are repeated." : {
       "extractionState" : "manual",
@@ -9993,6 +10168,12 @@
         }
       }
     },
+    "Open to this conversation" : {
+
+    },
+    "Open to This Conversation" : {
+
+    },
     "Open Uncoil" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10175,6 +10356,9 @@
       }
     },
     "owner/repo" : {
+
+    },
+    "Package" : {
 
     },
     "Panel" : {
@@ -10758,6 +10942,9 @@
     "Prompt" : {
 
     },
+    "Prompt length and a few words, in English and Turkish." : {
+
+    },
     "Prompt preview" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10973,6 +11160,9 @@
     "Raises a row in the Attention Center when a login is close to a provider limit. The figures in each session's header are shown either way." : {
 
     },
+    "Range" : {
+
+    },
     "Re-audit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11091,6 +11281,9 @@
           }
         }
       }
+    },
+    "Reading the CLI…" : {
+
     },
     "Reading the version…" : {
       "extractionState" : "manual",
@@ -11581,6 +11774,9 @@
 
     },
     "Replace the leading tabs with spaces; until then Hermes ignores the whole file." : {
+
+    },
+    "Replies and waits stay in the conversation. A permission request still notifies when the conversation is not on screen — it is the one thing it cannot answer." : {
 
     },
     "reported by the agent" : {
@@ -12084,6 +12280,9 @@
         }
       }
     },
+    "Running on 127.0.0.1:%lld" : {
+
+    },
     "Running processes are closed and the recordings cannot be recovered." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12513,6 +12712,9 @@
           }
         }
       }
+    },
+    "Send messages to" : {
+
     },
     "Send notifications" : {
 
@@ -13005,6 +13207,12 @@
     "Show what Uncoil Auto understands" : {
 
     },
+    "Show when at least this sure" : {
+
+    },
+    "Shown above the composer. Nothing is sent to an agent until you click Apply." : {
+
+    },
     "Shown as a number next to the icon." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13495,6 +13703,9 @@
     "Starting structured Claude" : {
 
     },
+    "Starting…" : {
+
+    },
     "Startup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13639,6 +13850,12 @@
           }
         }
       }
+    },
+    "Suggest an effort for each prompt" : {
+
+    },
+    "Suggestions for %@ stay between these." : {
+
     },
     "Suite" : {
 
@@ -14426,6 +14643,9 @@
     "The install finished but no Chromium runtime is there." : {
 
     },
+    "The install finished but the model is not there." : {
+
+    },
     "The instructions an agent gets when a project starts from this." : {
 
     },
@@ -14469,6 +14689,15 @@
 
     },
     "the layout changed" : {
+
+    },
+    "The model server did not answer. See serve.log." : {
+
+    },
+    "The model server did not start. See serve.log." : {
+
+    },
+    "The model server stopped." : {
 
     },
     "The new browser will be used from the next browser session on." : {
@@ -14827,6 +15056,12 @@
     "The turn failed." : {
 
     },
+    "The Uncoil control plane is not running; agents have no uncoil MCP tools." : {
+
+    },
+    "The Uncoil control plane is serving; each agent's own MCP link shows in the agents panel." : {
+
+    },
     "The Uncoil mark, coloured by state." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15147,6 +15382,12 @@
         }
       }
     },
+    "to" : {
+
+    },
+    "To" : {
+
+    },
     "To do" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15327,6 +15568,15 @@
 
     },
     "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved." : {
+
+    },
+    "Uncoil Auto" : {
+
+    },
+    "Uncoil Auto is directing this agent" : {
+
+    },
+    "Uncoil Auto Settings…" : {
 
     },
     "Uncoil can look for the dev server, build or compose stack this project already has, and put it behind one button." : {
@@ -15964,6 +16214,9 @@
         }
       }
     },
+    "uv was not found. Install it from docs.astral.sh/uv, then try again." : {
+
+    },
     "v%@" : {
 
     },
@@ -16085,6 +16338,9 @@
           }
         }
       }
+    },
+    "Waiting for input, turn done and permission requests notify like any session." : {
+
     },
     "Waiting for permission" : {
       "extractionState" : "manual",
@@ -16272,6 +16528,9 @@
     "Where the sessions in this project run." : {
 
     },
+    "Which agents a conversation can reach, and how much effort it suggests for each prompt." : {
+
+    },
     "Which agents an extension is enabled for." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16282,6 +16541,9 @@
           }
         }
       }
+    },
+    "Which agents it can reach, and the effort advisor." : {
+
     },
     "Which events" : {
       "extractionState" : "manual",

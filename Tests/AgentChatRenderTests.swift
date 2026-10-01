@@ -142,7 +142,7 @@ final class UncoilAutoPanelRenderTests: XCTestCase {
             .write(to: URL(fileURLWithPath: directory).appendingPathComponent("chat-auto-header.png"))
 
         let host = NSHostingView(rootView:
-            UncoilAutoAgentsPanel(projectID: project.id, onStart: { _ in }, onMention: { _ in })
+            UncoilAutoAgentsPanel(projectID: project.id, conversation: UncoilAutoConversationState(sessionID: UUID()), onStart: { _ in }, onMention: { _ in })
                 .frame(height: 420)
                 .environmentObject(projects)
                 .environmentObject(sessions)
@@ -157,5 +157,107 @@ final class UncoilAutoPanelRenderTests: XCTestCase {
         host.cacheDisplay(in: host.bounds, to: rep)
         try XCTUnwrap(rep.representation(using: .png, properties: [:]))
             .write(to: URL(fileURLWithPath: directory).appendingPathComponent("chat-agents-panel.png"))
+    }
+}
+
+/// The effort advisor's two surfaces: the chips above the composer, and its
+/// settings page.
+@MainActor
+final class EffortAdvisorRenderTests: XCTestCase {
+    private func render(_ view: some View, size: NSSize, name: String, to directory: String) throws {
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height).background(Theme.bg))
+        host.frame = NSRect(origin: .zero, size: size)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        host.layoutSubtreeIfNeeded()
+        let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+            .write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
+    }
+
+    func testTheSuggestionsAndTheSettingsPageRender() throws {
+        guard let directory = ProcessInfo.processInfo.environment["UNCOIL_CHAT_SAMPLE_DIR"] else {
+            throw XCTSkip("Set UNCOIL_CHAT_SAMPLE_DIR to write the chat samples")
+        }
+        let draft = "@claude @codex @gemini fix the typo in the README"
+        let conversation = UncoilAutoConversationState(sessionID: UUID())
+        func item(_ handle: String, _ provider: AgentProvider, started: Bool, level: String, current: String?,
+                  application: EffortSuggestionItem.Application) -> EffortSuggestionItem {
+            let features = HeuristicEffortAdvisor.read(EffortContext(prompt: "fix the typo in the README", provider: provider))
+            return EffortSuggestionItem(
+                entry: .init(handle: handle, provider: provider, sessionID: started ? UUID() : nil, title: ""),
+                suggestion: EffortSuggestion(provider: provider, level: level, confidence: 0.82,
+                                             reasons: ["reads as trivial"], features: features, current: current),
+                application: application)
+        }
+        conversation.publish([
+            item("claude", .claude, started: true, level: "low", current: "high", application: .command),
+            item("codex", .codex, started: true, level: "minimal", current: nil, application: .unavailable("at launch")),
+            item("gemini", .gemini, started: false, level: "low", current: "low", application: .atLaunch),
+        ])
+        // Placed the way the conversation places it: floating over the
+        // composer's top edge, not in a row of its own.
+        let typing = AgentChatModel(sessionID: UUID(), hub: AgentEventHub(), actions: AgentChatActions(
+            submit: { _ in }, interrupt: {}, respond: { _, _ in true }, isReady: { true }))
+        typing.draft = draft
+        try render(
+            VStack {
+                Spacer()
+                ChatComposer(model: typing, placeholder: "")
+                    .overlay(alignment: .topLeading) {
+                        EffortSuggestionBar(conversation: conversation, draft: draft)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(height: 0, alignment: .bottom)
+                            .offset(y: -6)
+                    }
+            }.padding(16),
+            size: NSSize(width: 820, height: 150), name: "effort-suggestions.png", to: directory)
+
+        // The composer with Uncoil Auto's target button beside the field.
+        let chat = AgentChatModel(sessionID: UUID(), hub: AgentEventHub(), actions: AgentChatActions(
+            submit: { _ in }, interrupt: {}, respond: { _, _ in true }, isReady: { true }))
+        let target = UncoilAutoRoster.Entry(handle: "claude", provider: .claude, sessionID: UUID(), title: "fix")
+        func composer(_ resolved: UncoilAutoRoster.Entry?, placeholder: String) -> some View {
+            ChatComposer(
+                model: chat, placeholder: placeholder,
+                leading: AnyView(UncoilAutoTargetPicker(conversation: conversation, roster: [target], resolved: resolved)))
+                .environmentObject(SessionStore())
+        }
+        try render(
+            VStack(spacing: 14) {
+                composer(target, placeholder: "Message @claude — @ for another agent, / for commands")
+                composer(nil, placeholder: "Message your agents — @ to choose one, / for commands")
+            }.padding(16),
+            size: NSSize(width: 820, height: 170), name: "composer-target.png", to: directory)
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("advisor-settings-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        // Installed agents are what the page lists: seed them the way
+        // detection records them, with the real CLIs where they exist so the
+        // effort ladders are read from their own --help.
+        SettingsStore(directory: root).save()
+        let file = root.appendingPathComponent("settings.json")
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        json["resolvedBinaries"] = [
+            "claude": AgentAdapterSupport.locateBinary("claude") ?? "/usr/bin/true",
+            "codex": AgentAdapterSupport.locateBinary("codex") ?? "/usr/bin/true",
+            "gemini": "/usr/bin/true",
+        ]
+        try JSONSerialization.data(withJSONObject: json).write(to: file)
+        let settings = SettingsStore(directory: root)
+        settings.setUncoilAutoAllows(.gemini, false)
+        settings.updateUncoilAuto {
+            $0.advisor.engine = .laya
+            $0.advisor.perAgent["claude"] = AgentEffortPolicy(minimum: "low", maximum: "xhigh")
+        }
+        let page = UncoilAutoSettingsPage(back: {}).environmentObject(settings)
+        // The ladders are read from the CLIs asynchronously; give them a moment.
+        let warm = NSHostingView(rootView: page)
+        warm.frame = NSRect(x: 0, y: 0, width: 720, height: 1600)
+        RunLoop.main.run(until: Date().addingTimeInterval(3))
+        try render(
+            page,
+            size: NSSize(width: 720, height: 1600), name: "effort-settings.png", to: directory)
     }
 }

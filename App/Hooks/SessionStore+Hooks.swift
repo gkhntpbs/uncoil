@@ -139,6 +139,9 @@ extension SessionStore {
         prefs: NotificationPrefs,
         context: NotificationPolicy.Context = .init(now: Date(), appIsActive: NSApp?.isActive ?? false)
     ) -> NotificationDecision {
+        if directedNotificationFilter?(sessionID, event) == true {
+            return .skip(.directedByUncoilAuto)
+        }
         let decision = NotificationPolicy.decide(
             event: event,
             projectID: projectID,

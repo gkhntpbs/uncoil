@@ -5,6 +5,7 @@ extension UncoilAutoEnvironment {
     /// project's own sessions, started and typed into the way the rest of the
     /// app starts and types into them.
     static func live(
+        sessionID: UUID,
         projectID: UUID,
         projects: ProjectStore,
         sessions: SessionStore,
@@ -25,16 +26,31 @@ extension UncoilAutoEnvironment {
         }
         return UncoilAutoEnvironment(
             roster: roster,
-            startSession: { provider in
+            startSession: { provider, effort in
                 guard let project = project() else { return nil }
                 let record = SessionLauncher(projects: projects, settings: settings)
-                    .launch(SessionLaunchRequest(project: project, provider: provider))
+                    .launch(SessionLaunchRequest(
+                        project: project, provider: provider,
+                        launchSelection: effort.map { AgentLaunchSelection(effort: $0) }))
                 ensureRunning(record.id)
                 return roster().first { $0.sessionID == record.id }
             },
             ensureRunning: ensureRunning,
             deliver: { text, id, provider in
                 await TerminalRegistry.shared.submitText(text, for: id, provider: provider)
+            },
+            deliverCommand: { text, id, provider in
+                await TerminalRegistry.shared.submitText(text, for: id, provider: provider, namesTheSession: false)
+            },
+            allows: { [weak settings] provider in
+                guard let settings else { return false }
+                return UncoilAutoConversationState.for(sessionID).allows(provider, settings: settings.uncoilAuto)
+            },
+            decisionLog: { [weak settings] in
+                guard let settings, settings.uncoilAuto.advisor.enabled,
+                      settings.uncoilAuto.advisor.keepDecisionLog,
+                      UpdateChannel.installed() == .edge else { return nil }
+                return EffortDecisionLog(url: EffortDecisionLog.defaultURL)
             },
             interrupt: { TerminalRegistry.shared.interrupt($0) },
             isWorking: { sessions.status(of: $0).isWorking },

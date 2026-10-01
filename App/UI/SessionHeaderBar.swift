@@ -249,6 +249,10 @@ struct SessionHeaderBar: View {
                 .fixedSize()
 
                 McpStatusBadge(sessionID: record.id)
+            } else if record.provider == .uncoil {
+                // Uncoil Auto has no MCP link of its own; what it can say is
+                // whether the control plane its agents reach is up.
+                McpControlPlaneBadge()
             }
 
             HStack(spacing: 2) {

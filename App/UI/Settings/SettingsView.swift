@@ -129,7 +129,7 @@ struct SettingsView: View {
         /// list plus every agent's page, installed or not: a user looking for
         /// Codex should find its page and read that it is missing, rather than
         /// find nothing and conclude Uncoil has no such setting.
-        static let searchable: [Pane] = fixed + AgentProvider.agents.map(Pane.agent)
+        static let searchable: [Pane] = fixed + AgentProvider.agents.map(Pane.agent) + [.agent(.uncoil)]
 
         /// Which row in the source list is the home of this page. An agent page
         /// has no row of its own, so it keeps its parent lit.
@@ -212,6 +212,8 @@ struct SettingsView: View {
             // An agent page holds what four matrices used to, so it answers to
             // all of their terms — plus the agent's own name, which is what a
             // user actually types.
+            case .agent(.uncoil):
+                "uncoil auto bildirim notification sessiz mute hedef target orkestra orchestrate effort çaba seviye level öneri suggest advisor danışman model laya mlx system 1 erişim access izin allow ajan agent karar decision log kayıt fine-tune"
             case .agent(let provider):
                 "\(provider.descriptor.displayName) \(provider.descriptor.fullName) hesap account login giriş profil profile e-posta email cli güncelle update sürüm version brew npm kurulum install parametre argüman argument model flag bayrak davranış behavior mod mode auto plan onay approval yetki varsayılan default konum location yol path"
             case .blueprints: "blueprint şema plan iskelet scaffold kurulum setup yeni proje new project prompt şablon template klasör yapısı structure"
@@ -372,6 +374,8 @@ struct SettingsView: View {
         case .general: GeneralSettingsPage()
         case .input: InputSettingsPage()
         case .agents: AgentsSettingsPage(open: { pane = .agent($0) })
+        case .agent(.uncoil):
+            UncoilAutoSettingsPage(back: { pane = .agents })
         case .agent(let provider):
             AgentSettingsPage(provider: provider, back: { pane = .agents })
         case .blueprints: BlueprintsSettingsPage()

@@ -83,10 +83,29 @@ enum McpLinkState: Equatable {
 /// The session header's MCP light.
 struct McpStatusBadge: View {
     let sessionID: UUID
+    /// A dot and a short word, for a row with little room.
+    var compact = false
     @ObservedObject private var status = McpStatusStore.shared
 
     var body: some View {
         let state = status.state(for: sessionID)
+        if compact {
+            HStack(spacing: 4) {
+                Circle().fill(state.color).frame(width: 6, height: 6)
+                Text("MCP")
+                    .font(Theme.mono(.micro, .medium))
+                    .foregroundStyle(state.color)
+            }
+            .fixedSize()
+            .help(state.help)
+            .accessibilityIdentifier("session.mcpStatus.compact")
+            .accessibilityValue(state.label)
+        } else {
+            badge(state)
+        }
+    }
+
+    private func badge(_ state: McpLinkState) -> some View {
         HStack(spacing: 5) {
             Circle()
                 .fill(state.color)
@@ -102,5 +121,30 @@ struct McpStatusBadge: View {
         .help(state.help)
         .accessibilityIdentifier("session.mcpStatus")
         .accessibilityValue(state.label)
+    }
+}
+
+/// Whether the control plane is up: the one MCP fact that belongs to Uncoil
+/// Auto itself rather than to one of its agents.
+struct McpControlPlaneBadge: View {
+    @ObservedObject private var status = McpStatusStore.shared
+
+    var body: some View {
+        let serving = status.isServing
+        let color = serving ? Theme.ok : Theme.textFaint
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 6, height: 6)
+            Text(serving ? String(localized: "Control plane up") : String(localized: "Control plane off"))
+                .font(Theme.mono(.small, .medium))
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.10), in: Capsule())
+        .fixedSize()
+        .help(serving
+              ? String(localized: "The Uncoil control plane is serving; each agent's own MCP link shows in the agents panel.")
+              : String(localized: "The Uncoil control plane is not running; agents have no uncoil MCP tools."))
+        .accessibilityIdentifier("session.controlPlaneStatus")
     }
 }

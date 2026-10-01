@@ -156,6 +156,19 @@ final class AppServices {
             }
         }
 
+        // Agents an Uncoil Auto conversation is directing report through that
+        // conversation; how much they still notify on their own is its
+        // setting. A session in no conversation is never touched here.
+        sessionStore.directedNotificationFilter = { [weak store] sessionID, event in
+            guard let store else { return false }
+            let visible: UUID? = if case .session(let id) = Router.shared.currentSelection { id } else { nil }
+            return DirectedAgentNotifications.mutes(
+                event,
+                mode: store.uncoilAuto.notifications,
+                directors: UncoilAutoConversationState.conversations(directing: sessionID),
+                visibleSessionID: visible,
+                appIsActive: NSApp?.isActive ?? false)
+        }
         sessionStore.startNotificationReminders(
             prefs: { [weak store] in store?.notifications ?? NotificationPrefs() },
             projectID: { id in projects.sessions.first { $0.id == id }?.projectID },

@@ -19,6 +19,7 @@ enum NotificationSuppression: String, Equatable, Sendable {
     case quietHours
     case appActive
     case visibleSession
+    case directedByUncoilAuto
     case alreadySent
     case reminderOff
     case reminderNotDue
@@ -32,6 +33,7 @@ enum NotificationSuppression: String, Equatable, Sendable {
         case .quietHours: String(localized: "Quiet hours")
         case .appActive: String(localized: "Uncoil in the foreground")
         case .visibleSession: String(localized: "The session is already on screen")
+        case .directedByUncoilAuto: String(localized: "Uncoil Auto is directing this agent")
         case .alreadySent: String(localized: "Already announced for this state")
         case .reminderOff: String(localized: "Reminders off")
         case .reminderNotDue: String(localized: "Not time to remind yet")

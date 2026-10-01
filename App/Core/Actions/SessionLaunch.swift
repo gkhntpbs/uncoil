@@ -20,6 +20,8 @@ struct SessionLaunchRequest {
     var account: AccountProfile?
     /// nil = the project root.
     var worktreePath: String?
+    /// Model / effort to launch with; nil = the agent's own defaults.
+    var launchSelection: AgentLaunchSelection? = nil
 
     /// What the session is called before the agent has said anything.
     ///
@@ -70,7 +72,8 @@ struct SessionLauncher {
             provider: request.provider,
             accountID: request.accountID,
             title: request.title,
-            worktreePath: request.worktreePath
+            worktreePath: request.worktreePath,
+            launchSelection: request.launchSelection
         )
     }
 

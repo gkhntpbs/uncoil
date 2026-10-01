@@ -44,6 +44,28 @@ enum UncoilAutoRoster {
     }
 }
 
+/// Where a prompt that names nobody goes.
+///
+/// The agent the user picked, while it is still there and still open to the
+/// conversation. Otherwise the one running agent, or the newest when there
+/// are several — shown on the composer's target button before anything is
+/// sent, and pinned by the first send so it does not move when another
+/// session starts. With no session at all, the one open agent if there is
+/// exactly one to start.
+enum UncoilAutoRouting {
+    static func target(
+        chosen: String?,
+        roster: [UncoilAutoRoster.Entry],
+        allows: (AgentProvider) -> Bool
+    ) -> UncoilAutoRoster.Entry? {
+        let open = roster.filter { allows($0.provider) }
+        if let chosen, let entry = open.first(where: { $0.handle == chosen }) { return entry }
+        let running = open.filter { $0.sessionID != nil }
+        if let newest = running.last { return newest }
+        return open.count == 1 ? open.first : nil
+    }
+}
+
 /// What a line typed into Uncoil Auto asks for.
 enum UncoilAutoInput: Equatable {
     /// One of Uncoil Auto's own commands: `/new claude`, `/stop @codex`.

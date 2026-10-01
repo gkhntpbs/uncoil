@@ -77,6 +77,9 @@ final class SettingsStore: ObservableObject {
         /// what `BinarySearchPath` searches by and what session launch and the
         /// Extensions screen both ask it for. nil ⇒ nobody has had to.
         var agentBinaryLocations: [String: String]? = nil
+        /// Uncoil Auto: which agents it may reach, and its effort advisor.
+        /// nil ⇒ defaults.
+        var uncoilAuto: UncoilAutoSettings? = nil
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -131,6 +134,8 @@ final class SettingsStore: ObservableObject {
     /// Extra capabilities the user opted into during onboarding, stamped onto
     /// new sessions. nil = the control plane's own default grant set.
     @Published private(set) var sessionCapabilityDefaults: [String]?
+    /// Uncoil Auto's reach and its effort advisor.
+    @Published private(set) var uncoilAuto: UncoilAutoSettings = .default
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -265,6 +270,27 @@ final class SettingsStore: ObservableObject {
     /// page can never disagree about which CLIs exist.
     var launcherProviders: [AgentProvider] {
         LauncherPrefs.resolved(launcher, installed: installedProviders)
+    }
+
+    // MARK: - Uncoil Auto
+
+    func updateUncoilAuto(_ change: (inout UncoilAutoSettings) -> Void) {
+        var next = uncoilAuto
+        change(&next)
+        guard next != uncoilAuto else { return }
+        uncoilAuto = next
+        save()
+    }
+
+    /// Whether Uncoil Auto may address the agent by default. Turning one off
+    /// pins the list: agents installed later are not let in behind the
+    /// user's back.
+    func setUncoilAutoAllows(_ provider: AgentProvider, _ allowed: Bool) {
+        updateUncoilAuto { settings in
+            var list = Set(settings.allowedAgents ?? AgentProvider.agents.map(\.rawValue))
+            if allowed { list.insert(provider.rawValue) } else { list.remove(provider.rawValue) }
+            settings.allowedAgents = AgentProvider.agents.map(\.rawValue).filter(list.contains)
+        }
     }
 
     var installedProviders: Set<AgentProvider> {
@@ -806,6 +832,7 @@ final class SettingsStore: ObservableObject {
         onboardingVersion = decoded.onboardingVersion
         onboardingCompletedSteps = Set(decoded.onboardingCompletedSteps ?? [])
         sessionCapabilityDefaults = decoded.sessionCapabilityDefaults
+        uncoilAuto = decoded.uncoilAuto ?? .default
         ProjectStore.defaultSessionCapabilities = sessionCapabilityDefaults
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
     }
@@ -856,7 +883,8 @@ final class SettingsStore: ObservableObject {
             onboardingCompletedSteps: onboardingCompletedSteps.isEmpty
                 ? nil : onboardingCompletedSteps.sorted(),
             sessionCapabilityDefaults: sessionCapabilityDefaults,
-            agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations
+            agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations,
+            uncoilAuto: uncoilAuto == .default ? nil : uncoilAuto
         )
         if let data = try? JSONEncoder().encode(persisted) {
             try? data.write(to: fileURL, options: .atomic)

@@ -97,6 +97,8 @@ final class AgentActivityModel: ObservableObject {
 /// is left. Clicking one opens its own terminal in a window of its own.
 struct UncoilAutoAgentsPanel: View {
     let projectID: UUID
+    /// The conversation the panel belongs to: which agents it may address.
+    @ObservedObject var conversation: UncoilAutoConversationState
     /// Starts an agent through the conversation, so the start is recorded
     /// there like any other command.
     let onStart: (AgentProvider) -> Void
@@ -129,6 +131,7 @@ struct UncoilAutoAgentsPanel: View {
                     .font(Theme.ui(.body, .semibold))
                     .foregroundStyle(Theme.text)
                 Spacer()
+                accessMenu
                 startMenu
             }
             .padding(.horizontal, 14)
@@ -143,6 +146,12 @@ struct UncoilAutoAgentsPanel: View {
                             AgentPanelRow(
                                 entry: entry,
                                 record: record,
+                                isOpen: conversation.allows(entry.provider, settings: settings.uncoilAuto),
+                                onToggleAccess: {
+                                    conversation.setExcluded(
+                                        entry.provider,
+                                        conversation.allows(entry.provider, settings: settings.uncoilAuto))
+                                },
                                 activity: activity.latest[id],
                                 onOpen: { openWindow(.session, value: id) },
                                 onMention: { onMention(entry.handle) },
@@ -179,9 +188,42 @@ struct UncoilAutoAgentsPanel: View {
         }
     }
 
+    /// Which agents this conversation may address. Settings sets the
+    /// ceiling; here it can only be narrowed.
+    private var accessMenu: some View {
+        Menu {
+            Section(String(localized: "Open to this conversation")) {
+                ForEach(AgentProvider.agents.filter { settings.installedProviders.contains($0) }) { provider in
+                    if settings.uncoilAuto.allows(provider) {
+                        Toggle(provider.displayName, isOn: Binding(
+                            get: { !conversation.excludedAgents.contains(provider.rawValue) },
+                            set: { conversation.setExcluded(provider, !$0) }))
+                    } else {
+                        Button(String(localized: "\(provider.displayName) — off in Settings")) {}
+                            .disabled(true)
+                    }
+                }
+            }
+            Button(String(localized: "Uncoil Auto Settings…")) {
+                Router.shared.go(to: .settings(pane: SettingsView.Pane.agent(.uncoil).id))
+                openWindow(.settings)
+            }
+        } label: {
+            TablerIcon(name: "shield-lock", size: 13, color: Theme.textDim)
+                .frame(width: 22, height: 22)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(String(localized: "Choose which agents this conversation can reach"))
+        .accessibilityIdentifier("chat.agentsPanel.access")
+    }
+
     private var startMenu: some View {
         Menu {
-            ForEach(AgentProvider.agents.filter { settings.installedProviders.contains($0) }) { provider in
+            ForEach(AgentProvider.agents.filter {
+                settings.installedProviders.contains($0) && conversation.allows($0, settings: settings.uncoilAuto)
+            }) { provider in
                 Button(provider.displayName) { onStart(provider) }
             }
         } label: {
@@ -199,6 +241,8 @@ struct UncoilAutoAgentsPanel: View {
 private struct AgentPanelRow: View {
     let entry: UncoilAutoRoster.Entry
     let record: SessionRecord
+    let isOpen: Bool
+    let onToggleAccess: () -> Void
     let activity: String?
     let onOpen: () -> Void
     let onMention: () -> Void
@@ -218,6 +262,12 @@ private struct AgentPanelRow: View {
                     .font(Theme.mono(.body, .semibold))
                     .foregroundStyle(entry.provider.color)
                 Spacer(minLength: 4)
+                if isOpen {
+                    McpStatusBadge(sessionID: record.id, compact: true)
+                } else {
+                    TablerIcon(name: "shield-lock", size: 11, color: Theme.textFaint)
+                        .help(String(localized: "Not open to this conversation"))
+                }
                 StatusOrb(status: status, size: 10)
                 if hovering {
                     TablerIcon(name: "external-link", size: 11, color: Theme.textFaint)
@@ -247,6 +297,7 @@ private struct AgentPanelRow: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(isOpen ? 1 : 0.55)
         .background(hovering ? Theme.panelHover : Theme.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.panel)
@@ -257,7 +308,13 @@ private struct AgentPanelRow: View {
         .onHover { hovering = $0 }
         .contextMenu {
             Button(String(localized: "Open Terminal Window"), action: onOpen)
-            Button(String(localized: "Mention @\(entry.handle)"), action: onMention)
+            if isOpen {
+                Button(String(localized: "Mention @\(entry.handle)"), action: onMention)
+            }
+            Button(isOpen
+                   ? String(localized: "Close to This Conversation")
+                   : String(localized: "Open to This Conversation"),
+                   action: onToggleAccess)
             if status.isWorking {
                 Button(String(localized: "Stop"), action: onStop)
             }

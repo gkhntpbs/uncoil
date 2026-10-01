@@ -15,6 +15,8 @@ struct ChatComposer: View {
     /// or the agents it speaks for.
     var isBusy: Bool = false
     var onStop: (() -> Void)?
+    /// A control before the field, outside it: Uncoil Auto's target button.
+    var leading: AnyView?
 
     @ObservedObject private var theme = ThemeStore.shared
     @State private var height: CGFloat = ChatComposerField.minimumHeight
@@ -38,6 +40,7 @@ struct ChatComposer: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
+            if let leading { leading }
             ZStack(alignment: .topLeading) {
                 if model.draft.isEmpty {
                     Text(model.isReady ? placeholder : String(localized: "The session is not running"))
@@ -62,7 +65,7 @@ struct ChatComposer: View {
             .padding(.vertical, 4)
             actionButton
         }
-        .padding(.leading, 12)
+        .padding(.leading, leading == nil ? 12 : 8)
         .padding(.trailing, 8)
         .padding(.vertical, 8)
         .panel(radius: Theme.Radius.sheet)
@@ -225,6 +228,11 @@ struct ChatComposerField: NSViewRepresentable {
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
+        // A prompt for an agent is not prose to rewrite: no Writing Tools, and
+        // with it no floating Siri / Writing Tools button beside the field.
+        if #available(macOS 15.0, *) {
+            textView.writingToolsBehavior = .none
+        }
         textView.textContainerInset = NSSize(width: 0, height: 2)
         textView.textContainer?.lineFragmentPadding = 5
         textView.isVerticallyResizable = true
@@ -247,6 +255,7 @@ struct ChatComposerField: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
         scrollView.documentView = textView
+        ScrollerStyler.style(scrollView)
         textView.string = text
         context.coordinator.textView = textView
         context.coordinator.lastFocusRequest = focusRequest
@@ -271,6 +280,7 @@ struct ChatComposerField: NSViewRepresentable {
             DispatchQueue.main.async { handled() }
         }
         style(textView)
+        ScrollerStyler.style(scrollView)
         if context.coordinator.lastFocusRequest != focusRequest {
             context.coordinator.lastFocusRequest = focusRequest
             DispatchQueue.main.async { textView.window?.makeFirstResponder(textView) }

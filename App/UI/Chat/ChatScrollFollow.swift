@@ -69,6 +69,9 @@ final class ChatScrollProbe: NSView {
     }
 
     private func attach() {
+        // Restyled on every update, not only the first: SwiftUI hands a
+        // rebuilt scroll view AppKit's own scroller again.
+        ScrollerStyler.style(enclosingScrollView)
         guard let found = enclosingScrollView, found !== scrollView else { return }
         detach()
         scrollView = found

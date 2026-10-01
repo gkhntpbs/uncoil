@@ -160,6 +160,10 @@ final class UncoilAutoSessionTests: XCTestCase {
         var roster: [UncoilAutoRoster.Entry] = []
         var delivered: [(String, UUID)] = []
         var started: [AgentProvider] = []
+        var startedEfforts: [String?] = []
+        var commands: [(String, UUID)] = []
+        var blocked: Set<AgentProvider> = []
+        var log: EffortDecisionLog?
         var interrupted: [UUID] = []
         var working: Set<UUID> = []
         var followed: [UUID] = []
@@ -170,7 +174,10 @@ final class UncoilAutoSessionTests: XCTestCase {
     var hub = AgentEventHub()
     var transcripts = AgentEventHub()
 
-    func makeSession(_ recorder: Recorder, store: UncoilAutoStore? = nil) -> UncoilAutoSession {
+    func makeSession(
+        _ recorder: Recorder, store: UncoilAutoStore? = nil,
+        conversation: UncoilAutoConversationState? = nil
+    ) -> UncoilAutoSession {
         recorder.roster = [
             .init(handle: "claude", provider: .claude, sessionID: claude, title: "fix"),
             .init(handle: "codex", provider: .codex, sessionID: codex, title: "review"),
@@ -178,8 +185,9 @@ final class UncoilAutoSessionTests: XCTestCase {
         ]
         let environment = UncoilAutoEnvironment(
             roster: { recorder.roster },
-            startSession: { provider in
+            startSession: { provider, effort in
                 recorder.started.append(provider)
+                recorder.startedEfforts.append(effort)
                 let entry = UncoilAutoRoster.Entry(handle: provider.rawValue, provider: provider, sessionID: UUID(), title: "new")
                 recorder.roster.removeAll { $0.handle == entry.handle }
                 recorder.roster.append(entry)
@@ -187,13 +195,18 @@ final class UncoilAutoSessionTests: XCTestCase {
             },
             ensureRunning: { _ in },
             deliver: { text, id, _ in recorder.delivered.append((text, id)) },
+            deliverCommand: { text, id, _ in recorder.commands.append((text, id)) },
+            allows: { !recorder.blocked.contains($0) },
+            decisionLog: { recorder.log },
             interrupt: { recorder.interrupted.append($0) },
             isWorking: { recorder.working.contains($0) },
             follow: { recorder.followed.append($0) },
             unfollow: { _ in }
         )
         let record = SessionRecord(projectID: UUID(), provider: .uncoil, accountID: nil, title: "uncoil: new session")
-        return UncoilAutoSession(record: record, terminal: nil, environment: environment, store: store, hub: hub, transcripts: transcripts)
+        return UncoilAutoSession(
+            record: record, terminal: nil, environment: environment, store: store, hub: hub, transcripts: transcripts,
+            conversation: conversation ?? UncoilAutoConversationState(sessionID: record.id))
     }
 
     func items(_ session: UncoilAutoSession) -> [AgentItem] {
@@ -211,8 +224,9 @@ final class UncoilAutoSessionTests: XCTestCase {
         XCTAssertEqual(items(session).first?.recipients?.map(\.handle), ["claude"])
     }
 
-    func testAPromptNamingNobodyStaysHere() async {
+    func testAPromptNamingNobodyStaysHereOnlyWhenThereIsNoAgent() async {
         let recorder = Recorder()
+        recorder.blocked = [.claude, .codex, .gemini]
         let session = makeSession(recorder)
         await session.submit("what should we do next?")
         XCTAssertTrue(recorder.delivered.isEmpty)
@@ -447,7 +461,7 @@ final class UncoilAutoResumeTests: XCTestCase {
         var caughtUpFrom: NativeTranscriptPosition?
         func environment(position: NativeTranscriptPosition, missed: [AgentEvent]) -> UncoilAutoEnvironment {
             UncoilAutoEnvironment(
-                roster: { roster }, startSession: { _ in nil }, ensureRunning: { _ in },
+                roster: { roster }, startSession: { _, _ in nil }, ensureRunning: { _ in },
                 deliver: { _, _, _ in }, interrupt: { _ in }, isWorking: { _ in false },
                 follow: { _ in }, unfollow: { _ in },
                 position: { _ in position },

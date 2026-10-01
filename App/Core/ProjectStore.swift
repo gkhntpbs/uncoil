@@ -757,6 +757,9 @@ final class SessionStore: ObservableObject {
     /// Who has been notified about what, and when. Backs both the once-per-state
     /// dedup and the repeat reminders.
     var notificationLedger = NotificationLedger()
+    /// Says whether an event for a session stays quiet because an Uncoil Auto
+    /// conversation is directing it. nil ⇒ nothing is muted.
+    var directedNotificationFilter: (@MainActor (UUID, NotificationEvent) -> Bool)?
     /// Repeats reminders for states nobody has answered yet.
     var reminderTimer: Timer?
 

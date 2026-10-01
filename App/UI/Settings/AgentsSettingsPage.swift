@@ -31,6 +31,12 @@ struct AgentsSettingsPage: View {
             subtitle: String(localized: "Every agent CLI Uncoil found on this Mac, and how deeply it is connected.")
         ) {
             Section {
+                UncoilAutoSettingsRow(open: { open(.uncoil) })
+            } header: {
+                Text("Uncoil")
+            }
+
+            Section {
                 ForEach(hookup.states) { state in
                     AgentControlRow(
                         state: state,
@@ -221,5 +227,30 @@ private struct AgentControlRow: View {
         .contentShape(Rectangle())
         .onTapGesture { onOpen?() }
         .accessibilityIdentifier("settings.agents.row.\(state.agent.rawValue)")
+    }
+}
+
+
+/// Uncoil's own entry above the agent CLIs: it is configured like one, but
+/// has no binary to find and nothing to connect.
+private struct UncoilAutoSettingsRow: View {
+    let open: () -> Void
+
+    var body: some View {
+        Button(action: open) {
+            HStack(spacing: 10) {
+                ProviderMark(provider: .uncoil, size: 18)
+                SettingsLabel(
+                    title: String(localized: "Uncoil Auto"),
+                    detail: String(localized: "Which agents it can reach, and the effort advisor."))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textFaint)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .settingsID("agents.uncoilAuto")
     }
 }

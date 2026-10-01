@@ -222,7 +222,7 @@ final class TerminalRegistry {
                 record: record,
                 terminal: view,
                 environment: .live(
-                    projectID: record.projectID, projects: projectStore,
+                    sessionID: record.id, projectID: record.projectID, projects: projectStore,
                     sessions: sessionStore, settings: settings),
                 store: UncoilAutoStore(url: UncoilAutoStore.url(for: record.id)))
         let delegate = StructuredSessionTerminalDelegate(session: session, terminal: view)
@@ -1024,6 +1024,12 @@ final class TerminalRegistry {
     /// edits, and starts the turn themselves.
     func typeText(_ text: String, for recordID: UUID, provider: AgentProvider) async {
         await control(for: recordID, provider: provider).draft(text)
+    }
+
+    /// Whether the session runs as a structured session (Claude stream,
+    /// Codex app-server, Uncoil Auto) rather than a terminal.
+    func isStructured(_ recordID: UUID) -> Bool {
+        structuredSessions[recordID] != nil
     }
 
     /// The way into a session, whatever is behind it: the structured Codex
