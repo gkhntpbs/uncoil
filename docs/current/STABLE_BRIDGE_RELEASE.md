@@ -1,6 +1,6 @@
 # Stable bridge release — 0.1.1, build 4
 
-Prepared on 2026-10-22. Local validation and Apple notarization are complete; publication is pending.
+Prepared on 2026-10-22. Published as Stable 0.1.1, build 4, after local validation and Apple notarization.
 
 ## Scope
 
@@ -19,7 +19,7 @@ Verified source archives, binary patches for working and staged changes, Git bun
 ## Validation and remaining gates
 
 - Release tooling: 18 Python tests passed.
-- Remote release inventory: only `v0.1.0` is published.
+- GitHub release `v0.1.1` is published as Stable/latest with the verified ZIP and SHA-256 asset.
 - Developer ID Application identity for team `K3TKWWVEB9` is available.
 - The dependency lock is copied from the existing project: Sparkle 2.9.5 and SwiftTerm 1.15.0.
 - Apple Metal Toolchain 27A266a was downloaded with explicit user approval; an export is preserved under `.build-cache/MetalToolchain`.
@@ -30,7 +30,9 @@ Verified source archives, binary patches for working and staged changes, Git bun
 - Computer Use verified the isolated 1100×720 Debug dashboard and both channel explanations. The final notarized Release app was also checked on the project dashboard, session and About page, showing Stable 0.1.1 (4).
 - The Release archive passed XcodeBuildMCP. The approved Developer ID / notarization upload completed successfully through Xcode's existing Alparslan Topbas account. The exported app passed deep strict code-signing verification, Gatekeeper assessment as Notarized Developer ID, stapled-ticket validation and release metadata checks. Application source inputs are unchanged since candidate commit `bf587f2`; the final changes only affect tests and this record.
 - Build and test evidence is in `.build-cache/stable-bridge-release-*.log`, with result bundles under `.build-cache/XcodeBuildMCP`.
-- GitHub publication and signed-feed deployment remain pending.
+- The signed Stable feed and release pages were deployed from landing commit `e369d74`; GitHub Actions run `39848247678` passed. The feed preserves build 1 and adds build 4.
+- Public package SHA-256: `572541807136268c141b4d241f459ed7e0bab2137bf7cbe1ca13ad20921d1438`.
+- Real installation through Sparkle on an existing user installation or a clean Mac was not exercised. The Edge package/feed remains unpublished.
 
 All build and tooling caches must remain on the external disk. The user authorized installation of the missing Metal Toolchain. Historical notes in `docs/roadmap/SPARKLE_SETUP.md` record Xcode Direct Distribution as the notarization route; no named notarytool profile was recorded.
 
