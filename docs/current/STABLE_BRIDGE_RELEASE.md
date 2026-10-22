@@ -1,6 +1,6 @@
 # Stable bridge release — 0.1.1, build 4
 
-Prepared on 2026-10-22. Publication is pending validation.
+Prepared on 2026-10-22. Local validation and Apple notarization are complete; publication is pending.
 
 ## Scope
 
@@ -8,7 +8,7 @@ The bridge starts from the published source branch, `origin/main` at `b8f15e2`, 
 
 The installed channel is Stable. Existing and unknown preferences use Stable. Edge uses its own feed; returning to Stable waits for a newer build. The shipped Stable feed URL, bundle identifier and Sparkle public key remain unchanged.
 
-The version is 0.1.1 and the global build is 4, above local Stable build 2 and development build 3. No `v0.1.1` release tag has been created yet.
+The version is 0.1.1 and the global build is 4, above local Stable build 2 and development build 3. The annotated release tag is `v0.1.1`.
 
 ## Recovery
 
@@ -25,10 +25,12 @@ Verified source archives, binary patches for working and staged changes, Git bun
 - Apple Metal Toolchain 27A266a was downloaded with explicit user approval; an export is preserved under `.build-cache/MetalToolchain`.
 - The Debug build passed through XcodeBuildMCP using `.build-cache/StableBridgeDerivedData`.
 - The final full unit suite passed: 1,810 passed, no failures, eight optional render samples skipped. All 24 runtime-daemon integration tests executed successfully.
-- The latest complete UI smoke run passed 13 scenarios and failed `testDragSessionCreatesSplitPane`. The update-channel test passed Stable → Edge, relaunch persistence and return to Stable. The stale fixture names, missing startup route and combined accessibility groups were corrected.
-- The remaining split test now reaches the actual session row, but no split pane appears after dragging. A local copy/move-mask experiment and a header-drop experiment did not resolve it; the operation-mask experiment was reverted. This is an unresolved release gate, and publication must not proceed without fixing it or an explicit user decision to defer it.
+- The drag test used XCTest's touch-event `press` API on macOS. It now uses `click(forDuration:thenDragTo:)` on the actual session row. All experimental application drag code was removed.
+- The final full UI suite passed: 14 tests, no failures or skips. The update-channel scenario passed Stable → Edge, relaunch persistence and return to Stable.
+- Computer Use verified the isolated 1100×720 Debug dashboard and both channel explanations. The final notarized Release app was also checked on the project dashboard, session and About page, showing Stable 0.1.1 (4).
+- The Release archive passed XcodeBuildMCP. The approved Developer ID / notarization upload completed successfully through Xcode's existing Alparslan Topbas account. The exported app passed deep strict code-signing verification, Gatekeeper assessment as Notarized Developer ID, stapled-ticket validation and release metadata checks. Application source inputs are unchanged since candidate commit `bf587f2`; the final changes only affect tests and this record.
 - Build and test evidence is in `.build-cache/stable-bridge-release-*.log`, with result bundles under `.build-cache/XcodeBuildMCP`.
-- Computer Use acceptance, Release archive, notarization, package verification, GitHub publication and signed-feed deployment remain pending.
+- GitHub publication and signed-feed deployment remain pending.
 
 All build and tooling caches must remain on the external disk. The user authorized installation of the missing Metal Toolchain. Historical notes in `docs/roadmap/SPARKLE_SETUP.md` record Xcode Direct Distribution as the notarization route; no named notarytool profile was recorded.
 

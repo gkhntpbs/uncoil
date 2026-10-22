@@ -281,7 +281,8 @@ final class SmokeTests: XCTestCase {
 
         let secondary = app.descendants(matching: .any)["sidebar.session.claude: demo task"]
         XCTAssertTrue(secondary.waitForExistence(timeout: 5))
-        secondary.press(forDuration: 0.5, thenDragTo: container)
+        app.activate()
+        secondary.click(forDuration: 0.5, thenDragTo: container)
 
         let splitPane = app.descendants(matching: .any)["session.splitPane"]
         XCTAssertTrue(splitPane.waitForExistence(timeout: 10), "Split session pane did not appear")
