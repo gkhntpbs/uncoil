@@ -10,9 +10,17 @@ release notes are written once, here.
 
 ## Unreleased
 
+## [0.1.1] - 2026-10-22
+
 ### Added
 
+- Settings › About now lets you choose Stable or Edge updates. Stable remains the default. Your choice survives a relaunch, and the installed release channel is shown separately.
+- Edge updates use a separate feed. Switching back to Stable waits for a newer Stable build without downgrading the app or its data. Channel changes are disabled while an update is in progress.
 - Uncoil updates itself. It checks `uncoil.gokhantopbas.com` once a day for a newer version, verifies what it downloads against a signature before installing it, and tells you only when there is something to install. "Check for Updates…" sits under the Uncoil menu for when you want to ask, and Settings › About can turn the automatic check off. Updates are only ever offered — nothing installs without you saying so.
+
+### Fixed
+
+- Project launcher controls and the Attention Center’s resolve button remain individually accessible to assistive technology.
 
 ## [0.1.0] - 2026-08-04
 

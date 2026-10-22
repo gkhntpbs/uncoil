@@ -617,7 +617,7 @@ struct ProjectRowView: View {
             // outline rows they carry the gap themselves.
             .padding(.top, isFirst ? 0 : 6)
             .onHover { hovering = $0 }
-            .accessibilityElement(children: .combine)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("sidebar.project.\(project.name)")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { selection = .project(projectID) }

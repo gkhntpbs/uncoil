@@ -185,8 +185,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gokhantopbas.uncoil
         PRODUCT_NAME: Uncoil
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.1.1"
+        CURRENT_PROJECT_VERSION: "4"
+        UNCOIL_RELEASE_CHANNEL: "stable"
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Gökhan Topbaş"
         INFOPLIST_KEY_NSPrincipalClass: NSApplication

@@ -22,7 +22,7 @@ true before it runs, and the distribution decisions behind it.
 4. Run the `UncoilUI` smoke suite.
 5. Run the MCP acceptance flow in `docs/current/mcp/ACCEPTANCE_TEST_FLOW.md`.
 6. Launch the Release app and verify its main project, session, settings, light icon, and dark icon states with Computer Use.
-7. Confirm `uncoil-runtimed`, `uncoil-hook`, and `uncoil-mcp` exist under `Uncoil.app/Contents/Resources`.
+7. Confirm `uncoil-runtimed`, `uncoil-hook`, and `uncoil-mcp` exist under `Uncoil.app/Contents/Helpers` (`Contents/Resources` on older bundles).
 8. Verify the final signature and bundle identifier.
 
 ## Release build
@@ -36,7 +36,10 @@ xcodebuild -project Uncoil.xcodeproj -scheme Uncoil -configuration Release \
 
 ## Distribution status
 
-Notarization, Developer ID signing, DMG packaging, update feeds, GitHub Releases, and CI workflows are not implemented. Do not publish a build until those steps have explicit credentials, automation, rollback instructions, and a successful clean-machine installation test.
+Developer ID signing, notarization, packaging, GitHub Releases and feed
+generation are scripted (see *Stable and Edge* below). CI workflows are not:
+every publishing step is run by hand, on an explicit command. The Edge feed has
+no published package yet.
 
 
 ---
@@ -89,27 +92,54 @@ The feed lives at `https://uncoil.gokhantopbas.com/appcast.xml` and is served
 from the landing-site repository, where every change to it is a reviewable
 commit.
 
+## Stable and Edge
+
+Uncoil has two update channels and one application. Stable is the default and
+what an existing installation stays on; Edge takes a release as soon as it is
+cut, before acceptance. The channel is a preference in Settings › About, not a
+second installation: same bundle identifier, same signing identity, same
+Sparkle key, same user data. Sparkle's updater delegate answers with the
+channel's feed, so the `SUFeedURL` shipped in `Info.plist` never changes and an
+old build keeps checking the stable feed exactly as before.
+
+- Feeds: `https://uncoil.gokhantopbas.com/appcast.xml` (Stable) and
+  `/appcast-edge.xml` (Edge). Each feed is generated only from its own
+  packages; an Edge package never enters the stable feed.
+- Branches: Stable is cut from `main`, Edge from `edge`.
+- Tags: `vX.Y.Z` for Stable, `vX.Y.Z-edge.BUILD` for Edge. `MARKETING_VERSION`
+  stays numeric either way, because the bundle version has to be.
+- `UNCOIL_RELEASE_CHANNEL` in `project.yml` is compiled into the bundle, so
+  About can say which channel the running copy came from regardless of which
+  channel the user is currently subscribed to.
+- The build number is global: `scripts/version.sh` allocates above every
+  Stable *and* Edge tag, so promoting to Stable can never reuse a number an
+  Edge package already published.
+
 ## Publishing the update feed
 
 Order matters: the appcast must never announce a version that cannot be
-downloaded yet.
+downloaded yet. Publish the package first, the feed second.
 
-1. Publish the GitHub release with the zip attached, and confirm the download
-   URL answers 200.
-2. Collect the release zips into one working directory. **Include the previous
-   releases' zips alongside the new one**: `generate_appcast` builds the feed
-   from what it sees, so a directory holding only the newest zip produces a
-   feed that lists only the newest version — and no delta updates. Keeping the
-   last few zips in the directory keeps older installs upgradeable in one hop
-   and lets Sparkle generate deltas.
-3. Put the release notes next to the zip as `Uncoil-<version>.html` (HTML, not
-   Markdown — Sparkle's update window renders what it is given, and raw
-   Markdown reads as raw Markdown).
-4. Run `generate_appcast <dir> --download-url-prefix
-   https://github.com/gkhntpbs/uncoil/releases/download/v<version>/`. It signs
-   each item with the EdDSA key from the Keychain.
-5. Commit `appcast.xml` and the notes HTML to the landing repository's
-   `public/` and push. The deploy publishes and verifies the feed.
+1. `scripts/release.sh --package <app>` (or `--notarize`) builds, verifies and
+   zips. It refuses a bundle whose version, build, channel or Sparkle key does
+   not match the tag being released.
+2. `python3 scripts/publish_release.py <zip>` re-verifies the signature,
+   notarization ticket and stapling, reserves the build number remotely so two
+   machines cannot claim it, pushes the tag and creates the GitHub release —
+   a prerelease with `latest` disabled for Edge, a normal release for Stable.
+   It uploads a SHA-256 next to the zip and only leaves draft state once the
+   uploaded asset's digest and size match the local file.
+3. `python3 scripts/prepare_feed.py --landing <landing-repo> --archive <zip>`
+   generates the channel's feed with `generate_appcast`, verifies the EdDSA
+   signature against the shipped public key, checks that every advertised
+   asset actually answers, and refuses to change either an existing feed item
+   or the stable feed. It stages the feed and the `Uncoil-<identity>.html`
+   notes in the landing repository's `public/`; committing and deploying that
+   repository is a separate, explicit act.
+
+Release notes are written once, in `CHANGELOG.md`. A section heading carries
+the full release identity (`## [0.3.0-edge.7]` for Edge), and the scripts read
+the notes from there — there is no second place to keep them in sync.
 
 ## App update rollback policy
 

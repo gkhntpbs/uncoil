@@ -202,7 +202,7 @@ struct SettingsView: View {
             case .github: "github token pr pull request giriş login sign in"
             case .drivers: "sürücü driver agent-browser cua computer use kurulum install"
             case .mcp: "mcp control plane kontrol düzlemi araç tool uncoil_projects sunucu server soket socket kurulum install yapılandırma configure"
-            case .about: "hakkında about sürüm version veri klasörü data folder debug bundle kaldır uninstall"
+            case .about: "hakkında about sürüm version update updates güncelleme kanal channel stable edge veri klasörü data folder debug bundle kaldır uninstall"
             }
         }
 

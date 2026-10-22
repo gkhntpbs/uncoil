@@ -34,8 +34,11 @@ final class HostingHitTestTests: XCTestCase {
         let host = NSHostingView(rootView: Probe(onTap: onTap))
         host.frame = NSRect(x: 0, y: 0, width: 200, height: 30)
         let container = RecordingView(frame: host.frame)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = container
         container.addSubview(host)
         host.layoutSubtreeIfNeeded()
+        withExtendedLifetime(window) {}
         return (container, host)
     }
 
