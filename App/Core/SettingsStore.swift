@@ -872,6 +872,7 @@ final class SettingsStore: ObservableObject {
         uncoilAuto = decoded.uncoilAuto ?? .default
         ProjectStore.defaultSessionCapabilities = sessionCapabilityDefaults
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
+        settingsDocument.captureBaseline(persistedSettings())
     }
 
     /// Mirrors the interface language into `AppleLanguages`.
@@ -888,9 +889,8 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    func save() {
-        guard !isLoadingSettings else { return }
-        let persisted = Persisted(
+    private func persistedSettings() -> Persisted {
+        Persisted(
             accounts: accounts,
             defaultAccountByProvider: defaultAccountByProvider,
             defaultProvider: defaultProvider,
@@ -924,6 +924,11 @@ final class SettingsStore: ObservableObject {
             agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations,
             uncoilAuto: uncoilAuto == .default ? nil : uncoilAuto
         )
+    }
+
+    func save() {
+        guard !isLoadingSettings else { return }
+        let persisted = persistedSettings()
         guard let data = settingsDocument.encode(persisted) else { return }
         if settingsDocument.requiresBackup && !migrationBackupCreated {
             do {

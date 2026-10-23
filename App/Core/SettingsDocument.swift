@@ -5,6 +5,7 @@ struct SettingsDocument {
     private var original: [String: Any] = [:]
     private var protectedFields: [String: Any] = [:]
     private var fallback: [String: Any] = [:]
+    private var baseline: [String: Any] = [:]
     private var unknownAccounts: [[String: Any]] = []
     private var unreadable = false
     private(set) var requiresBackup = false
@@ -56,6 +57,13 @@ struct SettingsDocument {
         return decoded
     }
 
+    mutating func captureBaseline(_ value: SettingsStore.Persisted) {
+        guard let data = try? JSONEncoder().encode(value),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return }
+        baseline = object
+    }
+
     func encode(_ value: SettingsStore.Persisted) -> Data? {
         guard !unreadable,
               let data = try? JSONEncoder().encode(value),
@@ -63,12 +71,16 @@ struct SettingsDocument {
         else { return nil }
         var result = original
         for key in SettingsStore.Persisted.CodingKeys.allCases.map(\.rawValue) {
-            result[key] = merge(original: original[key], baseline: fallback[key], updated: encoded[key])
+            if let original = original[key], equal(baseline[key], encoded[key]) {
+                result[key] = original
+            } else {
+                result[key] = merge(original: original[key], baseline: fallback[key], updated: encoded[key])
+            }
         }
         for (key, value) in protectedFields {
-            if key == "accounts" || equal(encoded[key], fallback[key]) { result[key] = value }
+            if key == "accounts" || equal(encoded[key], baseline[key]) { result[key] = value }
         }
-        if !unknownAccounts.isEmpty, !equal(encoded["accounts"], fallback["accounts"]),
+        if !unknownAccounts.isEmpty, !equal(encoded["accounts"], baseline["accounts"]),
            let accounts = result["accounts"] as? [[String: Any]] {
             result["accounts"] = accounts + unknownAccounts
         }
