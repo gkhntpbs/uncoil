@@ -4,7 +4,7 @@ Stable 0.1.2 (build 5) and Edge 0.2.0-edge.6 (build 6) include the same settings
 
 The previous Stable reader decoded all settings in one operation. An account from a newer build with an unknown provider invalidated the entire document. Startup then created default accounts and saved those defaults over the original settings, including the onboarding stamp.
 
-Settings now load each known field against the schema's defaults. Supported accounts remain available; unknown account records and unknown top-level fields survive saves. Unsupported preferences remain in the document while the older build uses a fallback. A deliberate replacement of a supported preference replaces that fallback. A settings file that cannot be read as a JSON object is never overwritten by startup or subsequent saves.
+Settings now load each known field against the schema's defaults. Supported accounts remain available; unknown account records and unknown top-level fields survive saves. Nested fields are retained when unrelated preferences change or a default-valued group is omitted by the older encoder. Unsupported preferences remain in the document while the older build uses a fallback. A deliberate replacement of a supported preference replaces that fallback. A settings file that cannot be read as a JSON object is never overwritten by startup or subsequent saves.
 
 Before a compatibility conversion writes settings, it preserves the original bytes beside the file as `settings-before-migration-<SHA256>.json` with mode 0600. Identical backups are reused. A backup failure prevents the conversion write. Loading the interface language no longer saves a partially restored settings document.
 
