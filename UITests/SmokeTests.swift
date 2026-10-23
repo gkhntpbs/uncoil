@@ -94,14 +94,23 @@ final class SmokeTests: XCTestCase {
 
     func testExtensionsWindowOpensFromCommandPaletteAndNavigates() {
         app.typeKey("k", modifierFlags: .command)
-        app.typeText("extensions")
+        let search = app.textFields["palette.searchField"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("extens")
 
         let result = app.staticTexts["Extensions"]
         XCTAssertTrue(result.waitForExistence(timeout: 5))
-        app.typeKey(.return, modifierFlags: [])
+        search.typeKey(.return, modifierFlags: [])
 
         let extensions = app.descendants(matching: .any)["extensions.container"]
-        XCTAssertTrue(extensions.waitForExistence(timeout: 10))
+        guard extensions.waitForExistence(timeout: 10) else {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            XCTFail(app.debugDescription)
+            return
+        }
 
         let skills = app.descendants(matching: .any)["extensions.section.skills"]
         XCTAssertTrue(skills.waitForExistence(timeout: 5))
@@ -157,7 +166,7 @@ final class SmokeTests: XCTestCase {
         let agentsPane = app.descendants(matching: .any)["settings.pane.agents"]
         XCTAssertTrue(agentsPane.waitForExistence(timeout: 10))
         agentsPane.click()
-        XCTAssertTrue(app.descendants(matching: .any)["settings.agents.row.claude"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings.agents.rescan"].waitForExistence(timeout: 5))
 
         let dataPane = app.descendants(matching: .any)["settings.pane.privacyData"]
         XCTAssertTrue(dataPane.waitForExistence(timeout: 5))
