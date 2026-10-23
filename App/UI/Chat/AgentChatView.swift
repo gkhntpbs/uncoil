@@ -19,7 +19,6 @@ struct AgentChatView: View {
     @StateObject private var model: AgentChatModel
     @StateObject private var follower = ChatScrollFollower()
     @StateObject private var autoState: UncoilAutoConversationState
-    @StateObject private var effort = EffortSuggestionModel()
     @AppStorage(UncoilAutoAgentsPanel.visibilityKey) private var agentsPanelVisible = true
 
     /// Wide enough for a diff, narrow enough that a paragraph reads as one.
@@ -98,14 +97,6 @@ struct AgentChatView: View {
             model.flush()
         }
         .onDisappear { AgentChatDrafts.shared.unregister(model) }
-        .onChange(of: model.draft) { draft in
-            guard isUncoilAuto else { return }
-            let sessions = projectStore.sessions.filter { $0.projectID == record.projectID }
-            effort.update(
-                draft: draft, conversation: autoState,
-                roster: UncoilAutoRoster.entries(sessions: sessions, installed: settings.installedProviders),
-                records: sessions, settings: settings)
-        }
         .onChange(of: model.followRequest) { _ in follower.scrollToEnd() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.container")
@@ -130,11 +121,17 @@ struct AgentChatView: View {
                 ChatWaitingAgents(participantIDs: model.participantIDs, projectID: record.projectID)
                     .frame(maxWidth: Self.columnWidth + 24)
                     .padding(.horizontal, 16)
+                AutoRunStrip(conversation: autoState, projectID: record.projectID)
+                    .frame(maxWidth: Self.columnWidth + 24)
+                    .padding(.horizontal, 16)
             }
             ChatComposer(
                 model: model,
                 placeholder: isUncoilAuto
-                    ? (autoTarget.map { String(localized: "Message @\($0.handle) — @ for another agent, / for commands") }
+                    ? (autoTarget.map { target in
+                        settings.uncoilAuto.harness.enabled && settings.uncoilAuto.harness.mode == .everyMessage
+                            ? String(localized: "Give @\(target.handle) a task for an Auto run — @ to message an agent directly")
+                            : String(localized: "Message @\(target.handle) — /auto for an Auto run, @ for another agent") }
                         ?? String(localized: "Message your agents — @ to choose one, / for commands"))
                     : String(localized: "Message \(record.provider.displayName)…"),
                 isBusy: agentsWorking,
@@ -143,17 +140,6 @@ struct AgentChatView: View {
                     ? AnyView(UncoilAutoTargetPicker(conversation: autoState, roster: openRoster, resolved: autoTarget))
                     : nil
             )
-            // Floats above the composer rather than taking a row of its own:
-            // chips coming and going never move the transcript. Out of the
-            // way while the @ and / completions are open, which hang there too.
-            .overlay(alignment: .topLeading) {
-                if isUncoilAuto, model.suggestions.isEmpty {
-                    EffortSuggestionBar(conversation: autoState, draft: model.draft)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(height: 0, alignment: .bottom)
-                        .offset(y: -6)
-                }
-            }
             .frame(maxWidth: Self.columnWidth + 24)
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
@@ -171,9 +157,7 @@ struct AgentChatView: View {
             .frame(maxWidth: Self.columnWidth)
             .padding(.horizontal, 24)
             .padding(.top, 4)
-            // Room for the effort chips that float over the composer's top
-            // edge; fixed, so their coming and going moves nothing.
-            .padding(.bottom, isUncoilAuto ? 44 : 20)
+            .padding(.bottom, 20)
             .frame(maxWidth: .infinity)
             .background(ChatScrollProbeView(follower: follower))
         }

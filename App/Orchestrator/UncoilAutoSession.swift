@@ -10,19 +10,25 @@ import SwiftTerm
 struct UncoilAutoEnvironment {
     /// The project's agents, by handle.
     var roster: () -> [UncoilAutoRoster.Entry]
-    /// Starts a new session of the agent in the project, with the effort the
-    /// conversation chose for it if any; nil when it cannot.
-    var startSession: (AgentProvider, _ effort: String?) -> UncoilAutoRoster.Entry?
+    /// Starts a new session of the agent in the project; nil when it cannot.
+    var startSession: (AgentProvider) -> UncoilAutoRoster.Entry?
     /// Makes sure the session's process is running, launching it if not.
     var ensureRunning: (UUID) -> Void
     /// Types a prompt into the session's own terminal and submits it.
     var deliver: (_ text: String, _ sessionID: UUID, _ provider: AgentProvider) async -> Void
-    /// Types one of the agent's own commands, which must not name the session.
-    var deliverCommand: ((_ text: String, _ sessionID: UUID, _ provider: AgentProvider) async -> Void)? = nil
+    /// Types text Uncoil sends on its own account, which must not name the
+    /// session: an Auto run's prompts.
+    var deliverQuietly: ((_ text: String, _ sessionID: UUID, _ provider: AgentProvider) async -> Void)? = nil
     /// Whether this conversation may address the agent at all.
     var allows: (AgentProvider) -> Bool = { _ in true }
-    /// Where decisions go, while the user keeps a decision log.
-    var decisionLog: () -> EffortDecisionLog? = { nil }
+    /// How Auto runs are set up now.
+    var autoSettings: () -> AutoHarnessSettings = { AutoHarnessSettings() }
+    /// The harness an Auto run is driven through, given Main and the way
+    /// this conversation delivers prompts; nil where runs are not possible.
+    var harness: (
+        _ main: @escaping () async -> AgentItemSource?,
+        _ deliver: @escaping (AutoSessionHandle, String) async -> Void
+    ) -> AutoHarnessEnvironment? = { _, _ in nil }
     var interrupt: (UUID) -> Void
     var isWorking: (UUID) -> Bool
     /// Starts and stops reading the session's transcript.
@@ -50,6 +56,10 @@ struct UncoilAutoEnvironment {
 /// A prompt that names nobody goes to the conversation's target — the agent
 /// chosen on the composer's target button, or the one `UncoilAutoRouting`
 /// picks — and stays in the conversation only when there is no agent at all.
+///
+/// `/auto <task>` — or any such prompt, when Settings makes every message a
+/// task — starts an Auto run instead: the target becomes Main, and an
+/// `AutoOrchestrator` brings in the specialists around it.
 @MainActor
 final class UncoilAutoSession: StructuredAgentSession {
     let sessionID: UUID
@@ -66,8 +76,8 @@ final class UncoilAutoSession: StructuredAgentSession {
     private let environment: UncoilAutoEnvironment
     private let store: UncoilAutoStore?
     let conversation: UncoilAutoConversationState
-    /// The decision logged for each session's running turn, and when it went.
-    private var openDecisions: [UUID: (id: String, sent: Date)] = [:]
+    /// The Auto run in progress, if any.
+    private(set) var orchestrator: AutoOrchestrator?
     private var renderer = AgentTerminalRenderer()
     private var capturedOutput = Data()
     private var stopped = false
@@ -101,9 +111,7 @@ final class UncoilAutoSession: StructuredAgentSession {
         self.transcripts = transcripts
         self.conversation = conversation ?? .for(record.id)
         self.conversation.onChange = { [weak self] in self?.persist() }
-        self.conversation.sendCommand = { [weak self] text, source in
-            await self?.sendCommand(text, to: source)
-        }
+        self.conversation.cancelRun = { [weak self] in self?.cancelRun() }
     }
 
     /// Picks the conversation up where it was left: what was said, whom it
@@ -112,10 +120,8 @@ final class UncoilAutoSession: StructuredAgentSession {
         guard let saved = store?.load() else { return }
         conversation.restore(
             excluded: Set(saved.excludedAgents ?? []),
-            applied: Dictionary(uniqueKeysWithValues: (saved.appliedEffort ?? [:]).compactMap { key, level in
-                UUID(uuidString: key).map { ($0, level) }
-            }),
-            target: saved.target)
+            target: saved.target,
+            runs: saved.runs ?? [])
         for event in saved.events { publish(event) }
         for (key, texts) in saved.echoes ?? [:] {
             if let id = UUID(uuidString: key) { pendingEchoes[id] = texts }
@@ -163,8 +169,9 @@ final class UncoilAutoSession: StructuredAgentSession {
         draftHandler?(SessionImageDrop.promptFragment(relativePaths: attachments.map(\.promptPath)))
     }
 
-    /// Stops every agent in the conversation that is working.
+    /// Stops the Auto run, and every agent in the conversation that is working.
     func interrupt() {
+        orchestrator?.cancel()
         for id in participants.keys where environment.isWorking(id) {
             environment.interrupt(id)
         }
@@ -184,6 +191,7 @@ final class UncoilAutoSession: StructuredAgentSession {
 
     func stop(terminateServer: Bool) {
         guard !stopped else { return }
+        orchestrator?.cancel()
         // Whatever the agents wrote in the last moments is read before the
         // positions are written down, so the next launch does not skip it.
         environment.pollTranscripts()
@@ -208,6 +216,11 @@ final class UncoilAutoSession: StructuredAgentSession {
     // MARK: - Sending
 
     private func send(_ text: String, to mentions: [String], raw: String) async {
+        let auto = environment.autoSettings()
+        if mentions.isEmpty, auto.enabled, auto.mode == .everyMessage, !text.hasPrefix("/") {
+            await startRun(text, raw: raw)
+            return
+        }
         let roster = environment.roster()
         // A prompt that names nobody goes to the conversation's target, which
         // the first such send pins so it stays put until the user changes it.
@@ -226,8 +239,7 @@ final class UncoilAutoSession: StructuredAgentSession {
                     blocked.append(handle)
                 } else if let source = entry.source {
                     targets.append(source)
-                } else if let started = environment.startSession(
-                    entry.provider, conversation.takeLaunchEffort(for: entry.provider))?.source {
+                } else if let started = environment.startSession(entry.provider)?.source {
                     targets.append(started)
                     note(.info, "Started \(started.provider.displayName) as @\(started.handle).")
                 }
@@ -261,7 +273,6 @@ final class UncoilAutoSession: StructuredAgentSession {
             return
         }
         guard !text.isEmpty else { return }
-        let reading = isAgentCommand ? [] : conversation.takeStanding()
         if let relay {
             note(.info, "Included @\(relay.source.handle)'s last reply for \(targets.map { "@\($0.handle)" }.joined(separator: ", ")).")
         }
@@ -270,7 +281,6 @@ final class UncoilAutoSession: StructuredAgentSession {
             environment.ensureRunning(target.sessionID)
             let body = relay.map { Self.withContext(text, from: $0.source, reply: $0.text) } ?? text
             pendingEchoes[target.sessionID, default: []].append(body)
-            if !isAgentCommand { logDecision(for: target, prompt: text, reading: reading) }
             await environment.deliver(body, target.sessionID, target.provider)
             if isAgentCommand, NativeAgentCommands.answersInTerminal(text, provider: target.provider) {
                 publish(.notice(AgentNotice(
@@ -319,7 +329,7 @@ final class UncoilAutoSession: StructuredAgentSession {
                 note(.warning, "\(provider.displayName) is not open to Uncoil Auto. Allow it in the agents panel or in Settings.")
                 return
             }
-            guard let started = environment.startSession(provider, conversation.takeLaunchEffort(for: provider))?.source else {
+            guard let started = environment.startSession(provider)?.source else {
                 note(.error, "\(provider.displayName) could not be started here.")
                 return
             }
@@ -343,6 +353,14 @@ final class UncoilAutoSession: StructuredAgentSession {
                 return "@\(entry.handle) — \(entry.provider.displayName), \(state)"
             }
             note(.info, lines.isEmpty ? "No agents in this project yet." : lines.joined(separator: "\n"))
+        case .auto:
+            await startRun(argument, raw: nil)
+        case .cancel:
+            if orchestrator?.isRunning == true {
+                cancelRun()
+            } else {
+                note(.info, "No Auto run is going.")
+            }
         case .clear:
             hub.reset(sessionID)
             log.removeAll()
@@ -375,6 +393,11 @@ final class UncoilAutoSession: StructuredAgentSession {
             if case .userMessage(let text, _) = item.kind, consumeEcho(text, for: source.sessionID) { return }
             let id = "\(source.sessionID.uuidString.prefix(8)):\(item.id)"
             var kind = item.kind
+            // The block an Auto run reads is for the run; the conversation
+            // shows the prose around it.
+            if case .agentMessage(let text) = kind, text.contains("```\(AutoHandoff.fence)") {
+                kind = .agentMessage(text: Self.withoutHandoff(text))
+            }
             // A tool's result read without its start — the start was mirrored
             // before a relaunch — knows only that "a tool" finished. What the
             // tool was is already here; keep it, and take the result.
@@ -391,7 +414,6 @@ final class UncoilAutoSession: StructuredAgentSession {
         case .notice(let notice):
             note(notice.level, "@\(source.handle): \(notice.message)")
         case .turnCompleted(_, let outcome):
-            closeDecision(for: source.sessionID, outcome: outcome)
             switch outcome {
             case .interrupted: note(.info, "@\(source.handle) was interrupted.")
             case .failed(let message): note(.error, "@\(source.handle)'s turn failed\(message.map { ": \($0)" } ?? ".")")
@@ -451,52 +473,103 @@ final class UncoilAutoSession: StructuredAgentSession {
             positions: positions,
             echoes: pendingEchoes,
             excludedAgents: conversation.excludedAgents,
-            appliedEffort: conversation.appliedEffort,
-            target: conversation.target)
+            target: conversation.target,
+            runs: conversation.runs)
     }
 
-    // MARK: - Effort
+    // MARK: - Auto runs
 
-    /// One of the agent's own commands, sent from the composer's effort
-    /// suggestion: it does not name the session, and its echo in the
-    /// transcript is not mirrored back as if the user had typed it here.
-    private func sendCommand(_ text: String, to source: AgentItemSource) async {
-        guard isReady else { return }
+    /// Starts an Auto run on `task`, with the conversation's target as Main.
+    private func startRun(_ task: String, raw: String?) async {
+        let task = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let raw {
+            publish(.itemCompleted(AgentItem(
+                id: "auto-\(UUID().uuidString)",
+                kind: .userMessage(text: raw.trimmingCharacters(in: .whitespacesAndNewlines), attachments: []),
+                status: .completed, native: nil)))
+        }
+        guard environment.autoSettings().enabled else {
+            note(.warning, "Auto runs are turned off in Settings › Uncoil Auto.")
+            return
+        }
+        guard !task.isEmpty else {
+            note(.info, "Say what the run should do: /auto <task>.")
+            return
+        }
+        guard orchestrator?.isRunning != true else {
+            note(.warning, "An Auto run is already going. /cancel stops it.")
+            return
+        }
+        guard let harness = environment.harness(
+            { [weak self] in await self?.mainForRun() },
+            { [weak self] handle, text in await self?.deliverForRun(text, to: handle) }
+        ) else {
+            note(.error, "Auto runs are not available here.")
+            return
+        }
+        let orchestrator = AutoOrchestrator(task: task, environment: harness) { [weak self] report in
+            self?.take(report)
+        }
+        self.orchestrator = orchestrator
+        orchestrator.start()
+    }
+
+    func cancelRun() {
+        orchestrator?.cancel()
+    }
+
+    /// Main: the conversation's target, started when it has no session yet.
+    private func mainForRun() async -> AgentItemSource? {
+        let roster = environment.roster()
+        guard let entry = UncoilAutoRouting.target(chosen: conversation.target, roster: roster, allows: environment.allows)
+        else { return nil }
+        var source = entry.source
+        if source == nil, let started = environment.startSession(entry.provider)?.source {
+            note(.info, "Started \(started.provider.displayName) as @\(started.handle).")
+            source = started
+        }
+        guard let source else { return nil }
+        if conversation.target == nil { conversation.target = source.handle }
         listen(to: source)
         environment.ensureRunning(source.sessionID)
-        pendingEchoes[source.sessionID, default: []].append(text)
-        let deliver = environment.deliverCommand ?? environment.deliver
-        await deliver(text, source.sessionID, source.provider)
-        note(.info, "Set @\(source.handle)'s effort: \(text).")
+        return source
     }
 
-    /// `reading` is what the advisor last said while the prompt was written.
-    private func logDecision(for target: AgentItemSource, prompt: String, reading: [EffortSuggestionItem]) {
-        guard let log = environment.decisionLog(),
-              let item = reading
-                .first(where: { $0.entry.provider == target.provider && ($0.entry.sessionID == nil || $0.entry.sessionID == target.sessionID) })
-        else { return }
-        let suggestion = item.suggestion
-        let id = UUID().uuidString
-        let context = EffortContext(prompt: prompt, provider: target.provider)
-        log.append(EffortDecisionLog.Decision(
-            id: id, date: .now, provider: target.provider.rawValue, prompt: prompt,
-            state: context.state, features: suggestion.features, suggested: suggestion.level,
-            confidence: suggestion.confidence, current: suggestion.current,
-            followed: suggestion.current == suggestion.level))
-        openDecisions[target.sessionID] = (id, .now)
-    }
-
-    private func closeDecision(for sessionID: UUID, outcome: AgentTurnOutcome) {
-        guard let open = openDecisions.removeValue(forKey: sessionID),
-              let log = environment.decisionLog() else { return }
-        let result = switch outcome {
-        case .completed: "completed"
-        case .interrupted: "interrupted"
-        case .failed: "failed"
+    /// A run's prompt, typed without naming the session. Main's is expected
+    /// back in its transcript and not shown twice; a specialist is not part
+    /// of this conversation, so nothing it says is mirrored here.
+    private func deliverForRun(_ text: String, to handle: AutoSessionHandle) async {
+        if participants[handle.sessionID] != nil {
+            pendingEchoes[handle.sessionID, default: []].append(text)
         }
-        log.append(EffortDecisionLog.Outcome(
-            id: open.id, date: .now, seconds: Date().timeIntervalSince(open.sent), result: result))
+        let deliver = environment.deliverQuietly ?? environment.deliver
+        await deliver(text, handle.sessionID, handle.provider)
+    }
+
+    private func take(_ report: AutoOrchestrator.Report) {
+        switch report {
+        case .run(let run):
+            conversation.update(run)
+        case .notice(let level, let message, let open):
+            publish(.notice(AgentNotice(
+                level: level, message: message,
+                action: open.map { .openTerminal(sessionID: $0.sessionID, handle: $0.handle) })))
+        case .handoff(let role, let handle, let handoff):
+            publish(.itemCompleted(AgentItem(
+                id: "auto-\(role.rawValue)-\(UUID().uuidString)",
+                kind: .agentMessage(text: handoff.digest()),
+                status: .completed, native: nil,
+                source: AgentItemSource(sessionID: handle.sessionID, provider: handle.provider, handle: handle.handle))))
+        }
+    }
+
+    /// The text with its handoff block taken out.
+    nonisolated static func withoutHandoff(_ text: String) -> String {
+        guard let open = text.range(of: "```\(AutoHandoff.fence)") else { return text }
+        let after = text[open.upperBound...]
+        let close = after.range(of: "```").map { $0.upperBound } ?? text.endIndex
+        return (String(text[..<open.lowerBound]) + String(text[close...]))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -514,10 +587,10 @@ final class UncoilAutoStore {
         var echoes: [String: [String]]?
         /// Agents this conversation was narrowed away from, by provider.
         var excludedAgents: [String]?
-        /// Efforts applied from this conversation, by session id.
-        var appliedEffort: [String: String]?
         /// Where prompts naming nobody go, by handle.
         var target: String?
+        /// The conversation's Auto runs and their diagnostics.
+        var runs: [AutoRun]?
     }
 
     static let eventLimit = 3_000
@@ -550,8 +623,8 @@ final class UncoilAutoStore {
         positions: [UUID: NativeTranscriptPosition] = [:],
         echoes: [UUID: [String]] = [:],
         excludedAgents: Set<String> = [],
-        appliedEffort: [UUID: String] = [:],
-        target: String? = nil
+        target: String? = nil,
+        runs: [AutoRun] = []
     ) {
         pending = Saved(
             events: events,
@@ -559,8 +632,8 @@ final class UncoilAutoStore {
             positions: Dictionary(uniqueKeysWithValues: positions.map { ($0.key.uuidString, $0.value) }),
             echoes: Dictionary(uniqueKeysWithValues: echoes.filter { !$0.value.isEmpty }.map { ($0.key.uuidString, $0.value) }),
             excludedAgents: excludedAgents.isEmpty ? nil : excludedAgents.sorted(),
-            appliedEffort: appliedEffort.isEmpty ? nil : Dictionary(uniqueKeysWithValues: appliedEffort.map { ($0.key.uuidString, $0.value) }),
-            target: target)
+            target: target,
+            runs: runs.isEmpty ? nil : runs)
         guard !scheduled else { return }
         scheduled = true
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in

@@ -508,6 +508,28 @@ final class ProjectStore: ObservableObject {
         objectWillChange.send()
     }
 
+    /// Points a session at the conversation its agent is in *now*, replacing
+    /// whatever it pointed at before.
+    ///
+    /// For an agent that can switch conversations from inside itself — Codex's
+    /// `/new` and `/resume` — so the record follows it rather than resuming the
+    /// thread it started in. Refused when another session already owns the id.
+    @discardableResult
+    func bindProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
+        guard !providerSessionID.isEmpty,
+              !sessions.contains(where: {
+                  $0.id != id && $0.providerSessionID == providerSessionID
+              }),
+              let index = sessions.firstIndex(where: { $0.id == id })
+        else { return false }
+        guard sessions[index].providerSessionID != providerSessionID else { return true }
+        sessions[index].providerSessionID = providerSessionID
+        sessions[index].metadataVersion = Self.currentSessionSchemaVersion
+        saveSessions()
+        objectWillChange.send()
+        return true
+    }
+
     @discardableResult
     func claimProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
         guard !providerSessionID.isEmpty,
@@ -650,6 +672,11 @@ final class ProjectStore: ObservableObject {
         if let data = try? Data(contentsOf: sessionGroupsURL),
            let decoded = VersionedDocument<[SessionGroup]>.decode(data, schema: .sessionGroups) {
             sessionGroups = decoded.payload
+        }
+        for index in sessions.indices
+        where SessionAutoTitle.isTerminalReply(sessions[index].displayTitle) {
+            sessions[index].title = "\(sessions[index].provider.rawValue): new session"
+            if sessionsAreOursToRewrite { needsSessionSave = true }
         }
         if adoptMissingSortIndexes(), sessionsAreOursToRewrite {
             needsSessionSave = true

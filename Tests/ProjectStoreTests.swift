@@ -770,7 +770,7 @@ final class SettingsStoreTests: XCTestCase {
         )
         XCTAssertEqual(
             AgentWorkingMode.approveForMe.launchArguments(for: .codex),
-            ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
+            ["--approve-for-me"]
         )
         XCTAssertEqual(
             AgentWorkingMode.fullAccess.launchArguments(for: .codex),

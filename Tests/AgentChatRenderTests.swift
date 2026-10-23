@@ -160,10 +160,10 @@ final class UncoilAutoPanelRenderTests: XCTestCase {
     }
 }
 
-/// The effort advisor's two surfaces: the chips above the composer, and its
-/// settings page.
+/// Uncoil Auto's surfaces: the composer's target button, the run as the
+/// conversation shows it, its diagnostics, and the settings areas.
 @MainActor
-final class EffortAdvisorRenderTests: XCTestCase {
+final class UncoilAutoRenderTests: XCTestCase {
     private func render(_ view: some View, size: NSSize, name: String, to directory: String) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height).background(Theme.bg))
         host.frame = NSRect(origin: .zero, size: size)
@@ -176,88 +176,109 @@ final class EffortAdvisorRenderTests: XCTestCase {
             .write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
     }
 
-    func testTheSuggestionsAndTheSettingsPageRender() throws {
+    /// A run that went through every kind of step.
+    static func sampleRun() -> AutoRun {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        var run = AutoRun(task: "Add a retry budget to the upload client and cover it with tests", startedAt: start)
+        run.participants = [
+            AutoParticipant(sessionID: UUID(), role: "main", provider: .claude, handle: "claude", model: "opus", effort: "high", state: .idle),
+            AutoParticipant(sessionID: UUID(), role: "explorer", provider: .claude, handle: "explorer", model: "sonnet", effort: "medium", state: .done),
+            AutoParticipant(sessionID: UUID(), role: "worker", provider: .codex, handle: "worker", model: "gpt-5-codex", effort: "medium",
+                            worktreePath: "/repo/.uncoil-worktrees/auto-worker-1a2b3c", state: .working),
+            AutoParticipant(sessionID: UUID(), role: "advisor", provider: .claude, handle: "advisor", model: "fable", state: .done),
+        ]
+        var at = start
+        func log(_ kind: AutoRunEvent.Kind, _ title: String, _ detail: String? = nil) {
+            at = at.addingTimeInterval(37)
+            run.log(kind, title, detail: detail, at: at)
+        }
+        log(.phase, "Exploring the project…")
+        log(.session, "Explorer · Claude · sonnet · medium started", "Directory: /repo")
+        log(.handoff, "Explorer returned a structured result", "UploadClient.swift holds the retry loop.")
+        log(.phase, "Planning…")
+        log(.advisor, "Advisor checkpoint: pre_plan")
+        log(.phase, "Implementing…")
+        log(.verification, "Verification failed", "swift test: exit 1")
+        log(.decision, "Failure triage: retry", "Deterministic: retry\nAuthority: shadow")
+        log(.policy, "Decision overridden: escalate_to_advisor", "the same failure 2 times")
+        run.record(AutoDecisionRecord(
+            date: at, kind: .failureTriage, question: AutoDecisionKind.failureTriage.schema.question,
+            options: AutoDecisionKind.failureTriage.schema.optionIDs, state: "Task: …\nVerdict: failed",
+            authority: .shadow,
+            answer: AutoDecisionAnswer(choice: "escalate_to_advisor",
+                                       probabilities: ["retry": 0.21, "return_to_main": 0.08, "escalate_to_advisor": 0.71],
+                                       confidence: 0.62, model: "laya", latencyMilliseconds: 41),
+            deterministic: "retry", action: "retry"))
+        run.verifications = [AutoVerificationRecord(
+            attempt: 1, date: at, verdict: .failed, claimedStatus: "done", turnOutcome: "completed",
+            suites: [.init(name: "swift test", command: "swift test", exitCode: 1, timedOut: false,
+                           outputTail: "UploadClientTests.testRetryBudget: XCTAssertEqual failed: (\"3\") is not equal to (\"2\")")],
+            changedFiles: ["Sources/UploadClient.swift"], workerCommands: ["swift build → exit 0"], signature: "a1b2c3d4e5f6")]
+        run.phase = .implementing
+        return run
+    }
+
+    func testTheRunAndTheSettingsRender() throws {
         guard let directory = ProcessInfo.processInfo.environment["UNCOIL_CHAT_SAMPLE_DIR"] else {
             throw XCTSkip("Set UNCOIL_CHAT_SAMPLE_DIR to write the chat samples")
         }
-        let draft = "@claude @codex @gemini fix the typo in the README"
         let conversation = UncoilAutoConversationState(sessionID: UUID())
-        func item(_ handle: String, _ provider: AgentProvider, started: Bool, level: String, current: String?,
-                  application: EffortSuggestionItem.Application) -> EffortSuggestionItem {
-            let features = HeuristicEffortAdvisor.read(EffortContext(prompt: "fix the typo in the README", provider: provider))
-            return EffortSuggestionItem(
-                entry: .init(handle: handle, provider: provider, sessionID: started ? UUID() : nil, title: ""),
-                suggestion: EffortSuggestion(provider: provider, level: level, confidence: 0.82,
-                                             reasons: ["reads as trivial"], features: features, current: current),
-                application: application)
-        }
-        conversation.publish([
-            item("claude", .claude, started: true, level: "low", current: "high", application: .command),
-            item("codex", .codex, started: true, level: "minimal", current: nil, application: .unavailable("at launch")),
-            item("gemini", .gemini, started: false, level: "low", current: "low", application: .atLaunch),
-        ])
-        // Placed the way the conversation places it: floating over the
-        // composer's top edge, not in a row of its own.
-        let typing = AgentChatModel(sessionID: UUID(), hub: AgentEventHub(), actions: AgentChatActions(
-            submit: { _ in }, interrupt: {}, respond: { _, _ in true }, isReady: { true }))
-        typing.draft = draft
-        try render(
-            VStack {
-                Spacer()
-                ChatComposer(model: typing, placeholder: "")
-                    .overlay(alignment: .topLeading) {
-                        EffortSuggestionBar(conversation: conversation, draft: draft)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(height: 0, alignment: .bottom)
-                            .offset(y: -6)
-                    }
-            }.padding(16),
-            size: NSSize(width: 820, height: 150), name: "effort-suggestions.png", to: directory)
+        conversation.update(Self.sampleRun())
 
-        // The composer with Uncoil Auto's target button beside the field.
+        // The composer with the run strip above it and the target button beside the field.
         let chat = AgentChatModel(sessionID: UUID(), hub: AgentEventHub(), actions: AgentChatActions(
             submit: { _ in }, interrupt: {}, respond: { _, _ in true }, isReady: { true }))
         let target = UncoilAutoRoster.Entry(handle: "claude", provider: .claude, sessionID: UUID(), title: "fix")
-        func composer(_ resolved: UncoilAutoRoster.Entry?, placeholder: String) -> some View {
-            ChatComposer(
-                model: chat, placeholder: placeholder,
-                leading: AnyView(UncoilAutoTargetPicker(conversation: conversation, roster: [target], resolved: resolved)))
-                .environmentObject(SessionStore())
-        }
         try render(
-            VStack(spacing: 14) {
-                composer(target, placeholder: "Message @claude — @ for another agent, / for commands")
-                composer(nil, placeholder: "Message your agents — @ to choose one, / for commands")
-            }.padding(16),
-            size: NSSize(width: 820, height: 170), name: "composer-target.png", to: directory)
+            VStack(spacing: 4) {
+                Spacer()
+                AutoRunStrip(conversation: conversation, projectID: UUID())
+                ChatComposer(
+                    model: chat, placeholder: "Message @claude — /auto for an Auto run, @ for another agent",
+                    leading: AnyView(UncoilAutoTargetPicker(conversation: conversation, roster: [target], resolved: target)))
+            }
+            .padding(16)
+            .environmentObject(SessionStore()),
+            size: NSSize(width: 820, height: 170), name: "auto-composer.png", to: directory)
 
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("advisor-settings-\(UUID())")
+        try render(
+            AutoRunPanelSection(conversation: conversation, onOpen: { _ in })
+                .padding(8)
+                .frame(width: UncoilAutoAgentsPanel.width, alignment: .top)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(Theme.sidebarSurface),
+            size: NSSize(width: UncoilAutoAgentsPanel.width, height: 300), name: "auto-panel.png", to: directory)
+
+        try render(
+            AutoRunDiagnosticsView(conversation: conversation),
+            size: NSSize(width: 820, height: 1100), name: "auto-diagnostics.png", to: directory)
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("auto-settings-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
         // Installed agents are what the page lists: seed them the way
         // detection records them, with the real CLIs where they exist so the
-        // effort ladders are read from their own --help.
+        // model and effort lists are read from their own --help.
         SettingsStore(directory: root).save()
         let file = root.appendingPathComponent("settings.json")
         var json = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
         json["resolvedBinaries"] = [
             "claude": AgentAdapterSupport.locateBinary("claude") ?? "/usr/bin/true",
             "codex": AgentAdapterSupport.locateBinary("codex") ?? "/usr/bin/true",
-            "gemini": "/usr/bin/true",
         ]
         try JSONSerialization.data(withJSONObject: json).write(to: file)
         let settings = SettingsStore(directory: root)
-        settings.setUncoilAutoAllows(.gemini, false)
-        settings.updateUncoilAuto {
-            $0.advisor.engine = .laya
-            $0.advisor.perAgent["claude"] = AgentEffortPolicy(minimum: "low", maximum: "xhigh")
+        settings.updateAutoHarness {
+            $0.roles[.worker]?.provider = .codex
+            $0.roles[.worker]?.model = nil
+            $0.roles[.worker]?.effort = "high"
         }
-        let page = UncoilAutoSettingsPage(back: {}).environmentObject(settings)
-        // The ladders are read from the CLIs asynchronously; give them a moment.
-        let warm = NSHostingView(rootView: page)
-        warm.frame = NSRect(x: 0, y: 0, width: 720, height: 1600)
-        RunLoop.main.run(until: Date().addingTimeInterval(3))
-        try render(
-            page,
-            size: NSSize(width: 720, height: 1600), name: "effort-settings.png", to: directory)
+        for area in UncoilAutoSettingsPage.Area.allCases {
+            let page = UncoilAutoSettingsPage(back: {}, area: area).environmentObject(settings)
+            // The lists are read from the CLIs asynchronously; give them a moment.
+            let warm = NSHostingView(rootView: page)
+            warm.frame = NSRect(x: 0, y: 0, width: 720, height: 1800)
+            RunLoop.main.run(until: Date().addingTimeInterval(area == .roles ? 3 : 0.5))
+            try render(page, size: NSSize(width: 720, height: 1800), name: "auto-settings-\(area.rawValue).png", to: directory)
+        }
     }
 }

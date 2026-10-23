@@ -26,12 +26,10 @@ extension UncoilAutoEnvironment {
         }
         return UncoilAutoEnvironment(
             roster: roster,
-            startSession: { provider, effort in
+            startSession: { provider in
                 guard let project = project() else { return nil }
                 let record = SessionLauncher(projects: projects, settings: settings)
-                    .launch(SessionLaunchRequest(
-                        project: project, provider: provider,
-                        launchSelection: effort.map { AgentLaunchSelection(effort: $0) }))
+                    .launch(SessionLaunchRequest(project: project, provider: provider))
                 ensureRunning(record.id)
                 return roster().first { $0.sessionID == record.id }
             },
@@ -39,18 +37,18 @@ extension UncoilAutoEnvironment {
             deliver: { text, id, provider in
                 await TerminalRegistry.shared.submitText(text, for: id, provider: provider)
             },
-            deliverCommand: { text, id, provider in
+            deliverQuietly: { text, id, provider in
                 await TerminalRegistry.shared.submitText(text, for: id, provider: provider, namesTheSession: false)
             },
             allows: { [weak settings] provider in
                 guard let settings else { return false }
                 return UncoilAutoConversationState.for(sessionID).allows(provider, settings: settings.uncoilAuto)
             },
-            decisionLog: { [weak settings] in
-                guard let settings, settings.uncoilAuto.advisor.enabled,
-                      settings.uncoilAuto.advisor.keepDecisionLog,
-                      UpdateChannel.installed() == .edge else { return nil }
-                return EffortDecisionLog(url: EffortDecisionLog.defaultURL)
+            autoSettings: { [weak settings] in settings?.uncoilAuto.harness ?? AutoHarnessSettings() },
+            harness: { main, deliver in
+                AutoHarnessEnvironment.live(
+                    projectID: projectID, projects: projects, sessions: sessions, settings: settings,
+                    main: main, deliver: deliver)
             },
             interrupt: { TerminalRegistry.shared.interrupt($0) },
             isWorking: { sessions.status(of: $0).isWorking },

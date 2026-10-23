@@ -140,6 +140,7 @@ struct UncoilAutoAgentsPanel: View {
 
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 6) {
+                    AutoRunPanelSection(conversation: conversation, onOpen: { openWindow(.session, value: $0) })
                     ForEach(entries) { entry in
                         if let id = entry.sessionID,
                            let record = projectStore.sessions.first(where: { $0.id == id }) {

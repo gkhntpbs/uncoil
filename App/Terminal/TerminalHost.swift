@@ -38,6 +38,7 @@ final class TerminalRegistry {
 
     func markDead(_ recordID: UUID) {
         deadSessions.insert(recordID)
+        CodexThreadTracker.shared.stop(recordID)
         // The process is gone: its delegate can receive nothing further, and a
         // Codex session that ended keeps an open transport for no one.
         delegates[recordID] = nil
@@ -106,16 +107,19 @@ final class TerminalRegistry {
                                          projectStore: projectStore)
         }
         terminals[record.id] = view
-        if structuredSessions[record.id] == nil {
-            discoverCodexSessionID(
-                for: record,
-                project: project,
-                account: account,
-                settings: settings,
+        if structuredSessions[record.id] == nil, record.provider == .codex {
+            // The thread Codex had is gone, so the record has to let go of it
+            // before it can be told which thread started instead.
+            if resumeObstacles[record.id] == .gone {
+                projectStore.clearProviderSessionID(record.id)
+            }
+            CodexThreadTracker.shared.track(
+                recordID: record.id,
+                codexHome: account?.configDirectory(profilesRoot: settings.profilesRootURL)
+                    ?? CodexSessionStore.defaultHome(),
+                cwd: record.workingDirectory(in: project),
                 projectStore: projectStore,
-                // The thread Codex had is gone, so the record has to let go of
-                // it before it can be told which thread started instead.
-                rediscovers: resumeObstacles[record.id] == .gone
+                sessionStore: sessionStore
             )
         }
 
@@ -252,45 +256,6 @@ final class TerminalRegistry {
         let providerArguments = settings.extraArguments[AgentProvider.claude.rawValue]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return providerArguments?.isEmpty != false && (record.extraArguments?.isEmpty ?? true)
-    }
-
-    private func discoverCodexSessionID(
-        for record: SessionRecord,
-        project: Project,
-        account: AccountProfile?,
-        settings: SettingsStore,
-        projectStore: ProjectStore,
-        rediscovers: Bool = false
-    ) {
-        guard record.provider == .codex,
-              record.providerSessionID == nil || rediscovers
-        else { return }
-        let codexHome = account?.configDirectory(profilesRoot: settings.profilesRootURL)
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".codex", isDirectory: true)
-        let cwd = record.workingDirectory(in: project)
-        let launchedAfter = Date().addingTimeInterval(-2)
-        let recordID = record.id
-
-        Task.detached(priority: .utility) {
-            if rediscovers {
-                await MainActor.run { projectStore.clearProviderSessionID(recordID) }
-            }
-            for _ in 0..<60 {
-                let candidates = CodexSessionLocator.candidates(
-                    codexHome: codexHome,
-                    cwd: cwd,
-                    startedAfter: launchedAfter
-                )
-                for candidate in candidates {
-                    let claimed = await MainActor.run {
-                        projectStore.claimProviderSessionID(candidate.id, for: recordID)
-                    }
-                    if claimed { return }
-                }
-                try? await Task.sleep(nanoseconds: 500_000_000)
-            }
-        }
     }
 
     /// PTY environment: SwiftTerm's helper env has no HOME/USER/PATH —
@@ -976,6 +941,7 @@ final class TerminalRegistry {
         structuredSessions[recordID] = nil
         AgentEventHub.shared.end(recordID)
         RuntimeClient.shared.kill(sid: recordID)
+        CodexThreadTracker.shared.stop(recordID)
         terminals[recordID] = nil
         delegates[recordID] = nil
         deadSessions.remove(recordID)

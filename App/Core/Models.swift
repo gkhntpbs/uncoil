@@ -172,7 +172,7 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
         case (.codex, .askForApproval):
             "Codex may write inside the project, and asks before anything beyond it."
         case (.codex, .approveForMe):
-            "Codex runs without asking for approval, inside the project's bounds."
+            "Codex's automatic reviewer answers approvals, inside the project's bounds."
         case (.codex, .fullAccess):
             "Codex runs without approval prompts or sandbox limits."
         case (.hermes, .dangerouslySkipPermissions):
@@ -219,8 +219,12 @@ enum AgentWorkingMode: String, Codable, CaseIterable, Identifiable {
             ["--sandbox", "read-only", "--ask-for-approval", "on-request"]
         case (.codex, .askForApproval):
             ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"]
+        // Codex's own "Approve for me" (0.160+): approvals are routed to its
+        // automatic reviewer inside workspace-write, rather than never asked
+        // for at all — which is what `--ask-for-approval never` meant, and
+        // not what the mode is called.
         case (.codex, .approveForMe):
-            ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
+            ["--approve-for-me"]
         case (.codex, .fullAccess):
             ["--sandbox", "danger-full-access", "--ask-for-approval", "never"]
         // The only approval flag OpenCode documents: "auto-approve permissions
@@ -711,6 +715,28 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
     }
 
 
+    /// What to hand this app for a project directory, or nil when it has
+    /// nothing useful to do with it.
+    ///
+    /// Xcode is the one that needs telling: given a bare folder it opens an
+    /// empty window, so it gets the workspace, the project or the package
+    /// manifest — and is not offered at all for a folder that has none.
+    func openTarget(forDirectory directory: URL) -> URL? {
+        guard opensDirectories else { return nil }
+        guard self == .xcode else { return directory }
+        return XcodeProjectLocator.target(in: directory)
+    }
+
+    /// Installed apps that can open this particular project directory.
+    static func available(forDirectory directory: URL) -> [PreferredEditor] {
+        directoryCapable.filter { $0.openTarget(forDirectory: directory) != nil }
+    }
+
+    /// Opens a project directory in this app, through `openTarget`.
+    func openProject(_ directory: URL) {
+        open(openTarget(forDirectory: directory) ?? directory)
+    }
+
     func open(_ fileURL: URL) {
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
             NSWorkspace.shared.open(fileURL)
@@ -721,5 +747,26 @@ enum PreferredEditor: String, Codable, CaseIterable, Identifiable {
             withApplicationAt: appURL,
             configuration: NSWorkspace.OpenConfiguration()
         )
+    }
+}
+
+/// Finds what Xcode should open for a directory: a workspace before a project,
+/// a project before a Swift package, and only at the top level — a project
+/// buried in a dependency checkout is not this directory's project.
+enum XcodeProjectLocator {
+    static func target(in directory: URL, fileManager: FileManager = .default) -> URL? {
+        guard let names = try? fileManager.contentsOfDirectory(atPath: directory.path) else {
+            return nil
+        }
+        let sorted = names.sorted()
+        for ext in ["xcworkspace", "xcodeproj"] {
+            if let name = sorted.first(where: { ($0 as NSString).pathExtension == ext }) {
+                return directory.appendingPathComponent(name, isDirectory: true)
+            }
+        }
+        if sorted.contains("Package.swift") {
+            return directory.appendingPathComponent("Package.swift")
+        }
+        return nil
     }
 }

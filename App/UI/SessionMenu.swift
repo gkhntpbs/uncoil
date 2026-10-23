@@ -31,18 +31,31 @@ struct SessionMenuContent: View {
     /// nothing when chosen.
     private var editor: PreferredEditor {
         let preferred = settings.preferredEditor
-        guard !preferred.opensDirectories else { return preferred }
-        return PreferredEditor.directoryCapable.first ?? preferred
+        let available = PreferredEditor.available(forDirectory: directory)
+        guard !available.contains(preferred) else { return preferred }
+        return available.first ?? preferred
     }
 
     var body: some View {
-        Button(String(localized: "Open in \(editor.displayName)")) {
-            editor.open(directory)
+        Button {
+            editor.openProject(directory)
+        } label: {
+            OpenDirectoryMenuItems.label(
+                String(localized: "Open in \(editor.displayName)"), icon: editor.appIcon
+            )
         }
         .keyboardShortcut("e", modifiers: [.command, .shift])
 
-        Button(String(localized: "Reveal in Finder")) {
-            NSWorkspace.shared.activateFileViewerSelecting([directory])
+        Menu(String(localized: "Open With")) {
+            OpenDirectoryMenuItems(directory: directory)
+        }
+
+        Button {
+            NSWorkspace.shared.open(directory)
+        } label: {
+            OpenDirectoryMenuItems.label(
+                String(localized: "Open in Finder"), icon: OpenDirectoryMenuItems.finderIcon
+            )
         }
 
         Button(String(localized: "Copy Path")) {
@@ -184,7 +197,7 @@ struct ProjectCommands: Commands {
                 Divider()
 
                 Button(String(localized: "Open in Finder")) {
-                    NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
+                    NSWorkspace.shared.open(project.rootURL)
                 }
 
                 Button(String(localized: "Project Settings…")) {

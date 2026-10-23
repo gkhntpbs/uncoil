@@ -242,7 +242,7 @@ private struct UncoilAutoSettingsRow: View {
                 ProviderMark(provider: .uncoil, size: 18)
                 SettingsLabel(
                     title: String(localized: "Uncoil Auto"),
-                    detail: String(localized: "Which agents it can reach, and the effort advisor."))
+                    detail: String(localized: "Which agents it can reach, and how Auto runs are staffed and decided."))
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))

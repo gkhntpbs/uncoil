@@ -1,14 +1,19 @@
 import AppKit
 import Foundation
 
-/// The effort advisor's model, served on this Mac by `laya-apple`.
+/// Laya, the local System 1 decision model Uncoil Auto asks its small
+/// control questions, served on this Mac by `laya-apple`.
 ///
 /// Everything lives in one directory under Application Support — the Python
-/// environment, uv's download cache, the Hugging Face weights and the decision
-/// log — so nothing lands in `~/.cache` and removing the directory removes all
-/// of it. Installing needs the user's click: Uncoil never fetches a runtime
-/// or a model on its own. Once installed, the server is started when an
-/// Uncoil Auto conversation wants a suggestion and stopped when Uncoil quits.
+/// environment, uv's download cache and the Hugging Face weights — so nothing
+/// lands in `~/.cache` and removing the directory removes all of it.
+/// Installing needs the user's click: Uncoil never fetches a runtime or a
+/// model on its own. Once installed, the server is started when an Auto run
+/// has a decision to ask, kept resident, started again if it went away, and
+/// stopped when Uncoil quits.
+///
+/// The runtime is behind `AutoDecisionEngine`: replacing this Python sidecar
+/// with MLX or Core ML in-process changes this file and nothing that asks.
 @MainActor
 final class LayaSidecar: ObservableObject {
     static let shared = LayaSidecar()
@@ -35,9 +40,25 @@ final class LayaSidecar: ObservableObject {
     @Published private(set) var state: State = .unknown
     /// The last install's output, for when it fails.
     @Published private(set) var lastLog: String?
+    /// How the decisions asked since launch went.
+    @Published private(set) var stats = Stats()
+    /// What `/health` said last.
+    @Published private(set) var health: [String: String] = [:]
+
+    struct Stats: Equatable {
+        var answered = 0
+        var failed = 0
+        var lastLatencyMilliseconds: Double?
+        var lastError: String?
+        var lastDecisionAt: Date?
+        /// Times the server was found gone and started again.
+        var restarts = 0
+    }
 
     let root: URL
     private var process: Process?
+    /// The server went away while serving: the next request starts it again.
+    private var stoppedUnexpectedly = false
     private var terminationObserver: NSObjectProtocol?
 
     init(root: URL? = nil) {
@@ -49,8 +70,18 @@ final class LayaSidecar: ObservableObject {
         }
     }
 
+    /// `laya`, or the `effort-advisor` directory an earlier Edge build
+    /// installed into: a Python environment cannot be moved (its scripts
+    /// name their interpreter by absolute path), so it is used where it is.
     nonisolated static var defaultRoot: URL {
-        ProjectStore.defaultDirectory().appendingPathComponent("effort-advisor", isDirectory: true)
+        let base = ProjectStore.defaultDirectory()
+        let current = base.appendingPathComponent("laya", isDirectory: true)
+        let earlier = base.appendingPathComponent("effort-advisor", isDirectory: true)
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: current.path), fileManager.fileExists(atPath: earlier.path) {
+            return earlier
+        }
+        return current
     }
 
     var executable: URL { root.appendingPathComponent("venv/bin/laya-apple") }
@@ -151,7 +182,7 @@ final class LayaSidecar: ObservableObject {
         state = isInstalled ? .installed : .failed(String(localized: "The install finished but the model is not there."))
     }
 
-    /// Removes the environment, the weights and the decision log.
+    /// Removes the environment and the weights.
     func uninstall() {
         stop()
         try? FileManager.default.removeItem(at: root)
@@ -165,6 +196,10 @@ final class LayaSidecar: ObservableObject {
     @discardableResult
     func ensureRunning() async -> Int? {
         if let port = state.port, process?.isRunning == true { return port }
+        if stoppedUnexpectedly {
+            stoppedUnexpectedly = false
+            stats.restarts += 1
+        }
         if state == .starting {
             // Someone else is starting it; wait for their answer.
             for _ in 0..<240 {
@@ -198,7 +233,10 @@ final class LayaSidecar: ObservableObject {
             Task { @MainActor in
                 guard let self, self.process === finished else { return }
                 self.process = nil
-                if case .ready = self.state { self.state = .failed(String(localized: "The model server stopped.")) }
+                if case .ready = self.state {
+                    self.stoppedUnexpectedly = true
+                    self.state = .failed(String(localized: "The model server stopped."))
+                }
                 if self.state == .starting { self.state = .failed(String(localized: "The model server did not start. See serve.log.")) }
             }
         }
@@ -230,14 +268,53 @@ final class LayaSidecar: ObservableObject {
         state = isInstalled ? .installed : .notInstalled
     }
 
-    /// The advisor a suggestion should ask: the model when it is up, the
-    /// heuristic otherwise.
-    func advisor(for settings: EffortAdvisorSettings) async -> any EffortAdvisor {
-        guard settings.engine == .laya, let port = await ensureRunning(),
-              let url = URL(string: "http://127.0.0.1:\(port)") else {
-            return HeuristicEffortAdvisor()
+    func restart() async {
+        stop()
+        await ensureRunning()
+    }
+
+    /// The engine an Auto run asks, nil when Laya is not installed or will
+    /// not start; the run then decides deterministically.
+    func decisionEngine(timeout: TimeInterval) async -> (any AutoDecisionEngine)? {
+        guard isInstalled, let port = await ensureRunning(),
+              let url = URL(string: "http://127.0.0.1:\(port)") else { return nil }
+        return MeteredDecisionEngine(base: LayaDecisionClient(baseURL: url, timeout: timeout)) { [weak self] latency, error in
+            Task { @MainActor in self?.note(latency: latency, error: error) }
         }
-        return FallbackEffortAdvisor(primary: LayaEffortAdvisor(baseURL: url))
+    }
+
+    private func note(latency: Double?, error: String?) {
+        stats.lastDecisionAt = Date()
+        if let error {
+            stats.failed += 1
+            stats.lastError = error
+        } else {
+            stats.answered += 1
+            stats.lastLatencyMilliseconds = latency
+        }
+    }
+
+    /// Asks the running server how it is.
+    func checkHealth() async {
+        guard let port = state.port, let url = URL(string: "http://127.0.0.1:\(port)/health") else {
+            health = [:]
+            return
+        }
+        var request = URLRequest(url: url, timeoutInterval: 2)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        guard let (data, _) = try? await URLSession.shared.data(for: request),
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            health = ["status": "no answer"]
+            return
+        }
+        health = body.reduce(into: [:]) { result, entry in
+            if let value = entry.value as? String { result[entry.key] = value }
+            else if let value = entry.value as? NSNumber { result[entry.key] = value.stringValue }
+            else if let value = entry.value as? [String: Any],
+                    let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) {
+                result[entry.key] = String(decoding: data, as: UTF8.self)
+            }
+        }
     }
 
     private static func isHealthy(port: Int) async -> Bool {
@@ -271,5 +348,22 @@ final class LayaSidecar: ObservableObject {
         }
         guard named == 0 else { return nil }
         return Int(UInt16(bigEndian: address.sin_port))
+    }
+}
+
+/// Counts what an engine answered, for the runtime's status in Settings.
+struct MeteredDecisionEngine: AutoDecisionEngine {
+    let base: any AutoDecisionEngine
+    let observe: @Sendable (_ latencyMilliseconds: Double?, _ error: String?) -> Void
+
+    func decide(_ schema: AutoDecisionSchema, state: String, checkpoint: String) async throws -> AutoDecisionAnswer {
+        do {
+            let answer = try await base.decide(schema, state: state, checkpoint: checkpoint)
+            observe(answer.latencyMilliseconds, nil)
+            return answer
+        } catch {
+            observe(nil, (error as? AutoDecisionError)?.description ?? error.localizedDescription)
+            throw error
+        }
     }
 }
