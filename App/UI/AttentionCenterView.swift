@@ -172,7 +172,7 @@ private struct AttentionRow: View {
         .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
         .onTapGesture(perform: onOpen)
         .onHover { hovering = $0 }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("attention.item.\(item.id)")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(.default, onOpen)

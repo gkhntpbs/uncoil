@@ -42,7 +42,7 @@ final class SettingsUpgradeTests: XCTestCase {
         XCTAssertFalse(reloaded.shouldPresentOnboarding)
         let saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
         XCTAssertEqual((saved["futureSetting"] as? [String: Bool])?["enabled"], true)
-        XCTAssertTrue((saved["accounts"] as? [[String: Any]])?.contains { $0["provider"] as? String == "future-agent" } == true)
+        XCTAssertEqual((saved["accounts"] as? [[String: Any]])?.filter { $0["provider"] as? String == "future-agent" }.count, 1)
         let backups = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
             .filter { $0.lastPathComponent.hasPrefix("settings-before-migration-") }
         XCTAssertFalse(backups.isEmpty)
@@ -63,6 +63,30 @@ final class SettingsUpgradeTests: XCTestCase {
         store.preferredEditor = .zed
         store.save()
         XCTAssertEqual(SettingsStore(directory: root).preferredEditor, .zed)
+    }
+
+    func testUnknownNestedPreferencesSurviveUnrelatedAndRelatedEdits() throws {
+        let root = try directory()
+        var persisted = SettingsStore.Persisted()
+        persisted.menuBar = MenuBarPrefs()
+        persisted.onboardingVersion = OnboardingFlow.currentVersion
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(persisted)) as? [String: Any])
+        var menu = try XCTUnwrap(object["menuBar"] as? [String: Any])
+        menu["futureMenuSetting"] = ["enabled": true]
+        object["menuBar"] = menu
+        let file = root.appendingPathComponent("settings.json")
+        try JSONSerialization.data(withJSONObject: object).write(to: file)
+        let store = SettingsStore(directory: root)
+        store.preferredEditor = .zed
+        store.save()
+        var saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        XCTAssertEqual(((saved["menuBar"] as? [String: Any])?["futureMenuSetting"] as? [String: Bool])?["enabled"], true)
+        store.menuBar.enabled.toggle()
+        store.save()
+        saved = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        XCTAssertEqual(((saved["menuBar"] as? [String: Any])?["futureMenuSetting"] as? [String: Bool])?["enabled"], true)
+        XCTAssertEqual(SettingsStore(directory: root).menuBar.enabled, store.menuBar.enabled)
+        XCTAssertFalse(SettingsStore(directory: root).shouldPresentOnboarding)
     }
 
     func testCorruptSettingsAreNeverOverwrittenByStartupOrSave() throws {

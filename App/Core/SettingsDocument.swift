@@ -63,16 +63,46 @@ struct SettingsDocument {
         else { return nil }
         var result = original
         for key in SettingsStore.Persisted.CodingKeys.allCases.map(\.rawValue) {
-            result[key] = encoded[key]
+            result[key] = merge(original: original[key], baseline: fallback[key], updated: encoded[key])
         }
         for (key, value) in protectedFields {
-            let current = encoded[key] as? NSObject
-            let initial = fallback[key] as? NSObject
-            if key == "accounts" || current == initial { result[key] = value }
+            if key == "accounts" || equal(encoded[key], fallback[key]) { result[key] = value }
         }
-        if !unknownAccounts.isEmpty, let accounts = result["accounts"] as? [[String: Any]] {
+        if !unknownAccounts.isEmpty, !equal(encoded["accounts"], fallback["accounts"]),
+           let accounts = result["accounts"] as? [[String: Any]] {
             result["accounts"] = accounts + unknownAccounts
         }
         return try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+    }
+
+    private func equal(_ lhs: Any?, _ rhs: Any?) -> Bool {
+        (lhs as? NSObject) == (rhs as? NSObject)
+    }
+
+    private func merge(original: Any?, baseline: Any?, updated: Any?) -> Any? {
+        if let original, equal(baseline, updated) { return original }
+        if let source = original as? [String: Any],
+           let previous = baseline as? [String: Any],
+           let current = updated as? [String: Any] {
+            var result = source.filter { previous[$0.key] == nil }
+            for (key, value) in current {
+                result[key] = merge(original: source[key], baseline: previous[key], updated: value)
+            }
+            return result
+        }
+        if let source = original as? [[String: Any]],
+           let previous = baseline as? [[String: Any]],
+           let current = updated as? [[String: Any]],
+           current.allSatisfy({ $0["id"] is String }) {
+            return current.map { item in
+                let id = item["id"] as? String
+                return merge(
+                    original: source.first { $0["id"] as? String == id },
+                    baseline: previous.first { $0["id"] as? String == id },
+                    updated: item
+                ) as? [String: Any] ?? item
+            }
+        }
+        return updated
     }
 }

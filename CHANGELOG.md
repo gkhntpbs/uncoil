@@ -20,6 +20,13 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+## [0.2.0-edge.6] - 2026-10-23
+
+### Fixed
+
+- Updating or switching channels preserves compatible settings and completed setup even when newer agent profiles or preferences are present. Unrecognized values are retained, incompatible settings are backed up before conversion, and unreadable settings are never replaced with startup defaults.
+- Selecting a channel immediately checks that channel for an available package.
+
 ### Added
 
 - Settings › About chooses which updates Uncoil offers you. Stable is what
