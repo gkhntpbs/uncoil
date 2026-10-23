@@ -10,6 +10,13 @@ release notes are written once, here.
 
 ## Unreleased
 
+## [0.1.2] - 2026-10-23
+
+### Fixed
+
+- Upgrading or switching channels preserves supported settings and completed setup even when the settings file contains newer agent profiles or preferences. Unrecognized records are retained, incompatible files are backed up before conversion, and unreadable settings are never overwritten by startup defaults.
+- Selecting an update channel immediately checks that channel for an available release, including when automatic background checks are disabled. Installing an offered update still requires confirmation.
+
 ## [0.1.1] - 2026-10-22
 
 ### Added

@@ -17,6 +17,7 @@ final class SmokeTests: XCTestCase {
             "-disable-animations",
         ]
         app.launch()
+        app.activate()
     }
 
     override func tearDown() {
@@ -72,6 +73,7 @@ final class SmokeTests: XCTestCase {
         app.launchArguments.removeAll { $0 == "-reset-state" }
         app.launchArguments.insert(contentsOf: ["-route", "project"], at: 0)
         app.launch()
+        app.activate()
         if !app.descendants(matching: .any)["sidebar.settingsButton"].waitForExistence(timeout: 5) {
             app.typeKey("n", modifierFlags: .command)
         }
@@ -114,6 +116,7 @@ final class SmokeTests: XCTestCase {
         app.terminate()
         app.launchArguments.append("-attention-fixture")
         app.launch()
+        app.activate()
 
         let bell = app.descendants(matching: .any)["sidebar.attentionButton"]
         XCTAssertTrue(bell.waitForExistence(timeout: 10))
@@ -292,6 +295,7 @@ final class SmokeTests: XCTestCase {
         app.terminate()
         app.launchArguments.append("-codex-approval-fixture")
         app.launch()
+        app.activate()
 
         let project = app.descendants(matching: .any)["sidebar.project.demo-project"]
         XCTAssertTrue(project.waitForExistence(timeout: 10))

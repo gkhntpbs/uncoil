@@ -66,6 +66,7 @@ final class UpdaterService: NSObject, ObservableObject, SPUUpdaterDelegate {
         self.channel = preference.channel
         lastCheckDate = nil
         controller?.updater.resetUpdateCycleAfterShortDelay()
+        controller?.updater.checkForUpdates()
     }
 
     func feedURLString(for updater: SPUUpdater) -> String? {

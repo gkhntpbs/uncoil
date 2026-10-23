@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 enum SessionQuitBehavior: String, Codable, CaseIterable, Identifiable {
@@ -70,6 +71,30 @@ final class SettingsStore: ObservableObject {
         /// Capabilities stamped onto newly created sessions; nil ⇒ the control
         /// plane's own default grant set.
         var sessionCapabilityDefaults: [String]? = nil
+        enum CodingKeys: String, CodingKey, CaseIterable {
+            case accounts
+            case defaultAccountByProvider
+            case defaultProvider
+            case resolvedBinaries
+            case extraArguments
+            case preferredEditor
+            case notifications
+            case presets
+            case providerBehaviors
+            case commandPaletteHotkey
+            case attentionEmphasis
+            case optionAsMetaKey
+            case sessionQuitBehavior
+            case transcriptRetentionPolicy
+            case permissionTimeoutMinutes
+            case menuBar
+            case imagePasteMode
+            case launcher
+            case language
+            case onboardingVersion
+            case onboardingCompletedSteps
+            case sessionCapabilityDefaults
+        }
     }
 
     @Published private(set) var accounts: [AccountProfile] = []
@@ -126,6 +151,9 @@ final class SettingsStore: ObservableObject {
     @Published var cliLatest: [String: String] = [:]
     @Published var cliChecking = false
 
+    private var settingsDocument = SettingsDocument()
+    private var isLoadingSettings = false
+    private var migrationBackupCreated = false
     private let fileURL: URL
     private let profilesRoot: URL
     let transcriptStore: SessionTranscriptStore
@@ -610,10 +638,10 @@ final class SettingsStore: ObservableObject {
     }
 
     private func load() {
-        guard
-            let data = try? Data(contentsOf: fileURL),
-            let decoded = try? JSONDecoder().decode(Persisted.self, from: data)
-        else { return }
+        guard let data = try? Data(contentsOf: fileURL) else { return }
+        guard let decoded = settingsDocument.decode(data) else { return }
+        isLoadingSettings = true
+        defer { isLoadingSettings = false }
         accounts = decoded.accounts
         defaultAccountByProvider = decoded.defaultAccountByProvider
         defaultProvider = decoded.defaultProvider
@@ -662,6 +690,7 @@ final class SettingsStore: ObservableObject {
     }
 
     func save() {
+        guard !isLoadingSettings else { return }
         let persisted = Persisted(
             accounts: accounts,
             defaultAccountByProvider: defaultAccountByProvider,
@@ -691,8 +720,24 @@ final class SettingsStore: ObservableObject {
                 ? nil : onboardingCompletedSteps.sorted(),
             sessionCapabilityDefaults: sessionCapabilityDefaults
         )
-        if let data = try? JSONEncoder().encode(persisted) {
-            try? data.write(to: fileURL, options: .atomic)
+        guard let data = settingsDocument.encode(persisted) else { return }
+        if settingsDocument.requiresBackup && !migrationBackupCreated {
+            do {
+                let original = try Data(contentsOf: fileURL)
+                let digest = SHA256.hash(data: original).map { String(format: "%02x", $0) }.joined()
+                let backup = fileURL.deletingLastPathComponent()
+                    .appendingPathComponent("settings-before-migration-\(digest).json")
+                if FileManager.default.fileExists(atPath: backup.path) {
+                    guard try Data(contentsOf: backup) == original else { return }
+                } else {
+                    try original.write(to: backup, options: .withoutOverwriting)
+                }
+                try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: backup.path)
+                migrationBackupCreated = true
+            } catch {
+                return
+            }
         }
+        try? data.write(to: fileURL, options: .atomic)
     }
 }
