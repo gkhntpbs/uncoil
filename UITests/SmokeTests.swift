@@ -98,7 +98,7 @@ final class SmokeTests: XCTestCase {
 
         let result = app.staticTexts["Extensions"]
         XCTAssertTrue(result.waitForExistence(timeout: 5))
-        result.click()
+        app.typeKey(.return, modifierFlags: [])
 
         let extensions = app.descendants(matching: .any)["extensions.container"]
         XCTAssertTrue(extensions.waitForExistence(timeout: 10))
@@ -149,26 +149,15 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
     }
 
-    func testPresetAndTranscriptSettingsAreAvailable() {
+    func testAgentAndTranscriptSettingsAreAvailable() {
         let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.click()
 
-        // Presets and transcripts live on their own pages now: Agentlar →
-        // Session Presetleri, and Gizlilik ve İzinler → Veri ve Transcript.
-        let presetsPane = app.descendants(matching: .any)["settings.pane.presets"]
-        XCTAssertTrue(presetsPane.waitForExistence(timeout: 10))
-        presetsPane.click()
-
-        let addPreset = app.descendants(matching: .any)["settings.presets.add"]
-        XCTAssertTrue(addPreset.waitForExistence(timeout: 5))
-        addPreset.click()
-
-        let presetID = app.descendants(matching: .any)["settings.presets.editor.id"]
-        let savePreset = app.descendants(matching: .any)["settings.presets.editor.save"]
-        XCTAssertTrue(presetID.waitForExistence(timeout: 5))
-        XCTAssertTrue(savePreset.exists)
-        app.typeKey(.escape, modifierFlags: [])
+        let agentsPane = app.descendants(matching: .any)["settings.pane.agents"]
+        XCTAssertTrue(agentsPane.waitForExistence(timeout: 10))
+        agentsPane.click()
+        XCTAssertTrue(app.descendants(matching: .any)["settings.agents.row.claude"].waitForExistence(timeout: 5))
 
         let dataPane = app.descendants(matching: .any)["settings.pane.privacyData"]
         XCTAssertTrue(dataPane.waitForExistence(timeout: 5))
