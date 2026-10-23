@@ -673,6 +673,7 @@ final class SettingsStore: ObservableObject {
         sessionCapabilityDefaults = decoded.sessionCapabilityDefaults
         ProjectStore.defaultSessionCapabilities = sessionCapabilityDefaults
         ApplicationLifecycle.shared.sessionQuitBehavior = sessionQuitBehavior
+        settingsDocument.captureBaseline(persistedSettings())
     }
 
     /// Mirrors the interface language into `AppleLanguages`.
@@ -689,9 +690,8 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    func save() {
-        guard !isLoadingSettings else { return }
-        let persisted = Persisted(
+    private func persistedSettings() -> Persisted {
+        Persisted(
             accounts: accounts,
             defaultAccountByProvider: defaultAccountByProvider,
             defaultProvider: defaultProvider,
@@ -720,6 +720,11 @@ final class SettingsStore: ObservableObject {
                 ? nil : onboardingCompletedSteps.sorted(),
             sessionCapabilityDefaults: sessionCapabilityDefaults
         )
+    }
+
+    func save() {
+        guard !isLoadingSettings else { return }
+        let persisted = persistedSettings()
         guard let data = settingsDocument.encode(persisted) else { return }
         if settingsDocument.requiresBackup && !migrationBackupCreated {
             do {
