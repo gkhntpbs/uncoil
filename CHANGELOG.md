@@ -22,6 +22,8 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## [0.2.0-edge.6] - 2026-10-23
 
+First published Edge package, including the current 0.2.0 development line and the pending Uncoil Auto/Codex work.
+
 ### Fixed
 
 - Updating or switching channels preserves compatible settings and completed setup even when newer agent profiles or preferences are present. Unrecognized values are retained, incompatible settings are backed up before conversion, and unreadable settings are never replaced with startup defaults.
@@ -206,6 +208,25 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - A session whose record says it ended can no longer keep claiming it is working. Reconciliation skipped ended records entirely, so that disagreement was the one direction nothing corrected.
 - The app icon follows the system appearance. In dark mode the Dock showed the light icon — a white tile, at full brightness, next to everything else that had gone dark. The cause was that both the light and the dark artwork had their background painted into the image, and macOS 26 composes an icon the other way round: the app supplies the artwork, the system supplies the background per appearance. The spiral is now a single layer with nothing behind it, recovered exactly from the two existing images, so light, dark and tinted are all drawn from the same one.
 - The sidebar no longer reshuffles its sessions while you work. A session that had never been dragged was placed by when it was last active, so every reply from an agent moved its row — usually to the top, usually while the cursor was already on its way to another one. Order is now fixed when the session is created: new sessions join the end of the list, existing ones keep the order you last saw them in, and nothing moves again unless you move it.
+
+## [0.1.2] - 2026-10-23
+
+### Fixed
+
+- Upgrading or switching channels preserves supported settings and completed setup even when the settings file contains newer agent profiles or preferences. Unrecognized records are retained, incompatible files are backed up before conversion, and unreadable settings are never overwritten by startup defaults.
+- Selecting an update channel immediately checks that channel for an available release, including when automatic background checks are disabled. Installing an offered update still requires confirmation.
+
+## [0.1.1] - 2026-10-22
+
+### Added
+
+- Settings › About now lets you choose Stable or Edge updates. Stable remains the default. Your choice survives a relaunch, and the installed release channel is shown separately.
+- Edge updates use a separate feed. Switching back to Stable waits for a newer Stable build without downgrading the app or its data. Channel changes are disabled while an update is in progress.
+- Uncoil updates itself. It checks `uncoil.gokhantopbas.com` once a day for a newer version, verifies what it downloads against a signature before installing it, and tells you only when there is something to install. "Check for Updates…" sits under the Uncoil menu for when you want to ask, and Settings › About can turn the automatic check off. Updates are only ever offered — nothing installs without you saying so.
+
+### Fixed
+
+- Project launcher controls and the Attention Center’s resolve button remain individually accessible to assistive technology.
 
 ## [0.1.0] - 2026-08-04
 
