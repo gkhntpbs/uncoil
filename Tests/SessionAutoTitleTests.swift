@@ -144,7 +144,7 @@ final class SessionAutomaticTitleStoreTests: XCTestCase {
 
     func testKittyEncodedShiftedKeysKeepTheirCharacter() {
         // A Turkish layout: `/` is Shift+7, sent as CSI 55:47;2u.
-        XCTAssertEqual(typed("\u{1B}[55:47;2ureview\r"), "/review")
+        XCTAssertEqual(typed("\u{1B}[55:47;2ureview this project\r"), "/review this project")
         XCTAssertEqual(typed("\u{1B}[102:70;2uix \u{1B}[105;2u\r"), "Fix I")
         // Releases add nothing; text the terminal spelled out is taken as is.
         XCTAssertEqual(typed("a\u{1B}[97;1:3ub\u{1B}[351;1;351u\r"), "abş")

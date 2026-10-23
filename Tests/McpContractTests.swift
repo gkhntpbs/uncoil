@@ -608,6 +608,7 @@ final class ControlPlaneCancellationTests: XCTestCase {
         }
         let directory = projectRoot
             .appendingPathComponent(".build-cache/s", isDirectory: true)
+            .resolvingSymlinksInPath()
             .appendingPathComponent(String(UUID().uuidString.prefix(4)), isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
