@@ -124,28 +124,31 @@ struct ProjectDashboardView: View {
             area = candidate
         } label: {
             HStack(spacing: 6) {
-                TablerIcon(
-                    name: candidate.iconName,
-                    size: 12,
-                    color: isOn ? Theme.text : Theme.textFaint
-                )
                 // The open-task count rides the icon rather than sitting beside
                 // the label as a pill of its own: a second number in the row
-                // read as another control, and the tab bar already says what a
-                // mark next to an icon means.
-                .overlay(alignment: .topTrailing) {
+                // read as another control. It starts at the icon's corner and
+                // grows to the right *inside the layout*, so "99+" pushes the
+                // label along instead of being drawn over the icon or the word.
+                ZStack(alignment: .leading) {
+                    TablerIcon(
+                        name: candidate.iconName,
+                        size: 12,
+                        color: isOn ? Theme.text : Theme.textFaint
+                    )
                     if candidate == .tasks, openTaskCount > 0 {
                         Text(openTaskCount > 99 ? "99+" : "\(openTaskCount)")
                             .font(Theme.mono(.micro, .semibold))
+                            .monospacedDigit()
                             .foregroundStyle(Theme.textOnHighlight)
+                            .lineLimit(1)
                             .fixedSize()
                             .padding(.horizontal, 3)
                             .frame(minWidth: 11, minHeight: 11)
                             .background(Theme.highlight, in: Capsule())
-                            // Kept inside the row's own padding: the icon is
-                            // 12pt with 6pt to the label, so the badge overlaps
-                            // the icon's corner rather than the word beside it.
-                            .offset(x: 4, y: -5)
+                            .overlay(Capsule().strokeBorder(Theme.panel, lineWidth: 1))
+                            .padding(.leading, 7)
+                            .offset(y: -5)
+                            .accessibilityLabel(Text("\(openTaskCount) open tasks"))
                     }
                 }
                 if !tabsAreIconOnly {

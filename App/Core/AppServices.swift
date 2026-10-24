@@ -64,7 +64,7 @@ final class AppServices {
                     )
                 },
                 touchSession: { id in
-                    projects.updateSession(id) { $0.lastActivityAt = .now }
+                    projects.noteActivity(id)
                 },
                 notificationPrefs: { [weak settings] in
                     settings?.notifications ?? NotificationPrefs()

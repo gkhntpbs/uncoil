@@ -778,3 +778,27 @@ final class SettingsStoreTests: XCTestCase {
         )
     }
 }
+
+@MainActor
+final class ProjectStoreActivityTests: XCTestCase {
+    func testActivityIsStampedAtMostOncePerResolution() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("uncoil-activity-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = ProjectStore(directory: dir)
+        store.addProject(at: URL(fileURLWithPath: "/tmp/demo"))
+        let record = store.createSession(projectID: store.projects[0].id, provider: .claude, accountID: nil, title: "t")
+        let start = record.lastActivityAt.addingTimeInterval(60)
+
+        store.noteActivity(record.id, at: start)
+        XCTAssertEqual(store.sessions.first?.lastActivityAt, start)
+
+        store.noteActivity(record.id, at: start.addingTimeInterval(5))
+        XCTAssertEqual(store.sessions.first?.lastActivityAt, start, "a burst of events writes once")
+
+        let later = start.addingTimeInterval(ProjectStore.activityResolution)
+        store.noteActivity(record.id, at: later)
+        XCTAssertEqual(store.sessions.first?.lastActivityAt, later)
+    }
+}

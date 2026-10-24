@@ -12,7 +12,11 @@ struct ProjectTasksView: View {
     @Binding var selection: MainSelection?
 
     @EnvironmentObject private var projectStore: ProjectStore
-    @EnvironmentObject private var sessionStore: SessionStore
+    /// Read, never observed. Statuses change several times a second while
+    /// agents work, and observing them re-rendered the whole task list —
+    /// hundreds of rows — on every hook event. This screen only consults the
+    /// store when the user acts.
+    private var sessionStore: SessionStore { AppServices.shared.sessionStore }
     @EnvironmentObject private var settings: SettingsStore
     // Observed rather than owned: the stores outlive this view so returning to
     // the Tasks screen shows the last scan instead of re-reading every file.
@@ -210,6 +214,13 @@ struct ProjectTasksView: View {
         .sheet(isPresented: $isCreatingTask) {
             TaskCreateSheet(
                 documents: selectedDocuments,
+                displayName: { document in
+                    TaskSourceLabel.displayPath(
+                        forSourcePath: document.path,
+                        knownSources: sources.sources,
+                        projectRoot: project.rootPath
+                    )
+                },
                 onCreate: { document, headingPath, text in
                     isCreatingTask = false
                     createTask(text, under: headingPath, in: document)
@@ -662,17 +673,62 @@ struct ProjectTasksView: View {
             )
             if filtered.isEmpty {
                 EmptyTaskList(isFiltered: preferences.filter.isActive)
-            } else {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(filtered.enumerated()), id: \.element.id) { index, task in
-                        listRow(task)
-                        if index != filtered.count - 1 {
-                            Divider().overlay(Theme.border)
+            } else if preferences.selectedSourcePath == nil, sources.sources.count > 1 {
+                // Every file is a TODO.md, so the aggregate list is split by
+                // file: one panel per source, titled with its path from the
+                // project root, in the same order as the source picker.
+                ForEach(groupedBySource(filtered), id: \.path) { group in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            TablerIcon(name: "file-text", size: 12, color: Theme.textDim)
+                            Text(group.displayPath)
+                                .font(Theme.mono(.body, .semibold))
+                                .foregroundStyle(Theme.textDim)
+                            Text("\(group.tasks.filter { !$0.isDone }.count)/\(group.tasks.count)")
+                                .font(Theme.mono(.small))
+                                .foregroundStyle(Theme.textFaint)
+                            Spacer()
+                            Button("Show only this file") {
+                                metadata.preferences.selectedSourcePath = group.path
+                                metadata.savePreferences()
+                            }
+                            .buttonStyle(.plain)
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.textFaint)
                         }
+                        taskPanel(group.tasks)
                     }
+                    .accessibilityIdentifier("tasks.list.group")
                 }
-                .panel()
+            } else {
+                taskPanel(filtered)
             }
+        }
+    }
+
+    private func taskPanel(_ tasks: [ProjectTask]) -> some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                listRow(task)
+                if index != tasks.count - 1 {
+                    Divider().overlay(Theme.border)
+                }
+            }
+        }
+        .panel()
+    }
+
+    private struct SourceGroup {
+        let path: String
+        let displayPath: String
+        let tasks: [ProjectTask]
+    }
+
+    private func groupedBySource(_ tasks: [ProjectTask]) -> [SourceGroup] {
+        let byPath = Dictionary(grouping: tasks, by: \.sourcePath)
+        return sources.sources.compactMap { source in
+            guard let tasks = byPath[source.path], !tasks.isEmpty else { return nil }
+            return SourceGroup(path: source.path, displayPath: source.displayPath, tasks: tasks)
         }
     }
 

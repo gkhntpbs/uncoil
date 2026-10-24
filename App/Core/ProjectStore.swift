@@ -414,6 +414,23 @@ final class ProjectStore: ObservableObject {
         updateSession(id) { $0.title = candidate }
     }
 
+    /// How stale `lastActivityAt` may get before a hook event refreshes it.
+    static let activityResolution: TimeInterval = 30
+
+    /// Stamps a session as active, at most once per `activityResolution`.
+    ///
+    /// Every hook event used to write `lastActivityAt = .now`, which published
+    /// `sessions` and saved the whole file several times a second while an
+    /// agent worked — re-rendering every screen observing this store, the task
+    /// list with hundreds of rows included. Recency only has to be right to
+    /// the half-minute for ordering and "active N minutes ago".
+    func noteActivity(_ id: UUID, at now: Date = .now) {
+        guard let record = sessions.first(where: { $0.id == id }) else { return }
+        let elapsed = now.timeIntervalSince(record.lastActivityAt)
+        if elapsed >= 0, elapsed < Self.activityResolution { return }
+        updateSession(id) { $0.lastActivityAt = now }
+    }
+
     func togglePin(_ id: UUID) {
         updateSession(id) { $0.isPinned = !($0.isPinned ?? false) }
     }

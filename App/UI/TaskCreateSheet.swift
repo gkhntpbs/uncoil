@@ -9,6 +9,9 @@ import SwiftUI
 struct TaskCreateSheet: View {
     /// The documents a task can go into, in display order.
     let documents: [TaskDocument]
+    /// How a document is named in the file picker. Every task file is called
+    /// `TODO.md`, so this is its path from the project root, not its file name.
+    let displayName: (TaskDocument) -> String
     /// Called with the target and the text; the owner writes the patch.
     let onCreate: (TaskDocument, [String], String) -> Void
     let onCancel: () -> Void
@@ -74,7 +77,7 @@ struct TaskCreateSheet: View {
                             }
                         )) {
                             ForEach(documents, id: \.path) { candidate in
-                                Text(URL(fileURLWithPath: candidate.path).lastPathComponent)
+                                Text(displayName(candidate))
                                     .tag(String?.some(candidate.path))
                             }
                         }
