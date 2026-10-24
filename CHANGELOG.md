@@ -20,9 +20,24 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+### Added
+
+- Claude Code's own sub-agents are tracked. While sub-agents it started are still working, the session shows **Sub-agents working** instead of Ready, and "Turn done" waits until the last one finishes.
+- A project can turn each notification event on or off for itself, or leave it to the app setting.
+- The task list groups tasks by file when it shows every TODO.md, and the new-task picker names each file by its path.
+
 ### Fixed
 
 - A closed or sleeping session no longer flips back to Running when a late status report from its agent arrives. Only relaunching or waking a session brings it back.
+- Restarting a Codex session resumes its conversation instead of sometimes starting fresh.
+- A Codex session reopened mid-turn shows what it is doing, and a finished Codex turn sends "Turn done".
+- Long Claude sessions open faster: the agent starts while earlier turns load, and only the end of the transcript is read.
+- The task screen no longer stutters with many tasks while agents are working.
+- The open-task badge stays legible at 99+.
+- Clicking Settings while its badge shows opens the page the badge is about, and the trail is marked down to the agent with the update.
+- Project settings list each MCP server and skill once, say which agents have it, and an agent's tab shows only its own.
+- A session started in a folded project opens the project, so its other sessions stay visible.
+- The project launcher no longer appears under a click aimed at the project.
 
 ## [0.2.0-edge.6] - 2026-10-23
 
