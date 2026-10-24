@@ -25,6 +25,7 @@ struct AgentSettingsPage: View {
 
     private var descriptor: AgentDescriptor { provider.descriptor }
     private var isInstalled: Bool { settings.binaryPath(for: provider) != nil }
+    private var hasUpdate: Bool { settings.updateAvailable(for: provider) }
 
     var body: some View {
         SettingsPage(
@@ -44,9 +45,17 @@ struct AgentSettingsPage: View {
                 }
             }
 
-            logins
-            defaults
-            cli
+            // An update waiting is why the user is here — the gear's badge led
+            // them — so the section that holds it comes first, not last.
+            if hasUpdate {
+                cli
+                logins
+                defaults
+            } else {
+                logins
+                defaults
+                cli
+            }
         }
     }
 
@@ -162,7 +171,15 @@ struct AgentSettingsPage: View {
                 CLIToolRow(provider: provider)
                 locationControls
             } header: {
-                Text("The CLI")
+                HStack(spacing: 6) {
+                    Text("The CLI")
+                    if hasUpdate {
+                        Circle().fill(Theme.danger).frame(width: 7, height: 7)
+                            .accessibilityIdentifier("settings.cli.updateMark")
+                        Text("Update available")
+                            .foregroundStyle(Theme.danger)
+                    }
+                }
             } footer: {
                 HStack {
                     Spacer()

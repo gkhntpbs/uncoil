@@ -41,6 +41,7 @@ struct AgentsSettingsPage: View {
                     AgentControlRow(
                         state: state,
                         version: version(for: state),
+                        hasUpdate: state.agent.provider.map { settings.updateAvailable(for: $0) } ?? false,
                         chosenLocation: settings.agentBinaryLocation(
                             forCommand: state.agent.cliBinaryName
                         ),
@@ -129,6 +130,8 @@ struct AgentsSettingsPage: View {
 private struct AgentControlRow: View {
     let state: AgentIntegrationState
     let version: String?
+    /// A newer CLI is waiting — the cause of the Settings gear's red badge.
+    let hasUpdate: Bool
     /// The location the user pointed Uncoil at, if they have.
     let chosenLocation: String?
     /// False when that location has gone away — an ejected disk, a reinstall
@@ -156,6 +159,15 @@ private struct AgentControlRow: View {
                             Text(version)
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textDim)
+                        }
+                        if hasUpdate {
+                            HStack(spacing: 4) {
+                                Circle().fill(Theme.danger).frame(width: 7, height: 7)
+                                Text("update available")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Theme.danger)
+                            }
+                            .accessibilityIdentifier("settings.agents.update.\(state.agent.rawValue)")
                         }
                     }
                     Text(state.statusDetail)

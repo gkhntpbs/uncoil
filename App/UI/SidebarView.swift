@@ -150,6 +150,12 @@ struct SidebarView: View {
                         ? String(localized: "Settings")
                         : String(localized: "Settings — \(pendingUpdates.count) agent updates waiting")
                 ) {
+                    // The badge is a pointer, so the click follows it: one
+                    // agent with an update opens that agent's page, several
+                    // open the list that marks each of them.
+                    if let pane = SettingsAttention.pane(for: pendingUpdates) {
+                        Router.shared.go(to: .settings(pane: pane))
+                    }
                     openWindow(.settings)
                 }
                 .countBadge(

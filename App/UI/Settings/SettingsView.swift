@@ -351,13 +351,19 @@ struct SettingsView: View {
     private func paneRow(_ candidate: Pane, showsCategory: Bool) -> some View {
         NavigationLink(value: candidate) {
             Label {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(candidate.title)
-                    if showsCategory {
-                        Text(candidate.category.title)
-                            .font(.caption2)
-                            .foregroundStyle(Theme.textFaint)
+                HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(candidate.title)
+                        if showsCategory {
+                            Text(candidate.category.title)
+                                .font(.caption2)
+                                .foregroundStyle(Theme.textFaint)
+                        }
                     }
+                    Spacer(minLength: 0)
+                    // Red, like the gear's: the same alert, one step closer.
+                    CountBadge(count: attentionCount(for: candidate), surround: Theme.panel)
+                        .accessibilityIdentifier("settings.pane.\(candidate.id).badge")
                 }
             } icon: {
                 Image(systemName: candidate.symbolName)
@@ -398,6 +404,16 @@ struct SettingsView: View {
         case .drivers: DriversSettingsPage()
         case .mcp: McpSettingsPage()
         case .about: AboutSettingsPage()
+        }
+    }
+
+    /// The same count the sidebar's gear carries, on the row that leads to it,
+    /// so the trail from the badge to its source never goes cold.
+    private func attentionCount(for candidate: Pane) -> Int {
+        switch candidate {
+        case .agents: settings.pendingCLIUpdates.count
+        case .agent(let provider): settings.updateAvailable(for: provider) ? 1 : 0
+        default: 0
         }
     }
 
