@@ -46,7 +46,20 @@ struct ProjectExtensionSelection: Equatable {
     }
 
     mutating func toggle(_ id: String, for agent: ExtensionAgentID?) {
-        let wanted = !isAllowed(id, for: agent)
+        setAllowed(!isAllowed(id, for: agent), id, for: agent)
+    }
+
+    /// One row can stand for several packages — the same server declared by
+    /// two agents — so a row writes one verdict to every member.
+    mutating func setAllowed(_ wanted: Bool, _ ids: [String], for agent: ExtensionAgentID?) {
+        for id in ids { setAllowed(wanted, id, for: agent) }
+    }
+
+    func isAllowed(_ group: ExtensionGroup, for agent: ExtensionAgentID?) -> Bool {
+        group.memberIDs(for: agent).allSatisfy { isAllowed($0, for: agent) }
+    }
+
+    private mutating func setAllowed(_ wanted: Bool, _ id: String, for agent: ExtensionAgentID?) {
         let key = Self.key(for: agent)
         var axis = byAxis[key] ?? [:]
         // A record is only worth keeping when it says something the layer
@@ -103,6 +116,82 @@ struct ProjectExtensionSelection: Equatable {
     }
 }
 
+/// One row of the picker: every package of one kind and name.
+///
+/// Discovery files an MCP server once per agent that declares it
+/// (`claudeCode:figma`, `codex:figma`), and a skill Uncoil manages can sit
+/// beside a plain copy of itself in another agent's folder. Listed as
+/// packages, the same server or skill showed up two and three times with
+/// nothing to say which was which. A row is the name; the agents it is
+/// installed for are said on it, and an agent's tab lists only its own.
+struct ExtensionGroup: Identifiable, Equatable {
+    struct Member: Equatable {
+        let id: String
+        /// nil when the package is not tied to one agent's config.
+        let agent: ExtensionAgentID?
+    }
+
+    let kind: ExtensionKind
+    let name: String
+    let summary: String?
+    let members: [Member]
+    /// The agents it is installed for, or empty when that cannot be told —
+    /// then it is offered on every tab, as before.
+    let agents: [ExtensionAgentID]
+
+    var id: String { "\(kind.rawValue):\(name)" }
+    var allIDs: [String] { members.map(\.id) }
+
+    func isAvailable(to agent: ExtensionAgentID?) -> Bool {
+        guard let agent, !agents.isEmpty else { return true }
+        return agents.contains(agent)
+    }
+
+    /// The packages a verdict on this row is written to, seen from a tab. An
+    /// agent's tab touches its own copy and anything shared, never another
+    /// agent's copy.
+    func memberIDs(for agent: ExtensionAgentID?) -> [String] {
+        guard let agent else { return allIDs }
+        let own = members.filter { $0.agent == nil || $0.agent == agent }.map(\.id)
+        return own.isEmpty ? allIDs : own
+    }
+
+    /// Groups packages by kind and name.
+    /// - Parameter agentsFor: the agents a package is installed for, beyond
+    ///   what its id already says.
+    static func groups(
+        _ packages: [ExtensionPackage],
+        agentsFor: (ExtensionPackage) -> [ExtensionAgentID]
+    ) -> [ExtensionGroup] {
+        var order: [String] = []
+        var byKey: [String: [ExtensionPackage]] = [:]
+        for package in packages {
+            let key = "\(package.kind.rawValue):\(package.name)"
+            if byKey[key] == nil { order.append(key) }
+            byKey[key, default: []].append(package)
+        }
+        return order.compactMap { key in
+            guard let packages = byKey[key], let first = packages.first else { return nil }
+            let members = packages.map { Member(id: $0.id, agent: owner(of: $0.id)) }
+            var agents = Set(members.compactMap(\.agent))
+            for package in packages { agents.formUnion(agentsFor(package)) }
+            return ExtensionGroup(
+                kind: first.kind,
+                name: first.name,
+                summary: packages.lazy.compactMap(\.summary).first { !$0.isEmpty },
+                members: members,
+                agents: ExtensionAgentID.allCases.filter { agents.contains($0) }
+            )
+        }
+    }
+
+    /// The agent an id names as its prefix — `codex:figma` belongs to Codex.
+    static func owner(of id: String) -> ExtensionAgentID? {
+        guard let colon = id.firstIndex(of: ":") else { return nil }
+        return ExtensionAgentID(rawValue: String(id[..<colon]))
+    }
+}
+
 /// Which MCP servers and skills a project hands to its sessions, per agent.
 ///
 /// One view, three homes: the sheet that opens when a project is created, the
@@ -118,13 +207,20 @@ struct ProjectExtensionPicker: View {
     /// nil = the "All agents" tab.
     @State private var tab: ExtensionAgentID?
 
-    private var mcpServers: [ExtensionPackage] {
-        registry.packages.filter { $0.kind == .mcpServer && $0.name != ControlPlaneMCPName }
+    private var groups: [ExtensionGroup] {
+        ExtensionGroup.groups(
+            registry.packages.filter { $0.name != ControlPlaneMCPName }
+        ) { package in
+            package.kind == .mcpServer
+                ? registry.agents(declaring: package.name) + registry.agents(for: package.id)
+                : registry.agents(for: package.id)
+        }
+        .filter { $0.isAvailable(to: tab) }
     }
 
-    private var skills: [ExtensionPackage] {
-        registry.packages.filter { $0.kind == .skill }
-    }
+    private var mcpServers: [ExtensionGroup] { groups.filter { $0.kind == .mcpServer } }
+
+    private var skills: [ExtensionGroup] { groups.filter { $0.kind == .skill } }
 
     /// The agents that will load skills whatever is chosen here. Named rather
     /// than counted: "not scoped for Claude Code" is actionable, "not scoped
@@ -221,7 +317,7 @@ struct ProjectExtensionPicker: View {
     @ViewBuilder
     private func section(
         title: String,
-        packages: [ExtensionPackage],
+        packages: [ExtensionGroup],
         emptyText: String
     ) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.tight) {
@@ -231,7 +327,7 @@ struct ProjectExtensionPicker: View {
                     .foregroundStyle(Theme.textDim)
                 Spacer()
                 if !packages.isEmpty {
-                    let on = packages.filter { selection.isAllowed($0.id, for: tab) }.count
+                    let on = packages.filter { selection.isAllowed($0, for: tab) }.count
                     Text("\(on)/\(packages.count)")
                         .font(Theme.ui(.small))
                         .foregroundStyle(Theme.textFaint)
@@ -239,7 +335,7 @@ struct ProjectExtensionPicker: View {
             }
 
             if packages.isEmpty {
-                Text(emptyText)
+                Text(tab.map { String(localized: "Nothing of this kind is installed for \($0.displayName).") } ?? emptyText)
                     .font(Theme.ui(.small))
                     .foregroundStyle(Theme.textFaint)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -264,14 +360,16 @@ struct ProjectExtensionPicker: View {
         }
     }
 
-    private func row(for package: ExtensionPackage) -> some View {
-        let isOn = selection.isAllowed(package.id, for: tab)
+    private func row(for package: ExtensionGroup) -> some View {
+        let isOn = selection.isAllowed(package, for: tab)
+        let ids = package.memberIDs(for: tab)
         // Only on the All tab, and only for rows an agent disagrees about.
         let exceptions = tab == nil
-            ? selection.disagreements(with: package.id, among: agents)
+            ? Array(Set(ids.flatMap { selection.disagreements(with: $0, among: agents) }))
+                .sorted { $0.rawValue < $1.rawValue }
             : []
         return Button {
-            selection.toggle(package.id, for: tab)
+            selection.setAllowed(!isOn, ids, for: tab)
         } label: {
             HStack(spacing: Theme.Space.snug) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -295,11 +393,26 @@ struct ProjectExtensionPicker: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
+                    // Which agents have it — on the All tab, where one row
+                    // stands for every agent's copy.
+                    if tab == nil, !package.agents.isEmpty {
+                        HStack(spacing: 4) {
+                            ForEach(package.agents) { agent in
+                                Text(agent.displayName)
+                                    .font(Theme.ui(.micro, .medium))
+                                    .foregroundStyle(Theme.textDim)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Theme.panelActive, in: Capsule())
+                            }
+                        }
+                        .accessibilityIdentifier("project.extensions.\(package.id).agents")
+                    }
                 }
                 Spacer(minLength: Theme.Space.tight)
                 Toggle("", isOn: Binding(
                     get: { isOn },
-                    set: { _ in selection.toggle(package.id, for: tab) }
+                    set: { selection.setAllowed($0, ids, for: tab) }
                 ))
                 .labelsHidden()
                 .toggleStyle(.switch)

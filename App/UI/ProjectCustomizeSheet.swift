@@ -14,6 +14,14 @@ struct ProjectSettingsSheet: View {
 
         var id: String { rawValue }
 
+        var icon: String {
+            switch self {
+            case .identity: "id"
+            case .extensions: "puzzle"
+            case .notifications: "bell"
+            }
+        }
+
         var title: String {
             switch self {
             case .identity: String(localized: "Identity")
@@ -59,11 +67,13 @@ struct ProjectSettingsSheet: View {
             width: 560
         ) {
             VStack(spacing: Theme.Space.snug) {
-                Picker("", selection: $tab) {
-                    ForEach(Tab.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                SheetTabBar(
+                    tabs: Tab.allCases,
+                    selection: $tab,
+                    title: \.title,
+                    icon: \.icon,
+                    identifier: { "project.settings.tab.\($0.rawValue)" }
+                )
                 .padding(.horizontal, Theme.Space.section)
                 .accessibilityIdentifier("project.settings.tab")
 

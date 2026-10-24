@@ -155,6 +155,15 @@ struct NotificationPrefs: Codable, Equatable, Sendable {
         var enabled: Bool?
         var priority: Priority?
         var sound: String?
+        /// Per-event verdicts for this project, keyed by event raw value. An
+        /// event missing here follows the app's own setting for it.
+        var events: [String: Bool]?
+
+        mutating func setEvent(_ event: NotificationEvent, _ value: Bool?) {
+            var table = events ?? [:]
+            table[event.rawValue] = value
+            events = table.isEmpty ? nil : table
+        }
     }
 
     // MARK: Global
@@ -206,6 +215,14 @@ struct NotificationPrefs: Codable, Equatable, Sendable {
 
     func isEnabled(_ event: NotificationEvent) -> Bool {
         prefs(for: event).enabled ?? event.defaultEnabled
+    }
+
+    /// An event in one project: the project's own verdict for it, if it has
+    /// one, otherwise the app's. A project can silence "Turn done" while
+    /// keeping permission requests, or ask for an event the app has off.
+    func isEnabled(_ event: NotificationEvent, project: UUID?) -> Bool {
+        if let project, let own = perProject[project]?.events?[event.rawValue] { return own }
+        return isEnabled(event)
     }
 
     /// Priority for an event in a project: event override → project override →

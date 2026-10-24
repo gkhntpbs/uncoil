@@ -497,6 +497,46 @@ struct ProjectNotificationRows: View {
             ),
             inheritedLabel: NotificationPrefs.soundLabel(settings.notifications.sound)
         )
+
+        // One row per event, each able to follow the app or answer for this
+        // project alone. Hidden while the project is silenced: nothing below
+        // would reach the user.
+        if override.enabled ?? true {
+            ForEach(NotificationEvent.allCases) { event in
+                Picker(selection: Binding(
+                    get: { EventChoice(override.events?[event.rawValue]) },
+                    set: { choice in mutate { $0.setEvent(event, choice.value) } }
+                )) {
+                    Text("App setting (\(settings.notifications.isEnabled(event) ? String(localized: "on") : String(localized: "off")))")
+                        .tag(EventChoice.inherit)
+                    Text("On").tag(EventChoice.on)
+                    Text("Off").tag(EventChoice.off)
+                } label: {
+                    SettingsLabel(title: event.title, detail: event.detail)
+                }
+                .settingsID("notifications.project.\(project.id.uuidString).\(event.rawValue)")
+            }
+        }
+    }
+
+    private enum EventChoice: Hashable {
+        case inherit, on, off
+
+        init(_ value: Bool?) {
+            switch value {
+            case nil: self = .inherit
+            case true?: self = .on
+            case false?: self = .off
+            }
+        }
+
+        var value: Bool? {
+            switch self {
+            case .inherit: nil
+            case .on: true
+            case .off: false
+            }
+        }
     }
 
     private func mutate(_ change: (inout NotificationPrefs.ProjectOverride) -> Void) {

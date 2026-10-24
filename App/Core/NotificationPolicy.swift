@@ -106,7 +106,7 @@ enum NotificationPolicy {
         calendar: Calendar = .current
     ) -> NotificationDecision {
         guard prefs.enabled else { return .skip(.masterOff) }
-        guard prefs.isEnabled(event) else { return .skip(.eventOff) }
+        guard prefs.isEnabled(event, project: projectID) else { return .skip(.eventOff) }
         if let projectID, !prefs.isEnabled(project: projectID) { return .skip(.projectOff) }
 
         let priority = prefs.priority(for: event, project: projectID)
