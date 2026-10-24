@@ -25,6 +25,8 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - Claude Code's own sub-agents are tracked. While sub-agents it started are still working, the session shows **Sub-agents working** instead of Ready, and "Turn done" waits until the last one finishes.
 - A project can turn each notification event on or off for itself, or leave it to the app setting.
 - The task list groups tasks by file when it shows every TODO.md, and the new-task picker names each file by its path.
+- **SSH Hosts** (Settings > Integrations): import hosts from `~/.ssh/config` (Includes followed), add your own (written to `~/.ssh/uncoil_config`, reachable after a one-time, confirmed `Include` line), and open a plain `ssh` terminal on any of them.
+- **Remote hosts per project.** Pick which SSH hosts a project uses from its settings (new **Remote Hosts** tab, with a link to the full list) or its overview panel. Agents started in the project are told only those hosts — Claude via `--append-system-prompt`, Codex via `developer_instructions` — and `uncoil_projects {"action":"context"}` returns the current list to a running session. A project with no hosts adds nothing to its agents' context.
 
 ### Fixed
 

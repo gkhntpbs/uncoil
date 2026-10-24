@@ -368,6 +368,12 @@ final class CodexAppServerSession: StructuredAgentSession {
             "sandbox": .string(sandbox),
             "config": config,
         ]
+        // The same project context the terminal launch passes as
+        // `-c developer_instructions`; both `thread/start` and `thread/resume`
+        // take it, so a resumed thread is told the current hosts too.
+        if let context = projectStore?.agentContext(for: project.id) {
+            params["developerInstructions"] = .string(context)
+        }
         let method: String
         if let providerSessionID = record.providerSessionID {
             method = "thread/resume"

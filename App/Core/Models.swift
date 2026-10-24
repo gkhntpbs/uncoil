@@ -368,6 +368,9 @@ struct Project: Identifiable, Codable, Equatable {
     /// `ScratchWorkspace` — and this is the one bit that says which project
     /// that is.
     var isScratch: Bool?
+    /// The SSH hosts this project's agents are told about, by alias. Optional
+    /// so older documents decode; nil and empty both mean none.
+    var sshHostAliases: [String]?
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
 
@@ -611,6 +614,10 @@ struct SessionRecord: Identifiable, Codable, Equatable {
     /// Extra CLI arguments from the launching preset (control-plane children).
     /// Appended after the provider's default arguments. Backward-compatible.
     var extraArguments: [String]?
+    /// For a plain terminal: the command it runs instead of an interactive
+    /// shell — `ssh <alias>` for a session opened on a remote host. nil = a
+    /// login shell. Backward-compatible.
+    var shellCommand: [String]?
     /// Model / effort / working-mode the session was dispatched with. nil = the
     /// provider's defaults. Backward-compatible.
     var launchSelection: AgentLaunchSelection?

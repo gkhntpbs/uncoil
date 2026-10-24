@@ -19,6 +19,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
     case taskMetadata
     case taskResults
     case orchestrator
+    case sshHosts
 
     var id: String { rawValue }
 
@@ -37,6 +38,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
         case .taskMetadata: 1
         case .taskResults: 1
         case .orchestrator: 1
+        case .sshHosts: 1
         }
     }
 
@@ -48,6 +50,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
         case .sessionGroups: "session-groups.json"
         case .presets: "presets.json"
         case .permissionPolicy: "permissions.json"
+        case .sshHosts: "ssh-hosts.json"
         case .extensionRegistry, .auditLog, .securityFinding, .runtimeProtocol,
              .taskMetadata, .taskResults, .orchestrator:
             // Under the extension store or a project directory, not a single
@@ -70,6 +73,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
         case .taskMetadata: String(localized: "Task metadata")
         case .taskResults: String(localized: "Task results")
         case .orchestrator: String(localized: "Orchestrator plan")
+        case .sshHosts: String(localized: "SSH hosts")
         }
     }
 

@@ -1061,8 +1061,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
                 String(UUID().uuidString.prefix(8)),
                 isDirectory: true
             )
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return root
+        return try SocketTestDirectory.make(preferred: root, socketName: "runtime.sock")
     }
 
     /// Budget for the daemon to come up. Generous on purpose: these tests spawn

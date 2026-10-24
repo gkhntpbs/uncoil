@@ -447,7 +447,8 @@ final class TerminalRegistry {
         for record: SessionRecord,
         project: Project,
         account: AccountProfile?,
-        settings: SettingsStore
+        settings: SettingsStore,
+        projectContext: String?
     ) -> (shell: String, args: [String]) {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         var args: [String] = ["-l"]
@@ -486,7 +487,8 @@ final class TerminalRegistry {
             scope: scoped.scope,
             extraArguments: settings.extraArguments[record.provider.rawValue],
             presetArguments: record.extraArguments,
-            modeArguments: settings.workingModeArguments(for: record.provider)
+            modeArguments: settings.workingModeArguments(for: record.provider),
+            projectContext: projectContext
         ) {
             args = ["-l", "-i", "-c", "exec \(command)"]
         }
@@ -707,7 +709,8 @@ final class TerminalRegistry {
                 writeMCPConfig(for: record, binaryPath: $0, scoped: scoped)
             },
             scope: scoped.scope,
-            modeArguments: settings.workingModeArguments(for: .claude))
+            modeArguments: settings.workingModeArguments(for: .claude),
+            projectContext: projectStore.agentContext(for: project.id))
         let transport = ClaudeProcessTransport(
             executable: binaryPath,
             arguments: arguments,
@@ -796,7 +799,8 @@ final class TerminalRegistry {
         )
 
         let (shell, args) = shellArguments(
-            for: record, project: project, account: account, settings: settings
+            for: record, project: project, account: account, settings: settings,
+            projectContext: projectStore.agentContext(for: project.id)
         )
         let spec = RuntimeClient.LaunchSpec(
             shell: shell,
@@ -871,7 +875,8 @@ final class TerminalRegistry {
             }
         }
         let (shell, args) = shellArguments(
-            for: record, project: project, account: account, settings: settings
+            for: record, project: project, account: account, settings: settings,
+            projectContext: projectStore.agentContext(for: project.id)
         )
         view.startProcess(
             executable: shell,
@@ -1088,8 +1093,14 @@ final class TerminalRegistry {
         scope: ProjectExtensionScope = .unrestricted,
         extraArguments: String?,
         presetArguments: [String]? = nil,
-        modeArguments: [String] = []
+        modeArguments: [String] = [],
+        /// What Uncoil knows about the project (`ProjectContextBuilder`);
+        /// nil = nothing to tell the agent.
+        projectContext: String? = nil
     ) -> String? {
+        if record.provider == .terminal, let shellCommand = record.shellCommand, !shellCommand.isEmpty {
+            return shellCommand.map(shellQuote).joined(separator: " ")
+        }
         guard let name = record.provider.launchCommand else { return nil }
         var command = binaryPath.map { "\"\($0)\"" } ?? name
         let resumeID = resume.sessionID
@@ -1147,6 +1158,19 @@ final class TerminalRegistry {
                 command += " -c \(shellQuote("skills.config=[\(entries.joined(separator: ","))]"))"
             }
         }
+        // The project's context rides on the system prompt rather than in a
+        // file the user maintains: nothing is written into the repository, and
+        // a resumed session is told the current answer, not the one it had.
+        if let projectContext, !projectContext.isEmpty {
+            if record.provider == .claude {
+                command += " --append-system-prompt \(shellQuote(projectContext))"
+            }
+            if record.provider == .codex {
+                // Verified with `codex debug prompt-input -c developer_instructions=…`:
+                // the value arrives as a `developer` message ahead of the turn.
+                command += " -c \(shellQuote("developer_instructions=" + tomlString(projectContext)))"
+            }
+        }
         if record.provider == .codex, let mcpBinaryPath {
             let escaped = mcpBinaryPath
                 .replacingOccurrences(of: "\\", with: "\\\\")
@@ -1198,6 +1222,8 @@ final class TerminalRegistry {
         "\"" + value
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\t", with: "\\t")
             + "\""
     }
 }

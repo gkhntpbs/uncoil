@@ -58,6 +58,7 @@ or write blueprints.
 | action | grant | params | returns |
 |---|---|---|---|
 | `current` | projects.read | — | project of the caller session |
+| `context` | projects.read | — | `{context, ssh_hosts:[{alias,note,host_name,user,port,origin,connect}]}` for the caller's project only |
 | `list` | projects.read | — | `projects:[{id,name,root_path}]` |
 | `inspect` | projects.read | `project_id?` | `{id,name,root_path,repository{is_repo,branch,is_worktree},worktrees,session_ids}` |
 | `list_worktrees` | worktrees.read | `project_id?` | `worktrees:[{path,branch,is_main}]` |
@@ -68,6 +69,12 @@ or write blueprints.
 | `inspect_blueprint` | projects.read | `blueprint_id` | one blueprint object |
 | `save_blueprint` | **blueprints.write** | `name` (1–60), `prompt` (≤ 8000), `icon?`, `blueprint_id?` | the stored blueprint |
 | `delete_blueprint` | **blueprints.write** | `blueprint_id` | `{deleted}` |
+
+`context` is the project context block Uncoil hands an agent at launch (Claude:
+`--append-system-prompt`; Codex: `developer_instructions`) — today the SSH hosts
+associated with the project in Settings > SSH Hosts — re-read live, so a running
+session can pick up hosts added or removed after it started. It never returns
+another project's hosts.
 
 A blueprint is a stored prompt a project can be set up from. `blueprints.write`
 is opt-in and the caller session must be resolvable, because a blueprint is text

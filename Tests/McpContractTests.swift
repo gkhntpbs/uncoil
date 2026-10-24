@@ -104,6 +104,38 @@ final class McpContractTests: XCTestCase {
 
     // MARK: - Invalid requests
 
+    // MARK: - Project context
+
+    func testContextReturnsOnlyTheCallersProjectHosts() async {
+        let project = store.projects[0]
+        store.addProject(at: URL(fileURLWithPath: "/tmp/contract-other"))
+        let other = store.projects.first { $0.id != project.id }!
+        store.saveSSHHost(SSHHost(alias: "staging-api", hostName: "10.0.0.5", user: "deploy", port: 22,
+                                  note: "Staging environment", origin: .uncoil))
+        store.saveSSHHost(SSHHost(alias: "production-api", origin: .system))
+        store.setSSHHost("staging-api", associated: true, with: project.id)
+        store.setSSHHost("production-api", associated: true, with: other.id)
+
+        let body = data(await call("uncoil_projects", "context"))
+        let hosts = body["ssh_hosts"]?.arrayValue ?? []
+        XCTAssertEqual(hosts.compactMap { $0.objectValue?["alias"]?.stringValue }, ["staging-api"])
+        XCTAssertEqual(hosts.first?.objectValue?["connect"]?.stringValue, "ssh staging-api")
+        let context = body["context"]?.stringValue ?? ""
+        XCTAssertTrue(context.contains("- staging-api — Staging environment (deploy@10.0.0.5:22)"), context)
+        XCTAssertFalse(context.contains("production-api"), context)
+
+        // A project with nothing to say answers null, not an empty heading.
+        store.setSSHHost("staging-api", associated: false, with: project.id)
+        let empty = data(await call("uncoil_projects", "context"))
+        XCTAssertEqual(empty["context"], .null)
+        XCTAssertEqual(empty["ssh_hosts"]?.arrayValue?.count, 0)
+    }
+
+    func testContextNeedsAResolvableCaller() async {
+        let envelope = await call("uncoil_projects", "context", signature: .forged)
+        XCTAssertFalse(envelope.ok)
+    }
+
     func testUnknownCapabilityAndActionAreInvalidAndSayWhatIsValid() async {
         let capability = await call("uncoil_nope", "list")
         XCTAssertEqual(capability.error?.code, "INVALID_ACTION")
@@ -197,6 +229,7 @@ final class McpContractTests: XCTestCase {
         XCTAssertEqual(kinds["uncoil_sessions.create_session"], "effect")
         XCTAssertEqual(kinds["uncoil_sessions.respond_approval"], "effect")
         XCTAssertEqual(kinds["uncoil_agents.list"], "read")
+        XCTAssertEqual(kinds["uncoil_projects.context"], "read")
         // The read table may only name actions that exist.
         for (capability, reads) in HelpRegistry.readActions {
             let actions = Set(HelpRegistry.actions(for: capability))
@@ -606,11 +639,11 @@ final class ControlPlaneCancellationTests: XCTestCase {
             projectRoot.deleteLastPathComponent()
             if FileManager.default.fileExists(atPath: projectRoot.appendingPathComponent(".git").path) { break }
         }
-        let directory = projectRoot
+        let preferred = projectRoot
             .appendingPathComponent(".build-cache/s", isDirectory: true)
             .resolvingSymlinksInPath()
             .appendingPathComponent(String(UUID().uuidString.prefix(4)), isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try SocketTestDirectory.make(preferred: preferred, socketName: "control.sock")
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let store = ProjectStore(directory: directory)

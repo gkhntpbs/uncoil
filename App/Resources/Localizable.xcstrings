@@ -1127,6 +1127,9 @@
         }
       }
     },
+    "%lld open tasks" : {
+
+    },
     "%lld pending notifications" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1312,6 +1315,9 @@
     "%lld stars" : {
 
     },
+    "%lld sub-agents working" : {
+
+    },
     "%lld task sources found" : {
 
     },
@@ -1473,6 +1479,9 @@
         }
       }
     },
+    "~/.ssh/config includes uncoil_config, so ssh <alias> reaches the hosts you add here." : {
+
+    },
     "−%lld" : {
 
     },
@@ -1483,6 +1492,12 @@
 
     },
     "1 session is on it" : {
+
+    },
+    "1 sub-agent working" : {
+
+    },
+    "1–65535" : {
 
     },
     "1.5 s" : {
@@ -2017,7 +2032,16 @@
         }
       }
     },
+    "Add Include Line" : {
+
+    },
+    "Add Include…" : {
+
+    },
     "Add one and every task in it shows up on the board: assign it to an agent, watch it work in its own worktree, and let it tick the box when it is done." : {
+
+    },
+    "Add one line to ~/.ssh/config?" : {
 
     },
     "Add Preset" : {
@@ -2097,6 +2121,9 @@
           }
         }
       }
+    },
+    "Added. ssh now reads ~/.ssh/uncoil_config; the previous file is in ~/.ssh/config.bak." : {
+
     },
     "Additional permission request" : {
       "extractionState" : "manual",
@@ -2401,10 +2428,19 @@
         }
       }
     },
+    "Agents started here are told these hosts and connect with ssh <alias>." : {
+
+    },
+    "Agents started in these projects are told about this host." : {
+
+    },
     "Agents Uncoil Auto can reach" : {
 
     },
     "Agents were found, but none of them can be connected yet." : {
+
+    },
+    "Alias" : {
 
     },
     "All" : {
@@ -2537,6 +2573,9 @@
     "An agent working through the night will not wake you." : {
 
     },
+    "An alias is one word, without spaces or the pattern characters * ? !." : {
+
+    },
     "An empty group is created; drag sessions into it." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2597,6 +2636,9 @@
 
     },
     "Anything you skipped stays listed at the bottom of the sidebar under “Finish setup”." : {
+
+    },
+    "App setting (%@)" : {
 
     },
     "Appearance" : {
@@ -3789,6 +3831,9 @@
     "Child sessions per run: %lld" : {
 
     },
+    "Choose" : {
+
+    },
     "Choose a different folder…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4684,6 +4729,9 @@
         }
       }
     },
+    "Could not back up your SSH config, so it was not changed." : {
+
+    },
     "Could not be copied: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4749,6 +4797,12 @@
           }
         }
       }
+    },
+    "Could not write ~/.ssh/uncoil_config." : {
+
+    },
+    "Could not write your SSH config." : {
+
     },
     "Counters" : {
       "extractionState" : "manual",
@@ -5139,6 +5193,12 @@
           }
         }
       }
+    },
+    "Defined in your SSH config. Edit its connection there." : {
+
+    },
+    "Defined in your SSH config. Its connection is edited there; the note and projects are Uncoil's." : {
+
     },
     "Delegated to %@" : {
 
@@ -5906,6 +5966,9 @@
         }
       }
     },
+    "Every host in your SSH config is already here." : {
+
+    },
     "Every link is in place." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6327,6 +6390,9 @@
           }
         }
       }
+    },
+    "Forget" : {
+
     },
     "Found %lld." : {
 
@@ -6829,6 +6895,18 @@
     "Hooks are Claude Code's own mechanism, so there is nothing to install here. If you add Claude Code later, come back through “Finish setup” in the sidebar — or Settings › Uncoil › Agent Status Hooks." : {
 
     },
+    "Host name" : {
+
+    },
+    "Hosts" : {
+
+    },
+    "Hosts found in ~/.ssh/config and the files it includes. They stay defined there." : {
+
+    },
+    "Hosts you add here are written to ~/.ssh/uncoil_config. Your own ~/.ssh/config is never rewritten; the one Include line is added only when you confirm it, with a copy saved to config.bak first." : {
+
+    },
     "Hourly" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6964,6 +7042,9 @@
         }
       }
     },
+    "Identity file" : {
+
+    },
     "idle" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7003,6 +7084,15 @@
     "Implements Main's brief, builds and tests it. Off: Main implements the plan itself." : {
 
     },
+    "Import" : {
+
+    },
+    "Import from SSH Config" : {
+
+    },
+    "Import from SSH Config…" : {
+
+    },
     "Import Setup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7020,6 +7110,9 @@
     "Imported “%@”. Open it to check what it says before you use it." : {
 
     },
+    "Imported %lld hosts. Associate them with a project to tell its agents." : {
+
+    },
     "Importing %lld MCP servers" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7030,6 +7123,9 @@
           }
         }
       }
+    },
+    "Importing leaves your SSH config as it is: Uncoil only remembers the host and which projects use it." : {
+
     },
     "in %@" : {
 
@@ -7072,6 +7168,9 @@
           }
         }
       }
+    },
+    "included" : {
+
     },
     "Incompatible" : {
 
@@ -7975,6 +8074,9 @@
         }
       }
     },
+    "Manage SSH Hosts…" : {
+
+    },
     "Managed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8681,6 +8783,9 @@
         }
       }
     },
+    "New Host…" : {
+
+    },
     "New profile" : {
 
     },
@@ -8785,6 +8890,9 @@
           }
         }
       }
+    },
+    "New SSH Host" : {
+
     },
     "New task" : {
       "extractionState" : "manual",
@@ -9470,6 +9578,9 @@
         }
       }
     },
+    "No SSH hosts yet. Add or import them in Settings, then pick the ones this project's agents should know about." : {
+
+    },
     "No subfolders" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9620,7 +9731,16 @@
     "none" : {
 
     },
+    "None selected: agents in this project are told nothing about remote hosts." : {
+
+    },
+    "None yet. Import the hosts already in your SSH config, or add one below." : {
+
+    },
     "None yet. Write one below, or let an agent write it with you." : {
+
+    },
+    "None. Pick the hosts this project's agents should know about." : {
 
     },
     "Normal" : {
@@ -9668,6 +9788,9 @@
         }
       }
     },
+    "not at the top" : {
+
+    },
     "Not created by Uncoil" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -9702,7 +9825,16 @@
     "not granted" : {
 
     },
+    "not in SSH config" : {
+
+    },
     "Not in the strip" : {
+
+    },
+    "not included" : {
+
+    },
+    "Not included yet. Hosts imported from your config work without it; hosts you add here need it." : {
 
     },
     "not installed" : {
@@ -9793,6 +9925,9 @@
         }
       }
     },
+    "Not used by any project" : {
+
+    },
     "Not while the conversation is on screen" : {
 
     },
@@ -9806,6 +9941,9 @@
           }
         }
       }
+    },
+    "Note" : {
+
     },
     "Nothing at all between %@ and %@." : {
       "localizations" : {
@@ -9835,6 +9973,12 @@
       }
     },
     "Nothing matches “%@”." : {
+
+    },
+    "Nothing new to import." : {
+
+    },
+    "Nothing of this kind is installed for %@." : {
 
     },
     "Nothing repeats until Repeats is switched on." : {
@@ -10001,6 +10145,9 @@
         }
       }
     },
+    "off" : {
+
+    },
     "Off" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10071,6 +10218,9 @@
           }
         }
       }
+    },
+    "on" : {
+
     },
     "On" : {
       "extractionState" : "manual",
@@ -10966,6 +11116,9 @@
     "Popular" : {
 
     },
+    "Port" : {
+
+    },
     "Port %lld is already serving before start. Stop whatever owns it (`lsof -ti :%lld`), or change the configured port." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11835,6 +11988,9 @@
         }
       }
     },
+    "Remote Hosts" : {
+
+    },
     "Remote MCP" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12309,6 +12465,9 @@
     "Retry" : {
 
     },
+    "Reveal in Config File" : {
+
+    },
     "Reveal in Finder" : {
 
     },
@@ -12742,6 +12901,12 @@
     "Save the image and paste its path" : {
 
     },
+    "Saved %@." : {
+
+    },
+    "Saved %@. Add the Include line below so ssh can reach it." : {
+
+    },
     "Saved. The running agent keeps the account it started with — restart the session to switch it." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -12963,6 +13128,9 @@
           }
         }
       }
+    },
+    "Select None" : {
+
     },
     "Select several" : {
       "extractionState" : "manual",
@@ -13481,6 +13649,9 @@
         }
       }
     },
+    "Show only this file" : {
+
+    },
     "Show Sessions" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13850,6 +14021,15 @@
     "Specialists at once: %lld" : {
 
     },
+    "SSH Config" : {
+
+    },
+    "SSH hosts" : {
+
+    },
+    "SSH Hosts" : {
+
+    },
     "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data." : {
       "localizations" : {
         "en" : {
@@ -13867,6 +14047,9 @@
       }
     },
     "Staged and inspected — nothing has touched an agent yet:" : {
+
+    },
+    "Staging environment" : {
 
     },
     "Start" : {
@@ -14184,6 +14367,9 @@
           }
         }
       }
+    },
+    "Sub-agents working" : {
+
     },
     "Subtle" : {
       "extractionState" : "manual",
@@ -14995,6 +15181,9 @@
     "The image is written into the session's working directory and its path is typed into the prompt — the same thing dropping an image does. Works with every agent." : {
 
     },
+    "The Include line comes after a Host block, so it only applies inside that block. Move it to the top of ~/.ssh/config." : {
+
+    },
     "The install finished but no Chromium runtime is there." : {
 
     },
@@ -15044,6 +15233,9 @@
 
     },
     "the layout changed" : {
+
+    },
+    "The machines your projects use. Associate a host with a project and the agents started there are told about it — they connect with plain ssh <alias>, as you would." : {
 
     },
     "The model server did not answer. See serve.log." : {
@@ -15305,6 +15497,9 @@
           }
         }
       }
+    },
+    "The SSH hosts this project's agents are told about. Hosts themselves are managed once, in Settings." : {
+
     },
     "The suite exited with a non-zero status" : {
 
@@ -15639,6 +15834,9 @@
     "This agent cannot resume a conversation, so it cannot sleep." : {
 
     },
+    "This alias is already defined in %@. OpenSSH would use that definition, so this one is not saved. Pick another alias, or import the existing host instead." : {
+
+    },
     "This cannot be undone, and it removes every stored piece of sensitive terminal output." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15940,6 +16138,9 @@
     "Uncoil adds its own entries to ~/.claude/settings.json and nothing else: a timestamped backup is written first, your own hooks are preserved byte for byte, and the file is re-parsed before it is saved." : {
 
     },
+    "Uncoil already has a host with this alias." : {
+
+    },
     "Uncoil Auto" : {
 
     },
@@ -16076,6 +16277,9 @@
         }
       }
     },
+    "Uncoil puts “Include uncoil_config” at the top of your SSH config, so ssh can find the hosts you add here. Nothing else in the file changes, and the current file is copied to ~/.ssh/config.bak first." : {
+
+    },
     "Uncoil quit while the run was going." : {
 
     },
@@ -16177,6 +16381,9 @@
           }
         }
       }
+    },
+    "Uncoil's hosts in ssh" : {
+
     },
     "Undo" : {
       "extractionState" : "manual",
@@ -16432,6 +16639,12 @@
         }
       }
     },
+    "update available" : {
+
+    },
+    "Update available" : {
+
+    },
     "Update channel" : {
       "localizations" : {
         "en" : {
@@ -16566,6 +16779,12 @@
 
     },
     "Use this" : {
+
+    },
+    "Used by %@" : {
+
+    },
+    "User" : {
 
     },
     "Uses the managed Chromium browser and its persistent state." : {
@@ -16863,6 +17082,9 @@
 
     },
     "What starts a run" : {
+
+    },
+    "What the machine is for. Agents see this next to the alias." : {
 
     },
     "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings." : {
@@ -17178,6 +17400,12 @@
           }
         }
       }
+    },
+    "Written by Uncoil to ~/.ssh/uncoil_config." : {
+
+    },
+    "Written to ~/.ssh/uncoil_config. Agents connect with ssh <alias>." : {
+
     },
     "xcodebuild couldn't match the destination (simulator/device). Run `xcrun simctl list devices available` and set an available -destination." : {
       "extractionState" : "manual",

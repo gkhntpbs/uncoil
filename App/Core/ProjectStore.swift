@@ -13,6 +13,8 @@ final class ProjectStore: ObservableObject {
     @Published private(set) var projects: [Project] = []
     @Published private(set) var sessions: [SessionRecord] = []
     @Published private(set) var sessionGroups: [SessionGroup] = []
+    /// Every SSH host Uncoil knows, global; projects refer to them by alias.
+    @Published private(set) var sshHosts: [SSHHost] = []
 
     /// Capabilities stamped onto newly created sessions; nil = the control
     /// plane's own default grant set.
@@ -25,6 +27,7 @@ final class ProjectStore: ObservableObject {
     private let projectsURL: URL
     private let sessionsURL: URL
     private let sessionGroupsURL: URL
+    private let sshHostsURL: URL
     /// Where Uncoil keeps its own data — the scratch workspace lives under it.
     private let dataDirectory: URL
 
@@ -35,6 +38,7 @@ final class ProjectStore: ObservableObject {
         projectsURL = base.appendingPathComponent("projects.json")
         sessionsURL = base.appendingPathComponent("sessions.json")
         sessionGroupsURL = base.appendingPathComponent("session-groups.json")
+        sshHostsURL = base.appendingPathComponent("ssh-hosts.json")
         load()
         // A workspace whose sessions were pruned while the app was closed has
         // nothing left to show; it should not greet the next launch.
@@ -229,6 +233,95 @@ final class ProjectStore: ObservableObject {
         ProjectPageStore.shared.forget(project.id)
         ProjectTaskStores.forget(projectID: project.id)
         save()
+    }
+
+    // MARK: - SSH hosts
+
+    func sshHost(alias: String) -> SSHHost? {
+        sshHosts.first { $0.alias == alias }
+    }
+
+    /// The hosts a project's agents are told about.
+    func sshHosts(for project: Project) -> [SSHHost] {
+        ProjectContextBuilder.hosts(for: project, in: sshHosts)
+    }
+
+    func projects(usingSSHHost alias: String) -> [Project] {
+        projects.filter { $0.sshHostAliases?.contains(alias) == true }
+    }
+
+    /// The block handed to agents started in this project; nil = nothing to say.
+    func agentContext(for projectID: UUID) -> String? {
+        guard let project = projects.first(where: { $0.id == projectID }) else { return nil }
+        return ProjectContextBuilder.build(for: project, hosts: sshHosts)
+    }
+
+    /// Adds a host, or replaces the one called `previousAlias` — carrying every
+    /// project association over to the new alias, so a rename is not a delete.
+    func saveSSHHost(_ host: SSHHost, replacing previousAlias: String? = nil) {
+        let oldAlias = previousAlias ?? host.alias
+        if let index = sshHosts.firstIndex(where: { $0.alias == oldAlias }) {
+            sshHosts[index] = host
+        } else {
+            sshHosts.append(host)
+        }
+        if oldAlias != host.alias {
+            sshHosts.removeAll { $0.alias == host.alias && $0 != host }
+            for index in projects.indices {
+                guard var aliases = projects[index].sshHostAliases, aliases.contains(oldAlias) else { continue }
+                aliases = aliases.map { $0 == oldAlias ? host.alias : $0 }
+                projects[index].sshHostAliases = Self.unique(aliases)
+            }
+            save()
+        }
+        sshHosts.sort { $0.alias.localizedStandardCompare($1.alias) == .orderedAscending }
+        saveSSHHosts()
+    }
+
+    /// Forgets a host and every project's association with it.
+    func removeSSHHost(alias: String) {
+        sshHosts.removeAll { $0.alias == alias }
+        var changed = false
+        for index in projects.indices where projects[index].sshHostAliases?.contains(alias) == true {
+            projects[index].sshHostAliases?.removeAll { $0 == alias }
+            if projects[index].sshHostAliases?.isEmpty == true { projects[index].sshHostAliases = nil }
+            changed = true
+        }
+        if changed { save() }
+        saveSSHHosts()
+    }
+
+    func setSSHHost(_ alias: String, associated: Bool, with projectID: UUID) {
+        updateProject(projectID) { project in
+            var aliases = project.sshHostAliases ?? []
+            if associated {
+                if !aliases.contains(alias) { aliases.append(alias) }
+            } else {
+                aliases.removeAll { $0 == alias }
+            }
+            project.sshHostAliases = aliases.isEmpty ? nil : aliases
+        }
+    }
+
+    /// Brings the snapshot of each remembered system host up to date with what
+    /// the user's SSH config says now. The note is Uncoil's and is kept.
+    func refreshSystemHosts(from entries: [SSHConfigEntry]) {
+        var changed = false
+        for index in sshHosts.indices where sshHosts[index].origin == .system {
+            guard let entry = entries.first(where: { $0.alias == sshHosts[index].alias }) else { continue }
+            var updated = entry.asHost
+            updated.note = sshHosts[index].note
+            if updated != sshHosts[index] {
+                sshHosts[index] = updated
+                changed = true
+            }
+        }
+        if changed { saveSSHHosts() }
+    }
+
+    private static func unique(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        return values.filter { seen.insert($0).inserted }
     }
 
     func groups(for projectID: UUID) -> [SessionGroup] {
@@ -690,6 +783,10 @@ final class ProjectStore: ObservableObject {
            let decoded = VersionedDocument<[SessionGroup]>.decode(data, schema: .sessionGroups) {
             sessionGroups = decoded.payload
         }
+        if let data = try? Data(contentsOf: sshHostsURL),
+           let decoded = VersionedDocument<[SSHHost]>.decode(data, schema: .sshHosts) {
+            sshHosts = decoded.payload
+        }
         for index in sessions.indices
         where SessionAutoTitle.isTerminalReply(sessions[index].displayTitle) {
             sessions[index].title = "\(sessions[index].provider.rawValue): new session"
@@ -742,6 +839,14 @@ final class ProjectStore: ObservableObject {
             schemaVersion: UncoilSchema.sessionGroups.currentVersion, payload: sessionGroups
         )) {
             try? data.write(to: sessionGroupsURL, options: .atomic)
+        }
+    }
+
+    private func saveSSHHosts() {
+        if let data = try? JSONEncoder().encode(VersionedDocument(
+            schemaVersion: UncoilSchema.sshHosts.currentVersion, payload: sshHosts
+        )) {
+            try? data.write(to: sshHostsURL, options: .atomic)
         }
     }
 

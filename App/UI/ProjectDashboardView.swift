@@ -208,6 +208,9 @@ struct ProjectDashboardView: View {
             if git.isRepo {
                 worktreesPanel
             }
+            if !project.isScratchWorkspace {
+                ProjectRemoteHostsPanel(project: project, selection: $selection)
+            }
             HStack(alignment: .top, spacing: 14) {
                 VStack(spacing: 14) {
                     gitPanel

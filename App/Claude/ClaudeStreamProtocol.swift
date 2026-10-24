@@ -23,7 +23,8 @@ enum ClaudeStreamProtocol {
         newSessionID: String,
         mcpConfigPath: String?,
         scope: ProjectExtensionScope,
-        modeArguments: [String]
+        modeArguments: [String],
+        projectContext: String? = nil
     ) -> [String] {
         var arguments = [
             "-p",
@@ -43,6 +44,9 @@ enum ClaudeStreamProtocol {
         if let mcpConfigPath {
             arguments += ["--mcp-config", mcpConfigPath]
             if !scope.excludedMCPNames.isEmpty { arguments.append("--strict-mcp-config") }
+        }
+        if let projectContext, !projectContext.isEmpty {
+            arguments += ["--append-system-prompt", projectContext]
         }
         // The same selection flags the terminal launch uses: model, effort and
         // mode mean the same thing to `claude -p`.

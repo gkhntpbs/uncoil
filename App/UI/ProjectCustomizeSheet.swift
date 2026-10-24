@@ -10,6 +10,7 @@ struct ProjectSettingsSheet: View {
     enum Tab: String, CaseIterable, Identifiable {
         case identity
         case extensions
+        case remoteHosts
         case notifications
 
         var id: String { rawValue }
@@ -18,6 +19,7 @@ struct ProjectSettingsSheet: View {
             switch self {
             case .identity: "id"
             case .extensions: "puzzle"
+            case .remoteHosts: "server"
             case .notifications: "bell"
             }
         }
@@ -26,6 +28,7 @@ struct ProjectSettingsSheet: View {
             switch self {
             case .identity: String(localized: "Identity")
             case .extensions: String(localized: "MCP & Skills")
+            case .remoteHosts: String(localized: "Remote Hosts")
             case .notifications: String(localized: "Notifications")
             }
         }
@@ -38,6 +41,8 @@ struct ProjectSettingsSheet: View {
                 String(localized: "How this project is named and recognised in the sidebar.")
             case .extensions:
                 String(localized: "What a session in this project may load. Everything is on until you turn it off.")
+            case .remoteHosts:
+                String(localized: "The SSH hosts this project's agents are told about. Hosts themselves are managed once, in Settings.")
             case .notifications:
                 String(localized: "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings.")
             }
@@ -48,6 +53,7 @@ struct ProjectSettingsSheet: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     @ObservedObject private var registry = ExtensionRegistry.shared
 
     @State private var tab: Tab = .identity
@@ -55,6 +61,7 @@ struct ProjectSettingsSheet: View {
     @State private var selectedIcon: String?
     @State private var selectedColor: UInt32?
     @State private var selection = ProjectExtensionSelection()
+    @State private var hostAliases: [String] = []
 
     private var agents: [ExtensionAgentID] {
         ProjectExtensionPicker.tabAgents(for: settings)
@@ -84,6 +91,12 @@ struct ProjectSettingsSheet: View {
                             ProjectExtensionPicker(
                                 registry: registry, selection: $selection, agents: agents
                             )
+                        case .remoteHosts:
+                            ProjectRemoteHostsSettings(aliases: $hostAliases) {
+                                dismiss()
+                                Router.shared.go(to: .settings(pane: SettingsView.Pane.sshHosts.id))
+                                openWindow(.settings)
+                            }
                         case .notifications:
                             // The same rows the global Settings window used to
                             // carry a copy of, for every project at once. A
@@ -119,6 +132,7 @@ struct ProjectSettingsSheet: View {
             name = project.name
             selectedIcon = project.iconName
             selectedColor = project.colorHex
+            hostAliases = project.sshHostAliases ?? []
             selection = ProjectExtensionSelection.load(
                 from: registry.projectBindings, projectID: project.id
             )
@@ -159,6 +173,7 @@ struct ProjectSettingsSheet: View {
             if !trimmed.isEmpty { stored.name = trimmed }
             stored.iconName = selectedIcon
             stored.colorHex = selectedColor
+            stored.sshHostAliases = hostAliases.isEmpty ? nil : hostAliases
         }
         ProjectExtensionPicker.save(
             selection, projectID: project.id, agents: agents, to: registry

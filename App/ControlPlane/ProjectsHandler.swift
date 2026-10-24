@@ -19,6 +19,32 @@ extension CapabilityRouter {
             }
             return .success(request, data: projectData(project), project_id: project.id.uuidString)
 
+        case "context":
+            // The caller's own project only, never one named in the args: this
+            // is what the agent was told at launch, kept current, and another
+            // project's machines are not part of it.
+            guard let caller = caller(of: request) else {
+                return .failure(request, code: .unknownSession, message: "caller session not found")
+            }
+            guard let project = project(id: caller.projectID) else {
+                return .failure(request, code: .unknownProject, message: "caller project not found")
+            }
+            let hosts = projectStore.sshHosts(for: project).map { host -> JSONValue in
+                .object([
+                    "alias": .string(host.alias),
+                    "note": .string(optional: host.trimmedNote),
+                    "host_name": .string(optional: host.hostName),
+                    "user": .string(optional: host.user),
+                    "port": host.port.map { .int($0) } ?? .null,
+                    "origin": .string(host.origin.rawValue),
+                    "connect": .string("ssh \(host.alias)"),
+                ])
+            }
+            return .success(request, data: .object([
+                "context": .string(optional: ProjectContextBuilder.build(for: project, hosts: projectStore.sshHosts)),
+                "ssh_hosts": .array(hosts),
+            ]), project_id: project.id.uuidString)
+
         case "list":
             let list = projectStore.projects.map { project -> JSONValue in
                 .object([

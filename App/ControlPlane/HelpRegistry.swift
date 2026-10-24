@@ -35,7 +35,7 @@ enum HelpRegistry {
     /// caller may read, and only a verified one may act.
     static let readActions: [String: Set<String>] = [
         "uncoil_projects": [
-            "current", "list", "inspect", "list_worktrees", "list_presets", "inspect_preset",
+            "current", "context", "list", "inspect", "list_worktrees", "list_presets", "inspect_preset",
             "list_blueprints", "inspect_blueprint",
         ],
         "uncoil_sessions": [
@@ -106,7 +106,7 @@ enum HelpRegistry {
     // MARK: - uncoil_projects
 
     static let projects: CapabilityDoc = {
-        let names = ["help", "current", "list", "inspect", "list_worktrees", "create_worktree",
+        let names = ["help", "current", "context", "list", "inspect", "list_worktrees", "create_worktree",
                      "list_presets", "inspect_preset",
                      "list_blueprints", "inspect_blueprint", "save_blueprint", "delete_blueprint"]
         let overview = "Inspect Uncoil projects and their git worktrees, create new worktrees, and read or write the project blueprints a new project can be set up from."
@@ -117,6 +117,8 @@ enum HelpRegistry {
                 helpAction(overview, names),
                 ActionDoc(action: "current", summary: "The project owning the caller session.",
                     doc: "# current\nResolves the project that owns the calling session (via UNCOIL_SESSION_ID). No args. Returns the same shape as `inspect`."),
+                ActionDoc(action: "context", summary: "What Uncoil tells agents about the caller's project.",
+                    doc: "# context\nThe caller's project only; no args. Returns `context` (the same text block an agent is given at launch, or null when there is nothing to say) and `ssh_hosts:[{alias, note, host_name, user, port, origin, connect}]` — the SSH hosts associated with this project. Connect with plain `ssh <alias>`. Call again when the list may have changed since launch."),
                 ActionDoc(action: "list", summary: "All registered projects.",
                     doc: "# list\nLists every registered project: `{id, name, root_path}`. No args."),
                 ActionDoc(action: "inspect", summary: "Full detail for one project.",

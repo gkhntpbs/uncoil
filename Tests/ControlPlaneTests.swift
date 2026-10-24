@@ -244,10 +244,10 @@ final class ControlPlaneServerTests: XCTestCase {
             }
             projectRoot.deleteLastPathComponent()
         }
-        let directory = projectRoot
+        let preferred = projectRoot
             .appendingPathComponent(".build-cache/s", isDirectory: true)
             .appendingPathComponent(String(UUID().uuidString.prefix(4)), isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let directory = try SocketTestDirectory.make(preferred: preferred, socketName: "control.sock")
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let projectStore = ProjectStore(directory: directory)

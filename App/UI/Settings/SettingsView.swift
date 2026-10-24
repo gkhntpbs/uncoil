@@ -84,6 +84,7 @@ struct SettingsView: View {
         case mcp
         case drivers
         case github
+        case sshHosts
         case privacyData
 
         case about
@@ -103,6 +104,7 @@ struct SettingsView: View {
             case .mcp: "mcp"
             case .drivers: "drivers"
             case .github: "github"
+            case .sshHosts: "sshHosts"
             case .privacyData: "privacyData"
             case .about: "about"
             }
@@ -114,7 +116,7 @@ struct SettingsView: View {
             .general, .input, .notifications,
             .agents, .blueprints,
             .theme, .menuBar, .launcher,
-            .github, .drivers,
+            .github, .sshHosts, .drivers,
             .permissions, .mcp, .privacyData,
             .about,
         ]
@@ -151,7 +153,7 @@ struct SettingsView: View {
             // GitHub token and a Computer Use driver are things a user brings
             // and can take away again; the control plane and the retention
             // policy are the app itself.
-            case .github, .drivers: .integrations
+            case .github, .sshHosts, .drivers: .integrations
             // The machinery: what agents are allowed to do, how Uncoil talks to
             // them, and what it keeps. Rarely visited, and nothing here is
             // needed to get work done.
@@ -174,6 +176,7 @@ struct SettingsView: View {
             case .permissions: String(localized: "Permissions")
             case .privacyData: String(localized: "Data and Transcripts")
             case .github: "GitHub"
+            case .sshHosts: String(localized: "SSH Hosts")
             case .drivers: String(localized: "Drivers")
             case .mcp: String(localized: "Uncoil MCP")
             case .about: String(localized: "About")
@@ -194,6 +197,7 @@ struct SettingsView: View {
             case .permissions: "lock.shield"
             case .privacyData: "externaldrive.badge.person.crop"
             case .github: "chevron.left.forwardslash.chevron.right"
+            case .sshHosts: "server.rack"
             case .drivers: "puzzlepiece.extension"
             case .mcp: "point.3.connected.trianglepath.dotted"
             case .about: "info.circle"
@@ -225,6 +229,7 @@ struct SettingsView: View {
             case .permissions: "izin permission mcp grant onay approval agent kontrol control computer use browser"
             case .privacyData: "transcript kayıt saklama retention veri data gizlilik privacy sil temizle delete clear"
             case .github: "github token pr pull request giriş login sign in"
+            case .sshHosts: "ssh host sunucu server uzak remote makine machine bağlantı connection config include terminal alias proje project"
             case .drivers: "sürücü driver agent-browser cua computer use kurulum install"
             case .mcp: "mcp control plane kontrol düzlemi araç tool uncoil_projects sunucu server soket socket kurulum install yapılandırma configure"
             case .about: "hakkında about sürüm version update updates güncelleme kanal channel stable edge veri klasörü data folder debug bundle kaldır uninstall"
@@ -401,6 +406,7 @@ struct SettingsView: View {
             }
         case .privacyData: PrivacyDataSettingsPage()
         case .github: GitHubSettingsPage()
+        case .sshHosts: SSHHostsSettingsPage()
         case .drivers: DriversSettingsPage()
         case .mcp: McpSettingsPage()
         case .about: AboutSettingsPage()
