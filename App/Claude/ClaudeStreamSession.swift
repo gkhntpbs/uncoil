@@ -47,6 +47,11 @@ final class ClaudeStreamSession: StructuredAgentSession {
     private var turnInProgress = false
     private var ready = false
     private var stopped = false
+    /// Lines the process sent before the earlier turns were shown. The process
+    /// starts while the transcript is still being read — the two used to run
+    /// one after the other, so a long conversation paid for both — and what
+    /// it says waits here so the history still comes first.
+    private var heldLines: [Data]?
 
     init(
         record: SessionRecord,
@@ -82,10 +87,14 @@ final class ClaudeStreamSession: StructuredAgentSession {
             // Known before the process says anything: it was handed the id.
             if let id = normalizer.providerSessionID { publish(.sessionBound(providerSessionID: id)) }
             if let startNotice { publish(.notice(AgentNotice(level: .warning, message: startNotice))) }
+            heldLines = []
+            launch()
             let earlier = await history()
             guard !stopped else { return }
             if !earlier.isEmpty { publish(.historyLoaded(earlier)) }
-            launch()
+            let held = heldLines ?? []
+            heldLines = nil
+            for line in held { receive(line) }
         }
     }
 
@@ -203,6 +212,10 @@ final class ClaudeStreamSession: StructuredAgentSession {
     // MARK: - Receiving
 
     private func receive(_ line: Data) {
+        if heldLines != nil {
+            heldLines?.append(line)
+            return
+        }
         guard let value = try? JSONDecoder().decode(JSONValue.self, from: line),
               let object = value.objectValue else { return }
         switch object["type"]?.stringValue {

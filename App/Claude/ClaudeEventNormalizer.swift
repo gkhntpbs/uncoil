@@ -341,6 +341,57 @@ struct ClaudeEventNormalizer {
     /// disk. The transcript holds the same `user` and `assistant` messages the
     /// stream carries, so it is read by the same rules — with the user's own
     /// prompts added, which the stream never echoes back.
+    /// The earlier turns of a transcript on disk, read from its end.
+    ///
+    /// Only the last `limit` items are ever shown, but the whole file used to
+    /// be read and decoded first — and a long session's transcript runs to
+    /// tens of megabytes, mostly tool output. The file is scanned backwards in
+    /// chunks, counting message lines without decoding them, until there are
+    /// enough for `limit` items; only that tail is then decoded, once.
+    static func history(
+        contentsOf url: URL,
+        limit: Int = 200,
+        chunkSize: UInt64 = 1024 * 1024
+    ) -> [AgentItem] {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return [] }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd(), size > 0 else { return [] }
+
+        // Every item comes from a message line; asking for twice the limit
+        // covers lines that yield nothing (tool results fold into their call).
+        let wanted = limit * 2
+        var tail = Data()
+        var start = size
+        var messages = 0
+        while start > 0, messages < wanted {
+            let next = start > chunkSize ? start - chunkSize : 0
+            guard (try? handle.seek(toOffset: next)) != nil,
+                  let chunk = try? handle.read(upToCount: Int(start - next)) else { return [] }
+            messages += messageLineCount(in: chunk)
+            tail = chunk + tail
+            start = next
+        }
+        // A tail that starts mid-file starts mid-line.
+        if start > 0, let newline = tail.firstIndex(of: 0x0A) {
+            tail = tail[tail.index(after: newline)...]
+        }
+        return history(transcript: String(decoding: tail, as: UTF8.self), limit: limit)
+    }
+
+    /// Lines that can carry an item, recognised without decoding: the main
+    /// conversation's `user` and `assistant` lines.
+    static func messageLineCount(in data: Data) -> Int {
+        let assistant = Data(#""type":"assistant""#.utf8)
+        let user = Data(#""type":"user""#.utf8)
+        let sidechain = Data(#""isSidechain":true"#.utf8)
+        var count = 0
+        for line in data.split(separator: 0x0A, omittingEmptySubsequences: true) {
+            guard line.range(of: sidechain) == nil else { continue }
+            if line.range(of: assistant) != nil || line.range(of: user) != nil { count += 1 }
+        }
+        return count
+    }
+
     static func history(transcript: String, limit: Int = 200) -> [AgentItem] {
         var normalizer = ClaudeEventNormalizer()
         var items: [String: AgentItem] = [:]
@@ -351,8 +402,12 @@ struct ClaudeEventNormalizer {
             if item.status == .inProgress { item.status = .completed }
             items[item.id] = item
         }
+        let decoder = JSONDecoder()
         for line in transcript.split(separator: "\n") {
-            guard let value = try? JSONDecoder().decode(JSONValue.self, from: Data(line.utf8)),
+            // Sub-agent turns are skipped below anyway; recognising them from
+            // the text spares decoding what are often the largest lines.
+            if line.contains("\"isSidechain\":true") { continue }
+            guard let value = try? decoder.decode(JSONValue.self, from: Data(line.utf8)),
                   let object = value.objectValue else { continue }
             if object["isSidechain"]?.boolValue == true || object["isMeta"]?.boolValue == true { continue }
             if object["type"]?.stringValue == "user", let prompt = promptText(object) {

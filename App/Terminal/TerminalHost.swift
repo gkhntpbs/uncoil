@@ -728,8 +728,7 @@ final class TerminalRegistry {
             history: {
                 guard let transcript else { return [] }
                 return await Task.detached(priority: .userInitiated) {
-                    guard let text = try? String(contentsOf: transcript, encoding: .utf8) else { return [] }
-                    return ClaudeEventNormalizer.history(transcript: text)
+                    ClaudeEventNormalizer.history(contentsOf: transcript)
                 }.value
             },
             terminal: view,

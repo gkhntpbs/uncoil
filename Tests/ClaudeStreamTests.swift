@@ -125,6 +125,34 @@ final class ClaudeEventNormalizerTests: XCTestCase {
         ])
         XCTAssertTrue(items.allSatisfy { $0.status == .completed })
     }
+
+    func testHistoryFromDiskReadsOnlyTheTailItNeeds() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("transcript-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let filler = String(repeating: "x", count: 2_000)
+        var lines: [String] = []
+        for index in 0..<400 {
+            lines.append(#"{"type":"user","uuid":"u\#(index)","message":{"role":"user","content":[{"type":"text","text":"prompt \#(index) \#(filler)"}]}}"#)
+        }
+        try (lines.joined(separator: "\n") + "\n").write(to: url, atomically: true, encoding: .utf8)
+
+        // A window far smaller than the file has to grow until it holds the
+        // limit, and must never surface a line cut in half.
+        let items = ClaudeEventNormalizer.history(contentsOf: url, limit: 50, chunkSize: 8_000)
+        XCTAssertEqual(items.count, 50)
+        XCTAssertEqual(items.map(\.id).last, "u399")
+        XCTAssertEqual(items.map(\.id).first, "u350")
+    }
+
+    func testHistoryFromDiskOfASmallFileReadsItAll() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("transcript-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try #"{"type":"user","uuid":"only","message":{"role":"user","content":[{"type":"text","text":"hi"}]}}"#
+            .write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertEqual(ClaudeEventNormalizer.history(contentsOf: url).map(\.id), ["only"])
+    }
 }
 
 // MARK: - Command line
