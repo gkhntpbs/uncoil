@@ -814,6 +814,10 @@ final class SessionStore: ObservableObject {
     /// sidebar row pulses for, and it clears the moment the session is opened.
     @Published private(set) var unseenAttention: Set<UUID> = []
 
+    /// Sub-agents each session's agent is still running. Not published: the
+    /// status it drives is.
+    var subagents = SubagentLedger()
+
     func markAttention(_ recordID: UUID) {
         unseenAttention.insert(recordID)
     }

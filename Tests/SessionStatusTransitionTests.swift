@@ -8,7 +8,8 @@ import XCTest
 final class SessionStatusTransitionTests: XCTestCase {
     private let stopped: [AgentSessionStatus] = [.terminated, .suspended, .hibernated]
     private let live: [AgentSessionStatus] = [
-        .idle, .thinking, .running, .waitingForPermission, .waitingForInput, .completed,
+        .idle, .thinking, .running, .waitingForPermission, .waitingForInput,
+        .waitingForSubagents, .completed,
     ]
 
     func testEndingIsAlwaysLegal() {

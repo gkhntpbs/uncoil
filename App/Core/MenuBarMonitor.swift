@@ -115,7 +115,7 @@ enum MenuBarMonitorEngine {
         var summary = MenuBarSummary()
         for status in statuses.values {
             switch status {
-            case .running, .thinking:
+            case .running, .thinking, .waitingForSubagents:
                 summary.running += 1
             case .waitingForPermission:
                 summary.waitingPermission += 1
@@ -144,7 +144,8 @@ enum MenuBarMonitorEngine {
     ) -> [SessionRecord] {
         sessions.filter {
             switch statuses[$0.id] {
-            case .running, .thinking, .waitingForPermission, .waitingForInput:
+            case .running, .thinking, .waitingForPermission, .waitingForInput,
+                 .waitingForSubagents:
                 true
             default:
                 false

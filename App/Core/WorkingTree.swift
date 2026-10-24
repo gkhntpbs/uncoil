@@ -31,7 +31,8 @@ extension AgentSessionStatus {
     /// files beneath it interrupts something.
     var isWorking: Bool {
         switch self {
-        case .thinking, .running, .waitingForPermission, .waitingForInput: true
+        case .thinking, .running, .waitingForPermission, .waitingForInput,
+             .waitingForSubagents: true
         // Frozen mid-action, not finished: it still has work in flight and
         // cannot even react to the files moving under it. Hibernated is the
         // opposite — there is no process, and treating it as working would

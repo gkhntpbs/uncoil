@@ -17,6 +17,8 @@ struct HookEvent {
         case postToolUse = "PostToolUse"
         case notification = "Notification"
         case stop = "Stop"
+        case subagentStart = "SubagentStart"
+        case subagentStop = "SubagentStop"
         case sessionEnd = "SessionEnd"
     }
 
@@ -31,6 +33,8 @@ struct HookEvent {
     /// optional and the UI falls back to what the session was launched with.
     let model: String?
     let permissionMode: String?
+    /// Which sub-agent a `SubagentStart` / `SubagentStop` is about.
+    let agentID: String?
 
     init?(jsonLine: Data) {
         guard
@@ -49,5 +53,6 @@ struct HookEvent {
         prompt = object["prompt"] as? String ?? object["user_message"] as? String
         model = object["model"] as? String
         permissionMode = object["permission_mode"] as? String
+        agentID = object["agent_id"] as? String
     }
 }

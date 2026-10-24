@@ -148,6 +148,44 @@ final class HookReducerTests: XCTestCase {
         XCTAssertEqual(sessions.status(of: record.id), .idle)
     }
 
+    // MARK: - Sub-agents
+
+    func testStopWhileABackgroundSubagentRunsIsNotDone() {
+        send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
+        send(["hook_event_name": "SubagentStart", "cwd": "/tmp/demo", "agent_id": "a1"])
+        send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .waitingForSubagents)
+        XCTAssertEqual(sessions.detail(of: record.id), "1 sub-agent working")
+
+        // The sub-agent's own tool calls keep the wait, not flip to Running.
+        send(["hook_event_name": "PreToolUse", "cwd": "/tmp/demo", "tool_name": "Read"])
+        XCTAssertEqual(sessions.status(of: record.id), .waitingForSubagents)
+
+        send(["hook_event_name": "SubagentStop", "cwd": "/tmp/demo", "agent_id": "a1"])
+        XCTAssertEqual(sessions.status(of: record.id), .idle)
+    }
+
+    func testForegroundSubagentInsideTheTurnLeavesNormalFlow() {
+        send(["hook_event_name": "UserPromptSubmit", "cwd": "/tmp/demo"])
+        send(["hook_event_name": "SubagentStart", "cwd": "/tmp/demo", "agent_id": "a1"])
+        send(["hook_event_name": "PreToolUse", "cwd": "/tmp/demo", "tool_name": "Grep"])
+        XCTAssertEqual(sessions.status(of: record.id), .running)
+        send(["hook_event_name": "SubagentStop", "cwd": "/tmp/demo", "agent_id": "a1"])
+        send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.status(of: record.id), .idle)
+    }
+
+    func testWaitCountsEverySubagentDown() {
+        send(["hook_event_name": "SubagentStart", "cwd": "/tmp/demo", "agent_id": "a1"])
+        send(["hook_event_name": "SubagentStart", "cwd": "/tmp/demo", "agent_id": "a2"])
+        send(["hook_event_name": "Stop", "cwd": "/tmp/demo"])
+        XCTAssertEqual(sessions.detail(of: record.id), "2 sub-agents working")
+        send(["hook_event_name": "SubagentStop", "cwd": "/tmp/demo", "agent_id": "a2"])
+        XCTAssertEqual(sessions.status(of: record.id), .waitingForSubagents)
+        send(["hook_event_name": "SubagentStop", "cwd": "/tmp/demo", "agent_id": "a1"])
+        XCTAssertEqual(sessions.status(of: record.id), .idle)
+    }
+
     func testEventOutsideRegisteredProjectsIgnored() {
         send(["hook_event_name": "Stop", "cwd": "/somewhere/else"])
         XCTAssertEqual(sessions.status(of: record.id), .running)

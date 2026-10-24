@@ -425,6 +425,10 @@ enum AgentSessionStatus: String, Codable {
     case running
     case waitingForPermission
     case waitingForInput
+    /// The agent's own turn is over, but sub-agents it started are still
+    /// working — Claude Code's Task/Agent tool, run in the background. The
+    /// session is not done, so it neither reads as Ready nor sends "Turn done".
+    case waitingForSubagents
     case completed
     /// Stopped mid-flight with SIGSTOP: still in memory, using no CPU, and one
     /// signal away from carrying on exactly where it was.
@@ -442,6 +446,7 @@ enum AgentSessionStatus: String, Codable {
         case .running: String(localized: "Running")
         case .waitingForPermission: String(localized: "Waiting for permission")
         case .waitingForInput: String(localized: "Waiting for a reply")
+        case .waitingForSubagents: String(localized: "Sub-agents working")
         case .completed: String(localized: "Done")
         case .suspended: String(localized: "Paused")
         case .hibernated: String(localized: "Asleep")
@@ -456,6 +461,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForInput: Theme.warn
         case .thinking: Color(hex: 0xB56CD6)
         case .running: Theme.ok
+        case .waitingForSubagents: Theme.info
         case .completed: Theme.highlight
         case .idle: Theme.textDim
         // Deliberately not the "closed" grey: a sleeping session is coming
@@ -474,7 +480,7 @@ enum AgentSessionStatus: String, Codable {
     var needsAttention: Bool {
         switch self {
         case .waitingForPermission, .waitingForInput: true
-        case .idle, .thinking, .running, .completed, .terminated, .unknown: false
+        case .idle, .thinking, .running, .waitingForSubagents, .completed, .terminated, .unknown: false
         // Asleep on purpose. Nothing to answer, so nothing to nag about.
         case .suspended, .hibernated: false
         }
@@ -486,7 +492,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForPermission: 5
         case .waitingForInput: 4
         case .running: 3
-        case .thinking: 3
+        case .thinking, .waitingForSubagents: 3
         case .completed: 2
         case .idle: 1
         case .suspended, .hibernated: 0
@@ -503,7 +509,7 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .unknown, .terminated: false
         case .idle, .thinking, .running, .waitingForPermission, .waitingForInput,
-             .completed, .suspended, .hibernated: true
+             .waitingForSubagents, .completed, .suspended, .hibernated: true
         }
     }
 
@@ -539,7 +545,7 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .terminated, .suspended, .hibernated: return false
         case .unknown, .idle, .thinking, .running, .waitingForPermission,
-             .waitingForInput, .completed: return true
+             .waitingForInput, .waitingForSubagents, .completed: return true
         }
     }
 }

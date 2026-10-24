@@ -70,16 +70,31 @@ extension SessionStore {
 
         switch event.kind {
         case .sessionStart:
+            subagents.reset(sessionID)
             setStatus(.idle, for: sessionID)
             clearNotificationDedup(sessionID)
         case .userPromptSubmit:
+            subagents.mainResumed(in: sessionID)
             setStatus(.thinking, for: sessionID)
             // New turn started: allow the next attention/completion ping.
             clearNotificationDedup(sessionID)
         case .preToolUse:
-            setStatus(.running, detail: event.toolName.map { "tool: \($0)" }, for: sessionID)
+            // Once the main agent's turn is over, tool calls come from its
+            // sub-agents: the session stays "Sub-agents working" rather than
+            // flickering back to Running and losing track of the wait.
+            if subagents.isWaiting(for: sessionID) {
+                subagents.heard(in: sessionID)
+                setSubagentStatus(sessionID, tool: event.toolName)
+            } else {
+                setStatus(.running, detail: event.toolName.map { "tool: \($0)" }, for: sessionID)
+            }
         case .postToolUse:
-            setStatus(.thinking, for: sessionID)
+            if subagents.isWaiting(for: sessionID) {
+                subagents.heard(in: sessionID)
+                setSubagentStatus(sessionID, tool: nil)
+            } else {
+                setStatus(.thinking, for: sessionID)
+            }
         case .notification:
             let message = event.message ?? ""
             if message.localizedCaseInsensitiveContains("permission") {
@@ -102,10 +117,39 @@ extension SessionStore {
                     sessionID: sessionID,
                     prefs: prefs
                 )
+            } else if subagents.isWaiting(for: sessionID) {
+                setSubagentStatus(sessionID, tool: nil)
             } else {
                 setStatus(.thinking, detail: message.isEmpty ? nil : message, for: sessionID)
             }
+        case .subagentStart:
+            subagents.started(event.agentID, in: sessionID)
+            if subagents.isWaiting(for: sessionID) {
+                setSubagentStatus(sessionID, tool: nil)
+            }
+        case .subagentStop:
+            // The last sub-agent the finished main turn was waiting on: only
+            // now is the work done, and only now does "Turn done" go out.
+            if subagents.stopped(event.agentID, in: sessionID) {
+                setStatus(.idle, for: sessionID)
+                notify(
+                    .turnCompleted,
+                    title: project.name,
+                    body: String(localized: "Turn done · \(sessionTitle)"),
+                    projectID: project.id,
+                    sessionID: sessionID,
+                    prefs: prefs
+                )
+            } else if subagents.isWaiting(for: sessionID) {
+                setSubagentStatus(sessionID, tool: nil)
+            }
         case .stop:
+            // The main agent's turn is over, but sub-agents it started in the
+            // background may not be. Then the session is still working.
+            if subagents.mainStopped(in: sessionID) {
+                setSubagentStatus(sessionID, tool: nil)
+                return
+            }
             // Turn finished — the agent now idles waiting for the human.
             setStatus(.idle, for: sessionID)
             notify(
@@ -117,10 +161,24 @@ extension SessionStore {
                 prefs: prefs
             )
         case .sessionEnd:
+            subagents.reset(sessionID)
             setStatus(.terminated, for: sessionID)
             endSession(sessionID)
             clearNotificationDedup(sessionID)
         }
+    }
+
+    @MainActor
+    private func setSubagentStatus(_ sessionID: UUID, tool: String?) {
+        let count = subagents.count(for: sessionID)
+        let base = count == 1
+            ? String(localized: "1 sub-agent working")
+            : String(localized: "\(count) sub-agents working")
+        setStatus(
+            .waitingForSubagents,
+            detail: tool.map { "\(base) · tool: \($0)" } ?? base,
+            for: sessionID
+        )
     }
 
     // MARK: - Event notifications

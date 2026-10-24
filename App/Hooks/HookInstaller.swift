@@ -11,7 +11,24 @@ enum HookInstaller {
     static let managedEvents = [
         "SessionStart", "UserPromptSubmit", "PreToolUse",
         "PostToolUse", "Notification", "Stop", "SessionEnd",
+        "SubagentStart", "SubagentStop",
     ]
+
+    /// Events added after hooks were first offered. An install that has every
+    /// event but these was made by an older Uncoil with the user's consent to
+    /// the same helper, so it is completed at launch rather than shown as
+    /// half-connected. Without them a background sub-agent's work reads as done.
+    static let laterEvents: Set<String> = ["SubagentStart", "SubagentStop"]
+
+    /// Completes an older install with `laterEvents`. Returns whether it wrote.
+    @discardableResult
+    static func completeOlderInstall() throws -> Bool {
+        guard helperURL != nil,
+              case .partiallyInstalled(let missing) = status(),
+              Set(missing).isSubset(of: laterEvents) else { return false }
+        try install()
+        return true
+    }
 
     /// Marker that identifies entries owned by Uncoil.
     static let helperName = "uncoil-hook"

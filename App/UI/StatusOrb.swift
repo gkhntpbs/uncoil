@@ -16,7 +16,7 @@ struct StatusOrb: View {
         // With the attention emphasis off, the orb keeps its colour and loses
         // its motion — the same bargain the sidebar row makes. A still dot
         // still says "running"; a list of them does not flicker.
-        case .running, .thinking:
+        case .running, .thinking, .waitingForSubagents:
             if motion.animates {
                 OrbitingDots(color: status.color, size: size)
             } else {

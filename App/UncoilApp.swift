@@ -37,6 +37,9 @@ struct UncoilApp: App {
         // Claude tool call log a failure, so re-point it at this bundle.
         if !LaunchConfig.shared.isUITesting {
             do {
+                if try HookInstaller.completeOlderInstall() {
+                    NSLog("Uncoil added its sub-agent hooks to an existing install")
+                }
                 let repaired = try HookInstaller.repairStalePaths()
                 if repaired > 0 {
                     NSLog("Uncoil repaired \(repaired) stale hook command(s)")
