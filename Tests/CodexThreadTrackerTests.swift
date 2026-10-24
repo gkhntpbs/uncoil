@@ -134,3 +134,39 @@ final class CodexThreadTrackerLiveTests: XCTestCase {
         print("LIVE pid=\(pid) held=\(held.map(\.threadID)) main=\(thread) title=\(row?.title ?? "-") rollout=\(row?.rolloutPath ?? "-")")
     }
 }
+
+final class CodexRolloutRecoveryTests: XCTestCase {
+    private func line(_ kind: String, _ type: String) -> String {
+        #"{"timestamp":"2026-10-23T03:01:40.920Z","ordinal":3,"type":"\#(kind)","payload":{"type":"\#(type)","x":1}}"#
+    }
+
+    func testLastEventIsTheTurnInFlight() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rollout-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let body = [
+            line("event_msg", "task_started"),
+            line("event_msg", "task_complete"),
+            line("event_msg", "task_started"),
+            line("response_item", "reasoning"),
+            line("response_item", "custom_tool_call"),
+            line("event_msg", "token_count"),
+        ].joined(separator: "\n") + "\n"
+        try body.write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertEqual(CodexRolloutTail.lastEvent(in: url), .working)
+    }
+
+    func testAWindowStartingMidLineSkipsThePartialLine() {
+        let data = Data((#"payload":{"type":"task_complete"}}"# + "\n" + line("event_msg", "task_started") + "\n").utf8)
+        XCTAssertEqual(CodexRolloutTail.events(in: data, dropFirstLine: true), [.turnStarted])
+    }
+
+    func testFinishedFileRecoversAsFinished() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rollout-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try (line("event_msg", "task_started") + "\n" + line("event_msg", "task_complete") + "\n")
+            .write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertEqual(CodexRolloutTail.lastEvent(in: url), .turnFinished)
+    }
+}

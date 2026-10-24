@@ -84,12 +84,33 @@ final class CodexThreadTracker {
             case .working:
                 sessions.setStatus(.running, detail: String(localized: "Running a tool"), for: recordID)
             case .turnFinished:
+                let wasWorking = sessions.status(of: recordID).isWorking
                 sessions.setStatus(.completed, for: recordID)
+                // Claude's Stop hook sends "Turn done"; Codex reports through
+                // its rollout instead and used to send nothing. Only for a turn
+                // seen in progress, so a status recovered on reattach does not
+                // announce a turn that ended while nobody was looking.
+                if wasWorking { notifyTurnDone(recordID, projects: projects, sessions: sessions) }
             case .turnAborted:
                 sessions.setStatus(.idle, detail: String(localized: "Interrupted"), for: recordID)
             }
         }
         return accepted
+    }
+
+    private static func notifyTurnDone(_ recordID: UUID, projects: ProjectStore, sessions: SessionStore) {
+        guard let record = projects.sessions.first(where: { $0.id == recordID }),
+              let project = projects.projects.first(where: { $0.id == record.projectID })
+        else { return }
+        let settings: SettingsStore? = AppServices.shared.settings
+        sessions.notify(
+            .turnCompleted,
+            title: project.name,
+            body: String(localized: "Turn done · \(record.displayTitle)"),
+            projectID: project.id,
+            sessionID: recordID,
+            prefs: settings?.notifications ?? NotificationPrefs()
+        )
     }
 }
 
@@ -186,9 +207,15 @@ struct CodexTrackingState {
                 // turns that are history, and only what comes next is news.
                 let created = (try? rolloutURL.resourceValues(forKeys: [.creationDateKey]))?
                     .creationDate ?? .distantPast
-                tail = CodexRolloutTail(
-                    startingAtEndOf: created < startedAt.addingTimeInterval(-5) ? rolloutURL : nil
-                )
+                let preexisting = created < startedAt.addingTimeInterval(-5)
+                tail = CodexRolloutTail(startingAtEndOf: preexisting ? rolloutURL : nil)
+                // Starting at the end skips the turn in flight: reattaching to
+                // a Codex that is mid-turn (an app relaunch, a rebuilt view)
+                // showed it as Ready until its next event. The last status
+                // line already in the file says where it actually is.
+                if preexisting, let last = CodexRolloutTail.lastEvent(in: rolloutURL) {
+                    update.events.append(last)
+                }
             }
         }
         if let rolloutURL {
@@ -412,6 +439,24 @@ struct CodexRolloutTail {
            let size = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? UInt64 {
             offset = size
         }
+    }
+
+    /// The last status-changing event in the final `window` bytes of `url`.
+    static func lastEvent(in url: URL, window: UInt64 = 256 * 1024) -> Event? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd() else { return nil }
+        let start = size > window ? size - window : 0
+        guard (try? handle.seek(toOffset: start)) != nil,
+              let data = try? handle.readToEnd() else { return nil }
+        return events(in: data, dropFirstLine: start > 0).last
+    }
+
+    static func events(in data: Data, dropFirstLine: Bool) -> [Event] {
+        var lines = data.split(separator: 0x0A, omittingEmptySubsequences: true)
+        // A window that starts mid-file starts mid-line.
+        if dropFirstLine, !lines.isEmpty { lines.removeFirst() }
+        return lines.compactMap { event(fromLine: Data($0)) }
     }
 
     mutating func read(_ url: URL) -> [Event] {

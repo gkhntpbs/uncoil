@@ -202,6 +202,31 @@ enum CodexSessionStore {
         return transcriptExists(codexHome: codexHome, threadID: threadID) ? .resumable : .gone
     }
 
+    /// Waits for the thread's writer lock to come free, up to `timeout`.
+    ///
+    /// Restarting a Codex session kills the old process and launches the new
+    /// one; the launch asks whether the thread is busy, and the old process —
+    /// still flushing its rollout on the way out — was holding the lock at that
+    /// moment. So the restart read its own predecessor as "another Codex
+    /// process", started fresh, and the conversation was lost: "Continue"
+    /// that sometimes did not. Waiting for the lock is what makes the restart
+    /// see the thread as it is once the old process is actually gone.
+    /// - Returns: whether the lock is free.
+    @discardableResult
+    static func waitUntilReleased(
+        codexHome: URL,
+        threadID: String,
+        timeout: TimeInterval = 5,
+        isBusy: @escaping (URL, String) -> Bool = { isBusy(codexHome: $0, threadID: $1) }
+    ) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while isBusy(codexHome, threadID) {
+            guard Date() < deadline else { return false }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return true
+    }
+
     static func defaultHome() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".codex", isDirectory: true)

@@ -24,7 +24,32 @@ struct SessionActions {
     func restart(_ id: UUID) {
         TerminalRegistry.shared.closeTerminal(for: id)
         projects.updateSession(id) { $0.lastActivityAt = .now }
-        sessions.bumpRestart(id)
+        // Codex holds its thread's lock until the old process has exited, and
+        // a relaunch that looks before then reads the thread as taken and
+        // starts fresh. So the relaunch waits for the lock — briefly, off the
+        // main thread — and only then rebuilds the terminal.
+        if let lock = codexThreadLock(of: id) {
+            let sessions = sessions
+            Task { @MainActor in
+                await CodexSessionStore.waitUntilReleased(codexHome: lock.home, threadID: lock.threadID)
+                sessions.bumpRestart(id)
+            }
+        } else {
+            sessions.bumpRestart(id)
+        }
+    }
+
+    private func codexThreadLock(of id: UUID) -> (home: URL, threadID: String)? {
+        guard let record = projects.sessions.first(where: { $0.id == id }),
+              record.provider == .codex,
+              let threadID = record.providerSessionID, !threadID.isEmpty
+        else { return nil }
+        let settings: SettingsStore? = AppServices.shared.settings
+        let home = settings.flatMap { settings in
+            settings.account(id: record.accountID)?
+                .configDirectory(profilesRoot: settings.profilesRootURL)
+        } ?? CodexSessionStore.defaultHome()
+        return (home, threadID)
     }
 
     func restart(_ ids: some Sequence<UUID>) {

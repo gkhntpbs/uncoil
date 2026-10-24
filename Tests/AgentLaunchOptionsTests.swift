@@ -229,3 +229,42 @@ final class AgentLaunchOptionsTests: XCTestCase {
         )
     }
 }
+
+final class CodexLockWaitTests: XCTestCase {
+    func testWaitsForAPredecessorToLetGo() async {
+        var checks = 0
+        let free = await CodexSessionStore.waitUntilReleased(
+            codexHome: URL(fileURLWithPath: "/tmp"), threadID: "t", timeout: 2,
+            isBusy: { _, _ in checks += 1; return checks < 3 }
+        )
+        XCTAssertTrue(free)
+        XCTAssertEqual(checks, 3)
+    }
+
+    func testGivesUpOnALockSomeoneElseKeeps() async {
+        let free = await CodexSessionStore.waitUntilReleased(
+            codexHome: URL(fileURLWithPath: "/tmp"), threadID: "t", timeout: 0.2,
+            isBusy: { _, _ in true }
+        )
+        XCTAssertFalse(free)
+    }
+
+    func testRealLockIsSeenAsBusyThenFree() async throws {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("codex-lock-\(UUID().uuidString)")
+        let lock = CodexSessionStore.lockURL(codexHome: home, threadID: "thread")
+        try FileManager.default.createDirectory(
+            at: lock.deletingLastPathComponent(), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: lock.path, contents: nil)
+        defer { try? FileManager.default.removeItem(at: home) }
+        // Another descriptor holding the lock stands in for the old process.
+        let holder = open(lock.path, O_RDONLY)
+        XCTAssertEqual(flock(holder, LOCK_EX | LOCK_NB), 0)
+        XCTAssertTrue(CodexSessionStore.isBusy(codexHome: home, threadID: "thread"))
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+            flock(holder, LOCK_UN); close(holder)
+        }
+        let free = await CodexSessionStore.waitUntilReleased(codexHome: home, threadID: "thread")
+        XCTAssertTrue(free)
+    }
+}
