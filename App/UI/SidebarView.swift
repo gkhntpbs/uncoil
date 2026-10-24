@@ -526,7 +526,14 @@ struct ProjectRowView: View {
     let actions: SidebarRowActions
     @EnvironmentObject private var projectStore: ProjectStore
     @State private var hovering = false
+    /// The launcher, revealed only once the pointer has rested on the row.
+    /// Shown the instant the pointer arrived, it appeared under a click that
+    /// was aimed at the project and started an agent instead.
+    @State private var showsLauncher = false
     @ObservedObject private var collapsedStore = CollapsedProjects.shared
+
+    /// How long the pointer rests on a row before its launcher appears.
+    static let launcherDwell: Duration = .milliseconds(350)
 
     private var project: Project? {
         projectStore.projects.first { $0.id == projectID }
@@ -577,8 +584,9 @@ struct ProjectRowView: View {
             // target instead of an 8pt mark at the far edge.
             .overlay(alignment: .trailing) {
                 Group {
-                    if hovering {
-                        AgentLauncherStrip(project: project, selection: $selection)
+                    if showsLauncher {
+                        AgentLauncherStrip(project: project, selection: $selection, chrome: .inline)
+                            .transition(.opacity)
                     } else if sessionsCollapsed, childCount > 0 {
                         // Folded, the project says how much it is holding back.
                         Text("\(childCount)")
@@ -587,7 +595,15 @@ struct ProjectRowView: View {
                     }
                 }
                 .padding(.trailing, 4)
-                .animation(Theme.Motion.quick, value: hovering)
+                .animation(Theme.Motion.quick, value: showsLauncher)
+            }
+            .task(id: hovering) {
+                guard hovering else {
+                    showsLauncher = false
+                    return
+                }
+                try? await Task.sleep(for: Self.launcherDwell)
+                if !Task.isCancelled, hovering { showsLauncher = true }
             }
             .background(
                 isProjectSelected ? Theme.highlightMuted : (hovering ? Theme.panelHover : .clear),
@@ -965,9 +981,31 @@ private struct CollapseAllButton: View {
 /// time so that the marks stay the thing the eye lands on, and it is at the end
 /// because that is where the pointer already is once it has read them.
 struct AgentLauncherStrip: View {
+    enum Chrome {
+        /// A pill of its own, for rows that have room around it.
+        case card
+        /// No frame: the marks sit on the row's own hover surface, faded in
+        /// from the left so they never collide with the name beneath them.
+        case inline
+    }
+
     let project: Project
     var worktreePath: String?
     @Binding var selection: MainSelection?
+    var chrome: Chrome = .card
+
+    /// Clicks are ignored for a moment after the strip appears. A click
+    /// already on its way to the row underneath would otherwise land on a
+    /// mark that was not there when it was aimed.
+    static let armingDelay: TimeInterval = 0.25
+    @State private var appearedAt = Date()
+
+    private var isArmed: Bool {
+        // UI tests click the moment a control exists; the guard is against a
+        // hand already in motion, which a test does not have.
+        LaunchConfig.shared.isUITesting
+            || Date().timeIntervalSince(appearedAt) >= Self.armingDelay
+    }
 
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
@@ -981,7 +1019,10 @@ struct AgentLauncherStrip: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(settings.launcherProviders) { provider in
-                LauncherButton(provider: provider) { launch(provider) }
+                LauncherButton(provider: provider) {
+                    guard isArmed else { return }
+                    launch(provider)
+                }
                     // Clicking starts the default login, which is the common
                     // case and stays one click. Right-click is where a second
                     // login lives, so the common case does not pay for the rare
@@ -999,14 +1040,39 @@ struct AgentLauncherStrip: View {
                     .padding(.horizontal, 1)
                 moreMenu
             }
-            .opacity(hovering ? 1 : 0)
-            .allowsHitTesting(hovering)
+            .opacity(hovering || chrome == .inline ? 1 : 0)
+            .allowsHitTesting(hovering || chrome == .inline)
         }
-        .padding(3)
-        .background(Theme.panelActive, in: Capsule())
-        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        .padding(chrome == .card ? 3 : 1)
+        .background { background }
+        .overlay {
+            if chrome == .card {
+                Capsule().strokeBorder(Theme.border, lineWidth: 1)
+            }
+        }
         .onHover { hovering = $0 }
+        .onAppear { appearedAt = Date() }
         .animation(Theme.Motion.quick, value: hovering)
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        switch chrome {
+        case .card:
+            Capsule().fill(Theme.panelActive)
+        case .inline:
+            // The row's hover surface continued under the marks, with a fade
+            // on the left edge where a long project name runs underneath.
+            HStack(spacing: 0) {
+                LinearGradient(
+                    colors: [Theme.panelHover.opacity(0), Theme.panelHover],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: 18)
+                Theme.panelHover
+            }
+            .padding(.leading, -18)
+        }
     }
 
     private var moreMenu: some View {
@@ -1050,6 +1116,7 @@ struct AgentLauncherStrip: View {
             Button(provider.displayName) { launch(provider) }
         }
     }
+
 
     @ViewBuilder
     private func logins(for provider: AgentProvider) -> some View {

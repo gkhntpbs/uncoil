@@ -258,6 +258,28 @@ extension SidebarStructure {
     }
 }
 
+/// Which folded projects a new session should open.
+///
+/// A session started in a folded project used to appear as the one row under
+/// it — the reveal that keeps the open session visible — with every other
+/// session still hidden, so the project looked as if it held only the new one.
+/// Starting a session is a reason to look at the project, so it opens.
+enum SidebarUnfold {
+    /// - Parameters:
+    ///   - known: the sessions the sidebar had already seen, or nil before the
+    ///     first pass — a launch must not unfold everything that was restored.
+    ///   - current: every session now, with its project.
+    static func projects(
+        known: Set<UUID>?,
+        current: [(session: UUID, project: UUID)],
+        collapsed: Set<UUID>
+    ) -> Set<UUID> {
+        guard let known else { return [] }
+        return Set(current.filter { !known.contains($0.session) && collapsed.contains($0.project) }
+            .map(\.project))
+    }
+}
+
 /// What a click on a project row does to the sessions under it.
 ///
 /// Pure, because this is the rule that was silently wrong: it was first written

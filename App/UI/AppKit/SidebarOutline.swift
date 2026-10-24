@@ -180,6 +180,8 @@ struct SidebarOutline: NSViewRepresentable {
         /// Set while the coordinator is the one changing selection or expansion,
         /// so its own writes do not come back as user intent.
         private var isSyncing = false
+        /// Sessions already seen, so a new one can open its folded project.
+        private var knownSessionIDs: Set<UUID>?
 
         var isMultiSelecting: Bool { environment?.isMultiSelecting ?? false }
 
@@ -200,6 +202,21 @@ struct SidebarOutline: NSViewRepresentable {
             // the whole pass is marked as ours.
             isSyncing = true
             defer { isSyncing = false }
+
+            let current = environment.projectStore.sessions.map { (session: $0.id, project: $0.projectID) }
+            let unfold = SidebarUnfold.projects(
+                known: knownSessionIDs,
+                current: current,
+                collapsed: collapsedProjects.projectIDs
+            )
+            knownSessionIDs = Set(current.map(\.session))
+            if !unfold.isEmpty {
+                // Not from inside this update: the store publishes, and the
+                // next pass draws the project open.
+                DispatchQueue.main.async {
+                    for id in unfold { CollapsedProjects.shared.set(id, collapsed: false) }
+                }
+            }
 
             let fresh = Self.structure(
                 from: environment.projectStore,
