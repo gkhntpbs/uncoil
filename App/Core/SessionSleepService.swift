@@ -37,7 +37,7 @@ enum SessionSleepService {
             TerminalRegistry.shared.hibernateTerminal(for: record.id)
         }
         projectStore.markSessionAsleep(record.id, mode: mode)
-        sessionStore.setStatus(SessionSleep.status(for: mode), for: record.id)
+        sessionStore.setStatus(SessionSleep.status(for: mode), origin: .lifecycle, for: record.id)
         return nil
     }
 
@@ -61,7 +61,7 @@ enum SessionSleepService {
             RuntimeClient.shared.setSuspended(false, sid: record.id)
         }
         projectStore.markSessionAwake(record.id)
-        sessionStore.setStatus(.idle, for: record.id)
+        sessionStore.setStatus(.idle, origin: .lifecycle, for: record.id)
     }
 
     /// Restores the status of sessions that were asleep when the app quit.
@@ -80,10 +80,10 @@ enum SessionSleepService {
             // signal — so it is recorded as hibernated, which is what it now is.
             if mode == .suspended, !RuntimeClient.shared.isAlive(sid: record.id) {
                 projectStore.markSessionAsleep(record.id, mode: .hibernated)
-                sessionStore.setStatus(.hibernated, for: record.id)
+                sessionStore.setStatus(.hibernated, origin: .lifecycle, for: record.id)
                 continue
             }
-            sessionStore.setStatus(SessionSleep.status(for: mode), for: record.id)
+            sessionStore.setStatus(SessionSleep.status(for: mode), origin: .lifecycle, for: record.id)
         }
     }
 }

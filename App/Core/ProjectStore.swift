@@ -508,6 +508,28 @@ final class ProjectStore: ObservableObject {
         objectWillChange.send()
     }
 
+    /// Points a session at the conversation its agent is in *now*, replacing
+    /// whatever it pointed at before.
+    ///
+    /// For an agent that can switch conversations from inside itself — Codex's
+    /// `/new` and `/resume` — so the record follows it rather than resuming the
+    /// thread it started in. Refused when another session already owns the id.
+    @discardableResult
+    func bindProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
+        guard !providerSessionID.isEmpty,
+              !sessions.contains(where: {
+                  $0.id != id && $0.providerSessionID == providerSessionID
+              }),
+              let index = sessions.firstIndex(where: { $0.id == id })
+        else { return false }
+        guard sessions[index].providerSessionID != providerSessionID else { return true }
+        sessions[index].providerSessionID = providerSessionID
+        sessions[index].metadataVersion = Self.currentSessionSchemaVersion
+        saveSessions()
+        objectWillChange.send()
+        return true
+    }
+
     @discardableResult
     func claimProviderSessionID(_ providerSessionID: String, for id: UUID) -> Bool {
         guard !providerSessionID.isEmpty,
@@ -650,6 +672,11 @@ final class ProjectStore: ObservableObject {
         if let data = try? Data(contentsOf: sessionGroupsURL),
            let decoded = VersionedDocument<[SessionGroup]>.decode(data, schema: .sessionGroups) {
             sessionGroups = decoded.payload
+        }
+        for index in sessions.indices
+        where SessionAutoTitle.isTerminalReply(sessions[index].displayTitle) {
+            sessions[index].title = "\(sessions[index].provider.rawValue): new session"
+            if sessionsAreOursToRewrite { needsSessionSave = true }
         }
         if adoptMissingSortIndexes(), sessionsAreOursToRewrite {
             needsSessionSave = true
@@ -826,7 +853,7 @@ final class SessionStore: ObservableObject {
             // entirely, so nothing ever corrected that direction.
             guard record.endedAt == nil else {
                 if status(of: record.id).isKnownLive {
-                    setStatus(.terminated, for: record.id)
+                    setStatus(.terminated, origin: .lifecycle, for: record.id)
                 }
                 missedHandshakes[record.id] = nil
                 continue
@@ -835,7 +862,7 @@ final class SessionStore: ObservableObject {
             // process to be missing, and its absence from the list says nothing.
             if record.provider == .uncoil {
                 missedHandshakes[record.id] = nil
-                if !status(of: record.id).isKnownLive { setStatus(.idle, for: record.id) }
+                if !status(of: record.id).isKnownLive { setStatus(.idle, origin: .lifecycle, for: record.id) }
                 continue
             }
             // A sleeping session is absent from the daemon on purpose — a
@@ -843,7 +870,7 @@ final class SessionStore: ObservableObject {
             // nothing about it. Reconciling it would answer "I put this to
             // sleep" with "this session is over".
             if let mode = record.sleepMode {
-                setStatus(SessionSleep.status(for: mode), for: record.id)
+                setStatus(SessionSleep.status(for: mode), origin: .lifecycle, for: record.id)
                 missedHandshakes[record.id] = nil
                 continue
             }
@@ -852,19 +879,19 @@ final class SessionStore: ObservableObject {
                 // Alive, but nothing has happened in it since the app started.
                 // For an agent the hooks will refine this within a turn.
                 if !status(of: record.id).isKnownLive {
-                    setStatus(.idle, for: record.id)
+                    setStatus(.idle, origin: .lifecycle, for: record.id)
                 }
             } else {
                 let misses = (missedHandshakes[record.id] ?? 0) + 1
                 missedHandshakes[record.id] = misses
                 if misses >= Self.handshakesBeforeEnded {
                     missedHandshakes[record.id] = nil
-                    setStatus(.terminated, for: record.id)
+                    setStatus(.terminated, origin: .lifecycle, for: record.id)
                     markEnded(record.id)
                 } else {
                     // Missing once. Say so plainly instead of announcing a
                     // death the next answer may well contradict.
-                    setStatus(.unknown, for: record.id)
+                    setStatus(.unknown, origin: .lifecycle, for: record.id)
                     unaccountedFor.insert(record.id)
                 }
             }
@@ -876,12 +903,25 @@ final class SessionStore: ObservableObject {
         details[recordID]
     }
 
-    func setStatus(_ status: AgentSessionStatus, detail: String? = nil, for recordID: UUID) {
+    /// Changes a session's status if the transition is legal for `origin`
+    /// (see `AgentSessionStatus.allowsTransition`). A refused change leaves the
+    /// detail line alone too, so a stale event cannot rewrite it either.
+    @discardableResult
+    func setStatus(
+        _ status: AgentSessionStatus,
+        detail: String? = nil,
+        origin: AgentSessionStatus.Origin = .event,
+        for recordID: UUID
+    ) -> Bool {
+        guard self.status(of: recordID).allowsTransition(to: status, from: origin) else {
+            return false
+        }
         // Hook and PTY events repeat the same status many times per second;
         // publishing only real changes keeps the whole window from re-rendering
         // on every event.
         if statuses[recordID] != status { statuses[recordID] = status }
         if details[recordID] != detail { details[recordID] = detail }
+        return true
     }
 
     func setCodexAuthentication(_ state: CodexAuthenticationState, for recordID: UUID) {

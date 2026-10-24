@@ -20,6 +20,19 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+### Fixed
+
+- A closed or sleeping session no longer flips back to Running when a late status report from its agent arrives. Only relaunching or waking a session brings it back.
+
+## [0.2.0-edge.6] - 2026-10-23
+
+First published Edge package, including the current 0.2.0 development line and the pending Uncoil Auto/Codex work.
+
+### Fixed
+
+- Updating or switching channels preserves compatible settings and completed setup even when newer agent profiles or preferences are present. Unrecognized values are retained, incompatible settings are backed up before conversion, and unreadable settings are never replaced with startup defaults.
+- Selecting a channel immediately checks that channel for an available package.
+
 ### Added
 
 - Settings › About chooses which updates Uncoil offers you. Stable is what
@@ -44,7 +57,7 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - A call an agent retries runs once. An action sent with an idempotency key returns its first answer to a retry, so an agent that timed out and asked again cannot submit the same prompt, or answer the same approval, twice.
 - Uncoil Auto: a session of Uncoil's own, started from Quick Launch like an agent, from which a project's agents are directed. Name an agent with `@` and the prompt is typed into that agent's own terminal; name two and both get it; name one that has no session yet and it is started. What each agent then says and does — replies, commands, edits with their diffs, tool calls — comes back into the conversation under the agent's name, read from the transcript the CLI already keeps, so Claude Code, Codex and the rest run exactly as before and nothing stands between you and them. Addressing an agent after another one answered hands it that answer as context, which is how agents hear each other. Beside the conversation, every agent in the project shows its state, what it last did and how much of its limit is left; clicking one — or an agent's name in the conversation — opens its own terminal in a window. Typing `@` or `/` opens completions above the field: agents, Uncoil Auto's commands (`/new`, `/stop`, `/agents`, `/clear`, `/help`), and after `@agent /` that agent's own commands. The conversation is kept across launches and picks up where it was: what the agents did while Uncoil was closed is read from their transcripts and added in place, marked as such. A prompt that names nobody goes to the agent on the round button beside the field — the only agent when there is one, the newest otherwise — and stays with it until you pick another; an `@mention` sends one message elsewhere without moving it.
 - Uncoil Auto has its own page under Settings › Agents. It chooses which agents a conversation can reach — a conversation can narrow that further from its agents panel, never widen it — and an agent that is not open to it cannot be addressed or started from there. The session header says whether the control plane is up, and each agent in the panel shows its own MCP link. Agents a conversation is directing no longer notify while you are looking at that conversation, which already shows their replies and waits; the page can set this to notify as usual, or to only permission requests. Sessions outside Uncoil Auto notify exactly as before.
-- Edge: an effort advisor for Uncoil Auto. While a prompt to `@agent` is being written, Uncoil reads it — and where the conversation has been going — and suggests an effort for each agent it names, inside a range you set per agent from the levels its installed CLI offers. The prompt is read once typing pauses, and the chips float over the field and update in place, so typing never waits on it. Nothing reaches the agent until you click Apply: a running Claude gets `/effort`, an agent not started yet starts at that effort, and an agent that only takes its effort at launch says so. The suggestion comes from a keyword heuristic, or from Laya — a System 1 decision model run on this Mac with MLX by `laya-apple`, installed from the settings page on request into Uncoil's own Application Support folder and served on 127.0.0.1 only. Each sent prompt, its suggestion and how the turn went can be kept in a local decision log, the data a model fine-tuned for this would learn from.
+- Edge: Auto runs in Uncoil Auto. `/auto <task>` — or, if you choose so in Settings, any message that names no agent — runs the task with the conversation's agent as Main and brings in specialists around it, each in a session of its own that you can open from the conversation or the agents panel: an Explorer that reads the repository so its search stays out of Main's context, a Researcher for documentation and release notes, a Worker that implements Main's brief in its own worktree, and an Advisor — Fable by default — for a deep second opinion before the plan, on a repeated failure and, if you like, before completion. Specialists hand back a structured result rather than their whole conversation. After every Worker turn the project's own test suite is run, and a run is complete only on that evidence, not on the Worker's word; a run with nothing to verify with says so. Retries, repeated-failure thresholds, budgets and time limits are policies, and every agent keeps its own approvals. Small control decisions — whether research is needed, what to do with a failure, whether a finished change deserves a review — can be put to Laya, a local System 1 decision model managed from the settings page; each decision starts in shadow mode, where Laya's answer is recorded but the policy acts, and can be made active one at a time. A diagnostics view shows every step of a run, every decision with Laya's probabilities and what the policy did, and every verification with its output. Settings › Uncoil Auto configures it all — the agent, account, model and effort of each role, set one by one, and the checkpoints, policies and limits.
 
 ### Changed
 
@@ -66,6 +79,12 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - A prompt or interrupt sent to a session that is not running says so. It used to be typed into nothing and reported as sent.
 
 ### Fixed
+
+- Codex sessions keep their conversation again. Since Codex 0.160 a thread is written to disk only after its first prompt, so Uncoil — which looked for it during the first half-minute — never learned which thread a session was in, and reopening it started over. Uncoil now reads the thread from the Codex process it started, the moment Codex opens it, and follows it when you switch thread from inside Codex with `/new` or `/resume`.
+- Codex sessions show what Codex is doing — working, running a tool, done, interrupted — read from the thread Codex is writing, and take their name from Codex's own title for the thread.
+- A Codex session is no longer named after the terminal's reply to a colour query (`10;rgb:e9e9/…`); sessions already named that way get their name back. Capitals and characters typed with Shift — `/` on a Turkish keyboard among them — are kept in a session's name when the agent uses the kitty keyboard protocol, and a bare `/model` or `/status` no longer names a session.
+- Codex's "Approve for me" working mode starts Codex with its own `--approve-for-me`, which hands approvals to Codex's automatic reviewer, instead of turning approvals off.
+- "Open in Finder" opens the project's folder instead of showing it selected in its parent. The editor menus — the project dashboard's, a session's `⋯` and the sidebar's — list every installed editor with its icon, and offer Xcode when the folder holds an Xcode workspace, project or Swift package, opening that rather than the bare folder.
 
 - Uncoil Auto's conversation and its message field use Uncoil's own thin scroller instead of the system one, which came back whenever the transcript was rebuilt.
 - Uncoil Auto's message field no longer shows the Writing Tools / Siri button: a prompt for an agent is not prose to rewrite.
@@ -193,6 +212,25 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - A session whose record says it ended can no longer keep claiming it is working. Reconciliation skipped ended records entirely, so that disagreement was the one direction nothing corrected.
 - The app icon follows the system appearance. In dark mode the Dock showed the light icon — a white tile, at full brightness, next to everything else that had gone dark. The cause was that both the light and the dark artwork had their background painted into the image, and macOS 26 composes an icon the other way round: the app supplies the artwork, the system supplies the background per appearance. The spiral is now a single layer with nothing behind it, recovered exactly from the two existing images, so light, dark and tinted are all drawn from the same one.
 - The sidebar no longer reshuffles its sessions while you work. A session that had never been dragged was placed by when it was last active, so every reply from an agent moved its row — usually to the top, usually while the cursor was already on its way to another one. Order is now fixed when the session is created: new sessions join the end of the list, existing ones keep the order you last saw them in, and nothing moves again unless you move it.
+
+## [0.1.2] - 2026-10-23
+
+### Fixed
+
+- Upgrading or switching channels preserves supported settings and completed setup even when the settings file contains newer agent profiles or preferences. Unrecognized records are retained, incompatible files are backed up before conversion, and unreadable settings are never overwritten by startup defaults.
+- Selecting an update channel immediately checks that channel for an available release, including when automatic background checks are disabled. Installing an offered update still requires confirmation.
+
+## [0.1.1] - 2026-10-22
+
+### Added
+
+- Settings › About now lets you choose Stable or Edge updates. Stable remains the default. Your choice survives a relaunch, and the installed release channel is shown separately.
+- Edge updates use a separate feed. Switching back to Stable waits for a newer Stable build without downgrading the app or its data. Channel changes are disabled while an update is in progress.
+- Uncoil updates itself. It checks `uncoil.gokhantopbas.com` once a day for a newer version, verifies what it downloads against a signature before installing it, and tells you only when there is something to install. "Check for Updates…" sits under the Uncoil menu for when you want to ask, and Settings › About can turn the automatic check off. Updates are only ever offered — nothing installs without you saying so.
+
+### Fixed
+
+- Project launcher controls and the Attention Center’s resolve button remain individually accessible to assistive technology.
 
 ## [0.1.0] - 2026-08-04
 

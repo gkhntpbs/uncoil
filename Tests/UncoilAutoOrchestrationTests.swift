@@ -160,10 +160,14 @@ final class UncoilAutoSessionTests: XCTestCase {
         var roster: [UncoilAutoRoster.Entry] = []
         var delivered: [(String, UUID)] = []
         var started: [AgentProvider] = []
-        var startedEfforts: [String?] = []
-        var commands: [(String, UUID)] = []
+        var quiet: [(String, UUID)] = []
         var blocked: Set<AgentProvider> = []
-        var log: EffortDecisionLog?
+        var harness: AutoHarnessSettings = {
+            var settings = AutoHarnessSettings()
+            settings.decisions.enabled = false
+            return settings
+        }()
+        var makeHarness: ((@escaping () async -> AgentItemSource?, @escaping (AutoSessionHandle, String) async -> Void) -> AutoHarnessEnvironment?)?
         var interrupted: [UUID] = []
         var working: Set<UUID> = []
         var followed: [UUID] = []
@@ -185,9 +189,8 @@ final class UncoilAutoSessionTests: XCTestCase {
         ]
         let environment = UncoilAutoEnvironment(
             roster: { recorder.roster },
-            startSession: { provider, effort in
+            startSession: { provider in
                 recorder.started.append(provider)
-                recorder.startedEfforts.append(effort)
                 let entry = UncoilAutoRoster.Entry(handle: provider.rawValue, provider: provider, sessionID: UUID(), title: "new")
                 recorder.roster.removeAll { $0.handle == entry.handle }
                 recorder.roster.append(entry)
@@ -195,9 +198,10 @@ final class UncoilAutoSessionTests: XCTestCase {
             },
             ensureRunning: { _ in },
             deliver: { text, id, _ in recorder.delivered.append((text, id)) },
-            deliverCommand: { text, id, _ in recorder.commands.append((text, id)) },
+            deliverQuietly: { text, id, _ in recorder.quiet.append((text, id)) },
             allows: { !recorder.blocked.contains($0) },
-            decisionLog: { recorder.log },
+            autoSettings: { recorder.harness },
+            harness: { main, deliver in recorder.makeHarness?(main, deliver) },
             interrupt: { recorder.interrupted.append($0) },
             isWorking: { recorder.working.contains($0) },
             follow: { recorder.followed.append($0) },
@@ -461,7 +465,7 @@ final class UncoilAutoResumeTests: XCTestCase {
         var caughtUpFrom: NativeTranscriptPosition?
         func environment(position: NativeTranscriptPosition, missed: [AgentEvent]) -> UncoilAutoEnvironment {
             UncoilAutoEnvironment(
-                roster: { roster }, startSession: { _, _ in nil }, ensureRunning: { _ in },
+                roster: { roster }, startSession: { _ in nil }, ensureRunning: { _ in },
                 deliver: { _, _, _ in }, interrupt: { _ in }, isWorking: { _ in false },
                 follow: { _ in }, unfollow: { _ in },
                 position: { _ in position },

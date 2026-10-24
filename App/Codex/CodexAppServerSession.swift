@@ -342,7 +342,7 @@ final class CodexAppServerSession: StructuredAgentSession {
             await account
             ready = true
             publish(.notice(AgentNotice(level: .info, message: "Structured Codex ready.")))
-            sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), for: recordID)
+            sessionStore?.setStatus(.idle, detail: String(localized: "Structured Codex ready"), origin: .lifecycle, for: recordID)
         } catch {
             failToFallback(error)
         }

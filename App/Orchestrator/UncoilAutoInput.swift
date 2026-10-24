@@ -110,6 +110,8 @@ enum UncoilAutoInput: Equatable {
 }
 
 enum UncoilAutoCommand: String, CaseIterable, Equatable {
+    case auto
+    case cancel
     case new
     case stop
     case agents
@@ -118,6 +120,8 @@ enum UncoilAutoCommand: String, CaseIterable, Equatable {
 
     var usage: String {
         switch self {
+        case .auto: "/auto <task>"
+        case .cancel: "/cancel"
         case .new: "/new <agent> [prompt]"
         case .stop: "/stop [@agent]"
         case .agents: "/agents"
@@ -128,6 +132,8 @@ enum UncoilAutoCommand: String, CaseIterable, Equatable {
 
     var summary: String {
         switch self {
+        case .auto: String(localized: "Run a task with Main and its specialists")
+        case .cancel: String(localized: "Cancel the Auto run in progress")
         case .new: String(localized: "Start a new agent session in this project")
         case .stop: String(localized: "Stop what the agents are doing")
         case .agents: String(localized: "List the agents in this project")

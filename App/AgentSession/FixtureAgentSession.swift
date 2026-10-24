@@ -51,7 +51,7 @@ final class FixtureAgentSession: StructuredAgentSession {
             publish(.turnCompleted(turnID: "fixture-history", outcome: .failed("The model is overloaded. Try again in a moment.")))
             ready = true
             publish(.notice(AgentNotice(level: .info, message: "Fixture session ready.")))
-            sessionStore?.setStatus(.idle, detail: String(localized: "Fixture session ready"), for: sessionID)
+            sessionStore?.setStatus(.idle, detail: String(localized: "Fixture session ready"), origin: .lifecycle, for: sessionID)
         }
     }
 

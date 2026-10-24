@@ -989,7 +989,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
 
     private func daemonURL() throws -> URL {
         let environment = ProcessInfo.processInfo.environment
-        var candidates: [URL] = []
+        var candidates: [URL] = [Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/uncoil-runtimed")]
         if let testHost = environment["TEST_HOST"] {
             let app = URL(fileURLWithPath: testHost)
                 .deletingLastPathComponent()
@@ -1056,6 +1056,7 @@ final class RuntimeDaemonIntegrationTests: XCTestCase {
             .deletingLastPathComponent()
         let root = sourceRoot
             .appendingPathComponent(".build-cache/rt", isDirectory: true)
+            .resolvingSymlinksInPath()
             .appendingPathComponent(
                 String(UUID().uuidString.prefix(8)),
                 isDirectory: true

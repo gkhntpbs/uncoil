@@ -64,7 +64,7 @@ final class HookSessionRoutingTests: XCTestCase {
     func testASessionThatHasNotBeenHeardFromStillAnswersToItsOwnID() {
         let restored = makeSession()
         projects.updateSession(restored.id) { $0.providerSessionID = "prov-a" }
-        sessions.setStatus(.unknown, for: restored.id)
+        sessions.setStatus(.unknown, origin: .lifecycle, for: restored.id)
 
         XCTAssertEqual(resolve(providerSessionID: "prov-a", cwd: "/tmp/demo"), restored.id)
         XCTAssertNil(

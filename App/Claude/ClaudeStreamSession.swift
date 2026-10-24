@@ -97,7 +97,7 @@ final class ClaudeStreamSession: StructuredAgentSession {
             let id = requestID()
             initializeRequestID = id
             try send(ClaudeStreamProtocol.initialize(requestID: id))
-            sessionStore?.setStatus(.idle, detail: String(localized: "Starting structured Claude"), for: recordID)
+            sessionStore?.setStatus(.idle, detail: String(localized: "Starting structured Claude"), origin: .lifecycle, for: recordID)
         } catch {
             failToFallback(error.localizedDescription)
         }
@@ -231,7 +231,7 @@ final class ClaudeStreamSession: StructuredAgentSession {
         }
         ready = true
         publish(.notice(AgentNotice(level: .info, message: "Structured Claude ready.")))
-        sessionStore?.setStatus(.idle, detail: String(localized: "Structured Claude ready"), for: recordID)
+        sessionStore?.setStatus(.idle, detail: String(localized: "Structured Claude ready"), origin: .lifecycle, for: recordID)
     }
 
     private func handleControlRequest(_ object: [String: JSONValue]) {

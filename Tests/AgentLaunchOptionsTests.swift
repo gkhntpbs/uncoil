@@ -101,7 +101,7 @@ final class AgentLaunchOptionsTests: XCTestCase {
         )
         XCTAssertEqual(
             arguments,
-            ["--sandbox", "workspace-write", "--ask-for-approval", "never"]
+            ["--approve-for-me"]
         )
     }
 
@@ -139,11 +139,7 @@ final class AgentLaunchOptionsTests: XCTestCase {
 
     // MARK: - Codex approval
 
-    /// The flags and the app-server fields are two spellings of one choice,
-    /// and they had drifted: everything the app server did not name fell
-    /// through to workspace-write. Read Only could therefore write, which is
-    /// the one thing its name promises it cannot.
-    func testTheAppServerAndTheFlagsAgreeOnEveryMode() {
+    func testCodexModesKeepTheirSandboxAcrossCLIAndLegacyAppServer() {
         let expected: [AgentWorkingMode: [String]] = [
             .readOnly: ["read-only", "on-request"],
             .askForApproval: ["workspace-write", "on-request"],
@@ -152,7 +148,11 @@ final class AgentLaunchOptionsTests: XCTestCase {
         ]
         for (mode, pair) in expected {
             let flags = mode.launchArguments(for: .codex)
-            XCTAssertEqual(flags, ["--sandbox", pair[0], "--ask-for-approval", pair[1]], "\(mode)")
+            if mode == .approveForMe {
+                XCTAssertEqual(flags, ["--approve-for-me"])
+            } else {
+                XCTAssertEqual(flags, ["--sandbox", pair[0], "--ask-for-approval", pair[1]], "\(mode)")
+            }
             let served = AgentLaunchCatalog.codexApproval(mode: mode, config: nil)
             XCTAssertEqual(served.sandbox, pair[0], "\(mode)")
             XCTAssertEqual(served.approvalPolicy, pair[1], "\(mode)")

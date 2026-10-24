@@ -12,10 +12,12 @@ final class SmokeTests: XCTestCase {
         app.launchArguments = [
             "-ui-testing", "-reset-state",
             "-fixture", "demo",
+            "-route", "project",
             "-window-width", "1100", "-window-height", "720",
             "-disable-animations",
         ]
         app.launch()
+        app.activate()
     }
 
     override func tearDown() {
@@ -45,7 +47,7 @@ final class SmokeTests: XCTestCase {
         backButton.click()
         XCTAssertTrue(dashboard.waitForExistence(timeout: 5), "Back navigation failed")
 
-        let sessionRow = app.descendants(matching: .any)["dashboard.session.claude: demo görev"]
+        let sessionRow = app.descendants(matching: .any)["dashboard.session.claude: demo task"]
         XCTAssertTrue(sessionRow.waitForExistence(timeout: 5))
         sessionRow.click()
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
@@ -71,6 +73,10 @@ final class SmokeTests: XCTestCase {
         app.launchArguments.removeAll { $0 == "-reset-state" }
         app.launchArguments.insert(contentsOf: ["-route", "project"], at: 0)
         app.launch()
+        app.activate()
+        if !app.descendants(matching: .any)["sidebar.settingsButton"].waitForExistence(timeout: 5) {
+            app.typeKey("n", modifierFlags: .command)
+        }
         openAbout()
         XCTAssertEqual(picker.value as? String, "Edge")
         picker.click()
@@ -88,14 +94,23 @@ final class SmokeTests: XCTestCase {
 
     func testExtensionsWindowOpensFromCommandPaletteAndNavigates() {
         app.typeKey("k", modifierFlags: .command)
-        app.typeText("extensions")
+        let search = app.textFields["palette.searchField"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("extens")
 
         let result = app.staticTexts["Extensions"]
         XCTAssertTrue(result.waitForExistence(timeout: 5))
-        result.click()
+        search.typeKey(.return, modifierFlags: [])
 
         let extensions = app.descendants(matching: .any)["extensions.container"]
-        XCTAssertTrue(extensions.waitForExistence(timeout: 10))
+        guard extensions.waitForExistence(timeout: 10) else {
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            XCTFail(app.debugDescription)
+            return
+        }
 
         let skills = app.descendants(matching: .any)["extensions.section.skills"]
         XCTAssertTrue(skills.waitForExistence(timeout: 5))
@@ -110,6 +125,7 @@ final class SmokeTests: XCTestCase {
         app.terminate()
         app.launchArguments.append("-attention-fixture")
         app.launch()
+        app.activate()
 
         let bell = app.descendants(matching: .any)["sidebar.attentionButton"]
         XCTAssertTrue(bell.waitForExistence(timeout: 10))
@@ -130,7 +146,7 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(history.waitForExistence(timeout: 10))
 
         let closedSession = app.descendants(matching: .any)[
-            "dashboard.session.codex: geçmiş görev"
+            "dashboard.session.codex: past task"
         ]
         for _ in 0..<4 where !closedSession.exists {
             app.descendants(matching: .any)["dashboard.container"].swipeUp()
@@ -142,26 +158,15 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
     }
 
-    func testPresetAndTranscriptSettingsAreAvailable() {
+    func testAgentAndTranscriptSettingsAreAvailable() {
         let settingsButton = app.descendants(matching: .any)["sidebar.settingsButton"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 10))
         settingsButton.click()
 
-        // Presets and transcripts live on their own pages now: Agentlar →
-        // Session Presetleri, and Gizlilik ve İzinler → Veri ve Transcript.
-        let presetsPane = app.descendants(matching: .any)["settings.pane.presets"]
-        XCTAssertTrue(presetsPane.waitForExistence(timeout: 10))
-        presetsPane.click()
-
-        let addPreset = app.descendants(matching: .any)["settings.presets.add"]
-        XCTAssertTrue(addPreset.waitForExistence(timeout: 5))
-        addPreset.click()
-
-        let presetID = app.descendants(matching: .any)["settings.presets.editor.id"]
-        let savePreset = app.descendants(matching: .any)["settings.presets.editor.save"]
-        XCTAssertTrue(presetID.waitForExistence(timeout: 5))
-        XCTAssertTrue(savePreset.exists)
-        app.typeKey(.escape, modifierFlags: [])
+        let agentsPane = app.descendants(matching: .any)["settings.pane.agents"]
+        XCTAssertTrue(agentsPane.waitForExistence(timeout: 10))
+        agentsPane.click()
+        XCTAssertTrue(app.descendants(matching: .any)["settings.agents.rescan"].waitForExistence(timeout: 5))
 
         let dataPane = app.descendants(matching: .any)["settings.pane.privacyData"]
         XCTAssertTrue(dataPane.waitForExistence(timeout: 5))
@@ -219,7 +224,7 @@ final class SmokeTests: XCTestCase {
     /// it has to give it up — it kept it while the rows were never rebuilt.
     func testSelectingASessionMovesTheSidebarHighlight() {
         let terminal = app.descendants(matching: .any)["sidebar.session.terminal"]
-        let claude = app.descendants(matching: .any)["sidebar.session.claude: demo görev"]
+        let claude = app.descendants(matching: .any)["sidebar.session.claude: demo task"]
         XCTAssertTrue(terminal.waitForExistence(timeout: 10))
         XCTAssertTrue(claude.waitForExistence(timeout: 5))
 
@@ -263,7 +268,7 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(popoutAction.waitForExistence(timeout: 5))
         popoutAction.click()
 
-        let popout = app.windows["Oturum"]
+        let popout = app.windows["Session"]
         XCTAssertTrue(popout.waitForExistence(timeout: 10), "Session popout window did not appear")
     }
 
@@ -275,9 +280,10 @@ final class SmokeTests: XCTestCase {
         let container = app.descendants(matching: .any)["session.splitGroup"]
         XCTAssertTrue(container.waitForExistence(timeout: 10))
 
-        let secondary = app.descendants(matching: .any)["sidebar.drag.claude: demo görev"]
+        let secondary = app.descendants(matching: .any)["sidebar.session.claude: demo task"]
         XCTAssertTrue(secondary.waitForExistence(timeout: 5))
-        secondary.press(forDuration: 0.5, thenDragTo: container)
+        app.activate()
+        secondary.click(forDuration: 0.5, thenDragTo: container)
 
         let splitPane = app.descendants(matching: .any)["session.splitPane"]
         XCTAssertTrue(splitPane.waitForExistence(timeout: 10), "Split session pane did not appear")
@@ -287,7 +293,11 @@ final class SmokeTests: XCTestCase {
         app.terminate()
         app.launchArguments.append("-codex-approval-fixture")
         app.launch()
+        app.activate()
 
+        let project = app.descendants(matching: .any)["sidebar.project.demo-project"]
+        XCTAssertTrue(project.waitForExistence(timeout: 10))
+        project.hover()
         let launcher = app.descendants(matching: .any)["launcher.codex"]
         XCTAssertTrue(launcher.waitForExistence(timeout: 10))
         launcher.click()

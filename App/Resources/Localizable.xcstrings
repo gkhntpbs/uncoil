@@ -246,6 +246,9 @@
     "%@ (continued)" : {
 
     },
+    "%@ (not installed)" : {
+
+    },
     "%@ (popped out)" : {
 
     },
@@ -402,6 +405,26 @@
     },
     "%@ failed" : {
 
+    },
+    "%@ failed (%@); carrying on without it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ failed (%2$@); carrying on without it."
+          }
+        }
+      }
+    },
+    "%@ failed: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ failed: %2$@"
+          }
+        }
+      }
     },
     "%@ failed. See the log for details." : {
 
@@ -686,6 +709,9 @@
         }
       }
     },
+    "%@ started." : {
+
+    },
     "%@ starting…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -707,9 +733,6 @@
           }
         }
       }
-    },
-    "%@ takes its effort at launch; it applies to new sessions." : {
-
     },
     "%@ was added as a source. Adding an extension needs discovery." : {
       "extractionState" : "manual",
@@ -869,6 +892,9 @@
         }
       }
     },
+    "%@." : {
+
+    },
     "%@…" : {
 
     },
@@ -893,6 +919,16 @@
     },
     "%lld" : {
 
+    },
+    "%lld answered, %lld failed, %lld restarts" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld answered, %2$lld failed, %3$lld restarts"
+          }
+        }
+      }
     },
     "%lld B" : {
 
@@ -929,9 +965,6 @@
 
     },
     "%lld commit · " : {
-
-    },
-    "%lld decisions" : {
 
     },
     "%lld drifted." : {
@@ -1381,6 +1414,9 @@
     "• %@" : {
 
     },
+    "→ %@" : {
+
+    },
     "+ %lld more files" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1443,7 +1479,16 @@
     "⌘V is passed straight through. Better when the agent reads pasted images well, and nothing at all when it does not." : {
 
     },
+    "0.5 s" : {
+
+    },
     "1 session is on it" : {
+
+    },
+    "1.5 s" : {
+
+    },
+    "3 s" : {
 
     },
     "7 days" : {
@@ -1457,7 +1502,7 @@
         }
       }
     },
-    "20%" : {
+    "10 s" : {
 
     },
     "30 days" : {
@@ -1471,13 +1516,13 @@
         }
       }
     },
-    "30%" : {
-
-    },
     "50%" : {
 
     },
     "70%" : {
+
+    },
+    "85%" : {
 
     },
     "99+" : {
@@ -1539,6 +1584,9 @@
     "A control centre for the coding agents you already run — across projects, worktrees and accounts." : {
 
     },
+    "A declared or detected suite must pass, whatever the Worker reports." : {
+
+    },
     "A faster, stronger pulse that is hard to miss and hard to ignore." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1549,6 +1597,12 @@
           }
         }
       }
+    },
+    "A fresh uncoil/ branch per run. Its changes are never merged for you." : {
+
+    },
+    "A message that names an agent with @ always goes straight to it." : {
+
     },
     "A permission request or a dropped login is announced even during these hours." : {
 
@@ -1580,6 +1634,9 @@
           }
         }
       }
+    },
+    "A rare deep second opinion — Fable by default — at the checkpoints below." : {
+
     },
     "A runtime error, a failing test or a dropped connection." : {
       "extractionState" : "manual",
@@ -1669,10 +1726,10 @@
         }
       }
     },
-    "A structured Claude session takes its effort at launch." : {
+    "A slower answer is dropped for the deterministic one." : {
 
     },
-    "A System 1 decision model on this Mac, via MLX. Falls back to the heuristic while it is not running." : {
+    "A specialist that cannot start, crashes or times out. A Laya failure never stops a run: its decisions fall back to the deterministic policy." : {
 
     },
     "A task branch is ready to merge." : {
@@ -1741,6 +1798,9 @@
         }
       }
     },
+    "Account" : {
+
+    },
     "Account changed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1762,6 +1822,9 @@
           }
         }
       }
+    },
+    "Act only when at least this sure" : {
+
     },
     "Actions apply to every session in the group." : {
       "extractionState" : "manual",
@@ -1795,6 +1858,9 @@
           }
         }
       }
+    },
+    "Active — Laya decides" : {
+
     },
     "Active branch: %@" : {
       "extractionState" : "manual",
@@ -2151,6 +2217,15 @@
         }
       }
     },
+    "Advisor" : {
+
+    },
+    "Advisor reviewing…" : {
+
+    },
+    "After this the run stops where it is." : {
+
+    },
     "After update" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2422,6 +2497,9 @@
     "Always" : {
 
     },
+    "Always verify before completion" : {
+
+    },
     "Ambiguous: %lld candidates" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2510,6 +2588,9 @@
       }
     },
     "Answered a tool call." : {
+
+    },
+    "Any" : {
 
     },
     "Any other colour" : {
@@ -2613,19 +2694,6 @@
     "Apply Blueprint… [%@]" : {
 
     },
-    "Apply sends /effort %@ to @%@. Claude saves it as its default for this model." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Apply sends /effort %1$@ to @%2$@. Claude saves it as its default for this model."
-          }
-        }
-      }
-    },
-    "Apply starts @%@ at this effort." : {
-
-    },
     "Applying…" : {
 
     },
@@ -2663,6 +2731,12 @@
       }
     },
     "archived" : {
+
+    },
+    "Are repeated failures a sign the wrong layer is being debugged?" : {
+
+    },
+    "Area" : {
 
     },
     "Artifacts" : {
@@ -2723,6 +2797,9 @@
         }
       }
     },
+    "Ask Laya" : {
+
+    },
     "Ask the project's agents…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2736,6 +2813,16 @@
     },
     "Ask this agent what it was doing first" : {
 
+    },
+    "Asked @%@ to %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Asked @%1$@ to %2$@."
+          }
+        }
+      }
     },
     "Asking %@ what it was doing…" : {
 
@@ -2906,6 +2993,16 @@
     "Attaching…" : {
 
     },
+    "Attempt %lld: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Attempt %1$lld: %2$@"
+          }
+        }
+      }
+    },
     "Attention" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2963,6 +3060,30 @@
           }
         }
       }
+    },
+    "Auto run" : {
+
+    },
+    "Auto run cancelled." : {
+
+    },
+    "Auto run completed." : {
+
+    },
+    "Auto run diagnostics" : {
+
+    },
+    "Auto Run Diagnostics" : {
+
+    },
+    "Auto run stopped: %@" : {
+
+    },
+    "Auto runs" : {
+
+    },
+    "Automatic (by language)" : {
+
     },
     "Available" : {
       "extractionState" : "manual",
@@ -3083,6 +3204,9 @@
     "Be told when an agent needs you" : {
 
     },
+    "Before completion" : {
+
+    },
     "Before install" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3093,6 +3217,9 @@
           }
         }
       }
+    },
+    "Before the plan is carried out" : {
+
     },
     "Before update" : {
       "extractionState" : "manual",
@@ -3285,6 +3412,9 @@
     "Build output and dependency folders are skipped." : {
 
     },
+    "Built-in instructions" : {
+
+    },
     "Built-in Themes" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3472,6 +3602,18 @@
         }
       }
     },
+    "Cancel Run" : {
+
+    },
+    "Cancel the Auto run in progress" : {
+
+    },
+    "Cancelled" : {
+
+    },
+    "Cancelled." : {
+
+    },
     "Cannot be changed; child agents ask for the preset by this name." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3495,6 +3637,9 @@
       }
     },
     "Capture a Task" : {
+
+    },
+    "Carry on without it" : {
 
     },
     "Change" : {
@@ -3576,6 +3721,9 @@
     "Check for Updates…" : {
 
     },
+    "Check Health" : {
+
+    },
     "Check Now" : {
 
     },
@@ -3631,6 +3779,15 @@
           }
         }
       }
+    },
+    "Checkpoint" : {
+
+    },
+    "Checkpoints" : {
+
+    },
+    "Child sessions per run: %lld" : {
+
     },
     "Choose a different folder…" : {
       "extractionState" : "manual",
@@ -3781,6 +3938,9 @@
     "Claude interrupted" : {
 
     },
+    "Claude starts without its editing tools; Codex starts in its read-only sandbox." : {
+
+    },
     "Claude thinking" : {
 
     },
@@ -3866,6 +4026,9 @@
           }
         }
       }
+    },
+    "CLI default" : {
+
     },
     "CLI Tools" : {
       "extractionState" : "manual",
@@ -4014,6 +4177,9 @@
           }
         }
       }
+    },
+    "Codex is working" : {
+
     },
     "Codex login required" : {
       "extractionState" : "manual",
@@ -4243,6 +4409,12 @@
         }
       }
     },
+    "Completed without verification: there was nothing Uncoil could run to check the work." : {
+
+    },
+    "Completion review" : {
+
+    },
     "Computer Use" : {
 
     },
@@ -4443,6 +4615,9 @@
       }
     },
     "Copy" : {
+
+    },
+    "Copy as JSON" : {
 
     },
     "Copy failure message" : {
@@ -4862,7 +5037,13 @@
         }
       }
     },
-    "Decision log" : {
+    "Decision engine" : {
+
+    },
+    "Decision timeout" : {
+
+    },
+    "Decisions" : {
 
     },
     "declined" : {
@@ -4944,6 +5125,9 @@
           }
         }
       }
+    },
+    "Default login" : {
+
     },
     "Defaults" : {
       "extractionState" : "manual",
@@ -5194,7 +5378,16 @@
         }
       }
     },
+    "deterministic default" : {
+
+    },
+    "Deterministic policy: %@" : {
+
+    },
     "Developed by Gökhan Topbaş" : {
+
+    },
+    "Diagnostics" : {
 
     },
     "Dim text" : {
@@ -5232,6 +5425,9 @@
 
     },
     "Don't offer this again for this project" : {
+
+    },
+    "done" : {
 
     },
     "Done" : {
@@ -5444,12 +5640,6 @@
         }
       }
     },
-    "Each sent prompt, the suggestion and how the turn went, one line each. It stays on this Mac; it is what a fine-tuned model would learn from." : {
-
-    },
-    "Edge" : {
-
-    },
     "Edge receives the newest developments before they reach Stable and may contain bugs." : {
       "localizations" : {
         "en" : {
@@ -5536,15 +5726,6 @@
     "Effort" : {
 
     },
-    "effort %@" : {
-
-    },
-    "Effort advisor" : {
-
-    },
-    "Effort range per agent" : {
-
-    },
     "Effort: %@ — %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5614,7 +5795,7 @@
         }
       }
     },
-    "Engine" : {
+    "ended" : {
 
     },
     "Entrypoint changed: %@ → %@" : {
@@ -5736,6 +5917,9 @@
         }
       }
     },
+    "Every message naming no agent" : {
+
+    },
     "Every package is read before it is installed or adopted: risky shell constructs, executables, its source and its licence. A clean scan is never called “safe” — Verified is reserved for what Uncoil itself ships." : {
 
     },
@@ -5777,6 +5961,9 @@
 
     },
     "Except what stops the work" : {
+
+    },
+    "Execution" : {
 
     },
     "exit %d" : {
@@ -5829,7 +6016,7 @@
         }
       }
     },
-    "Experimental. Picks within the range you allow below, so simple prompts do not spend your plan on high effort." : {
+    "Experimental" : {
 
     },
     "Expired" : {
@@ -5842,6 +6029,15 @@
           }
         }
       }
+    },
+    "Explore and research in parallel" : {
+
+    },
+    "Explorer" : {
+
+    },
+    "Exploring the project…" : {
+
     },
     "Export Setup" : {
       "extractionState" : "manual",
@@ -5953,6 +6149,9 @@
       }
     },
     "Failure" : {
+
+    },
+    "Failure triage" : {
 
     },
     "Featured" : {
@@ -6113,6 +6312,9 @@
       }
     },
     "Follows the interval set under Repeats." : {
+
+    },
+    "For active decisions. Below it, the deterministic policy acts and the diagnostics say why." : {
 
     },
     "For the Session" : {
@@ -6323,6 +6525,9 @@
     "GitHub stars" : {
 
     },
+    "Give @%@ a task for an Auto run — @ to message an agent directly" : {
+
+    },
     "global assignment" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6333,6 +6538,9 @@
           }
         }
       }
+    },
+    "Goes to the Advisor when its checkpoint is on, otherwise back to Main. Policy, not Laya." : {
+
     },
     "granted" : {
 
@@ -6503,9 +6711,6 @@
     "Hermes reads config.yaml at startup; open sessions must be restarted." : {
 
     },
-    "Heuristic" : {
-
-    },
     "Hibernate" : {
 
     },
@@ -6612,6 +6817,9 @@
         }
       }
     },
+    "History" : {
+
+    },
     "Homebrew" : {
 
     },
@@ -6679,9 +6887,6 @@
           }
         }
       }
-    },
-    "How much of the model's probability lands on the suggested level." : {
-
     },
     "How much of the tightest limit has to be left before Uncoil says something." : {
 
@@ -6791,6 +6996,12 @@
           }
         }
       }
+    },
+    "Implementing…" : {
+
+    },
+    "Implements Main's brief, builds and tests it. Off: Main implements the plan itself." : {
+
     },
     "Import Setup" : {
       "extractionState" : "manual",
@@ -6940,7 +7151,7 @@
     "Install into" : {
 
     },
-    "Install uses uv to create a Python environment and download about 1.4 GB of model weights, all inside the location above. Nothing is downloaded until you click Install. The server listens on 127.0.0.1 only and stops when Uncoil quits." : {
+    "Install uses uv to create a Python environment and download about 1.4 GB of model weights, all inside the location above. Nothing is downloaded until you click Install. The server listens on 127.0.0.1 only, stays loaded while Uncoil runs, is started again if it stops, and quits with Uncoil." : {
 
     },
     "Install…" : {
@@ -7042,7 +7253,7 @@
     "Installed version" : {
 
     },
-    "Installed; starts when a conversation asks for a suggestion." : {
+    "Installed; starts when a run has a decision to ask." : {
 
     },
     "Installed: %@" : {
@@ -7086,6 +7297,9 @@
           }
         }
       }
+    },
+    "Instructions" : {
+
     },
     "Integrations" : {
       "extractionState" : "manual",
@@ -7145,6 +7359,9 @@
     "Interrupted" : {
 
     },
+    "Investigates the repository so its search output stays out of Main's context." : {
+
+    },
     "Irreversible deletion with rm -rf." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7155,6 +7372,9 @@
           }
         }
       }
+    },
+    "Is this approach targeting the right problem?" : {
+
     },
     "Issues" : {
 
@@ -7208,9 +7428,6 @@
           }
         }
       }
-    },
-    "Keep a decision log" : {
-
     },
     "Keep sessions running" : {
       "extractionState" : "manual",
@@ -7348,6 +7565,9 @@
     "Last checked %@." : {
 
     },
+    "Last error" : {
+
+    },
     "Last fetch: %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7390,7 +7610,29 @@
     "Latest version" : {
 
     },
-    "Laya (local model)" : {
+    "Laya" : {
+
+    },
+    "Laya chose %@ · confidence %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Laya chose %1$@ · confidence %2$@"
+          }
+        }
+      }
+    },
+    "Laya is a small local model for bounded control decisions. It never plans, writes code, grants a permission or replaces verification: budgets, thresholds and checkpoints sit above it, and a high probability is not an approval." : {
+
+    },
+    "Laya runtime" : {
+
+    },
+    "Laya: %@" : {
+
+    },
+    "Leave empty for the built-in instructions below. The result format the run reads is always added." : {
 
     },
     "left" : {
@@ -7428,9 +7670,6 @@
     "Lets an agent see this Mac's screen and use it — the daemon and the macOS permissions it needs." : {
 
     },
-    "Levels are read from each installed CLI. An agent without an effort setting gets no suggestion." : {
-
-    },
     "License" : {
 
     },
@@ -7441,6 +7680,9 @@
 
     },
     "Limit reached" : {
+
+    },
+    "Limits and cleanup" : {
 
     },
     "Line to write to the file" : {
@@ -7602,6 +7844,9 @@
         }
       }
     },
+    "Longest turn: %lld min" : {
+
+    },
     "Look" : {
 
     },
@@ -7634,6 +7879,9 @@
       }
     },
     "Looking in %@" : {
+
+    },
+    "Looks up documentation, APIs and release notes, and cites them." : {
 
     },
     "lost" : {
@@ -7681,6 +7929,12 @@
     "macOS still has to be told: %@." : {
 
     },
+    "Main" : {
+
+    },
+    "Main agent" : {
+
+    },
     "main copy" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -7691,6 +7945,21 @@
           }
         }
       }
+    },
+    "Main is the agent chosen with the button beside the composer, running with the model and effort you launched it with. Auto orchestrates around it and never replaces it: it owns the plan, reads the specialists' results and gives the final answer." : {
+
+    },
+    "Main reviewing the result…" : {
+
+    },
+    "Main reviews specialist results" : {
+
+    },
+    "Main stopped the work after verification failed." : {
+
+    },
+    "Main's turn did not finish: %@." : {
+
     },
     "Make default" : {
 
@@ -8033,7 +8302,7 @@
         }
       }
     },
-    "Message @%@ — @ for another agent, / for commands" : {
+    "Message @%@ — /auto for an Auto run, @ for another agent" : {
 
     },
     "Message %@…" : {
@@ -8093,9 +8362,6 @@
       }
     },
     "Model" : {
-
-    },
-    "Model runtime" : {
 
     },
     "Model: %@ — %@" : {
@@ -8312,6 +8578,9 @@
     "Neither Node nor the agent-browser Playwright CLI was found." : {
 
     },
+    "Never" : {
+
+    },
     "Never asks — including for commands outside the project. Pick this only for a session you are watching." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8382,6 +8651,9 @@
 
     },
     "New Blueprint…" : {
+
+    },
+    "New briefs from Main: %lld" : {
 
     },
     "New Empty Window" : {
@@ -8623,6 +8895,9 @@
     "No agents in this project yet. Start one with + or /new." : {
 
     },
+    "No Auto run in this conversation yet." : {
+
+    },
     "No banner is sent about the session already on screen." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8717,9 +8992,6 @@
           }
         }
       }
-    },
-    "No effort control in this CLI." : {
-
     },
     "No executable named “%1$@” under %2$@, so nothing was changed." : {
 
@@ -9455,10 +9727,10 @@
         }
       }
     },
-    "Not installed — hidden from the strip until it is" : {
+    "Not installed — every decision is the deterministic policy's." : {
 
     },
-    "Not installed — suggestions use the heuristic." : {
+    "Not installed — hidden from the strip until it is" : {
 
     },
     "Not installed on this machine" : {
@@ -9715,9 +9987,6 @@
         }
       }
     },
-    "now %@" : {
-
-    },
     "npm" : {
 
     },
@@ -9770,6 +10039,18 @@
           }
         }
       }
+    },
+    "Off: /auto is refused and every message goes to an agent as before." : {
+
+    },
+    "Off: every decision is the deterministic policy's, and nothing is recorded as Laya's." : {
+
+    },
+    "Off: Laya's completion decision may still recommend a review, when you make it active." : {
+
+    },
+    "Off: the Worker gets the Explorer's and Researcher's reports as they are, without a planning turn." : {
+
     },
     "Official" : {
 
@@ -9901,6 +10182,9 @@
       }
     },
     "Only while Uncoil is in the background" : {
+
+    },
+    "Only with /auto" : {
 
     },
     "Open" : {
@@ -10168,6 +10452,9 @@
         }
       }
     },
+    "Open this session in a window" : {
+
+    },
     "Open to this conversation" : {
 
     },
@@ -10184,6 +10471,9 @@
           }
         }
       }
+    },
+    "Open With" : {
+
     },
     "Open with %@" : {
       "extractionState" : "manual",
@@ -10658,10 +10948,19 @@
         }
       }
     },
+    "Planning…" : {
+
+    },
     "Point Uncoil at a folder you work in. You can always add more later." : {
 
     },
     "Point Uncoil at a GitHub repository — a whole repo or a subfolder — pinned to a tag or tracking a branch. The commit it came from is recorded, and one copy in the store is shared by every agent through symlinks, so a skill is never duplicated per agent." : {
+
+    },
+    "Policy" : {
+
+    },
+    "Policy override: %@" : {
 
     },
     "Popular" : {
@@ -10942,9 +11241,6 @@
     "Prompt" : {
 
     },
-    "Prompt length and a few words, in English and Turkish." : {
-
-    },
     "Prompt preview" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11160,9 +11456,6 @@
     "Raises a row in the Attention Center when a login is close to a provider limit. The figures in each session's header are shown either way." : {
 
     },
-    "Range" : {
-
-    },
     "Re-audit" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11257,6 +11550,9 @@
     "Read usage again now" : {
 
     },
+    "Read-only" : {
+
+    },
     "Reading and ticking tasks" : {
 
     },
@@ -11281,9 +11577,6 @@
           }
         }
       }
-    },
-    "Reading the CLI…" : {
-
     },
     "Reading the version…" : {
       "extractionState" : "manual",
@@ -11418,6 +11711,9 @@
       }
     },
     "Registry · %@" : {
+
+    },
+    "Reinstall the pinned package and fetch the models again" : {
 
     },
     "Reinstall…" : {
@@ -11582,6 +11878,9 @@
           }
         }
       }
+    },
+    "Remove a Worker worktree left without changes" : {
+
     },
     "Remove from group" : {
       "extractionState" : "manual",
@@ -11770,6 +12069,9 @@
         }
       }
     },
+    "Repeated failure after %lld in a row" : {
+
+    },
     "Repeats" : {
 
     },
@@ -11826,6 +12128,9 @@
         }
       }
     },
+    "Require tests when available" : {
+
+    },
     "Rescan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11850,6 +12155,15 @@
           }
         }
       }
+    },
+    "Research" : {
+
+    },
+    "Research gate" : {
+
+    },
+    "Researcher" : {
+
     },
     "Reset" : {
       "extractionState" : "manual",
@@ -11989,6 +12303,9 @@
         }
       }
     },
+    "Retries after a failed verification: %lld" : {
+
+    },
     "Retry" : {
 
     },
@@ -12086,6 +12403,9 @@
         }
       }
     },
+    "Roles" : {
+
+    },
     "Rollback" : {
 
     },
@@ -12145,6 +12465,9 @@
       }
     },
     "Run %@" : {
+
+    },
+    "Run a task with Main and its specialists" : {
 
     },
     "Run again" : {
@@ -12331,6 +12654,9 @@
       }
     },
     "Runs the first-run flow again: CLIs, accounts, hooks, agent capabilities, tasks and extensions." : {
+
+    },
+    "Runs the project's default test suite after every Worker turn." : {
 
     },
     "Runtime daemon" : {
@@ -13048,6 +13374,19 @@
         }
       }
     },
+    "Shadow — record only" : {
+
+    },
+    "Shadow: Laya would have selected %@ · %lld%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Shadow: Laya would have selected %1$@ · %2$lld%%"
+          }
+        }
+      }
+    },
     "Shell script" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13205,12 +13544,6 @@
 
     },
     "Show what Uncoil Auto understands" : {
-
-    },
-    "Show when at least this sure" : {
-
-    },
-    "Shown above the composer. Nothing is sent to an agent until you click Apply." : {
 
     },
     "Shown as a number next to the icon." : {
@@ -13514,6 +13847,9 @@
         }
       }
     },
+    "Specialists at once: %lld" : {
+
+    },
     "Stable receives tested releases. Switching from Edge waits for a newer Stable build; it does not downgrade your app or data." : {
       "localizations" : {
         "en" : {
@@ -13717,6 +14053,9 @@
         }
       }
     },
+    "State and question" : {
+
+    },
     "Status" : {
 
     },
@@ -13779,6 +14118,9 @@
     "Stop (Esc)" : {
 
     },
+    "Stop specialists when the run ends" : {
+
+    },
     "Stop the Orchestrator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13789,6 +14131,9 @@
           }
         }
       }
+    },
+    "Stop the run" : {
+
     },
     "Stop what the agents are doing" : {
 
@@ -13850,12 +14195,6 @@
           }
         }
       }
-    },
-    "Suggest an effort for each prompt" : {
-
-    },
-    "Suggestions for %@ stay between these." : {
-
     },
     "Suite" : {
 
@@ -14251,6 +14590,16 @@
     "Tests" : {
 
     },
+    "Tests failed — Worker retrying (%lld/%lld)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tests failed — Worker retrying (%1$lld/%2$lld)."
+          }
+        }
+      }
+    },
     "Tests failing" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14319,6 +14668,9 @@
           }
         }
       }
+    },
+    "The Advisor is an Uncoil-managed session that receives a compact packet at each checkpoint — no provider's native advisor facility is used, so any agent and model can advise. One session per run, reused across its checkpoints." : {
+
     },
     "The agent asked a question and is waiting for your answer." : {
       "extractionState" : "manual",
@@ -14473,6 +14825,9 @@
           }
         }
       }
+    },
+    "The conversation's target" : {
+
     },
     "the daily baseline was left to the daemon" : {
       "extractionState" : "manual",
@@ -14837,6 +15192,12 @@
     "The run" : {
 
     },
+    "The run reached its %lld-minute limit." : {
+
+    },
+    "The run reached its limit of %lld child sessions." : {
+
+    },
     "The running process is closed; the recording cannot be recovered." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15166,6 +15527,9 @@
         }
       }
     },
+    "The Worker could not start: %@" : {
+
+    },
     "The working tree moved to branch %@." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15199,6 +15563,9 @@
         }
       }
     },
+    "Their sessions stay in the sidebar either way." : {
+
+    },
     "Theme and Colours" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15211,6 +15578,9 @@
       }
     },
     "There is already a TODO.md here." : {
+
+    },
+    "There is no agent to be Main. Choose one with the button beside the field." : {
 
     },
     "There is no implementation session to hand the findings to." : {
@@ -15360,6 +15730,9 @@
         }
       }
     },
+    "timed out" : {
+
+    },
     "Timed Out" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15371,6 +15744,9 @@
         }
       }
     },
+    "Times a failing Worker is sent back to Main before the run stops and hands over to you." : {
+
+    },
     "Title" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15381,12 +15757,6 @@
           }
         }
       }
-    },
-    "to" : {
-
-    },
-    "To" : {
-
     },
     "To do" : {
       "extractionState" : "manual",
@@ -15705,6 +16075,9 @@
           }
         }
       }
+    },
+    "Uncoil quit while the run was going." : {
+
     },
     "Uncoil reads the login each CLI already carries. None are signed in yet — the provider's own flow opens in a small terminal, and the credentials stay with the CLI." : {
 
@@ -16189,6 +16562,9 @@
     "Use PATH Again" : {
 
     },
+    "Use the %@" : {
+
+    },
     "Use this" : {
 
     },
@@ -16230,6 +16606,15 @@
           }
         }
       }
+    },
+    "Verification" : {
+
+    },
+    "Verification still fails after %lld attempts." : {
+
+    },
+    "Verification still fails after %lld briefs from Main. Over to you." : {
+
     },
     "Verified" : {
       "extractionState" : "manual",
@@ -16477,6 +16862,9 @@
     "What should this window open on?" : {
 
     },
+    "What starts a run" : {
+
+    },
     "What this project is allowed to interrupt you for. Anything left alone follows the app's own settings." : {
 
     },
@@ -16500,6 +16888,9 @@
         }
       }
     },
+    "When a specialist fails" : {
+
+    },
     "When busy" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -16510,6 +16901,12 @@
           }
         }
       }
+    },
+    "When needed" : {
+
+    },
+    "When needed: the research gate decides, deterministically or with Laya." : {
+
     },
     "When should the agent use this?" : {
       "extractionState" : "manual",
@@ -16522,13 +16919,16 @@
         }
       }
     },
+    "When the same failure repeats" : {
+
+    },
     "Where is %@?" : {
 
     },
     "Where the sessions in this project run." : {
 
     },
-    "Which agents a conversation can reach, and how much effort it suggests for each prompt." : {
+    "Which agents a conversation can reach, and how an Auto run works: Main owns the task, specialists do focused work, the Advisor reviews, Laya takes small decisions and verification checks the result." : {
 
     },
     "Which agents an extension is enabled for." : {
@@ -16542,7 +16942,7 @@
         }
       }
     },
-    "Which agents it can reach, and the effort advisor." : {
+    "Which agents it can reach, and how Auto runs are staffed and decided." : {
 
     },
     "Which events" : {
@@ -16592,6 +16992,9 @@
     "While this is off, Uncoil sends no banner at all; sessions are still marked in the sidebar." : {
 
     },
+    "Whole run: %lld min" : {
+
+    },
     "Will run: %@" : {
 
     },
@@ -16618,6 +17021,21 @@
       }
     },
     "Withdrawn" : {
+
+    },
+    "Work in its own worktree" : {
+
+    },
+    "Worker" : {
+
+    },
+    "Worker continuing with Main's new brief." : {
+
+    },
+    "Worker retrying with the Advisor's review." : {
+
+    },
+    "working" : {
 
     },
     "Working directory '%@' doesn't exist under the project root; fix 'cwd' in .uncoil/run.json." : {

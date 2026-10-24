@@ -771,8 +771,12 @@ struct SidebarOutline: NSViewRepresentable {
                     ) {
                         CollapsedProjects.shared.set(id, collapsed: !collapsed)
                     }
-                    add(to: menu, title: String(localized: "Show in Finder")) {
-                        NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
+                    add(
+                        to: menu,
+                        title: String(localized: "Open in Finder"),
+                        image: OpenDirectoryMenuItems.finderIcon
+                    ) {
+                        NSWorkspace.shared.open(project.rootURL)
                     }
                     menu.addItem(.separator())
                     add(to: menu, title: String(localized: "Close Scratch")) {
@@ -805,8 +809,19 @@ struct SidebarOutline: NSViewRepresentable {
                     CollapsedProjects.shared.set(id, collapsed: !collapsed)
                 }
                 menu.addItem(.separator())
-                add(to: menu, title: String(localized: "Show in Finder")) {
-                    NSWorkspace.shared.activateFileViewerSelecting([project.rootURL])
+                for editor in PreferredEditor.available(forDirectory: project.rootURL) {
+                    add(
+                        to: menu,
+                        title: String(localized: "Open in \(editor.displayName)"),
+                        image: editor.appIcon
+                    ) { editor.openProject(project.rootURL) }
+                }
+                add(
+                    to: menu,
+                    title: String(localized: "Open in Finder"),
+                    image: OpenDirectoryMenuItems.finderIcon
+                ) {
+                    NSWorkspace.shared.open(project.rootURL)
                 }
                 add(to: menu, title: String(localized: "Remove from List")) {
                     environment.projectStore.removeProject(project)
@@ -946,8 +961,11 @@ struct SidebarOutline: NSViewRepresentable {
             return menu
         }
 
-        private func add(to menu: NSMenu, title: String, action: @escaping () -> Void) {
+        private func add(
+            to menu: NSMenu, title: String, image: NSImage? = nil, action: @escaping () -> Void
+        ) {
             let item = MenuItem(title: title, action: action)
+            item.image = image
             menu.addItem(item)
         }
 

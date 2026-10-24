@@ -127,4 +127,40 @@ final class SessionAutomaticTitleStoreTests: XCTestCase {
         store.adoptAutomaticTitle("something else entirely", for: id)
         XCTAssertEqual(title(of: id), "#42 the release blocker")
     }
+
+    // MARK: Terminal replies and the kitty keyboard protocol
+
+    private func typed(_ text: String) -> String? {
+        var buffer = SessionAutoTitle.TypedLineBuffer()
+        return buffer.feed(Array(text.utf8))
+    }
+
+    func testColourQueryRepliesStayOutOfTheTitle() {
+        // What SwiftTerm answers Codex's OSC 10/11 colour queries with.
+        let reply = "\u{1B}]10;rgb:e9e9/e9e9/ecec\u{1B}\\\u{1B}]11;rgb:0f0f/0f0f/1111\u{07}"
+        XCTAssertEqual(typed(reply + "fix the build\r"), "fix the build")
+        XCTAssertEqual(typed("\u{1B}[1;1R\u{1B}[?62;22c\u{1B}[?7ufix it\r"), "fix it")
+    }
+
+    func testKittyEncodedShiftedKeysKeepTheirCharacter() {
+        // A Turkish layout: `/` is Shift+7, sent as CSI 55:47;2u.
+        XCTAssertEqual(typed("\u{1B}[55:47;2ureview this project\r"), "/review this project")
+        XCTAssertEqual(typed("\u{1B}[102:70;2uix \u{1B}[105;2u\r"), "Fix I")
+        // Releases add nothing; text the terminal spelled out is taken as is.
+        XCTAssertEqual(typed("a\u{1B}[97;1:3ub\u{1B}[351;1;351u\r"), "abş")
+        // Disambiguated Ctrl-C still abandons the line.
+        XCTAssertNil(typed("oops\u{1B}[99;5u\r"))
+    }
+
+    func testABareSlashCommandDoesNotNameTheSession() {
+        var buffer = SessionAutoTitle.TypedLineBuffer()
+        XCTAssertNil(buffer.feed(Array("/model\r".utf8)))
+        XCTAssertEqual(buffer.feed(Array("add a login screen\r".utf8)), "add a login screen")
+    }
+
+    func testATerminalReplyTitleIsRecognised() {
+        XCTAssertTrue(SessionAutoTitle.isTerminalReply("10;rgb:e9e9/e9e9/ecec11;rgb:0f0f/0f0f/1111"))
+        XCTAssertTrue(SessionAutoTitle.isTerminalReply("10;rgb:e9e9/e9e9/ecec11;rgb:0f0f/0f0f/111…"))
+        XCTAssertFalse(SessionAutoTitle.isTerminalReply("fix rgb: colour parsing"))
+    }
 }
