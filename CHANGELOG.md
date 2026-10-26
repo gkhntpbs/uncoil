@@ -27,6 +27,9 @@ the Edge builds at `/edge/`, straight from the signed feed.
 - The task list groups tasks by file when it shows every TODO.md, and the new-task picker names each file by its path.
 - **SSH Hosts** (Settings > Integrations): import hosts from `~/.ssh/config` (Includes followed), add your own (written to `~/.ssh/uncoil_config`, reachable after a one-time, confirmed `Include` line), and open a plain `ssh` terminal on any of them.
 - **Remote hosts per project.** Pick which SSH hosts a project uses from its settings (new **Remote Hosts** tab, with a link to the full list) or its overview panel. Agents started in the project are told only those hosts — Claude via `--append-system-prompt`, Codex via `developer_instructions` — and `uncoil_projects {"action":"context"}` returns the current list to a running session. A project with no hosts adds nothing to its agents' context.
+- **Rename a session** from its sidebar context menu (**Rename…**). A name you give is kept — the first prompt no longer overwrites it — and clearing it hands the session back to automatic naming.
+- **Import sessions** from Claude Code and Codex (project context menu > **Import Sessions…**). Uncoil lists the conversations those CLIs already keep for the project — in `~/.claude`, `~/.codex` and each account profile's config folder, held in the project folder or one of its git worktrees — with their own titles and dates. The ones you pick arrive as sleeping sessions; waking one resumes the conversation. Nothing is copied, and a conversation is never imported twice.
+- **Shorter session lists in the sidebar.** Each project shows its 5 most recently used sessions (pinned ones always, and the one you have open), and a **Load more** row reveals the next ones; **Show less** folds the list back to its first page. Groups page on their own. Change the number, or show all, in Settings > General > Sidebar.
 
 ### Fixed
 

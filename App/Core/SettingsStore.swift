@@ -81,6 +81,9 @@ final class SettingsStore: ObservableObject {
         /// Uncoil Auto: which agents it may reach, and how its runs work.
         /// nil ⇒ defaults.
         var uncoilAuto: UncoilAutoSettings? = nil
+        /// Sessions a sidebar list shows before "Load more"; 0 = all of them.
+        /// nil = `SidebarSessionLimit.default`.
+        var sidebarSessionLimit: Int? = nil
         enum CodingKeys: String, CodingKey, CaseIterable {
             case accounts
             case defaultAccountByProvider
@@ -108,6 +111,7 @@ final class SettingsStore: ObservableObject {
             case sessionCapabilityDefaults
             case agentBinaryLocations
             case uncoilAuto
+            case sidebarSessionLimit
         }
     }
 
@@ -165,6 +169,8 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var sessionCapabilityDefaults: [String]?
     /// Uncoil Auto's reach and its run harness.
     @Published private(set) var uncoilAuto: UncoilAutoSettings = .default
+    /// Sessions a sidebar list shows before "Load more"; 0 = all of them.
+    @Published private(set) var sidebarSessionLimit = SidebarSessionLimit.default
     /// Installed CLI versions ("claude" -> "1.0.83 (Claude Code)").
     @Published var cliVersions: [String: String] = [:]
     /// Providers with an update currently running.
@@ -332,6 +338,11 @@ final class SettingsStore: ObservableObject {
 
     var installedProviders: Set<AgentProvider> {
         Set(AgentProvider.agents.filter { resolvedBinaries[$0.rawValue] != nil })
+    }
+
+    func setSidebarSessionLimit(_ limit: Int) {
+        sidebarSessionLimit = max(0, limit)
+        save()
     }
 
     func setImagePasteMode(_ mode: ImagePasteMode) {
@@ -853,6 +864,7 @@ final class SettingsStore: ObservableObject {
         usageWarningThreshold = decoded.usageWarningThreshold ?? UsageAlert.defaultThreshold
         launcher = decoded.launcher ?? .default
         imagePasteMode = decoded.imagePasteMode ?? .default
+        sidebarSessionLimit = max(0, decoded.sidebarSessionLimit ?? SidebarSessionLimit.default)
         optionAsMetaKey = decoded.optionAsMetaKey ?? false
         sessionQuitBehavior = decoded.sessionQuitBehavior ?? .keepSessionsRunning
         transcriptRetentionPolicy = decoded.transcriptRetentionPolicy ?? .disabled
@@ -922,7 +934,9 @@ final class SettingsStore: ObservableObject {
                 ? nil : onboardingCompletedSteps.sorted(),
             sessionCapabilityDefaults: sessionCapabilityDefaults,
             agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations,
-            uncoilAuto: uncoilAuto == .default ? nil : uncoilAuto
+            uncoilAuto: uncoilAuto == .default ? nil : uncoilAuto,
+            sidebarSessionLimit: sidebarSessionLimit == SidebarSessionLimit.default
+                ? nil : sidebarSessionLimit
         )
     }
 

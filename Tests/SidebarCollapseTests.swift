@@ -53,8 +53,10 @@ final class SidebarCollapseTests: XCTestCase {
                 openSessionWindow: { _ in },
                 customizeProject: { _ in },
                 applyBlueprint: { _ in },
+                importSessions: { _ in },
                 createGroup: { _ in },
                 renameGroup: { _ in },
+                renameSession: { _ in },
                 confirmDeleteSession: { _ in },
                 addProject: {}, newScratchSession: { _ in }, closeScratch: {}
             ),
@@ -71,7 +73,8 @@ final class SidebarCollapseTests: XCTestCase {
         coordinator.apply(
             environment: environment,
             collapsedProjects: collapsed,
-            collapsedGroups: CollapsedGroups.shared
+            collapsedGroups: CollapsedGroups.shared,
+            sessionPages: SidebarSessionPages.shared
         )
         XCTAssertEqual(
             outlineView.numberOfRows, 3,
@@ -82,7 +85,8 @@ final class SidebarCollapseTests: XCTestCase {
         coordinator.apply(
             environment: environment,
             collapsedProjects: collapsed,
-            collapsedGroups: CollapsedGroups.shared
+            collapsedGroups: CollapsedGroups.shared,
+            sessionPages: SidebarSessionPages.shared
         )
         XCTAssertEqual(
             outlineView.numberOfRows, 1,

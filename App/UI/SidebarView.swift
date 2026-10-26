@@ -30,11 +30,13 @@ struct SidebarView: View {
     // Sheets and dialogs the row context menus ask for. They live here rather
     // than in the rows because a recycled row is the wrong owner for a window.
     @State private var blueprintProject: Project?
+    @State private var importingProject: Project?
     /// Project getting a new, empty group from its context menu. Until now a
     /// group could only be born from a multi-selection.
     @State private var groupingProject: Project?
     @State private var renamingGroup: SessionGroup?
     @State private var renameValue = ""
+    @State private var renamingSession: SessionRecord?
     @State private var deletingSession: SessionRecord?
     /// Closing Scratch removes the sessions in it, so it is asked about.
     @State private var confirmingScratchClose = false
@@ -107,6 +109,7 @@ struct SidebarView: View {
                     openSessionWindow: { openWindow(.session, value: $0) },
                     customizeProject: { Router.shared.go(to: .projectSettings($0.id)) },
                     applyBlueprint: { blueprintProject = $0 },
+                    importSessions: { importingProject = $0 },
                     createGroup: {
                         groupName = ""
                         groupingProject = $0
@@ -114,6 +117,10 @@ struct SidebarView: View {
                     renameGroup: {
                         renameValue = $0.name
                         renamingGroup = $0
+                    },
+                    renameSession: {
+                        renameValue = $0.displayTitle
+                        renamingSession = $0
                     },
                     confirmDeleteSession: { deletingSession = $0 },
                     addProject: { showFolderPicker = true },
@@ -215,6 +222,14 @@ struct SidebarView: View {
         .sheet(item: $blueprintProject) { project in
             ApplyBlueprintSheet(project: project)
         }
+        .sheet(item: $importingProject) { project in
+            SessionImportSheet(project: project) { imported in
+                guard !imported.isEmpty else { return }
+                // Show what arrived: the project opens, and lands selected.
+                CollapsedProjects.shared.set(project.id, collapsed: false)
+                selection = .project(project.id)
+            }
+        }
         .alert("New Group", isPresented: isPresenting($groupingProject)) {
             TextField("Group name", text: $groupName)
             Button("Create") {
@@ -236,6 +251,16 @@ struct SidebarView: View {
                 projectStore.updateGroup(group.id) { $0.name = value }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .alert("Rename Session", isPresented: isPresenting($renamingSession)) {
+            TextField("Session name", text: $renameValue)
+            Button("Save") {
+                guard let record = renamingSession else { return }
+                projectStore.renameSession(record.id, to: renameValue)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Leave it empty to name the session after its next prompt.")
         }
         .confirmationDialog(
             deletingSession.map { "Delete the \"\($0.displayTitle)\" session?" } ?? "",
@@ -724,6 +749,85 @@ struct SessionGroupRowView: View {
             .overlay(alignment: .leading) { IndentRails(depth: 1) }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("sidebar.group.\(group.name)")
+        }
+    }
+}
+
+// MARK: - Load more row
+
+/// Closes a sidebar list that pages its sessions. "Load more" shows the next
+/// page while some are held back; "Show less" folds the list back to its first
+/// page once more than that is showing. Buttons rather than a selectable row:
+/// pressing either leaves the selection where it was.
+struct SidebarLoadMoreRow: View {
+    let hiddenCount: Int
+    let canShowLess: Bool
+    let pageSize: Int
+    let depth: Int
+    let loadMore: () -> Void
+    let showLess: () -> Void
+
+    private var nextPage: Int {
+        pageSize > 0 ? min(pageSize, hiddenCount) : hiddenCount
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if hiddenCount > 0 {
+                PagingButton(
+                    title: String(localized: "Load more"),
+                    chevron: "chevron.down",
+                    detail: String(localized: "\(hiddenCount) more"),
+                    action: loadMore
+                )
+                .help(String(localized: "Show the next \(nextPage) of \(hiddenCount) hidden sessions"))
+                .accessibilityIdentifier("sidebar.loadMore")
+            }
+            Spacer(minLength: 8)
+            if canShowLess {
+                PagingButton(
+                    title: String(localized: "Show less"),
+                    chevron: "chevron.up",
+                    detail: nil,
+                    action: showLess
+                )
+                .help(String(localized: "Fold the list back to its first \(pageSize) sessions"))
+                .accessibilityIdentifier("sidebar.showLess")
+            }
+        }
+        .padding(.leading, SidebarIndent.leading(depth: depth))
+        .padding(.trailing, 10)
+        .padding(.vertical, 5)
+        .padding(.horizontal, SidebarIndent.outer)
+        .overlay(alignment: .leading) { IndentRails(depth: depth) }
+    }
+
+    private struct PagingButton: View {
+        let title: String
+        let chevron: String
+        let detail: String?
+        let action: () -> Void
+        @State private var hovering = false
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: chevron)
+                        .font(.system(size: 8, weight: .semibold))
+                        .frame(width: 14)
+                    Text(title)
+                        .font(Theme.mono(.body, .medium))
+                    if let detail {
+                        Text(detail)
+                            .font(Theme.mono(.micro))
+                            .foregroundStyle(Theme.textFaint)
+                    }
+                }
+                .foregroundStyle(hovering ? Theme.text : Theme.textDim)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.pressable)
+            .onHover { hovering = $0 }
         }
     }
 }

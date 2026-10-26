@@ -524,6 +524,73 @@ final class ProjectStore: ObservableObject {
         updateSession(id) { $0.lastActivityAt = now }
     }
 
+    /// Gives a session the name the user typed. An empty name hands it back
+    /// to automatic naming: the placeholder returns, and the next prompt
+    /// titles the session as it would a new one.
+    func renameSession(_ id: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        updateSession(id) { record in
+            if !trimmed.isEmpty {
+                record.title = trimmed
+            } else if record.provider == .terminal {
+                record.title = "terminal"
+            } else {
+                record.title = "\(record.provider.rawValue): new session"
+            }
+        }
+    }
+
+    /// Conversations some session already points at, as
+    /// `ImportableSession.key`s. Across every project: a conversation lives in
+    /// one directory, and two sessions resuming it would be two agents writing
+    /// one transcript.
+    var importedConversationKeys: Set<String> {
+        Set(sessions.compactMap { record in
+            guard let id = record.providerSessionID, !id.isEmpty else { return nil }
+            return ImportableSession.key(provider: record.provider, providerSessionID: id)
+        })
+    }
+
+    /// Records conversations found in an agent's own store as sessions of
+    /// this project.
+    ///
+    /// Each one arrives hibernated — the state of a session whose process is
+    /// gone and whose conversation is not: waking it relaunches the agent with
+    /// `--resume`, the same path a session put to sleep in Uncoil takes. Dates
+    /// are the conversation's own, so recency and "active N days ago" are
+    /// true from the start; they are recorded oldest first, so the newest ends
+    /// up where a new session would, at the end of the list.
+    ///
+    /// A conversation some session already points at is skipped, so importing
+    /// twice — or a list that went stale while it was open — adds nothing.
+    @discardableResult
+    func importSessions(_ items: [ImportableSession], into projectID: UUID) -> [SessionRecord] {
+        guard projects.contains(where: { $0.id == projectID }) else { return [] }
+        var taken = importedConversationKeys
+        var imported: [SessionRecord] = []
+        for item in items.sorted(by: { $0.startedAt < $1.startedAt })
+        where item.provider.resumesConversation && taken.insert(item.id).inserted {
+            var record = SessionRecord(
+                projectID: projectID,
+                provider: item.provider,
+                accountID: item.accountID,
+                title: item.title,
+                worktreePath: item.worktreePath,
+                createdAt: item.startedAt
+            )
+            record.lastActivityAt = item.lastActivityAt
+            record.providerSessionID = item.providerSessionID
+            record.capabilities = Self.defaultSessionCapabilities
+            record.sortIndex = nextSortIndex(inProject: projectID)
+            record.sleepMode = .hibernated
+            record.sleptAt = item.lastActivityAt
+            sessions.append(record)
+            imported.append(record)
+        }
+        if !imported.isEmpty { save() }
+        return imported
+    }
+
     func togglePin(_ id: UUID) {
         updateSession(id) { $0.isPinned = !($0.isPinned ?? false) }
     }

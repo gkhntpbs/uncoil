@@ -7,6 +7,21 @@ enum SidebarItem: Equatable {
     case project(UUID)
     case group(UUID)
     case session(UUID)
+    /// The row closing a list that pages its sessions: "Load more" while it
+    /// holds some back, "Show less" once it shows more than its first page.
+    /// Carries the id of the list it extends: a group's, or the project's for
+    /// its ungrouped sessions — the two never collide, both being UUIDs minted
+    /// for different things.
+    case more(UUID)
+
+    /// A row that is drawn but holds nothing: a drop "on" it means "in front
+    /// of it", the way it does on a session.
+    var isLeafRow: Bool {
+        switch self {
+        case .session, .more: true
+        case .project, .group: false
+        }
+    }
 
     /// Stable outline-view identity. Prefixed because a group and a session can
     /// never collide, but reading `"s:…"` in a log is worth more than the
@@ -16,6 +31,7 @@ enum SidebarItem: Equatable {
         case .project(let id): return "p:\(id.uuidString)"
         case .group(let id): return "g:\(id.uuidString)"
         case .session(let id): return "s:\(id.uuidString)"
+        case .more(let id): return "m:\(id.uuidString)"
         }
     }
 }
@@ -40,12 +56,20 @@ struct SidebarStructure: Equatable {
     struct Group: Equatable {
         let id: UUID
         let sessions: [SessionNode]
+        /// Sessions held back behind "Load more". Zero when the list is whole.
+        var hiddenCount = 0
+        /// More than the first page is showing, so "Show less" can fold it back.
+        var canShowLess = false
     }
 
     struct Project: Equatable {
         let id: UUID
         let groups: [Group]
         let ungrouped: [SessionNode]
+        /// Ungrouped sessions held back behind "Load more".
+        var hiddenCount = 0
+        /// More than the first page of ungrouped sessions is showing.
+        var canShowLess = false
     }
 
     var projects: [Project] = []
@@ -146,6 +170,9 @@ struct SidebarStructure: Equatable {
             return 0
         case .group:
             return 1
+        case .more(let id):
+            // Sits at the depth of the sessions it continues.
+            return projects.contains { $0.groups.contains { $0.id == id } } ? 2 : 1
         case .session(let id):
             for project in projects {
                 for group in project.groups {
@@ -224,6 +251,88 @@ struct SidebarStructure: Equatable {
 }
 
 extension SidebarStructure {
+    /// Each list cut down to its `limit` most recently used sessions, `limit`
+    /// more per "Load more" already pressed for it.
+    ///
+    /// A project that has collected a hundred sessions used to draw all of
+    /// them, and the projects under it were a long scroll away. The cut is per
+    /// list — a project's ungrouped sessions and each of its groups — because
+    /// a group is a section of its own: sharing one budget across them would
+    /// leave a group's header standing over nothing.
+    ///
+    /// Which sessions make the cut is decided by `rank`, not by position: a
+    /// new session is stamped at the *end* of its list so rows never move on
+    /// their own, so "the first five" would be the five oldest. The sessions
+    /// shown keep their place in the user's order; only the choice of which to
+    /// show follows recency.
+    ///
+    /// Only top-level sessions count. A sub-agent rides with its parent — a
+    /// shown session shows its whole branch, and a branch ranks by its most
+    /// recent member, so a parent whose sub-agent is busy stays in view.
+    ///
+    /// The session open on the right is never held back, however far down the
+    /// ranking it sits: a sidebar with no row for what fills the window is the
+    /// problem `revealing` exists to prevent, and paging must not bring it back.
+    ///
+    /// - Parameters:
+    ///   - limit: sessions per page; nil shows every session.
+    ///   - pages: extra pages already loaded, by list id (group or project).
+    ///   - rank: how recently a session was used; later ranks higher. A pinned
+    ///     session answers `.distantFuture`, so it always makes the cut.
+    func paged(
+        limit: Int?,
+        pages: [UUID: Int],
+        keeping sessionID: UUID?,
+        rank: (UUID) -> Date
+    ) -> SidebarStructure {
+        guard let limit, limit > 0 else { return self }
+        func branchRank(_ node: SessionNode) -> Date {
+            node.children.map(branchRank).reduce(rank(node.id), max)
+        }
+        func cut(
+            _ nodes: [SessionNode], listID: UUID
+        ) -> (shown: [SessionNode], hidden: Int, canShowLess: Bool) {
+            let budget = limit * (1 + max(0, pages[listID] ?? 0))
+            // Only a list that is longer than one page has anything to fold.
+            let canShowLess = budget > limit && nodes.count > limit
+            guard nodes.count > budget else { return (nodes, 0, canShowLess) }
+            let ranks: [Date] = nodes.map(branchRank)
+            // Ties keep list order, so the same store always cuts the same way.
+            let byRecency: [Int] = nodes.indices.sorted { left, right in
+                ranks[left] != ranks[right] ? ranks[left] > ranks[right] : left < right
+            }
+            let chosen = Set(byRecency.prefix(budget))
+            var shown: [SessionNode] = []
+            for (index, node) in nodes.enumerated() {
+                let isOpen = sessionID.map { Self.contains($0, in: [node]) } ?? false
+                if chosen.contains(index) || isOpen { shown.append(node) }
+            }
+            return (shown, nodes.count - shown.count, canShowLess)
+        }
+        return SidebarStructure(projects: projects.map { project in
+            let ungrouped = cut(project.ungrouped, listID: project.id)
+            return Project(
+                id: project.id,
+                groups: project.groups.map { group in
+                    let sessions = cut(group.sessions, listID: group.id)
+                    return Group(
+                        id: group.id,
+                        sessions: sessions.shown,
+                        hiddenCount: sessions.hidden,
+                        canShowLess: sessions.canShowLess
+                    )
+                },
+                ungrouped: ungrouped.shown,
+                hiddenCount: ungrouped.hidden,
+                canShowLess: ungrouped.canShowLess
+            )
+        })
+    }
+
+    private static func contains(_ sessionID: UUID, in nodes: [SessionNode]) -> Bool {
+        nodes.contains { $0.id == sessionID || contains(sessionID, in: $0.children) }
+    }
+
     /// What a folded project still shows.
     ///
     /// Folding a project used to hide everything under it, including the

@@ -21,6 +21,38 @@ final class CollapsedGroups: ObservableObject {
     }
 }
 
+/// How many extra pages of sessions each sidebar list has loaded.
+///
+/// In memory only, like `CollapsedGroups`: "Load more" is a look further
+/// down, not a setting, and a relaunch starts every list at its first page.
+@MainActor
+final class SidebarSessionPages: ObservableObject {
+    static let shared = SidebarSessionPages()
+    /// By list id — a group's, or a project's for its ungrouped sessions.
+    @Published private(set) var pages: [UUID: Int] = [:]
+
+    func loadMore(_ listID: UUID) {
+        pages[listID, default: 0] += 1
+    }
+
+    /// Back to the first page, however many were loaded.
+    func showLess(_ listID: UUID) {
+        pages[listID] = nil
+    }
+}
+
+/// The page size the sidebar is allowed to use: the setting, or nothing when
+/// it says "all".
+enum SidebarSessionLimit {
+    static let `default` = 5
+    /// What Settings offers. 0 stands for "all".
+    static let choices = [3, 5, 10, 20, 0]
+
+    static func pageSize(_ setting: Int) -> Int? {
+        setting > 0 ? setting : nil
+    }
+}
+
 /// What a sidebar row draws besides its own record.
 ///
 /// A hosted row bakes these in when it is built, so when they change the rows
@@ -102,6 +134,7 @@ struct SidebarOutline: NSViewRepresentable {
     @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var collapsedProjects = CollapsedProjects.shared
     @ObservedObject private var collapsedGroups = CollapsedGroups.shared
+    @ObservedObject private var sessionPages = SidebarSessionPages.shared
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -150,7 +183,8 @@ struct SidebarOutline: NSViewRepresentable {
                 selectedSessionIDs: $selectedSessionIDs
             ),
             collapsedProjects: collapsedProjects,
-            collapsedGroups: collapsedGroups
+            collapsedGroups: collapsedGroups,
+            sessionPages: sessionPages
         )
     }
 
@@ -190,7 +224,8 @@ struct SidebarOutline: NSViewRepresentable {
         func apply(
             environment: RowEnvironment,
             collapsedProjects: CollapsedProjects,
-            collapsedGroups: CollapsedGroups
+            collapsedGroups: CollapsedGroups,
+            sessionPages: SidebarSessionPages
         ) {
             self.environment = environment
             // Everything below is SwiftUI's update pass. `reloadData`,
@@ -222,6 +257,8 @@ struct SidebarOutline: NSViewRepresentable {
                 from: environment.projectStore,
                 scope: environment.scope,
                 collapsed: collapsedProjects.projectIDs,
+                pageSize: SidebarSessionLimit.pageSize(environment.settings.sidebarSessionLimit),
+                pages: sessionPages.pages,
                 // The session on the right stays visible under its project
                 // however folded that project is.
                 activeSessionID: {
@@ -268,15 +305,25 @@ struct SidebarOutline: NSViewRepresentable {
             from store: ProjectStore,
             scope: WindowProjects,
             collapsed: Set<UUID>,
+            pageSize: Int?,
+            pages: [UUID: Int],
             activeSessionID: UUID?
         ) -> SidebarStructure {
-            SidebarStructure.build(
+            // Looked up once per pass: the cut asks about every session.
+            let ranks = pageSize == nil ? [:] : Dictionary(
+                store.sessions.map { ($0.id, $0.isPinned == true ? Date.distantFuture : $0.lastActivityAt) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            return SidebarStructure.build(
                 projectIDs: scope.filter(store.projects).map(\.id),
                 groups: { store.groups(for: $0).map(\.id) },
                 sessions: {
                     store.sessions(for: $0).map { ($0.id, $0.groupID, $0.parentSessionID) }
                 }
             )
+            .paged(limit: pageSize, pages: pages, keeping: activeSessionID) {
+                ranks[$0] ?? .distantPast
+            }
             .revealing(sessionID: activeSessionID, inCollapsed: collapsed)
         }
 
@@ -310,11 +357,29 @@ struct SidebarOutline: NSViewRepresentable {
                                 payload: .group(group.id),
                                 isGroup: true,
                                 children: group.sessions.map(sessionNode)
+                                    + moreNode(
+                                        listID: group.id,
+                                        hidden: group.hiddenCount,
+                                        canShowLess: group.canShowLess
+                                    )
                             )
                         } + project.ungrouped.map(sessionNode)
+                            + moreNode(
+                                listID: project.id,
+                                hidden: project.hiddenCount,
+                                canShowLess: project.canShowLess
+                            )
                     )
                 }
             )
+        }
+
+        /// The paging row closing a list, when there is anything to load or fold.
+        private static func moreNode(
+            listID: UUID, hidden: Int, canShowLess: Bool
+        ) -> [OutlineNode<SidebarItem>] {
+            guard hidden > 0 || canShowLess else { return [] }
+            return [OutlineNode(id: SidebarItem.more(listID).nodeID, payload: .more(listID), isGroup: false)]
         }
 
         /// Mirrors the collapse stores into the outline view. One direction
@@ -348,7 +413,7 @@ struct SidebarOutline: NSViewRepresentable {
                         }
                     case .session:
                         expandSessions(child, collapsedGroups, in: outlineView)
-                    case .project:
+                    case .project, .more:
                         continue
                     }
                 }
@@ -461,6 +526,7 @@ struct SidebarOutline: NSViewRepresentable {
             // Depth is in the identifier because it changes the row's indent,
             // and the height cache is keyed by the same string.
             case .session: return "sidebar-session-\(structure.depth(of: node.payload))"
+            case .more: return "sidebar-more-\(structure.depth(of: node.payload))"
             }
         }
 
@@ -508,7 +574,29 @@ struct SidebarOutline: NSViewRepresentable {
                     .environmentObject(environment.projectStore)
                     .environmentObject(environment.sessionStore)
                 )
+            case .more(let listID):
+                let paging = paging(of: listID)
+                return AnyView(
+                    SidebarLoadMoreRow(
+                        hiddenCount: paging.hidden,
+                        canShowLess: paging.canShowLess,
+                        pageSize: SidebarSessionLimit.pageSize(environment.settings.sidebarSessionLimit) ?? 0,
+                        depth: structure.depth(of: node.payload),
+                        loadMore: { SidebarSessionPages.shared.loadMore(listID) },
+                        showLess: { SidebarSessionPages.shared.showLess(listID) }
+                    )
+                )
             }
+        }
+
+        private func paging(of listID: UUID) -> (hidden: Int, canShowLess: Bool) {
+            for project in structure.projects {
+                if project.id == listID { return (project.hiddenCount, project.canShowLess) }
+                if let group = project.groups.first(where: { $0.id == listID }) {
+                    return (group.hiddenCount, group.canShowLess)
+                }
+            }
+            return (0, false)
         }
 
         func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? {
@@ -554,6 +642,13 @@ struct SidebarOutline: NSViewRepresentable {
             _ outlineView: NSOutlineView,
             selectionIndexesForProposedSelection proposed: IndexSet
         ) -> IndexSet {
+            // "Load more" is a button, not a place to be: selecting it would
+            // take the highlight off the row you were on.
+            let proposed = proposed.filteredIndexSet {
+                guard let node = outlineView.item(atRow: $0) as? OutlineNode<SidebarItem>,
+                      case .more = node.payload else { return true }
+                return false
+            }
             guard isMultiSelecting,
                   let event = NSApp.currentEvent,
                   event.type == .leftMouseDown,
@@ -588,6 +683,7 @@ struct SidebarOutline: NSViewRepresentable {
             case .project(let id): environment.selection.wrappedValue = .project(id)
             case .group(let id): environment.selection.wrappedValue = .group(id)
             case .session(let id): environment.selection.wrappedValue = .session(id)
+            case .more: break
             }
         }
 
@@ -644,6 +740,8 @@ struct SidebarOutline: NSViewRepresentable {
                 let selected = environment.selectedSessionIDs.wrappedValue
                 let ids = selected.contains(id) ? Array(selected) : [id]
                 return SidebarDragPayload.sessions(ids).pasteboardString as NSString
+            case .more:
+                return nil
             case .group:
                 // Groups are containers, not payloads: dragging one would have
                 // to mean "move its sessions", which the group row already does
@@ -735,7 +833,8 @@ struct SidebarOutline: NSViewRepresentable {
             var targetItem = item
             var targetIndex = index
             // A session is a leaf: a drop "on" one means "in front of it".
-            if let node = item as? OutlineNode<SidebarItem>, case .session = node.payload {
+            if let node = item as? OutlineNode<SidebarItem>,
+               node.payload.isLeafRow {
                 let parent = outlineView.parent(forItem: node) as? OutlineNode<SidebarItem>
                 targetIndex = outlineView.childIndex(forItem: node)
                 targetItem = parent
@@ -745,7 +844,7 @@ struct SidebarOutline: NSViewRepresentable {
             switch (targetItem as? OutlineNode<SidebarItem>)?.payload {
             case .project(let id): parent = .project(id)
             case .group(let id): parent = .group(id)
-            case .session, .none: parent = .root
+            case .session, .more, .none: parent = .root
             }
 
             return ResolvedDrop(
@@ -815,6 +914,9 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: String(localized: "New Group…")) {
                     environment.actions.createGroup(project)
                 }
+                add(to: menu, title: String(localized: "Import Sessions…")) {
+                    environment.actions.importSessions(project)
+                }
                 add(to: menu, title: String(localized: "Project Settings…")) {
                     environment.actions.customizeProject(project)
                 }
@@ -860,6 +962,9 @@ struct SidebarOutline: NSViewRepresentable {
                     to: menu,
                     title: record.isPinned == true ? String(localized: "Unpin") : String(localized: "Pin")
                 ) { environment.projectStore.togglePin(id) }
+                add(to: menu, title: String(localized: "Rename…")) {
+                    environment.actions.renameSession(record)
+                }
                 // Ordering a session should not require a steady hand: the same
                 // nudges projects have, applied among its siblings.
                 add(to: menu, title: String(localized: "Move Up")) {
@@ -896,6 +1001,8 @@ struct SidebarOutline: NSViewRepresentable {
                 add(to: menu, title: String(localized: "Delete the Session")) {
                     environment.actions.confirmDeleteSession(record)
                 }
+            case .more:
+                return nil
             }
             return menu
         }
@@ -1072,8 +1179,11 @@ struct SidebarRowActions {
     var customizeProject: (Project) -> Void
     /// Hands a stored setup prompt to a new session in this project.
     var applyBlueprint: (Project) -> Void
+    /// Conversations Claude Code or Codex already has for the project.
+    var importSessions: (Project) -> Void
     var createGroup: (Project) -> Void
     var renameGroup: (SessionGroup) -> Void
+    var renameSession: (SessionRecord) -> Void
     var confirmDeleteSession: (SessionRecord) -> Void
     /// Raised from the empty space below the rows, where there is no project to
     /// act on and adding one is the only thing that makes sense.

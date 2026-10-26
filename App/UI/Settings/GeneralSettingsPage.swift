@@ -43,6 +43,25 @@ struct GeneralSettingsPage: View {
                 .settingsID("general.editor")
             }
 
+            Section("Sidebar") {
+                Picker(selection: Binding(
+                    get: { settings.sidebarSessionLimit },
+                    set: { settings.setSidebarSessionLimit($0) }
+                )) {
+                    ForEach(SidebarSessionLimit.choices, id: \.self) { limit in
+                        Text(limit > 0 ? "\(limit)" : String(localized: "All")).tag(limit)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Sessions shown per project"),
+                        detail: String(
+                            localized: "A longer list ends in a Load more row that shows the next ones. Groups are counted on their own. The session you have open is always shown."
+                        )
+                    )
+                }
+                .settingsID("general.sidebarSessionLimit")
+            }
+
             Section("Language") {
                 Picker(selection: Binding(
                     get: { settings.language.interface },

@@ -210,7 +210,7 @@ struct SettingsView: View {
         var keywords: String {
             switch self {
             case .general:
-                "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette"
+                "varsayılan default editör editor agent dil language kapanış quit çıkış kısayol hotkey komut paleti palette kenar çubuğu sidebar oturum session liste list daha fazla load more sayfa page göster show"
             case .input: "klavye keyboard shift enter newline satır line yapıştır paste görsel image ⌘v pano clipboard giriş input option meta alt değiştirici modifier"
             case .agents: "agent ajan bağla connect hook kanca algıla detect tara scan kurulu installed seviye level konum location bul locate yol path kurulum install bulunamadı not found"
             // An agent page holds what four matrices used to, so it answers to
