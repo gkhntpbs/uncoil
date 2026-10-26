@@ -20,6 +20,8 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+## [0.3.0-edge.7] - 2026-10-26
+
 ### Added
 
 - Claude Code's own sub-agents are tracked. While sub-agents it started are still working, the session shows **Sub-agents working** instead of Ready, and "Turn done" waits until the last one finishes.
