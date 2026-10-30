@@ -9,7 +9,7 @@ enum RuntimeProtocol {
     /// Minor revision: additive commands (`peek`/`replay`, the task-claim set,
     /// then `suspend`/`resume`) that don't break the version-1 handshake.
     /// Bumped when such commands are added.
-    static let minor = 3
+    static let minor = 4
     /// A task claim is granted for this long and renewed by heartbeat, so an
     /// agent that dies stops holding the task.
     static let taskLeaseDuration: TimeInterval = 15 * 60
@@ -97,6 +97,7 @@ struct RuntimeCommand: Codable {
     var interval_s: Double?
     var timeout_s: Double?
     var output_path: String?
+    var run_log_path: String?
 
     static func hello() -> RuntimeCommand {
         RuntimeCommand(
@@ -116,6 +117,8 @@ struct RuntimeEventMessage: Codable {
     var minor: Int?
     var sid: String?
     var sids: [String]?
+    var process_id: Int32?
+    var session_pids: [String: Int32]?
     var b64: String?
     var code: Int32?
     var errorCode: String?

@@ -150,6 +150,8 @@ struct GeneralSettingsPage: View {
                 }
             }
 
+            QuotaSettingsSection()
+
             Section("Quitting the App") {
                 Picker(selection: Binding(
                     get: { settings.sessionQuitBehavior },
@@ -165,6 +167,7 @@ struct GeneralSettingsPage: View {
                 .settingsID("agentBehavior.quit")
 
                 SettingsNote(settings.sessionQuitBehavior.detail)
+                SettingsNote(String(localized: "Project processes have their own quit setting in each run configuration. Closing a window keeps Uncoil available in the menu bar while processes run."))
             }
 
             Section("Command Palette") {

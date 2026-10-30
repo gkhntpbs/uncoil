@@ -39,7 +39,7 @@ struct DebugBundleService {
         self.command = command
     }
 
-    func create() throws -> Result {
+    func create(usageDiagnostics: String? = nil) throws -> Result {
         let outputDirectory = dataDirectory.appendingPathComponent("debug-bundles", isDirectory: true)
         try fileManager.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
         let identifier = Self.timestamp(now())
@@ -78,6 +78,10 @@ struct DebugBundleService {
             projectPaths: projectPaths,
             included: &included
         )
+        if let usageDiagnostics {
+            try addText(usageDiagnostics, named: "usage-status.txt", to: staging,
+                        projectPaths: projectPaths, included: &included)
+        }
         try collectAgentConfigs(into: staging, projectPaths: projectPaths, included: &included)
         try collectMCPHandshake(into: staging, projectPaths: projectPaths, included: &included)
         try collectPermissionDecisions(into: staging, projectPaths: projectPaths, included: &included)

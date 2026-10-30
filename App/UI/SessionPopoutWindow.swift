@@ -9,6 +9,7 @@ struct SessionPopoutWindow: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
+    @ObservedObject private var titles = SessionTitlePresentation.shared
     @ObservedObject private var windows = WindowRegistry.shared
     @State private var windowID: UUID?
 
@@ -27,7 +28,9 @@ struct SessionPopoutWindow: View {
                     HStack(spacing: 8) {
                         Spacer().frame(width: 70)  // traffic lights
                         ProviderMark(provider: record.provider, size: 13)
-                        Text(record.displayTitle)
+                        Text(titles.title(for: record))
+                            .infoHelp(titles.title(for: record))
+                            .task(id: "\(record.title)|\(record.providerSessionID ?? "")|\(record.accountID?.uuidString ?? "")") { await titles.resolve(record, project: project, settings: settings) }
                             .font(Theme.mono(.body, .medium))
                             .foregroundStyle(Theme.text)
                             .lineLimit(1)

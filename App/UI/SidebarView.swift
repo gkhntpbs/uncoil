@@ -23,6 +23,7 @@ struct SidebarView: View {
     /// went down.
     private var pendingUpdates: [AgentProvider] { settings.pendingCLIUpdates }
 
+    @State private var editingFolder: ProjectFolder?
     @State private var showCreateGroup = false
     @State private var showBulkDelete = false
     @State private var groupName = ""
@@ -46,6 +47,11 @@ struct SidebarView: View {
     /// A clean window would otherwise be a dead end: the only way into a
     /// project it does not list would be to add its folder again, which is a
     /// file dialog to reach something already open one window over.
+    private func newProjectFolder() {
+        let highest = projectStore.sidebarRoots().count
+        editingFolder = ProjectFolder(name: "", sortIndex: Double(highest))
+    }
+
     private var elsewhere: [Project] {
         projectStore.visibleProjects.filter { !scope.contains($0.id) }
     }
@@ -135,7 +141,9 @@ struct SidebarView: View {
                         openProject(record.projectID)
                         selection = .session(record.id)
                     },
-                    closeScratch: { confirmingScratchClose = true }
+                    closeScratch: { confirmingScratchClose = true },
+                    createProjectFolder: { newProjectFolder() },
+                    editProjectFolder: { editingFolder = $0 }
                 )
             )
             .overlay(alignment: .top) {
@@ -174,6 +182,10 @@ struct SidebarView: View {
                     showFolderPicker = true
                 }
                 .accessibilityIdentifier("sidebar.addProjectButton")
+                RailButton(iconName: "folder-plus", help: String(localized: "New Project Folder")) {
+                    newProjectFolder()
+                }
+                .accessibilityIdentifier("sidebar.addProjectFolderButton")
                 AttentionRailButton { item in
                     if let sessionID = item.sessionID {
                         selectedSessionIDs.removeAll()
@@ -201,6 +213,9 @@ struct SidebarView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
+        }
+        .sheet(item: $editingFolder) { folder in
+            ProjectFolderSheet(folder: folder)
         }
         .alert("New Group", isPresented: $showCreateGroup) {
             TextField("Group name", text: $groupName)
@@ -417,21 +432,13 @@ enum SidebarIndent {
     /// A project sits close to the edge: indentation exists to show what belongs
     /// to what, and a top-level row belongs to nothing.
     static func leading(depth: Int) -> CGFloat {
-        switch depth {
-        case 0: return 4
-        case 1: return 16
-        default: return 28
-        }
+        4 + CGFloat(max(0, depth)) * 12
     }
 
     /// Where the connecting hairlines sit for a row at this depth. A session
     /// inside a group gets two: its project's and its group's.
     static func rails(depth: Int) -> [CGFloat] {
-        switch depth {
-        case 0: return []
-        case 1: return [11]
-        default: return [11, 23]
-        }
+        (0..<max(0, depth)).map { 11 + CGFloat($0) * 12 }
     }
 }
 
@@ -503,7 +510,7 @@ private struct RailButton: View {
         .buttonStyle(.pressable)
         .animation(Theme.Motion.quick, value: hovering)
         .onHover { hovering = $0 }
-        .help(help)
+        .infoHelp(help)
     }
 }
 
@@ -849,6 +856,8 @@ struct SessionRowView: View {
     let showsSelectionControl: Bool
     @Binding var selectedSessionIDs: Set<UUID>
     let actions: SidebarRowActions
+    @ObservedObject private var titles = SessionTitlePresentation.shared
+    @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
     @State private var hovering = false
@@ -930,11 +939,18 @@ struct SessionRowView: View {
                         .opacity(status == .terminated ? 0.45 : 1)
                         .accessibilityIdentifier("sidebar.drag.\(record.title)")
                         .help("Drag onto a group to move it; drop outside the window to open it in a new one")
-                    Text(record.displayTitle)
+                    Text(titles.title(for: record))
+                        .infoHelp(titles.title(for: record))
+                        .task(id: "\(record.title)|\(record.providerSessionID ?? "")|\(record.accountID?.uuidString ?? "")") {
+                            if let project = projectStore.projects.first(where: { $0.id == record.projectID }) {
+                                await titles.resolve(record, project: project, settings: settings)
+                            }
+                        }
                         .font(Theme.mono(.body))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
                         .foregroundStyle(status == .terminated ? Theme.textDim : Theme.text)
                         .lineLimit(1)
-                    Spacer(minLength: 4)
                     if record.isPinned == true || hovering {
                         PinButton(record: record)
                     }

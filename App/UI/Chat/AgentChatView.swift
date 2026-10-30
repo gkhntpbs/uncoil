@@ -16,6 +16,7 @@ struct AgentChatView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var projectStore: ProjectStore
     @ObservedObject private var theme = ThemeStore.shared
+    @ObservedObject private var quota = QuotaMonitor.shared
     @StateObject private var model: AgentChatModel
     @StateObject private var follower = ChatScrollFollower()
     @StateObject private var autoState: UncoilAutoConversationState
@@ -49,7 +50,9 @@ struct AgentChatView: View {
 
     /// Where a message naming nobody goes now.
     private var autoTarget: UncoilAutoRoster.Entry? {
-        UncoilAutoRouting.target(chosen: autoState.target, roster: openRoster, allows: { _ in true })
+        UncoilAutoRouting.target(chosen: autoState.target, roster: openRoster, allows: { _ in true }, quotaScore: {
+            quota.routingScore(for: $0, records: projectStore.sessions, settings: settings)
+        })
     }
 
     /// Whether any agent this conversation has spoken with is working.
@@ -224,13 +227,16 @@ struct SessionSurfaceView: View {
     @EnvironmentObject private var projectStore: ProjectStore
 
     var body: some View {
-        if TerminalRegistry.surface(for: record.provider) == .chat {
-            AgentChatView(record: record, project: project, account: account) {
-                SessionActions(projects: projectStore, sessions: sessionStore).restart(record.id)
+        Group {
+            if TerminalRegistry.surface(for: record.provider) == .chat {
+                AgentChatView(record: record, project: project, account: account) {
+                    SessionActions(projects: projectStore, sessions: sessionStore).restart(record.id)
+                }
+            } else {
+                TerminalHostView(record: record, project: project, account: account)
             }
-        } else {
-            TerminalHostView(record: record, project: project, account: account)
         }
+        .modifier(SessionFileDrop(record: record, project: project))
     }
 }
 

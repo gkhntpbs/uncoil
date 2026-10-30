@@ -8,14 +8,6 @@ struct SessionDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
-    /// Something is being dragged over the session, so the drop is shown as
-    /// possible before it happens.
-    @State private var isDropTargeted = false
-    /// How far the drop or paste in flight has got, and what it did. Shared
-    /// rather than local: a drop is answered here, a paste by the app-wide key
-    /// monitor, and both belong in the same place on screen.
-    @ObservedObject private var dropReporter = SessionDropReporter.shared
-
     private var status: AgentSessionStatus {
         sessionStore.status(of: record.id)
     }
@@ -91,18 +83,8 @@ struct SessionDetailView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("session.container")
         .onDrop(
-            of: [.text] + SessionImageDropService.acceptedTypes,
-            isTargeted: $isDropTargeted
+            of: [.text], isTargeted: nil
         ) { providers in
-            // Images first, and only then the session drag: a session is
-            // carried as text, so asking about images last would let a dragged
-            // screenshot be read as a session id that does not parse.
-            if SessionImageDropService.handle(
-                providers, record: record, project: project,
-                onProgress: { dropReporter.report($0, for: record.id) }
-            ) {
-                return true
-            }
             guard let splitBinding = splitSessionID,
                   let provider = providers.first else { return false }
             _ = provider.loadObject(ofClass: NSString.self) { object, _ in
@@ -115,34 +97,7 @@ struct SessionDetailView: View {
             }
             return true
         }
-        .overlay(alignment: .top) {
-            if isDropTargeted {
-                DropTargetOverlay()
-            } else if let message = dropReporter.progress(for: record.id).message {
-                HStack(spacing: 6) {
-                    if dropReporter.progress(for: record.id).isWorking {
-                        ProgressView().controlSize(.small).scaleEffect(0.55)
-                    }
-                    Text(message)
-                        .font(Theme.mono(.small))
-                        .foregroundStyle(Theme.textDim)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Theme.panelActive, in: Capsule())
-                .padding(.top, 8)
-                .transition(.opacity)
-                .accessibilityIdentifier("session.dropProgress")
-                .task(id: message) {
-                    // Only a finished state clears itself; work in flight stays
-                    // until it is done, however long the copy takes.
-                    guard !dropReporter.progress(for: record.id).isWorking else { return }
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    withAnimation(Theme.Motion.standard) { dropReporter.clear(record.id) }
-                }
-            }
-        }
-        .animation(Theme.Motion.standard, value: isDropTargeted)
+
     }
 
     // MARK: - Header
@@ -257,31 +212,3 @@ struct SplitSessionPane: View {
 
 /// Shown while something is dragged over a session.
 ///
-/// A border rather than a full-screen panel: the terminal underneath is what
-/// the drop is being aimed at, and covering it would hide the very thing that
-/// says which session this is.
-private struct DropTargetOverlay: View {
-    var body: some View {
-        VStack {
-            HStack(spacing: 6) {
-                TablerIcon(name: "photo-plus", size: 12, color: Theme.highlight)
-                Text("Drop to attach files to this session's message")
-                    .font(Theme.mono(.small, .semibold))
-                    .foregroundStyle(Theme.highlight)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(Theme.panelActive, in: Capsule())
-            .padding(.top, 10)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.highlight.opacity(0.6), lineWidth: 2)
-                .padding(6)
-        )
-        .allowsHitTesting(false)
-        .accessibilityIdentifier("session.dropTarget")
-    }
-}

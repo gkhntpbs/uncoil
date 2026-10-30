@@ -1,11 +1,20 @@
 import AppKit
 import Foundation
+import Combine
 
 @MainActor
-final class ApplicationLifecycle {
+final class ApplicationLifecycle: ObservableObject {
     static let shared = ApplicationLifecycle()
 
     var sessionQuitBehavior: SessionQuitBehavior = .keepSessionsRunning
+
+    @Published var isInBackground = false
+    var quitCompletely = false
+
+    func continueInBackground() {
+        isInBackground = true
+        NSApp.hide(nil)
+    }
 
     private init() {}
 }
@@ -28,26 +37,61 @@ final class UncoilApplicationDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var terminationPending = false
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        let terminateSessions =
-            ApplicationLifecycle.shared.sessionQuitBehavior == .terminateAllAgents
-        TerminalRegistry.shared.prepareForApplicationTermination(
-            terminateSessions: terminateSessions
-        )
-        RuntimeClient.shared.prepareForApplicationTermination(
-            terminateSessions: terminateSessions
-        )
-        // Run/dev-preview processes are plain children of the app: they always
-        // stop on quit (daemon-hosted persistence is a deliberate non-goal for
-        // now, see docs/roadmap/RUN_PREVIEW_PLAN.md).
-        RunRegistry.shared.terminateAllForApplicationQuit()
-        return .terminateNow
+        guard !terminationPending else { return .terminateCancel }
+        let lifecycle = ApplicationLifecycle.shared
+        let quitCompletely = lifecycle.quitCompletely
+        var stopEverything = quitCompletely
+        lifecycle.quitCompletely = false
+        if !stopEverything, !RunRegistry.shared.activeRuns.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Project processes are still running")
+            alert.informativeText = String(localized: "You can keep Uncoil in the menu bar, quit using each run's setting, or stop all project processes before quitting. Agent sessions follow your separate quit setting.")
+            alert.addButton(withTitle: String(localized: "Quit Using Run Settings"))
+            alert.addButton(withTitle: String(localized: "Keep Uncoil in Menu Bar"))
+            alert.addButton(withTitle: String(localized: "Stop All and Quit"))
+            alert.addButton(withTitle: String(localized: "Cancel")).keyEquivalent = "\u{1b}"
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: break
+            case .alertSecondButtonReturn:
+                lifecycle.continueInBackground()
+                return .terminateCancel
+            case .alertThirdButtonReturn: stopEverything = true
+            default: return .terminateCancel
+            }
+        }
+        terminationPending = true
+        Task { @MainActor in
+            let stopped = await RunRegistry.shared.prepareForQuit(stopEverything: stopEverything)
+            guard stopped else {
+                terminationPending = false
+                let alert = NSAlert()
+                alert.messageText = String(localized: "Some project processes have not stopped yet")
+                alert.informativeText = String(localized: "Uncoil will stay open so you can inspect and stop them from the menu bar.")
+                alert.runModal()
+                sender.reply(toApplicationShouldTerminate: false)
+                return
+            }
+            let terminateSessions = quitCompletely || lifecycle.sessionQuitBehavior == .terminateAllAgents
+            TerminalRegistry.shared.prepareForApplicationTermination(terminateSessions: terminateSessions)
+            RuntimeClient.shared.prepareForApplicationTermination(terminateSessions: terminateSessions)
+            RunRegistry.shared.disconnectSupervisor(shutdown: stopEverything || RunRegistry.shared.activeRuns.isEmpty)
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
+        ApplicationLifecycle.shared.isInBackground = false
         if !flag {
             let existing = sender.windows.first { AppWindow.of($0) == .main }
             if let existing {

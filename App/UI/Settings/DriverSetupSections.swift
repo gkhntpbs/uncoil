@@ -155,7 +155,11 @@ struct AgentBrowserSetupSection: View {
             outcome: outcome
         ) {
             SettingsActionRow(isWorking: isWorking || isProbing) {
-                if status?.installed == true {
+                if isOutdated, status?.path != nil {
+                    Button("Update agent-browser") { update() }
+                        .buttonStyle(.borderedProminent)
+                        .settingsID("permissions.browser.update")
+                } else if status?.installed == true {
                     Button("Start and Verify") { startAndVerify() }
                         .buttonStyle(.borderedProminent)
                         .settingsID("permissions.browser.start")
@@ -204,7 +208,51 @@ struct AgentBrowserSetupSection: View {
         guard let status else { return (.neutral, String(localized: "Checking…")) }
         guard status.path != nil else { return (.error, String(localized: "Not installed")) }
         guard status.installed else { return (.warning, String(localized: "Chromium runtime missing")) }
+        if isOutdated { return (.warning, String(localized: "Update available")) }
         return (.ok, String(localized: "Ready"))
+    }
+
+    private var isOutdated: Bool {
+        AgentBrowserAdapter.isOutdated(status?.version)
+    }
+
+    private func update() {
+        guard !isWorking, let binary = status?.path,
+              let invocation = AgentBrowserAdapter.updateInvocation(binary: binary)
+        else {
+            outcome = DriverOutcome(
+                level: .error,
+                summary: String(localized: "Uncoil cannot tell how agent-browser was installed. Update it the same way it was installed.")
+            )
+            return
+        }
+        let previous = status?.version
+        isWorking = true
+        outcome = nil
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                ProcessRunner.run(
+                    executable: invocation.executable,
+                    arguments: invocation.arguments,
+                    extraEnv: AgentBrowserAdapter.runtimeEnvironment(
+                        nodePath: AgentBrowserAdapter.nodePath(binary: binary)
+                    ),
+                    timeout: 600
+                )
+            }.value
+            isWorking = false
+            await refreshStatus()
+            if let version = status?.version, version != previous, !isOutdated {
+                outcome = status?.installed == true
+                    ? DriverOutcome(level: .ok, summary: String(localized: "agent-browser \(version) is installed and ready."))
+                    : DriverOutcome(level: .warning, summary: String(localized: "agent-browser \(version) is installed. It still needs a browser to drive."))
+            } else {
+                outcome = DriverOutcome.failure(
+                    [result.stderrString, result.stdoutString].joined(separator: "\n"),
+                    fallback: String(localized: "The update finished but the installed version did not change.")
+                )
+            }
+        }
     }
 
     private func refresh() {

@@ -45,6 +45,9 @@ extension UncoilAutoEnvironment {
                 return UncoilAutoConversationState.for(sessionID).allows(provider, settings: settings.uncoilAuto)
             },
             autoSettings: { [weak settings] in settings?.uncoilAuto.harness ?? AutoHarnessSettings() },
+            quotaScore: { entry in
+                QuotaMonitor.shared.routingScore(for: entry, records: projects.sessions, settings: settings)
+            },
             harness: { main, deliver in
                 AutoHarnessEnvironment.live(
                     projectID: projectID, projects: projects, sessions: sessions, settings: settings,

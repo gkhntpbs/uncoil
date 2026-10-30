@@ -10,6 +10,7 @@ final class ProjectStore: ObservableObject {
         var sessions: [SessionRecord]
     }
 
+    @Published private(set) var projectFolders: [ProjectFolder] = []
     @Published private(set) var projects: [Project] = []
     @Published private(set) var sessions: [SessionRecord] = []
     @Published private(set) var sessionGroups: [SessionGroup] = []
@@ -24,6 +25,7 @@ final class ProjectStore: ObservableObject {
     /// settings, and the value is a single user preference either way.
     static var defaultSessionCapabilities: [String]?
 
+    private let projectFoldersURL: URL
     private let projectsURL: URL
     private let sessionsURL: URL
     private let sessionGroupsURL: URL
@@ -35,6 +37,7 @@ final class ProjectStore: ObservableObject {
         let base = directory ?? Self.defaultDirectory()
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         dataDirectory = base
+        projectFoldersURL = base.appendingPathComponent("project-folders.json")
         projectsURL = base.appendingPathComponent("projects.json")
         sessionsURL = base.appendingPathComponent("sessions.json")
         sessionGroupsURL = base.appendingPathComponent("session-groups.json")
@@ -51,6 +54,78 @@ final class ProjectStore: ObservableObject {
         }
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Uncoil", isDirectory: true)
+    }
+
+    func saveProjectFolder(_ folder: ProjectFolder) {
+        guard !folder.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        var folder = folder
+        folder.name = folder.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let index = projectFolders.firstIndex(where: { $0.id == folder.id }) {
+            projectFolders[index] = folder
+        } else {
+            projectFolders.append(folder)
+        }
+        save()
+    }
+
+    func removeProjectFolder(_ id: UUID) {
+        for index in projects.indices where projects[index].folderID == id {
+            projects[index].folderID = nil
+        }
+        projectFolders.removeAll { $0.id == id }
+        save()
+    }
+
+    func sidebarRoots(projectIDs: Set<UUID>? = nil) -> [SidebarItem] {
+        let visible = projects.filter { projectIDs?.contains($0.id) ?? true }
+        let folders = Set(projectFolders.map(\.id))
+        let rows: [(SidebarItem, Double, Int)] = projectFolders.map {
+            (.folder($0.id), $0.sortIndex, 0)
+        } + visible.enumerated().compactMap { index, project in
+            guard project.folderID.map({ !folders.contains($0) }) ?? true else { return nil }
+            let rank = project.isScratchWorkspace ? 2 : (project.isPinned == true ? -1 : 0)
+            return (.project(project.id), project.sortIndex ?? Double(index), rank)
+        }
+        return rows.sorted {
+            if $0.2 != $1.2 { return $0.2 < $1.2 }
+            if $0.1 != $1.1 { return $0.1 < $1.1 }
+            return $0.0.nodeID < $1.0.nodeID
+        }.map { $0.0 }
+    }
+
+    func moveSidebarItem(_ item: SidebarItem, into folderID: UUID?, at index: Int, siblings: [SidebarItem]) {
+        if let folderID, !projectFolders.contains(where: { $0.id == folderID }) { return }
+        switch item {
+        case .project(let id):
+            guard let position = projects.firstIndex(where: { $0.id == id }),
+                  !projects[position].isScratchWorkspace else { return }
+            projects[position].folderID = folderID
+        case .folder:
+            guard folderID == nil else { return }
+        default: return
+        }
+        let before = index >= 0 && index < siblings.count ? siblings[index...].first(where: { $0 != item }) : nil
+        var order: [SidebarItem] = folderID.map { folder in
+            projects.filter { $0.folderID == folder }.map { .project($0.id) }
+        } ?? sidebarRoots()
+        order.removeAll { $0 == item }
+        let insertion = before.flatMap { order.firstIndex(of: $0) } ?? order.count
+        order.insert(item, at: insertion)
+        for (offset, row) in order.enumerated() {
+            switch row {
+            case .project(let id):
+                if let position = projects.firstIndex(where: { $0.id == id }) {
+                    projects[position].sortIndex = Double(offset)
+                }
+            case .folder(let id):
+                if let position = projectFolders.firstIndex(where: { $0.id == id }) {
+                    projectFolders[position].sortIndex = Double(offset)
+                }
+            default: break
+            }
+        }
+        sortProjects()
+        save()
     }
 
     // MARK: - Projects
@@ -819,6 +894,10 @@ final class ProjectStore: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
+        if let data = try? Data(contentsOf: projectFoldersURL),
+           let decoded = VersionedDocument<[ProjectFolder]>.decode(data, schema: .projectFolders) {
+            projectFolders = decoded.payload
+        }
         var needsSessionSave = false
         // A document written by a newer build is read but never rewritten:
         // saving it back would stamp our own, lower schema onto it.
@@ -896,6 +975,11 @@ final class ProjectStore: ObservableObject {
     }
 
     private func save() {
+        if let data = try? JSONEncoder().encode(VersionedDocument(
+            schemaVersion: UncoilSchema.projectFolders.currentVersion, payload: projectFolders
+        )) {
+            try? data.write(to: projectFoldersURL, options: .atomic)
+        }
         if let data = try? JSONEncoder().encode(VersionedDocument(
             schemaVersion: UncoilSchema.projects.currentVersion, payload: projects
         )) {

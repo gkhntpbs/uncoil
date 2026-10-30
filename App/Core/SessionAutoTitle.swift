@@ -12,9 +12,6 @@ import Foundation
 /// row whose label changes while it is being read is the same defect as a row
 /// that moves while it is being clicked.
 enum SessionAutoTitle {
-    /// The longest a title can be before the sidebar truncates it anyway.
-    static let maxLength = 42
-
     /// The first line of a prompt, tightened for the sidebar — or nil when
     /// there is nothing in it worth showing.
     ///
@@ -27,9 +24,7 @@ enum SessionAutoTitle {
             .map(String.init)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !firstLine.isEmpty else { return nil }
-        return firstLine.count > maxLength
-            ? String(firstLine.prefix(maxLength - 1)) + "…"
-            : firstLine
+        return firstLine
     }
 
     /// Whether a title is a terminal's reply to a colour query rather than

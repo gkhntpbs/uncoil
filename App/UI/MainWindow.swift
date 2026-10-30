@@ -39,7 +39,7 @@ struct MainWindow: View {
     @State private var debugBundleURL: URL?
     @State private var runtimeCompatibilityError: String?
     @AppStorage("sidebarVisible") private var sidebarVisible = true
-    @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.maxSidebarWidth)
+    @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.defaultSidebarWidth)
     @State private var dragStartWidth: Double?
     /// This window's identity, and everything that depends on knowing which
     /// window this is. Assigned once, when the window first appears.
@@ -48,7 +48,7 @@ struct MainWindow: View {
     /// Non-nil while the "what should this window open on?" question is up.
     @State private var newWindowOptions: [NewWindowOption]?
 
-    static let maxSidebarWidth: Double = 252
+    static let defaultSidebarWidth: Double = 252
     private static let hideThreshold: Double = 120
 
     var body: some View {
@@ -143,6 +143,7 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
             runtimeCompatibilityError = $0.object as? String
         }
+        .task { QuotaMonitor.shared.start(usage: usage, settings: settings) }
         .task {
             if LaunchConfig.shared.runtimeMismatchFixture {
                 runtimeCompatibilityError =
@@ -197,73 +198,72 @@ struct MainWindow: View {
     }
 
     private var mainContent: some View {
-        HStack(spacing: 0) {
-            if sidebarVisible {
-                SidebarView(
-                    selection: $selection,
-                    selectedSessionIDs: $selectedSessionIDs,
-                    showFolderPicker: $showFolderPicker,
-                    scope: projectScope,
-                    openProject: { openInThisWindow($0) }
-                )
-                .frame(width: sidebarWidth)
-                .background(Theme.sidebarSurface)
-                .clipped()
-                // The sidebar wins every argument about width.
-                //
-                // `.frame(width:)` fixes what the sidebar *asks* for, but when
-                // the detail column's own minimum was wider than what was left,
-                // the HStack overflowed and centred itself — pushing the
-                // sidebar off the left edge, where it could not be reached at
-                // all. Priority plus a detail column that may shrink to nothing
-                // is what keeps that from happening.
-                .layoutPriority(1)
-                .transition(.move(edge: .leading))
-
-                // Divider doubles as a resize handle: drag to size the
-                // sidebar (max = default width), drag to the left edge to
-                // hide it entirely.
-                Rectangle()
-                    .fill(Theme.border)
-                    .frame(width: 1)
-                    .overlay(
-                        Color.clear
-                            .frame(width: 8)
-                            .contentShape(Rectangle())
-                            .onHover { inside in
-                                if inside {
-                                    NSCursor.resizeLeftRight.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
-                            }
-                            .gesture(
-                                DragGesture(coordinateSpace: .global)
-                                    .onChanged { value in
-                                        if dragStartWidth == nil {
-                                            dragStartWidth = sidebarWidth
-                                        }
-                                        let proposed = (dragStartWidth ?? sidebarWidth)
-                                            + value.translation.width
-                                        sidebarWidth = min(Self.maxSidebarWidth, max(0, proposed))
-                                    }
-                                    .onEnded { _ in
-                                        dragStartWidth = nil
-                                        if sidebarWidth < Self.hideThreshold {
-                                            sidebarVisible = false
-                                            sidebarWidth = Self.maxSidebarWidth
-                                        }
-                                    }
-                            )
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                if sidebarVisible {
+                    SidebarView(
+                        selection: $selection,
+                        selectedSessionIDs: $selectedSessionIDs,
+                        showFolderPicker: $showFolderPicker,
+                        scope: projectScope,
+                        openProject: { openInThisWindow($0) }
                     )
-            }
+                    .frame(width: min(sidebarWidth, max(Self.defaultSidebarWidth, geometry.size.width - 320)))
+                    .background(Theme.sidebarSurface)
+                    .clipped()
+                    // The sidebar wins every argument about width.
+                    //
+                    // `.frame(width:)` fixes what the sidebar *asks* for, but when
+                    // the detail column's own minimum was wider than what was left,
+                    // the HStack overflowed and centred itself — pushing the
+                    // sidebar off the left edge, where it could not be reached at
+                    // all. Priority plus a detail column that may shrink to nothing
+                    // is what keeps that from happening.
+                    .layoutPriority(1)
+                    .transition(.move(edge: .leading))
 
-            detail
-                // minWidth 0: whatever is on the right compresses, scrolls or
-                // clips inside itself. It is never allowed to demand width from
-                // the window and take it out of the sidebar.
-                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
+                    Rectangle()
+                        .fill(Theme.border)
+                        .frame(width: 1)
+                        .overlay(
+                            Color.clear
+                                .frame(width: 8)
+                                .contentShape(Rectangle())
+                                .onHover { inside in
+                                    if inside {
+                                        NSCursor.resizeLeftRight.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                                .gesture(
+                                    DragGesture(coordinateSpace: .global)
+                                        .onChanged { value in
+                                            if dragStartWidth == nil {
+                                                dragStartWidth = min(sidebarWidth, max(Self.defaultSidebarWidth, geometry.size.width - 320))
+                                            }
+                                            let proposed = (dragStartWidth ?? sidebarWidth)
+                                                + value.translation.width
+                                            sidebarWidth = min(max(Self.defaultSidebarWidth, geometry.size.width - 320), max(0, proposed))
+                                        }
+                                        .onEnded { _ in
+                                            dragStartWidth = nil
+                                            if sidebarWidth < Self.hideThreshold {
+                                                sidebarVisible = false
+                                                sidebarWidth = Self.defaultSidebarWidth
+                                            }
+                                        }
+                                )
+                        )
+                }
+
+                detail
+                    // minWidth 0: whatever is on the right compresses, scrolls or
+                    // clips inside itself. It is never allowed to demand width from
+                    // the window and take it out of the sidebar.
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
         }
         .ignoresSafeArea(edges: .top)
         // The toggle also lives in the title bar, which is its own SwiftUI tree:
@@ -415,7 +415,10 @@ struct MainWindow: View {
             }
         case .createDebugBundle:
             do {
-                let result = try DebugBundleService().create()
+                let diagnostics = usage.entries.keys.sorted {
+                    ($0.provider.rawValue + ($0.accountID?.uuidString ?? "")) < ($1.provider.rawValue + ($1.accountID?.uuidString ?? ""))
+                }.map { usage.diagnostics(for: $0) }.joined(separator: "\n\n")
+                let result = try DebugBundleService().create(usageDiagnostics: diagnostics)
                 debugBundleURL = result.bundleURL
                 debugBundleMessage = "Created: \(result.bundleURL.path)"
             } catch {

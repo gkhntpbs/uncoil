@@ -4,6 +4,7 @@ import Foundation
 enum BackupContent: String, CaseIterable, Codable, Identifiable {
     case settings
     case projects
+    case projectFolders
     case sessions
     case sessionGroups
     case presets
@@ -21,6 +22,7 @@ enum BackupContent: String, CaseIterable, Codable, Identifiable {
     var label: String {
         switch self {
         case .settings: String(localized: "Uncoil settings")
+        case .projectFolders: String(localized: "Project folders")
         case .projects: String(localized: "Project list")
         case .sessions: String(localized: "Session metadata")
         case .sessionGroups: String(localized: "Session groups")
@@ -43,6 +45,7 @@ enum BackupContent: String, CaseIterable, Codable, Identifiable {
 
     var schema: UncoilSchema? {
         switch self {
+        case .projectFolders: .projectFolders
         case .projects: .projects
         case .sessions: .sessions
         case .sessionGroups: .sessionGroups
@@ -203,6 +206,7 @@ struct BackupService {
         }
         switch content {
         case .settings: return data("settings.json").map { ($0.0, $0.1) }
+        case .projectFolders: return data("project-folders.json").map { ($0.0, $0.1) }
         case .projects: return data("projects.json").map { ($0.0, $0.1) }
         case .sessions: return data("sessions.json").map { ($0.0, $0.1) }
         case .sessionGroups: return data("session-groups.json").map { ($0.0, $0.1) }

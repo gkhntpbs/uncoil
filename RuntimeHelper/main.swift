@@ -117,6 +117,9 @@ final class PTYSession {
     /// CPU and writes nothing, which is indistinguishable from an abandoned one
     /// — so the reaper has to be told the difference.
     var isSuspended = false
+    var isTerminating = false
+    var runLog: FileHandle?
+    var isManagedRun = false
     /// Set when the buffer has changed since it was last written to disk.
     ///
     /// The replay exists so a session survives the app being quit, which is a
@@ -503,7 +506,8 @@ final class RuntimeDaemon {
             ), to: fd)
         case "list":
             let alive = sessions.values.filter { $0.exitCode == nil }.map(\.sid)
-            send(RuntimeEventMessage(ev: "sessions", sids: alive), to: fd)
+            send(RuntimeEventMessage(ev: "sessions", sids: alive,
+                session_pids: Dictionary(uniqueKeysWithValues: sessions.values.map { ($0.sid, $0.pid) })), to: fd)
         case "launch":
             if isDrainingForUpgrade {
                 send(RuntimeEventMessage(
@@ -568,6 +572,12 @@ final class RuntimeDaemon {
             send(signalSession(command), to: fd)
         case "kill":
             if let sid = command.sid { kill(sid: sid) }
+        case "run_stop":
+            if let sid = command.sid { stopManagedRun(sid: sid) }
+        case "run_shutdown":
+            if sessions.isEmpty { exit(0) }
+            for sid in Array(sessions.keys) { stopManagedRun(sid: sid) }
+            queue.asyncAfter(deadline: .now() + 5.2) { exit(0) }
         case "shutdown":
             for sid in Array(sessions.keys) { kill(sid: sid) }
             exit(0)
@@ -599,8 +609,18 @@ final class RuntimeDaemon {
             let replayURL = replayDirectory.appendingPathComponent("\(sid).log")
             try? FileManager.default.removeItem(at: replayURL)
             let session = PTYSession(sid: sid, masterFD: master, pid: pid, replayURL: replayURL)
+            if let path = command.run_log_path {
+                session.isManagedRun = true
+                let url = URL(fileURLWithPath: path)
+                if !FileManager.default.fileExists(atPath: path) {
+                    FileManager.default.createFile(atPath: path, contents: nil, attributes: [.posixPermissions: 0o600])
+                }
+                session.runLog = try? FileHandle(forWritingTo: url)
+                _ = try? session.runLog?.seekToEnd()
+            }
             session.attachedFD = fd
             sessions[sid] = session
+            send(RuntimeEventMessage(ev: "started", sid: sid, process_id: pid), to: fd)
             startReading(session)
             runtimeLog.write("session launched \(sid)")
         } catch {
@@ -717,7 +737,7 @@ final class RuntimeDaemon {
     private func startReading(_ session: PTYSession) {
         let source = DispatchSource.makeReadSource(fileDescriptor: session.masterFD, queue: queue)
         source.setEventHandler { [weak self, weak session] in
-            guard let self, let session else { return }
+            guard let self, let session, !session.isTerminating else { return }
             var chunk = [UInt8](repeating: 0, count: 64 * 1024)
             let count = read(session.masterFD, &chunk, chunk.count)
             // The master is non-blocking now: "nothing to read yet" is a -1
@@ -729,6 +749,7 @@ final class RuntimeDaemon {
             if count > 0 {
                 let data = Data(chunk[0..<count])
                 session.buffer.append(data)
+                try? session.runLog?.write(contentsOf: data)
                 session.lastActivity = .now
                 if session.buffer.count > RuntimeProtocol.replayBufferLimit {
                     session.buffer.removeFirst(session.buffer.count - RuntimeProtocol.replayBufferLimit)
@@ -758,6 +779,8 @@ final class RuntimeDaemon {
         }
         let code = (status & 0x7f) == 0 ? (status >> 8) & 0xff : -1
         session.exitCode = Int32(code)
+        try? session.runLog?.close()
+        session.runLog = nil
         if let fd = session.attachedFD {
             send(RuntimeEventMessage(ev: "exited", sid: session.sid, code: session.exitCode), to: fd)
         }
@@ -812,7 +835,6 @@ final class RuntimeDaemon {
         session.readSource?.cancel()
         session.readSource = nil
         teardownInputSource(session)
-        // Signal the whole process group (the child called setsid).
         Darwin.kill(-session.pid, SIGTERM)
         var status: Int32 = 0
         waitpid(session.pid, &status, WNOHANG)
@@ -820,6 +842,35 @@ final class RuntimeDaemon {
         try? FileManager.default.removeItem(at: session.replayURL)
         runtimeLog.write("session terminated \(sid)")
         exitIfUpgradeIsDrained()
+    }
+
+    private func stopManagedRun(sid: String) {
+        guard let session = sessions[sid], !session.isTerminating else { return }
+        session.isTerminating = true
+        session.readSource?.cancel()
+        session.readSource = nil
+        teardownInputSource(session)
+        Darwin.kill(-session.pid, SIGCONT)
+        Darwin.kill(-session.pid, SIGTERM)
+        queue.asyncAfter(deadline: .now() + 5) { [self, session] in
+            guard sessions[sid] === session else { return }
+            Darwin.kill(-session.pid, SIGKILL)
+            reapManagedRun(session)
+        }
+    }
+
+    private func reapManagedRun(_ session: PTYSession) {
+        guard sessions[session.sid] === session else { return }
+        var status: Int32 = 0
+        let result = waitpid(session.pid, &status, WNOHANG)
+        if result == 0 {
+            queue.asyncAfter(deadline: .now() + 0.05) { [self, session] in
+                reapManagedRun(session)
+            }
+        } else {
+            reap(session, status: status)
+            runtimeLog.write("session terminated \(session.sid)")
+        }
     }
 
     /// Writes every session whose buffer moved since the last pass.
@@ -885,6 +936,7 @@ final class RuntimeDaemon {
 
     private func checkSessionHealth() {
         for session in sessions.values {
+            if session.isTerminating { continue }
             var status: Int32 = 0
             let result = waitpid(session.pid, &status, WNOHANG)
             if result == session.pid {
@@ -920,7 +972,7 @@ final class RuntimeDaemon {
             // output, no CPU, nobody attached — but it was stopped on purpose
             // and is waiting to be resumed. Reaping it would answer "pause
             // this" with "this is gone".
-            if session.isSuspended { continue }
+            if session.isSuspended || session.isManagedRun { continue }
             if let unattached = session.unattachedSince,
                Date().timeIntervalSince(unattached) >= RuntimeProtocol.sessionAbandonedThreshold,
                idle >= RuntimeProtocol.sessionAbandonedThreshold {

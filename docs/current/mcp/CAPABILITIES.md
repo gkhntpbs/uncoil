@@ -216,3 +216,13 @@ page/app content under `external_content` (untrusted) and degrade to
 Browser grants are enabled by default. Computer grants are disabled by default and
 must be explicitly enabled by the user. Agent Browser can use Uncoil Chromium or an
 installed Chromium-family browser selected in Settings.
+
+`uncoil_browser` also resizes its own session's viewport (`viewport` — `width`,
+`height`, optional `scale`) and scrolls an element ref into view
+(`scroll_into_view`) before acting on it. Uncoil records the agent-browser release
+its command table was verified against (`AgentBrowserAdapter.recommendedVersion`);
+an older install still works but `uncoil_system dependencies` reports it with an
+update remedy, and Settings › Integrations › Drivers offers the update — only on
+the user's click. Older releases drive Playwright's headless shell, newer ones are
+a native binary driving Chrome (a detected Chrome/Brave, or one fetched with
+`agent-browser install`); the runtime check follows whichever is installed.

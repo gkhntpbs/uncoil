@@ -116,7 +116,7 @@ struct SessionMenuButton: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(String(localized: "What you can do to this session"))
+        .infoHelp(String(localized: "What you can do to this session"))
         .accessibilityIdentifier("session.actionsMenu")
     }
 }

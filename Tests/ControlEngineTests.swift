@@ -45,6 +45,10 @@ final class FakeBrowserEngine: BrowserEngine, @unchecked Sendable {
             try? Data("{}".utf8).write(to: URL(fileURLWithPath: path))
             return .success(EngineResult(artifactFiles: [path]))
         case .clearState: record("clearState:\(session)"); return .success(EngineResult())
+        case .viewport(let width, let height, let scale):
+            record("viewport:\(width)x\(height)@\(scale.map { String($0) } ?? "-")")
+            return .success(EngineResult())
+        case .scrollIntoView(let ref): record("scrollIntoView:\(ref)"); return .success(EngineResult())
         default: record("other"); return .success(EngineResult())
         }
     }
@@ -235,6 +239,34 @@ final class BrowserHandlerTests: XCTestCase {
         } else { XCTFail("no wrapped external_content") }
         let click = await router.handle(req("click", ["ref": .string("@e1")]))
         XCTAssertTrue(click.ok)
+    }
+
+    func testViewportResizesWithinBounds() async {
+        grant(["browser.use"])
+        let ok = await router.handle(req("viewport", ["width": .int(390), "height": .int(844), "scale": .double(3)]))
+        XCTAssertTrue(ok.ok)
+        XCTAssertTrue(fake.commands.contains("viewport:390x844@3.0"))
+
+        let tiny = await router.handle(req("viewport", ["width": .int(10), "height": .int(844)]))
+        XCTAssertEqual(tiny.error?.code, "INVALID_ARGUMENT")
+        let missing = await router.handle(req("viewport", ["width": .int(800)]))
+        XCTAssertEqual(missing.error?.code, "INVALID_ARGUMENT")
+        let badScale = await router.handle(req("viewport", ["width": .int(800), "height": .int(600), "scale": .double(9)]))
+        XCTAssertEqual(badScale.error?.code, "INVALID_ARGUMENT")
+        let textScale = await router.handle(req("viewport", ["width": .int(800), "height": .int(600), "scale": .string("two")]))
+        XCTAssertEqual(textScale.error?.code, "INVALID_ARGUMENT")
+        let fractionalWidth = await router.handle(req("viewport", ["width": .double(390.5), "height": .int(844)]))
+        XCTAssertEqual(fractionalWidth.error?.code, "INVALID_ARGUMENT")
+        XCTAssertEqual(fake.commands.filter { $0.hasPrefix("viewport") }.count, 1)
+    }
+
+    func testScrollIntoViewNeedsARef() async {
+        grant(["browser.use"])
+        let missing = await router.handle(req("scroll_into_view"))
+        XCTAssertEqual(missing.error?.code, "INVALID_ARGUMENT")
+        let ok = await router.handle(req("scroll_into_view", ["ref": .string("@e1")]))
+        XCTAssertTrue(ok.ok)
+        XCTAssertTrue(fake.commands.contains("scrollIntoView:@e1"))
     }
 
     func testStaleRefMapping() async {

@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import LocalAuthentication
 
 /// Reads the credentials the coding agents already own.
 ///
@@ -50,17 +51,17 @@ enum UsageCredentials {
 
     /// Generic-password lookup by service name.
     ///
-    /// Never prompts. A refresh that can raise the Keychain's own dialog would
-    /// interrupt whatever the user was doing, on a timer, to answer a question
-    /// they did not ask.
-    static func readKeychainString(service: String) -> String? {
+    static func readKeychainString(service: String, allowInteraction: Bool = false) -> String? {
         guard allowedKeychainServices.contains(service) else { return nil }
+        let context = LAContext()
+        context.interactionNotAllowed = !allowInteraction
+        context.localizedReason = String(localized: "Read Claude Code account usage.")
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
+            kSecUseAuthenticationContext as String: context,
         ]
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,

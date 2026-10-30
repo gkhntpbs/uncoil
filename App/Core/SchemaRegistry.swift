@@ -8,6 +8,7 @@ import Foundation
 /// the single answer to "what version is this?".
 enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
     case projects
+    case projectFolders
     case sessions
     case sessionGroups
     case presets
@@ -26,6 +27,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
     /// Bump when the shape changes in a way an older reader cannot handle.
     var currentVersion: Int {
         switch self {
+        case .projectFolders: 1
         case .projects: 1
         case .sessions: SessionRecord.currentMetadataVersion
         case .sessionGroups: 1
@@ -45,6 +47,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
     /// File under the data directory, for the schemas that have one of their own.
     var fileName: String? {
         switch self {
+        case .projectFolders: "project-folders.json"
         case .projects: "projects.json"
         case .sessions: "sessions.json"
         case .sessionGroups: "session-groups.json"
@@ -61,6 +64,7 @@ enum UncoilSchema: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
+        case .projectFolders: String(localized: "Project folders")
         case .projects: String(localized: "Project list")
         case .sessions: String(localized: "Session metadata")
         case .sessionGroups: String(localized: "Session groups")

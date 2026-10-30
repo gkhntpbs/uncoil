@@ -45,6 +45,9 @@ enum ClaudeStreamProtocol {
             arguments += ["--mcp-config", mcpConfigPath]
             if !scope.excludedMCPNames.isEmpty { arguments.append("--strict-mcp-config") }
         }
+        let projectContext = mcpConfigPath != nil
+            ? ProjectContextBuilder.withUncoilTools(projectContext)
+            : projectContext
         if let projectContext, !projectContext.isEmpty {
             arguments += ["--append-system-prompt", projectContext]
         }

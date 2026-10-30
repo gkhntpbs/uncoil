@@ -36,6 +36,7 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
     private let defaultTimeout: TimeInterval
     private let browserDirectory: URL
     private let resolveSelectedExecutable: () -> String?
+    private let nativeBrowserDirectory: URL
 
     init(resolver: @escaping () -> String? = { SettingsStore.which(AgentBrowserAdapter.binaryName) },
          browserDirectory: URL = AgentBrowserAdapter.defaultBrowserDirectory,
@@ -43,7 +44,9 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
          navigationTimeout: TimeInterval = 60,
          selectedExecutable: @escaping () -> String? = {
              AgentBrowserAdapter.selectedExecutablePath
-         }) {
+         },
+         nativeBrowserDirectory: URL = AgentBrowserAdapter.nativeBrowserDirectory) {
+        self.nativeBrowserDirectory = nativeBrowserDirectory
         self.resolveBinary = resolver
         self.browserDirectory = browserDirectory
         self.defaultTimeout = defaultTimeout
@@ -175,6 +178,9 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
     }
 
     static func installInvocation(binary: String) -> (executable: String, arguments: [String])? {
+        if generation(binary: binary) == .native {
+            return (binary, ["install"])
+        }
         guard let node = SettingsStore.which("node"),
               let cli = playwrightCLI(binary: binary)
         else { return nil }
@@ -187,21 +193,39 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
                                   version: nil, detail: "binary not found on PATH",
                                   remedy: Self.installRemedy)
         }
-        let revision = Self.runtimeRevision(binary: path)
+        let generation = Self.generation(binary: path)
         let selected = resolveSelectedExecutable()
         let selectedReady = selected.map {
             FileManager.default.isExecutableFile(atPath: $0)
         } ?? false
-        let ready = selectedReady || Self.runtimeInstalled(binary: path, browserDirectory: browserDirectory)
+        let runtimeReady = switch generation {
+        case .playwright: Self.runtimeInstalled(binary: path, browserDirectory: browserDirectory)
+        case .native: Self.nativeRuntimeInstalled(browserDirectory: nativeBrowserDirectory)
+        }
+        let ready = selectedReady || runtimeReady
+        let version = Self.installedVersion(binary: path)
+        let outdated = Self.isOutdated(version)
+
+        var detail = ready
+            ? (selectedReady ? "CLI and selected Chromium browser are ready" : "CLI and Chromium runtime are ready")
+            : "CLI found; compatible Chromium runtime is missing"
+        if outdated, let version {
+            detail += "; agent-browser \(version) is older than the recommended \(Self.recommendedVersion)"
+        }
+        let remedy: String? = if !ready {
+            Self.installRemedy
+        } else if outdated {
+            "Update agent-browser in Uncoil Settings → Integrations → Drivers"
+        } else {
+            nil
+        }
         return DependencyInfo(
             name: Self.binaryName,
             installed: ready,
             path: path,
-            version: revision.map { "Playwright Chromium \($0)" },
-            detail: ready
-                ? (selectedReady ? "CLI and selected Chromium browser are ready" : "CLI and Chromium runtime are ready")
-                : "CLI found; compatible Chromium runtime is missing",
-            remedy: ready ? nil : Self.installRemedy
+            version: version,
+            detail: detail,
+            remedy: remedy
         )
     }
 
@@ -243,7 +267,7 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
 
     /// Returns the verb argv (after `--json --session <id>`), the per-call
     /// timeout, and — if the command writes a file — that absolute path.
-    private func argv(for command: BrowserCommand) -> ([String], TimeInterval, String?) {
+    func argv(for command: BrowserCommand) -> ([String], TimeInterval, String?) {
         switch command {
         case .start:
             // No explicit start verb; `session` confirms/creates the namespace.
@@ -275,6 +299,12 @@ final class AgentBrowserAdapter: BrowserEngine, @unchecked Sendable {
         case .scroll(let direction, let amount):
             var v = ["scroll", direction]
             if let amount { v.append(String(amount)) }
+            return (v, defaultTimeout, nil)
+        case .scrollIntoView(let ref):
+            return (["scrollintoview", ref], defaultTimeout, nil)
+        case .viewport(let width, let height, let scale):
+            var v = ["set", "viewport", String(width), String(height)]
+            if let scale { v.append(String(scale)) }
             return (v, defaultTimeout, nil)
         case .wait(let selectorOrMs):
             return (["wait", selectorOrMs], navigationTimeout, nil)

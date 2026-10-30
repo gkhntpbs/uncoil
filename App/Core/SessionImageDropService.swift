@@ -183,9 +183,16 @@ enum SessionImageDropService {
     }
 
     private static func loadFileURL(_ provider: NSItemProvider) async -> URL? {
-        await withCheckedContinuation { continuation in
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                continuation.resume(returning: url)
+        if provider.canLoadObject(ofClass: URL.self),
+           let url = await withCheckedContinuation({ continuation in
+               _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                   continuation.resume(returning: url)
+               }
+           }) { return url }
+        return await withCheckedContinuation { continuation in
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
+                let url = data.flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
+                continuation.resume(returning: url?.isFileURL == true ? url : nil)
             }
         }
     }

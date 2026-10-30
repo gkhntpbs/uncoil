@@ -202,6 +202,7 @@ final class UsageStore: ObservableObject {
         }
 
         entries[key] = entry
+        if let snapshot = entry.snapshot { QuotaMonitor.shared.observe(snapshot, for: key) }
         return entry
     }
 

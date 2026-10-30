@@ -12,6 +12,7 @@ struct UncoilAutoTargetPicker: View {
     let resolved: UncoilAutoRoster.Entry?
 
     @EnvironmentObject private var sessionStore: SessionStore
+    @EnvironmentObject private var settings: SettingsStore
     @ObservedObject private var theme = ThemeStore.shared
 
     static let size: CGFloat = 28
@@ -30,6 +31,10 @@ struct UncoilAutoTargetPicker: View {
                         }
                     }
                 }
+            }
+            if settings.quotaOptimization.mode == .preferUnusedQuota, !roster.isEmpty {
+                Divider()
+                Button("Choose next target automatically") { conversation.target = nil }
             }
             if roster.isEmpty {
                 Text("No agent is open to this conversation")

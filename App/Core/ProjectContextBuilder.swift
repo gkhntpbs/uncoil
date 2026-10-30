@@ -24,6 +24,30 @@ enum ProjectContextBuilder {
         return sections.map { "## \($0.title)\n\($0.body)" }.joined(separator: "\n\n")
     }
 
+    static let uncoilToolsSection = Section(
+        title: "Uncoil tools (prefer them over doing it by hand)",
+        body: """
+        You run inside Uncoil, which manages this project's sessions, worktrees, tasks, dev servers \
+        and a browser. When a request touches one of these, use the `uncoil_*` MCP tool rather than \
+        a raw shell equivalent, so the user sees the result in Uncoil:
+        - New branch/worktree for a change → uncoil_projects (not `git worktree add`).
+        - Starting, restarting or reading a dev server, preview or its logs → uncoil_run \
+        (not a backgrounded `npm run dev`).
+        - TODO items, "what's next", claiming or finishing a task → uncoil_tasks.
+        - Delegating to or checking on another agent/session → uncoil_sessions.
+        - Opening, clicking through or screenshotting a web page, checking a layout at a size \
+        → uncoil_browser (open → snapshot → act by ref; `viewport` to resize).
+        Every tool takes {"action": …}; {"action":"help"} lists the actions. If a tool reports \
+        a capability as disabled, say so instead of working around it.
+        """
+    )
+
+    static func withUncoilTools(_ context: String?) -> String {
+        let tools = "## \(uncoilToolsSection.title)\n\(uncoilToolsSection.body)"
+        guard let context, !context.isEmpty else { return tools }
+        return tools + "\n\n" + context
+    }
+
     /// The hosts associated with `project`, in the project's own order.
     static func hosts(for project: Project, in hosts: [SSHHost]) -> [SSHHost] {
         (project.sshHostAliases ?? []).compactMap { alias in hosts.first { $0.alias == alias } }

@@ -255,9 +255,100 @@ final class RunRegistry: ObservableObject {
     private var logHandles: [Key: FileHandle] = [:]
     private var generation: [Key: Int] = [:]
     private var historyIDs: [Key: String] = [:]
+    private var managedRuns: [Key: ManagedRunRecord] = [:]
+    private var supervisorConnected = false
+    private var isQuitting = false
+    private var stopping = Set<Key>()
+
+    var activeRuns: [ManagedRunRecord] {
+        managedRuns.values.filter { record in
+            let status = states[Key(projectID: record.project.id, configID: record.configID)]?.status
+            return status == .starting || status == .running
+        }.sorted {
+            ($0.project.name.localizedLowercase, $0.name.localizedLowercase)
+                < ($1.project.name.localizedLowercase, $1.name.localizedLowercase)
+        }
+    }
+
+    private var supervisorRecordsURL: URL {
+        dataDirectory.appendingPathComponent("run-supervisor/runs.json")
+    }
+
+    func connectSupervisor() {
+        guard !supervisorConnected, !LaunchConfig.shared.isUITesting,
+              !ProcessInfo.processInfo.environment.keys.contains("XCTestConfigurationFilePath") else { return }
+        supervisorConnected = true
+        if let data = try? Data(contentsOf: supervisorRecordsURL),
+           let records = try? JSONDecoder().decode([ManagedRunRecord].self, from: data) {
+            for record in records {
+                managedRuns[Key(projectID: record.project.id, configID: record.configID)] = record
+            }
+        }
+        RunSupervisor.client.onAliveSessions = { [weak self] alive in
+            Task { @MainActor in self?.restoreManagedRuns(alive: alive) }
+        }
+        RunSupervisor.client.start()
+        RunSupervisor.client.requestSessionList()
+    }
+
+    private func saveManagedRuns() throws {
+        try FileManager.default.createDirectory(
+            at: supervisorRecordsURL.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        guard AtomicFile.write(try JSONEncoder().encode(Array(managedRuns.values)), to: supervisorRecordsURL) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: supervisorRecordsURL.path)
+    }
+
+    private func restoreManagedRuns(alive: Set<UUID>) {
+        for (key, record) in managedRuns {
+            guard handles[key] == nil else { continue }
+            guard alive.contains(record.sessionID) else {
+                managedRuns[key] = nil
+                states[key]?.status = .exited(-1)
+                RunHistoryStore.close(id: record.historyID ?? "", exitCode: nil,
+                    runDirectory: runDirectory(projectID: key.projectID))
+                continue
+            }
+            let gen = (generation[key] ?? 0) + 1
+            generation[key] = gen
+            historyIDs[key] = record.historyID
+            states[key] = RunProcessState(status: .starting, startedAt: record.startedAt, logFileURL: record.logURL)
+            let config = RunConfigFile.load(projectRoot: record.project.rootURL).configurations
+                .first { $0.id == key.configID }
+                ?? RunConfiguration(id: record.configID, name: record.name, command: "", ports: record.ports,
+                                    previewURL: record.previewURL, quitBehavior: record.quitBehavior)
+            let handle = SupervisedRunHandle(sessionID: record.sessionID, client: RunSupervisor.client)
+            handles[key] = handle
+            RunSupervisor.client.attachExisting(sid: record.sessionID, onData: { [weak self] data in
+                Task { @MainActor in self?.appendOutput(String(decoding: data, as: UTF8.self), key: key, generation: gen) }
+            }, onExit: { [weak self, weak handle] code in
+                Task { @MainActor in
+                    handle?.didExit()
+                    self?.processExited(code ?? -1, key: key, generation: gen, project: record.project, config: config)
+                }
+            })
+            startContainerPoll(key: key, project: record.project, config: config, generation: gen)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let ready = await self.waitForReadiness(key: key, config: config, generation: gen)
+                guard self.generation[key] == gen, self.states[key]?.status == .starting else { return }
+                if ready { self.states[key]?.status = .running }
+                else {
+                    self.states[key]?.issue = RunDiagnostics.diagnose(exitCode: nil,
+                        logTail: self.states[key]?.logTail ?? "", config: config)
+                }
+            }
+        }
+        try? saveManagedRuns()
+    }
 
     func state(project: Project, configID: String) -> RunProcessState {
-        states[Key(projectID: project.id, configID: configID)] ?? RunProcessState()
+        let key = Key(projectID: project.id, configID: configID)
+        var state = states[key] ?? RunProcessState()
+        if let pid = handles[key]?.pid, pid > 0 { state.pid = pid }
+        return state
     }
 
     func runDirectory(projectID: UUID) -> URL {
@@ -297,6 +388,19 @@ final class RunRegistry: ObservableObject {
     /// Starts `configID` after starting (and waiting on) its `depends_on`
     /// chain. Returns one outcome per configuration touched, target last.
     func start(project: Project, configID: String) async -> [StartOutcome] {
+        guard !isQuitting else {
+            return [StartOutcome(configID: configID, ok: false, status: .failed,
+                issue: RunIssue(code: "application_quitting", hint: String(localized: "Uncoil is shutting down. No new project processes can start.")))]
+        }
+        connectSupervisor()
+        if supervisorConnected {
+            guard await RunSupervisor.waitUntilReady() else {
+                return [StartOutcome(configID: configID, ok: false, status: .failed,
+                    issue: RunIssue(code: "supervisor_unavailable", hint: String(localized: "The run supervisor is unavailable. Try again after reconnecting.")))]
+            }
+            restoreManagedRuns(alive: RunSupervisor.client.aliveSessionIDs())
+        }
+        guard !isQuitting else { return [] }
         let contents = RunConfigFile.load(projectRoot: project.rootURL)
         guard let order = dependencyOrder(target: configID, in: contents.configurations) else {
             let issue = RunIssue(
@@ -311,6 +415,10 @@ final class RunRegistry: ObservableObject {
         var outcomes: [StartOutcome] = []
         for config in order {
             let key = Key(projectID: project.id, configID: config.id)
+            if stopping.contains(key) || states[key]?.status == .starting {
+                outcomes.append(StartOutcome(configID: config.id, ok: false, status: .starting, issue: nil))
+                break
+            }
             if states[key]?.status == .running {
                 outcomes.append(StartOutcome(configID: config.id, ok: true, status: .running, issue: nil))
                 continue
@@ -365,7 +473,36 @@ final class RunRegistry: ObservableObject {
 
         let handle: RunProcessHandle
         do {
-            handle = try launcher.launch(
+            if supervisorConnected, launcher is ShellRunProcessLauncher {
+                let sid = UUID()
+                let record = ManagedRunRecord(sessionID: sid, project: project, configID: config.id,
+                    name: config.name, ports: config.ports, previewURL: config.previewURL,
+                    quitBehavior: config.quitBehavior, startedAt: states[key]?.startedAt ?? .now,
+                    logURL: logURL, historyID: historyIDs[key])
+                managedRuns[key] = record
+                do { try saveManagedRuns() } catch {
+                    managedRuns[key] = nil
+                    throw error
+                }
+                let supervised = SupervisedRunHandle(sessionID: sid, client: RunSupervisor.client)
+                var environment = ProcessInfo.processInfo.environment
+                environment.merge(config.env) { _, value in value }
+                environment["NO_COLOR"] = environment["NO_COLOR"] ?? "1"
+                let shell = environment["SHELL"] ?? "/bin/zsh"
+                RunSupervisor.client.open(sid: sid, spec: .init(shell: shell,
+                    args: ["-l", "-c", config.command],
+                    env: environment.map { "\($0.key)=\($0.value)" }, cwd: cwd.path, runLogPath: logURL.path), cols: 160, rows: 40,
+                    onData: { [weak self] data in
+                        Task { @MainActor in self?.appendOutput(String(decoding: data, as: UTF8.self), key: key, generation: gen) }
+                    }, onExit: { [weak self, weak supervised] code in
+                        Task { @MainActor in
+                            supervised?.didExit()
+                            self?.processExited(code ?? -1, key: key, generation: gen, project: project, config: config)
+                        }
+                    })
+                handle = supervised
+            } else {
+                handle = try launcher.launch(
                 command: config.command,
                 cwd: cwd,
                 env: config.env,
@@ -375,7 +512,8 @@ final class RunRegistry: ObservableObject {
                 onExit: { [weak self] code in
                     self?.processExited(code, key: key, generation: gen, project: project, config: config)
                 }
-            )
+                )
+            }
         } catch {
             let issue = RunIssue(
                 code: "launch_failed",
@@ -385,7 +523,7 @@ final class RunRegistry: ObservableObject {
             return StartOutcome(configID: config.id, ok: false, status: .failed, issue: issue)
         }
         handles[key] = handle
-        states[key]?.pid = handle.pid
+        states[key]?.pid = handle.pid > 0 ? handle.pid : nil
 
         startContainerPoll(key: key, project: project, config: config, generation: gen)
 
@@ -466,22 +604,28 @@ final class RunRegistry: ObservableObject {
     // MARK: Stop / restart
 
     func stop(project: Project, configID: String) async {
-        let key = Key(projectID: project.id, configID: configID)
-        guard let handle = handles[key] else {
-            if states[key]?.status == .starting || states[key]?.status == .running {
-                states[key]?.status = .idle
-            }
-            return
-        }
-        generation[key] = (generation[key] ?? 0) + 1  // invalidate readiness waits
+        await stop(key: Key(projectID: project.id, configID: configID))
+    }
+
+    private func stop(key: Key) async {
+        guard let handle = handles[key], stopping.insert(key).inserted else { return }
+        defer { stopping.remove(key) }
+        generation[key] = (generation[key] ?? 0) + 1
         stopContainerPoll(key: key)
         handle.terminate()
-        let deadline = Date.now.addingTimeInterval(5)
+        let deadline = Date.now.addingTimeInterval(6)
         while handle.isRunning, Date.now < deadline {
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        if handle.isRunning { handle.forceKill() }
+        if handle.isRunning {
+            handle.forceKill()
+            states[key]?.issue = RunIssue(code: "stop_pending",
+                hint: String(localized: "Waiting for the run supervisor to confirm the process has stopped."))
+            return
+        }
         handles[key] = nil
+        managedRuns[key] = nil
+        try? saveManagedRuns()
         closeLog(key: key)
         closeHistory(key: key, exitCode: nil)
         states[key]?.status = .idle
@@ -494,24 +638,44 @@ final class RunRegistry: ObservableObject {
         return await start(project: project, configID: configID)
     }
 
-    /// Synchronous best-effort kill for app termination: SIGTERM every group,
-    /// no waiting (the processes are our children and get reparented+signalled).
-    func terminateAllForApplicationQuit() {
-        for handle in handles.values { handle.terminate() }
-        handles.removeAll()
-        for key in Array(logHandles.keys) { closeLog(key: key) }
+    func stopAll() async {
+        let keys = Array(handles.keys)
+        await withTaskGroup(of: Void.self) { group in
+            for key in keys {
+                group.addTask { @MainActor in await self.stop(key: key) }
+            }
+        }
     }
 
-    func stopAll() async {
-        // Snapshot keys first; stop mutates the dictionaries.
-        for key in Array(handles.keys) {
-            guard let handle = handles[key] else { continue }
-            handle.terminate()
-            handles[key] = nil
-            closeLog(key: key)
-            states[key]?.status = .idle
-            states[key]?.pid = nil
+    func prepareForQuit(stopEverything: Bool) async -> Bool {
+        isQuitting = true
+        connectSupervisor()
+        if supervisorConnected {
+            guard await RunSupervisor.waitUntilReady() else {
+                isQuitting = false
+                return managedRuns.isEmpty && handles.isEmpty
+            }
+            restoreManagedRuns(alive: RunSupervisor.client.aliveSessionIDs())
         }
+        let keys = Array(handles.keys).filter { key in
+            guard !stopEverything else { return true }
+            guard let record = managedRuns[key] else { return true }
+            let config = RunConfigFile.load(projectRoot: record.project.rootURL).configurations
+                .first { $0.id == key.configID }
+            return (config?.quitBehavior ?? record.quitBehavior) == .stopOnQuit
+        }
+        await withTaskGroup(of: Void.self) { group in
+            for key in keys {
+                group.addTask { @MainActor in await self.stop(key: key) }
+            }
+        }
+        let stopped = keys.allSatisfy { handles[$0] == nil }
+        if !stopped { isQuitting = false }
+        return stopped
+    }
+
+    func disconnectSupervisor(shutdown: Bool) {
+        RunSupervisor.client.prepareForApplicationTermination(terminateSessions: shutdown, managedRuns: true)
     }
 
     // MARK: Internals
@@ -525,7 +689,7 @@ final class RunRegistry: ObservableObject {
             }
             states[key]?.logTail = tail
         }
-        if let data = text.data(using: .utf8) {
+        if managedRuns[key] == nil, let data = text.data(using: .utf8) {
             logHandles[key]?.write(data)
         }
     }
@@ -535,6 +699,8 @@ final class RunRegistry: ObservableObject {
     ) {
         guard generation[key] == gen else { return }
         handles[key] = nil
+        managedRuns[key] = nil
+        try? saveManagedRuns()
         stopContainerPoll(key: key)
         closeLog(key: key)
         closeHistory(key: key, exitCode: code)

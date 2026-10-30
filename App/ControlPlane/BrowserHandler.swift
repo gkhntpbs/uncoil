@@ -19,6 +19,7 @@ struct BrowserSessionConfig: Codable, Equatable {
 }
 
 extension CapabilityRouter {
+    static let viewportRange = 200...7680
 
     // MARK: - Entry
 
@@ -159,6 +160,32 @@ extension CapabilityRouter {
         case "scroll":
             let direction = request.args["direction"]?.stringValue ?? "down"
             return await runBrowser(.scroll(direction: direction, amount: request.args["amount"]?.intValue),
+                                    request: request, caller: caller, config: config)
+
+        case "scroll_into_view":
+            guard let ref = request.args["ref"]?.stringValue, !ref.isEmpty else {
+                return .failure(request, code: .invalidArgument, message: "'ref' is required",
+                                target_session_id: caller.id.uuidString)
+            }
+            return await runBrowser(.scrollIntoView(ref: ref), request: request, caller: caller, config: config)
+
+        case "viewport":
+            guard let widthValue = request.args["width"]?.doubleValue,
+                  let heightValue = request.args["height"]?.doubleValue,
+                  let width = Int(exactly: widthValue),
+                  let height = Int(exactly: heightValue),
+                  Self.viewportRange.contains(width), Self.viewportRange.contains(height)
+            else {
+                return .failure(request, code: .invalidArgument,
+                                message: "'width' and 'height' are required integers between \(Self.viewportRange.lowerBound) and \(Self.viewportRange.upperBound)",
+                                target_session_id: caller.id.uuidString)
+            }
+            let scale = request.args["scale"]?.doubleValue
+            if request.args["scale"] != nil && !(scale.map { (1...4).contains($0) } ?? false) {
+                return .failure(request, code: .invalidArgument, message: "'scale' must be between 1 and 4",
+                                target_session_id: caller.id.uuidString)
+            }
+            return await runBrowser(.viewport(width: width, height: height, scale: scale),
                                     request: request, caller: caller, config: config)
 
         case "wait":

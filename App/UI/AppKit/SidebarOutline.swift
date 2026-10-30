@@ -144,16 +144,19 @@ struct SidebarOutline: NSViewRepresentable {
         let outlineView = SidebarOutlineView()
         let column = NSTableColumn(identifier: .init("sidebar"))
         column.resizingMask = .autoresizingMask
+        column.maxWidth = CGFloat.greatestFiniteMagnitude
         outlineView.addTableColumn(column)
         outlineView.outlineTableColumn = column
         outlineView.headerView = nil
+        outlineView.autoresizingMask = [.width]
         outlineView.backgroundColor = .clear
         outlineView.style = .plain
         outlineView.rowSizeStyle = .custom
         outlineView.selectionHighlightStyle = .none
         outlineView.gridStyleMask = []
         outlineView.usesAlternatingRowBackgroundColors = false
-        outlineView.autoresizesOutlineColumn = false
+        outlineView.autoresizesOutlineColumn = true
+        outlineView.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         outlineView.allowsMultipleSelection = true
         outlineView.allowsEmptySelection = true
         // Indentation and disclosure triangles are part of the row design, drawn
@@ -314,7 +317,7 @@ struct SidebarOutline: NSViewRepresentable {
                 store.sessions.map { ($0.id, $0.isPinned == true ? Date.distantFuture : $0.lastActivityAt) },
                 uniquingKeysWith: { first, _ in first }
             )
-            return SidebarStructure.build(
+            var result = SidebarStructure.build(
                 projectIDs: scope.filter(store.projects).map(\.id),
                 groups: { store.groups(for: $0).map(\.id) },
                 sessions: {
@@ -325,6 +328,12 @@ struct SidebarOutline: NSViewRepresentable {
                 ranks[$0] ?? .distantPast
             }
             .revealing(sessionID: activeSessionID, inCollapsed: collapsed)
+            result.folders = store.projectFolders
+            result.folderOfProject = Dictionary(uniqueKeysWithValues: store.projects.compactMap { project in
+                project.folderID.flatMap { id in store.projectFolders.contains(where: { $0.id == id }) ? (project.id, id) : nil }
+            })
+            result.rootItems = store.sidebarRoots(projectIDs: Set(result.projects.map(\.id)))
+            return result
         }
 
         /// A session row, and under it the sessions it spawned. A session with
@@ -342,36 +351,34 @@ struct SidebarOutline: NSViewRepresentable {
         }
 
         private static func makeTree(from structure: SidebarStructure) -> OutlineNode<SidebarItem> {
-            OutlineNode(
-                id: "root",
-                payload: .project(UUID()),
-                isGroup: true,
-                children: structure.projects.map { project in
-                    OutlineNode(
-                        id: SidebarItem.project(project.id).nodeID,
-                        payload: .project(project.id),
-                        isGroup: !project.groups.isEmpty || !project.ungrouped.isEmpty,
-                        children: project.groups.map { group in
-                            OutlineNode(
-                                id: SidebarItem.group(group.id).nodeID,
-                                payload: .group(group.id),
-                                isGroup: true,
-                                children: group.sessions.map(sessionNode)
-                                    + moreNode(
-                                        listID: group.id,
-                                        hidden: group.hiddenCount,
-                                        canShowLess: group.canShowLess
-                                    )
+            func projectNode(_ project: SidebarStructure.Project) -> OutlineNode<SidebarItem> {
+                OutlineNode(
+                    id: SidebarItem.project(project.id).nodeID,
+                    payload: .project(project.id),
+                    isGroup: !project.groups.isEmpty || !project.ungrouped.isEmpty,
+                    children: project.groups.map { group in
+                        OutlineNode(
+                            id: SidebarItem.group(group.id).nodeID,
+                            payload: .group(group.id), isGroup: true,
+                            children: group.sessions.map(sessionNode) + moreNode(
+                                listID: group.id, hidden: group.hiddenCount, canShowLess: group.canShowLess
                             )
-                        } + project.ungrouped.map(sessionNode)
-                            + moreNode(
-                                listID: project.id,
-                                hidden: project.hiddenCount,
-                                canShowLess: project.canShowLess
-                            )
+                        )
+                    } + project.ungrouped.map(sessionNode) + moreNode(
+                        listID: project.id, hidden: project.hiddenCount, canShowLess: project.canShowLess
                     )
+                )
+            }
+            let roots = structure.rootItems.isEmpty ? structure.projects.map { SidebarItem.project($0.id) } : structure.rootItems
+            return OutlineNode(id: "root", payload: .project(UUID()), isGroup: true, children: roots.compactMap { item in
+                switch item {
+                case .project(let id): return structure.projects.first { $0.id == id }.map(projectNode)
+                case .folder(let id):
+                    return OutlineNode(id: item.nodeID, payload: item, isGroup: true,
+                        children: structure.projects.filter { structure.folderOfProject[$0.id] == id }.map(projectNode))
+                default: return nil
                 }
-            )
+            })
         }
 
         /// The paging row closing a list, when there is anything to load or fold.
@@ -389,7 +396,16 @@ struct SidebarOutline: NSViewRepresentable {
             collapsedGroups: CollapsedGroups
         ) {
             guard let outlineView else { return }
-            for node in root.children {
+            for folder in root.children {
+                if case .folder(let id) = folder.payload {
+                    setExpanded(!collapsedProjects.contains(id), for: folder, in: outlineView)
+                }
+            }
+            let projectNodes = root.children.flatMap { node -> [OutlineNode<SidebarItem>] in
+                if case .folder = node.payload { return node.children }
+                return [node]
+            }
+            for node in projectNodes {
                 guard case .project(let id) = node.payload else { continue }
                 // A folded project with a child still has one row to show: the
                 // session open on the right, which `revealing` left behind.
@@ -413,7 +429,7 @@ struct SidebarOutline: NSViewRepresentable {
                         }
                     case .session:
                         expandSessions(child, collapsedGroups, in: outlineView)
-                    case .project, .more:
+                    case .folder, .project, .more:
                         continue
                     }
                 }
@@ -520,6 +536,8 @@ struct SidebarOutline: NSViewRepresentable {
 
         private func reuseIdentifier(for node: OutlineNode<SidebarItem>) -> String {
             switch node.payload {
+            case .folder: return root.children.first?.id == node.id
+                ? "sidebar-folder-first" : "sidebar-folder"
             case .project: return root.children.first?.id == node.id
                 ? "sidebar-project-first" : "sidebar-project"
             case .group: return "sidebar-group"
@@ -536,6 +554,8 @@ struct SidebarOutline: NSViewRepresentable {
         private func content(for node: OutlineNode<SidebarItem>) -> AnyView? {
             guard let environment else { return nil }
             switch node.payload {
+            case .folder(let id):
+                return AnyView(ProjectFolderRow(folderID: id, isFirst: root.children.first?.id == node.id).environmentObject(environment.projectStore))
             case .project(let id):
                 return AnyView(
                     ProjectRowView(
@@ -547,6 +567,7 @@ struct SidebarOutline: NSViewRepresentable {
                     .environmentObject(environment.projectStore)
                     .environmentObject(environment.sessionStore)
                     .environmentObject(environment.settings)
+                    .padding(.leading, structure.folderOfProject[id] == nil ? 0 : 12)
                 )
             case .group(let id):
                 return AnyView(
@@ -556,6 +577,7 @@ struct SidebarOutline: NSViewRepresentable {
                         actions: environment.actions
                     )
                     .environmentObject(environment.projectStore)
+                    .padding(.leading, CGFloat(max(0, structure.depth(of: .group(id)) - 1)) * 12)
                 )
             case .session(let id):
                 let selected = environment.selectedSessionIDs.wrappedValue
@@ -573,6 +595,7 @@ struct SidebarOutline: NSViewRepresentable {
                     )
                     .environmentObject(environment.projectStore)
                     .environmentObject(environment.sessionStore)
+                    .environmentObject(environment.settings)
                 )
             case .more(let listID):
                 let paging = paging(of: listID)
@@ -683,6 +706,7 @@ struct SidebarOutline: NSViewRepresentable {
             case .project(let id): environment.selection.wrappedValue = .project(id)
             case .group(let id): environment.selection.wrappedValue = .group(id)
             case .session(let id): environment.selection.wrappedValue = .session(id)
+            case .folder: break
             case .more: break
             }
         }
@@ -732,6 +756,7 @@ struct SidebarOutline: NSViewRepresentable {
         ) -> NSPasteboardWriting? {
             guard let environment else { return nil }
             switch node(item).payload {
+            case .folder(let id): return SidebarDragPayload.folder(id).pasteboardString as NSString
             case .project(let id):
                 return SidebarDragPayload.project(id).pasteboardString as NSString
             case .session(let id):
@@ -776,6 +801,12 @@ struct SidebarOutline: NSViewRepresentable {
             switch resolved.plan {
             case .refuse:
                 return false
+            case .relocate(let item, let folderID, let index):
+                let parent = resolved.retargetedItem as? OutlineNode<SidebarItem>
+                let siblings = (parent?.children ?? root.children).map(\.payload)
+                environment.projectStore.moveSidebarItem(item, into: folderID, at: index, siblings: siblings)
+                if let folderID { CollapsedProjects.shared.set(folderID, collapsed: false) }
+                return true
             case .reorderProjects(let dragged, let toIndex):
                 environment.projectStore.moveProject(dragged, toIndex: toIndex)
                 return true
@@ -842,9 +873,38 @@ struct SidebarOutline: NSViewRepresentable {
 
             let parent: SidebarDropParent
             switch (targetItem as? OutlineNode<SidebarItem>)?.payload {
+            case .folder(let id): parent = .folder(id)
             case .project(let id): parent = .project(id)
             case .group(let id): parent = .group(id)
             case .session, .more, .none: parent = .root
+            }
+
+            let moving: SidebarItem?
+            switch payload {
+            case .project(let id): moving = .project(id)
+            case .folder(let id): moving = .folder(id)
+            case .sessions: moving = nil
+            }
+            if let moving {
+                if case .project = parent, let node = targetItem as? OutlineNode<SidebarItem> {
+                    targetIndex = outlineView.childIndex(forItem: node)
+                    targetItem = outlineView.parent(forItem: node)
+                }
+                let container = (targetItem as? OutlineNode<SidebarItem>)?.payload
+                let destination: UUID?
+                switch container {
+                case .folder(let id):
+                    guard case .project = moving else { return nil }
+                    destination = id
+                case nil: destination = nil
+                default: return nil
+                }
+                if case .project(let id) = moving,
+                   environment?.projectStore.projects.first(where: { $0.id == id })?.isScratchWorkspace == true { return nil }
+                if case .folder(let id) = moving,
+                   environment?.projectStore.projectFolders.contains(where: { $0.id == id }) != true { return nil }
+                return ResolvedDrop(plan: .relocate(moving, folderID: destination, index: targetIndex),
+                                    retargetedItem: targetItem, retargetedIndex: targetIndex)
             }
 
             return ResolvedDrop(
@@ -870,6 +930,14 @@ struct SidebarOutline: NSViewRepresentable {
                   let environment else { return nil }
             let menu = NSMenu()
             switch node.payload {
+            case .folder(let id):
+                guard let folder = environment.projectStore.projectFolders.first(where: { $0.id == id }) else { return nil }
+                add(to: menu, title: String(localized: "Customize Project Folder…")) {
+                    environment.actions.editProjectFolder(folder)
+                }
+                add(to: menu, title: String(localized: "Remove Project Folder")) {
+                    environment.projectStore.removeProjectFolder(id)
+                }
             case .project(let id):
                 guard let project = environment.projectStore.projects.first(where: { $0.id == id })
                 else { return nil }
@@ -913,6 +981,16 @@ struct SidebarOutline: NSViewRepresentable {
                 menu.addItem(.separator())
                 add(to: menu, title: String(localized: "New Group…")) {
                     environment.actions.createGroup(project)
+                }
+                if project.folderID != nil {
+                    add(to: menu, title: String(localized: "Remove from Project Folder")) {
+                        environment.projectStore.moveSidebarItem(.project(id), into: nil, at: -1, siblings: [])
+                    }
+                }
+                for folder in environment.projectStore.projectFolders {
+                    add(to: menu, title: String(localized: "Move to \(folder.name)")) {
+                        environment.projectStore.moveSidebarItem(.project(id), into: folder.id, at: -1, siblings: [])
+                    }
                 }
                 add(to: menu, title: String(localized: "Import Sessions…")) {
                     environment.actions.importSessions(project)
@@ -1068,6 +1146,7 @@ struct SidebarOutline: NSViewRepresentable {
         func emptyAreaMenu() -> NSMenu? {
             guard let environment else { return nil }
             let menu = NSMenu()
+            add(to: menu, title: String(localized: "New Project Folder…")) { environment.actions.createProjectFolder() }
             add(to: menu, title: String(localized: "New Project…")) {
                 environment.actions.addProject()
             }
@@ -1124,6 +1203,13 @@ private func copyToPasteboard(_ string: String) {
 /// the table's default handling gets it.
 final class SidebarOutlineView: NSOutlineView {
     weak var coordinator: SidebarOutline.Coordinator?
+
+    override func layout() {
+        super.layout()
+        guard let column = tableColumns.first, let scrollView = enclosingScrollView else { return }
+        let available = max(0, scrollView.contentSize.width - intercellSpacing.width)
+        if abs(column.width - available) > 0.5 { column.width = available }
+    }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let point = convert(event.locationInWindow, from: nil)
@@ -1193,4 +1279,6 @@ struct SidebarRowActions {
     /// Closes the scratch workspace and the sessions in it. Asks first — the
     /// sessions are what it really removes.
     var closeScratch: () -> Void
+    var createProjectFolder: () -> Void = {}
+    var editProjectFolder: (ProjectFolder) -> Void = { _ in }
 }

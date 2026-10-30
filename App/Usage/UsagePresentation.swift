@@ -8,6 +8,22 @@ import Foundation
 /// has to keep counting. Everything here is a pure function of a snapshot and a
 /// clock, so what the user reads can be tested without a view.
 enum UsageDisplay {
+    static func windowTitle(_ title: String) -> String {
+        let prefix = "Weekly limit · "
+        if title.hasPrefix(prefix) {
+            let model = String(title.dropFirst(prefix.count))
+            return String(localized: "Weekly limit · \(model)")
+        }
+        return NSLocalizedString(title, comment: "")
+    }
+
+    static func refreshFailure(_ error: String) -> String {
+        if error.hasPrefix("credentialsExpired") || error.hasPrefix("unauthorized") {
+            return String(localized: "The saved login expired or was rejected. Sign in again with the agent CLI, then refresh here. You do not need to add a separate Uncoil account. Previous usage is shown until a new reading succeeds.")
+        }
+        return String(localized: "Last refresh failed (\(error)); showing the previous reading.")
+    }
+
 
     // MARK: - Severity
 
@@ -84,13 +100,13 @@ enum UsageDisplay {
 
     static func duration(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
-        if total < 3600 { return "\(max(1, total / 60))m" }
+        if total < 3600 { return String(localized: "\(max(1, total / 60))m") }
         if total < 86_400 {
             let hours = total / 3600
             let minutes = (total % 3600) / 60
-            return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
+            return minutes == 0 ? String(localized: "\(hours)h") : String(localized: "\(hours)h \(minutes)m")
         }
-        return "\(total / 86_400)d"
+        return String(localized: "\(total / 86_400)d")
     }
 
     /// What a window's reset line says, from whichever of the two forms the
@@ -156,7 +172,9 @@ enum UsageDisplay {
     static func explanation(_ reason: UsageUnavailability, provider: AgentProvider) -> String {
         switch reason {
         case .noCredentials:
-            String(localized: "Not signed in to \(provider.displayName) on this Mac.")
+            provider == .claude
+                ? String(localized: "Claude Code's saved login could not be read. If you are already signed in to the CLI, refresh here and allow the macOS Keychain request. A separate Uncoil profile is not required.")
+                : String(localized: "Not signed in to \(provider.displayName) on this Mac.")
         case .credentialsRejected:
             String(localized: "\(provider.displayName) refused the saved login. Signing in again will fix it.")
         case .planReportsNoQuota:
@@ -194,7 +212,9 @@ enum UsageDisplay {
         guard let window = snapshot.mostConstrainedWindow else {
             return String(localized: "No usage figures.")
         }
-        var line = "\(window.title): \(Int(window.remainingPercent.rounded(.down)))% left"
+        let title = windowTitle(window.title)
+        let remaining = Int(window.remainingPercent.rounded(.down))
+        var line = String(localized: "\(title): \(remaining)% left")
         if let reset = resetLine(window, now: now) { line += " · \(reset)" }
         if snapshot.stale {
             line += " · " + String(localized: "not refreshed, \(relativeAge(snapshot.updatedAt, now: now))")

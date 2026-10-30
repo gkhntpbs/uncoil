@@ -20,6 +20,36 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+## [0.4.0-edge.8] - 2026-10-30
+
+### Added
+
+- Project run processes can survive app quit through a separate background supervisor, reconnect on relaunch, and be opened, restarted or stopped from the menu bar. Per-configuration quit settings default to stopping; quit actions can keep Uncoil in the menu bar or stop everything explicitly.
+
+- Weekly quota reminders warn once per account before unused allowance resets. General settings offer notify-only, prefer-unused-quota, or ignore behavior, reset lead time, and a minimum unused percentage.
+- Usage cards show a recent consumption rate and projected unused quota after at least 30 minutes of observations. Auto can prefer eligible agents with expiring quota when no target is selected; explicit targets, mentions, and specialist roles remain unchanged.
+
+- Projects can be organized into sidebar folders with their own name, icon, and color. Drag projects into or out of folders and reorder folders without moving files or sharing project settings.
+- Hover explanations show full session names and describe common session controls, including handing work to another agent.
+- Agents can resize their browser viewport, choose a device pixel ratio, and scroll an element into view before interacting with it.
+- Settings > Integrations > Drivers shows the installed agent-browser version and offers a manual update when it is older than the recommended release.
+
+### Changed
+
+- Project folders use the same row typography, spacing, and hover surface as projects; a rotating chevron at the right controls their visibility.
+- Handoff controls share a dedicated icon showing work moving between two sessions.
+- The sidebar can grow with the window instead of stopping at its original width.
+- File attachments and their progress indicator are shared across main, split, and separate session windows. The indicator now appears near the bottom of the session.
+- Turkish translations cover previously untranslated settings, tasks, onboarding, handoff, and usage screens; usage window names, account labels, and time units are localized too.
+
+### Fixed
+
+- Sidebar columns and session labels grow with the sidebar. New automatic session names keep the full first line; older shortened Claude and Codex names can show their full text when the matching local conversation still has it.
+- Hover help uses one popover, wraps the entire label, and allows long explanations to scroll instead of inheriting a row's one-line limit.
+- Manually refreshing Claude usage can request macOS access to the CLI's Keychain credential on a fresh installation. Expired file credentials no longer hide the default account's newer Keychain login, and rejected or outdated cached credentials can be replaced without restarting Uncoil. Background refreshes remain non-interactive.
+- File drops can resolve file URLs supplied as data when an item provider cannot load a URL object.
+- Claude and Codex sessions with Uncoil MCP attached receive guidance to use Uncoil for worktrees, dev servers, tasks, session coordination, and browser checks.
+
 ## [0.3.0-edge.7] - 2026-10-26
 
 ### Added

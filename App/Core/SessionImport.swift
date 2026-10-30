@@ -308,6 +308,7 @@ private extension SessionImportPlacement {
 
 /// What one Claude Code transcript says about itself.
 struct ClaudeTranscriptSummary: Equatable {
+    let firstPrompt: String
     let sessionID: String
     let cwd: String
     let title: String
@@ -393,6 +394,7 @@ struct ClaudeTranscriptSummary: Equatable {
             ?? SessionAutoTitle.candidate(from: firstPrompt)
             ?? firstPrompt
         return ClaudeTranscriptSummary(
+            firstPrompt: firstPrompt,
             sessionID: sessionID ?? fallbackID,
             cwd: cwd,
             title: title,

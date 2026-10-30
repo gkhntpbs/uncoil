@@ -18,6 +18,8 @@ struct UncoilApp: App {
     /// accounts, not to windows, and a second copy would refresh the same
     /// account twice and disagree with itself about how fresh it was.
     @StateObject private var usage = UsageStore()
+    @ObservedObject private var runs = RunRegistry.shared
+    @ObservedObject private var lifecycle = ApplicationLifecycle.shared
     @ObservedObject private var attention = AttentionStore.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage(UncoilAutoAgentsPanel.visibilityKey) private var agentsPanelVisible = true
@@ -168,16 +170,18 @@ struct UncoilApp: App {
     /// only thing that should be able to move it.
     private var menuBarInserted: Binding<Bool> {
         Binding(
-            get: { settings.menuBar.isVisible(for: menuBarSummary) },
+            get: { lifecycle.isInBackground || !runs.activeRuns.isEmpty || settings.menuBar.isVisible(for: menuBarSummary) },
             set: { _ in }
         )
     }
 
     private var menuBarSummary: MenuBarSummary {
-        MenuBarMonitorEngine.summary(
+        var summary = MenuBarMonitorEngine.summary(
             statuses: sessionStore.statuses,
             attention: attention.items
         )
+        summary.backgroundRuns = runs.activeRuns.count
+        return summary
     }
 
     // The Dock icon is `App/AppIcon.icon` and nothing else.

@@ -30,6 +30,7 @@ struct UsageCard: View {
 
             if let snapshot, snapshot.hasQuota {
                 windows(of: snapshot)
+                QuotaForecastView(snapshot: snapshot, now: now)
                 if let credits = snapshot.credits {
                     Divider().overlay(Theme.border)
                     creditsRow(credits)
@@ -57,7 +58,7 @@ struct UsageCard: View {
         HStack(spacing: 9) {
             ProviderMark(provider: provider, size: 16)
             VStack(alignment: .leading, spacing: 1) {
-                Text(account?.name ?? provider.displayName)
+                Text(account?.displayName ?? provider.displayName)
                     .font(Theme.mono(.body, .bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
@@ -199,10 +200,7 @@ struct UsageCard: View {
     private func handoffRow(_ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                TablerIcon(
-                    name: "arrow-move-right", size: 13,
-                    color: alert.state == .reached ? Theme.danger : Theme.warn
-                )
+                HandoffIcon(color: alert.state == .reached ? Theme.danger : Theme.warn)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(alert.state == .reached
                          ? String(localized: "Hand this work to another agent")
@@ -222,6 +220,7 @@ struct UsageCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.pressable)
+        .infoHelp(String(localized: "Continue this task with another agent or account. The handoff carries the branch, uncommitted changes, and a summary of decisions; you choose the destination before anything starts."))
         .accessibilityIdentifier("session.usageHandoff")
     }
 
@@ -230,7 +229,7 @@ struct UsageCard: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let snapshot {
-                Text(UsageDisplay.provenance(snapshot, accountName: account?.name, now: now))
+                Text(UsageDisplay.provenance(snapshot, accountName: account?.displayName, now: now))
                     .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
                     .lineLimit(1)
@@ -241,7 +240,7 @@ struct UsageCard: View {
             if entry.isStale, let error = entry.error {
                 HStack(spacing: 5) {
                     TablerIcon(name: "alert-circle", size: 11, color: Theme.warn)
-                    Text(String(localized: "Last refresh failed (\(error)); showing the previous reading."))
+                    Text(UsageDisplay.refreshFailure(error))
                         .font(Theme.mono(.small))
                         .foregroundStyle(Theme.warn)
                         .fixedSize(horizontal: false, vertical: true)
@@ -270,7 +269,7 @@ struct UsageWindowRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
-                Text(window.title)
+                Text(UsageDisplay.windowTitle(window.title))
                     .font(Theme.mono(.small, .medium))
                     .foregroundStyle(Theme.textDim)
                     .lineLimit(1)
@@ -312,7 +311,7 @@ struct UsageWindowRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(window.title)
+        .accessibilityLabel(UsageDisplay.windowTitle(window.title))
         .accessibilityValue("\(Int(window.remainingPercent.rounded(.down))) percent remaining")
     }
 }

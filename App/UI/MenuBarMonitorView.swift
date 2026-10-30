@@ -26,7 +26,18 @@ struct MenuBarMonitorLabel: View {
             case .symbol(let name):
                 Image(systemName: name)
             case .none:
-                EmptyView()
+                if prefs.label(for: summary).isEmpty, summary.backgroundRuns == 0 {
+                    Image("MenuBarIconTemplate")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 18)
+                }
+            }
+
+            if summary.backgroundRuns > 0 {
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 5))
+                    .accessibilityLabel(String(localized: "Project processes are running"))
             }
 
             let label = prefs.label(for: summary)
@@ -54,6 +65,8 @@ struct MenuBarMonitorMenu: View {
         }
 
         Divider()
+
+        MenuBarRunsSection(activateMainWindow: activateMainWindow)
 
         if settings.menuBar.showTasksSection {
             taskSection
@@ -106,6 +119,21 @@ struct MenuBarMonitorMenu: View {
             activateMainWindow()
         }
         .keyboardShortcut("o")
+
+        Button("Keep Uncoil in Menu Bar") {
+            ApplicationLifecycle.shared.continueInBackground()
+        }
+        Divider()
+        Button("Quit Uncoil Completely…") {
+            let alert = NSAlert()
+            alert.messageText = String(localized: "Quit Uncoil completely?")
+            alert.informativeText = String(localized: "All project processes and agent sessions started by Uncoil will stop, including background supervisors.")
+            alert.addButton(withTitle: String(localized: "Stop Everything and Quit"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+            ApplicationLifecycle.shared.quitCompletely = true
+            NSApp.terminate(nil)
+        }
     }
 
     /// Task shortcuts: open a project's board, stop its orchestrator, and jump
@@ -175,6 +203,7 @@ struct MenuBarMonitorMenu: View {
     }
 
     private func activateMainWindow() {
+        ApplicationLifecycle.shared.isInBackground = false
         openWindow(.main)
         NSApp.activate(ignoringOtherApps: true)
     }

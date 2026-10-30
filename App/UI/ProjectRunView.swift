@@ -774,6 +774,7 @@ private struct RunConfigurationEditor: View {
     @State private var previewURL = ""
     @State private var readyPattern = ""
     @State private var dependsOnText = ""
+    @State private var quitBehavior: RunQuitBehavior = .stopOnQuit
     @State private var error: String?
 
     private var isNew: Bool { original.id.isEmpty }
@@ -793,6 +794,13 @@ private struct RunConfigurationEditor: View {
             field(String(localized: "Preview URL"), text: $previewURL)
             field(String(localized: "Ready pattern (regex)"), text: $readyPattern)
             field(String(localized: "Dependencies (ids, comma-separated)"), text: $dependsOnText)
+
+            Picker("When Uncoil quits", selection: $quitBehavior) {
+                ForEach(RunQuitBehavior.allCases) { behavior in
+                    Text(behavior.title).tag(behavior)
+                }
+            }
+            .accessibilityIdentifier("run.editor.quitBehavior")
 
             if let error {
                 Text(error).font(Theme.mono(.small)).foregroundStyle(Theme.danger)
@@ -839,6 +847,7 @@ private struct RunConfigurationEditor: View {
         previewURL = original.previewURL ?? ""
         readyPattern = original.readyPattern ?? ""
         dependsOnText = original.dependsOn.joined(separator: ", ")
+        quitBehavior = original.quitBehavior
     }
 
     private func save() {
@@ -864,7 +873,9 @@ private struct RunConfigurationEditor: View {
             readyPattern: readyPattern.isEmpty ? nil : readyPattern,
             dependsOn: dependsOnText.split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },
+            isDefault: original.isDefault,
             source: .user,
+            quitBehavior: quitBehavior,
             notes: original.notes,
             extra: original.extra
         )

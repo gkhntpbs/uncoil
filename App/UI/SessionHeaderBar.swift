@@ -24,6 +24,7 @@ struct SessionHeaderBar: View {
     @EnvironmentObject private var projectStore: ProjectStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var usage: UsageStore
+    @ObservedObject private var titles = SessionTitlePresentation.shared
     @State private var branch: String?
     /// Only for `defaultModelDetail` — what "default" resolves to when the user
     /// picked nothing. Detected rather than assumed: Codex writes its model
@@ -95,7 +96,7 @@ struct SessionHeaderBar: View {
             }
             .buttonStyle(.pressable)
             .accessibilityIdentifier("session.backButton")
-            .help(leadingHelp)
+            .infoHelp(leadingHelp)
 
             ProviderMark(provider: record.provider, size: 17)
 
@@ -104,7 +105,9 @@ struct SessionHeaderBar: View {
                     Text(record.provider.displayName)
                         .font(Theme.mono(.large, .bold))
                         .foregroundStyle(Theme.text)
-                    Text(record.displayTitle)
+                    Text(titles.title(for: record))
+                            .infoHelp(titles.title(for: record))
+                            .task(id: "\(record.title)|\(record.providerSessionID ?? "")|\(record.accountID?.uuidString ?? "")") { await titles.resolve(record, project: project, settings: settings) }
                         .font(Theme.mono(.large))
                         .foregroundStyle(Theme.textDim)
                         .lineLimit(1)
@@ -117,7 +120,7 @@ struct SessionHeaderBar: View {
                             .foregroundStyle(Theme.textFaint)
                             .lineLimit(1)
                             .fixedSize()
-                            .help(runtimeInfo.help ?? runtime)
+                            .infoHelp(runtimeInfo.help ?? runtime)
                             .accessibilityIdentifier("session.runtimeInfo")
                             .accessibilityValue(runtime)
                     }
@@ -134,14 +137,14 @@ struct SessionHeaderBar: View {
                                     chooseAccount(choice.id)
                                 } label: {
                                     if choice.id == record.accountID {
-                                        Label(choice.name, systemImage: "checkmark")
+                                        Label(choice.displayName, systemImage: "checkmark")
                                     } else {
-                                        Text(choice.name)
+                                        Text(choice.displayName)
                                     }
                                 }
                             }
                         } label: {
-                            Text(account?.name ?? String(localized: "No account"))
+                            Text(account?.displayName ?? String(localized: "No account"))
                                 .font(Theme.mono(.body))
                                 .foregroundStyle(record.provider.color.opacity(0.9))
                         }
@@ -155,7 +158,7 @@ struct SessionHeaderBar: View {
                         Text("·")
                             .foregroundStyle(Theme.textFaint)
                     } else if let account {
-                        Text(account.name)
+                        Text(account.displayName)
                             .font(Theme.mono(.body))
                             .foregroundStyle(record.provider.color.opacity(0.9))
                         Text("·")
@@ -267,10 +270,8 @@ struct SessionHeaderBar: View {
 
                 if let usageAlert, usageAlert.state.isAlerting {
                     ControlButton(
-                        iconName: "arrow-move-right",
-                        help: usageAlert.state == .reached
-                            ? String(localized: "This account is out — hand the work to another agent")
-                            : String(localized: "Hand the work to another agent before this account runs out"),
+                        icon: .handoff,
+                        help: String(localized: "Continue this task with another agent or account. The handoff carries the branch, uncommitted changes, and a summary of decisions; you choose the destination before anything starts."),
                         identifier: "session.handoffButton",
                         tint: usageAlert.state == .reached ? Theme.danger : Theme.warn
                     ) {
@@ -321,7 +322,7 @@ struct SessionHeaderBar: View {
         )) { request in
             HandoffSheet(
                 session: record,
-                accountName: account?.name,
+                accountName: account?.displayName,
                 evaluation: request.evaluation,
                 projectStore: projectStore,
                 sessionStore: sessionStore,
@@ -440,8 +441,13 @@ struct SessionHeaderBar: View {
 }
 
 /// A square icon button in a session's control cluster.
+enum ControlButtonIcon {
+    case tabler(String)
+    case handoff
+}
+
 struct ControlButton: View {
-    let iconName: String
+    let icon: ControlButtonIcon
     let help: String
     let identifier: String
     /// Resting icon colour; nil keeps the neutral dim/hover pair.
@@ -451,14 +457,21 @@ struct ControlButton: View {
 
     var body: some View {
         Button(action: action) {
-            TablerIcon(name: iconName, size: 13, color: tint ?? (hovering ? Theme.text : Theme.textDim))
+            Group {
+                switch icon {
+                case .tabler(let name):
+                    TablerIcon(name: name, size: 13, color: tint ?? (hovering ? Theme.text : Theme.textDim))
+                case .handoff:
+                    HandoffIcon(color: tint ?? (hovering ? Theme.text : Theme.textDim))
+                }
+            }
                 .frame(width: 26, height: 24)
                 .background(hovering ? Theme.panelHover : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
         }
         .buttonStyle(.pressable)
         .onHover { hovering = $0 }
         .accessibilityIdentifier(identifier)
-        .help(help)
+        .infoHelp(help)
     }
 }
 
@@ -468,4 +481,10 @@ struct ControlButton: View {
 private struct HandoffRequest: Identifiable {
     let id = UUID()
     let evaluation: UsageAlert.Evaluation
+}
+
+extension ControlButton {
+    init(iconName: String, help: String, identifier: String, tint: Color? = nil, action: @escaping () -> Void) {
+        self.init(icon: .tabler(iconName), help: help, identifier: identifier, tint: tint, action: action)
+    }
 }

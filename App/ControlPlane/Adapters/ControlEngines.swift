@@ -108,6 +108,8 @@ enum BrowserCommand {
     case hover(ref: String)
     case select(ref: String, value: String)
     case scroll(direction: String, amount: Int?)
+    case scrollIntoView(ref: String)
+    case viewport(width: Int, height: Int, scale: Double?)
     case wait(selectorOrMs: String)
     case get(what: String, ref: String?)
     case screenshot(path: String, fullPage: Bool)

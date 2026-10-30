@@ -39,6 +39,11 @@
 - The main window's position and size are restored through AppKit frame autosave, and the last project/group/session selection is restored after checking the record is still valid; UI fixtures do not disturb the real user's restoration state
 - Verification: two quit-policy tests against a real daemon, a daemon single-instance test, 6/6 XCUITests, and Computer Use confirming that a closed `main-AppWindow-1` comes back as `main-AppWindow-2`
 
+### Project run lifecycle and menu-bar controls
+- Project run commands now use a separate background supervisor, with per-configuration `quit_behavior` (`stopOnQuit` by default or `keepRunning`) and UUID-based reattachment on relaunch.
+- Active runs keep the menu-bar icon visible and expose project/URL navigation, status/ports, restart, stop and stop-all controls. Cmd-Q offers run settings, menu-bar background mode, stop-all and cancellation; confirmed full quit stops project runs, agents and their supervisors.
+- Debug compilation passed; automated tests were declined and manual lifecycle/UI acceptance remains pending. See `.claude/HANDOFF-run-supervisor.md`.
+
 ### Session system
 - Closed sessions are kept with their exit metadata in a separate history panel; reopening returns them to the active list and updates the restart counter
 - Session records are stored in a versioned `SessionDocument`; the old flat-array format migrates safely, and unknown future versions are not downgraded

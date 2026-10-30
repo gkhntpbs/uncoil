@@ -9,16 +9,19 @@ import SwiftUI
 struct MenuBarSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var sessionStore: SessionStore
+    @ObservedObject private var runs = RunRegistry.shared
     @ObservedObject private var attention = AttentionStore.shared
 
     private var prefs: MenuBarPrefs { settings.menuBar }
 
     /// What the menu bar shows right now, so the preview is the real thing.
     private var liveSummary: MenuBarSummary {
-        MenuBarMonitorEngine.summary(
+        var summary = MenuBarMonitorEngine.summary(
             statuses: sessionStore.statuses,
             attention: attention.items
         )
+        summary.backgroundRuns = runs.activeRuns.count
+        return summary
     }
 
     /// A busy state, so the preview still says something when nothing is running.
@@ -41,6 +44,7 @@ struct MenuBarSettingsPage: View {
                     )
                 }
                 .settingsID("menuBar.enabled")
+                SettingsNote(String(localized: "The icon stays visible while project processes run or Uncoil is kept in the menu bar, even when this monitor is disabled or set to hide while idle."))
             }
 
             Section {

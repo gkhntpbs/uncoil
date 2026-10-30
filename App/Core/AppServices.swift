@@ -112,6 +112,7 @@ final class AppServices {
                 RuntimeClient.shared.requestSessionList()
             }
         }
+        RunRegistry.shared.connectSupervisor()
         startControlPlane()
         // Drop directories whose sessions are gone. Once at start rather than
         // on a timer: the only thing that creates them is a session that no

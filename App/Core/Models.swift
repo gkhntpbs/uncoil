@@ -308,6 +308,10 @@ struct AccountProfile: Identifiable, Codable, Equatable {
         self.directoryName = directoryName
     }
 
+    var displayName: String {
+        directoryName == nil && name == "Default" ? String(localized: "Default") : name
+    }
+
     func configDirectory(profilesRoot: URL) -> URL? {
         guard let directoryName else { return nil }
         return profilesRoot
@@ -371,6 +375,7 @@ struct Project: Identifiable, Codable, Equatable {
     /// The SSH hosts this project's agents are told about, by alias. Optional
     /// so older documents decode; nil and empty both mean none.
     var sshHostAliases: [String]?
+    var folderID: UUID?
 
     var rootURL: URL { URL(fileURLWithPath: rootPath) }
 
@@ -818,4 +823,12 @@ enum XcodeProjectLocator {
         }
         return nil
     }
+}
+
+struct ProjectFolder: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var name: String
+    var iconName: String?
+    var colorHex: UInt32?
+    var sortIndex: Double
 }

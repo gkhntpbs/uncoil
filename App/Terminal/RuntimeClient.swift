@@ -32,6 +32,7 @@ final class RuntimeClient: @unchecked Sendable {
         var args: [String]
         var env: [String]
         var cwd: String
+        var runLogPath: String? = nil
     }
 
     /// Called on the main queue each time the daemon reports which sessions it
@@ -88,6 +89,7 @@ final class RuntimeClient: @unchecked Sendable {
     private var inbox = Data()
     /// Session ids the daemon reported alive at handshake.
     private var aliveSessions: Set<String> = []
+    private var sessionPIDs: [String: Int32] = [:]
     private var pendingOpens: [(sid: String, spec: LaunchSpec, cols: Int, rows: Int)] = []
 
     /// Delivered on the main queue.
@@ -111,7 +113,7 @@ final class RuntimeClient: @unchecked Sendable {
         ProjectStore.defaultDirectory().appendingPathComponent(RuntimeProtocol.socketName).path
     }
 
-    private static var defaultDaemonURL: URL? {
+    static var defaultDaemonURL: URL? {
         Bundle.main.bundleURL
             .appendingPathComponent("Contents/Helpers/uncoil-runtimed")
     }
@@ -333,8 +335,11 @@ final class RuntimeClient: @unchecked Sendable {
             case .incompatible(let message):
                 failCompatibility(message)
             }
+        case "started":
+            if let sid = event.sid, let pid = event.process_id { sessionPIDs[sid] = pid }
         case "sessions":
             aliveSessions = Set(event.sids ?? [])
+            sessionPIDs = event.session_pids ?? [:]
             phase = .ready
             reconnectAttempts = 0
             // The daemon's answer to "what survived?" — the only thing that
@@ -368,6 +373,11 @@ final class RuntimeClient: @unchecked Sendable {
         case "pong":
             lastPong = .now
         case "error":
+            if event.errorCode == nil, let sid = event.sid, let handler = exitHandlers.removeValue(forKey: sid) {
+                aliveSessions.remove(sid)
+                dataHandlers.removeValue(forKey: sid)
+                DispatchQueue.main.async { handler(nil) }
+            }
             if phase == .connecting,
                event.errorCode == "incompatible_protocol",
                let message = event.message {
@@ -387,6 +397,7 @@ final class RuntimeClient: @unchecked Sendable {
         case "exited":
             if let sid = event.sid {
                 aliveSessions.remove(sid)
+                sessionPIDs[sid] = nil
                 let code = event.code
                 if let handler = exitHandlers[sid] {
                     DispatchQueue.main.async { handler(code) }
@@ -641,9 +652,48 @@ final class RuntimeClient: @unchecked Sendable {
             sendCommand(RuntimeCommand(
                 cmd: "launch", sid: sid,
                 shell: spec.shell, args: spec.args, env: spec.env, cwd: spec.cwd,
-                cols: cols, rows: rows
+                cols: cols, rows: rows, run_log_path: spec.runLogPath
             ))
         }
+    }
+
+    func attachExisting(
+        sid: UUID,
+        onData: @escaping (Data) -> Void,
+        onExit: @escaping (Int32?) -> Void
+    ) {
+        queue.async { [self] in
+            let key = sid.uuidString
+            guard phase == .ready, aliveSessions.contains(key) else {
+                DispatchQueue.main.async { onExit(nil) }
+                return
+            }
+            dataHandlers[key] = onData
+            exitHandlers[key] = onExit
+            sendCommand(RuntimeCommand(cmd: "attach", sid: key))
+        }
+    }
+
+    func terminateOwnedSession(sid: UUID) {
+        queue.async { [self] in
+            sendCommand(RuntimeCommand(cmd: "run_stop", sid: sid.uuidString))
+        }
+    }
+
+    func connectionIsReady() -> Bool {
+        queue.sync { phase == .ready }
+    }
+
+    func supportsManagedRuns() -> Bool {
+        queue.sync { phase == .ready && negotiatedMinor >= 4 }
+    }
+
+    func aliveSessionIDs() -> Set<UUID> {
+        queue.sync { Set(aliveSessions.compactMap(UUID.init(uuidString:))) }
+    }
+
+    func processID(sid: UUID) -> Int32? {
+        queue.sync { sessionPIDs[sid.uuidString] }
     }
 
     func sendInput(_ data: Data, sid: UUID) {
@@ -821,13 +871,13 @@ final class RuntimeClient: @unchecked Sendable {
         }
     }
 
-    func prepareForApplicationTermination(terminateSessions: Bool) {
+    func prepareForApplicationTermination(terminateSessions: Bool, managedRuns: Bool = false) {
         queue.sync { [self] in
             reconnectWorkItem?.cancel()
             reconnectWorkItem = nil
             isSystemSleeping = true
             if terminateSessions, phase == .ready {
-                sendCommand(RuntimeCommand(cmd: "shutdown"))
+                sendCommand(RuntimeCommand(cmd: managedRuns ? "run_shutdown" : "shutdown"))
             }
             disconnect(restart: false, notifyHandlers: false)
         }

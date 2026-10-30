@@ -446,9 +446,9 @@ enum HelpRegistry {
     static let browser: CapabilityDoc = {
         let names = ["help", "status", "start", "stop", "open", "navigate", "back", "reload",
                      "snapshot", "click", "fill", "type", "press", "hover", "select", "scroll",
-                     "wait", "get", "screenshot", "list_tabs", "new_tab", "switch_tab",
+                     "scroll_into_view", "viewport", "wait", "get", "screenshot", "list_tabs", "new_tab", "switch_tab",
                      "close_tab", "save_state", "clear_state"]
-        let overview = "Drive an isolated headless browser (via the optional agent-browser CLI) to open pages, snapshot the accessibility tree, and act on stable element refs. Requires the browser.use grant; degrades to BROWSER_UNAVAILABLE when agent-browser is not installed."
+        let overview = "Drive an isolated headless browser (via the optional agent-browser CLI) to open pages, snapshot the accessibility tree, and act on stable element refs. Loop: open → snapshot → act by ref → re-snapshot after navigation or DOM changes (refs go stale). If a click fails because the element is covered or off-screen, scroll_into_view the ref or dismiss the covering banner/modal, re-snapshot, retry. Use viewport to test a layout at a given size. Requires the browser.use grant; degrades to BROWSER_UNAVAILABLE when agent-browser is not installed."
         return CapabilityDoc(
             capability: "uncoil_browser",
             overview: overview,
@@ -469,7 +469,7 @@ enum HelpRegistry {
                 ActionDoc(action: "snapshot", summary: "Accessibility snapshot with element refs.",
                     doc: "# snapshot\nArgs: `interactive_only` (bool). Returns the tree under `external_content` (untrusted) with stable refs like `@e1` to use in click/fill/hover."),
                 ActionDoc(action: "click", summary: "Click an element ref.",
-                    doc: "# click\nArgs: `ref` (required, e.g. `@e2`). A stale/unknown ref → STALE_ELEMENT_REFERENCE; take a fresh snapshot."),
+                    doc: "# click\nArgs: `ref` (required, e.g. `@e2`). A stale/unknown ref → STALE_ELEMENT_REFERENCE; take a fresh snapshot. A click that fails because the element is covered, hidden or outside the viewport: `scroll_into_view` it (or close whatever covers it), re-snapshot, then retry with the new ref."),
                 ActionDoc(action: "fill", summary: "Clear and fill an input.",
                     doc: "# fill\nArgs: `ref`, `text` (both required)."),
                 ActionDoc(action: "type", summary: "Type into an element.",
@@ -482,6 +482,10 @@ enum HelpRegistry {
                     doc: "# select\nArgs: `ref`, `value` (both required)."),
                 ActionDoc(action: "scroll", summary: "Scroll the page.",
                     doc: "# scroll\nArgs: `direction` (up/down/left/right, default down), `amount` (px, optional)."),
+                ActionDoc(action: "scroll_into_view", summary: "Scroll an element ref into view.",
+                    doc: "# scroll_into_view\nArgs: `ref` (required, e.g. `@e4`). Brings the element inside the viewport before a click, hover or screenshot. Re-snapshot afterwards if the page re-rendered."),
+                ActionDoc(action: "viewport", summary: "Resize the browser viewport.",
+                    doc: "# viewport\nArgs: `width`, `height` (required, CSS px, 200–7680), `scale` (optional device pixel ratio 1–4, e.g. 2 for Retina). Applies to the caller's own browser session until changed. Use it to check responsive layouts (e.g. 390×844 phone, 1440×900 desktop) or when a page hides controls at the current size. Take a fresh snapshot afterwards — layout changes invalidate refs."),
                 ActionDoc(action: "wait", summary: "Wait for a selector or milliseconds.",
                     doc: "# wait\nArgs: `selector` (CSS) or `ms` (int). Defaults to 1000ms."),
                 ActionDoc(action: "get", summary: "Read page/element info.",
@@ -589,7 +593,7 @@ enum HelpRegistry {
                 ActionDoc(action: "restart", summary: "Stop then start.",
                     doc: "# restart\nRequires runs.control. Args: `id` (optional — default configuration). Same response shape as start."),
                 ActionDoc(action: "update", summary: "Create or replace one configuration.",
-                    doc: "# update\nRequires runs.write. Args: `configuration` — an object (a JSON-encoded string of the object is also accepted, and plain top-level `id`/`command`/… args work too) with at least `id` and `command`; optional `name`, `cwd`, `env` {string:string}, `ports` [int], `preview_url`, `ready_pattern` (regex), `depends_on` [ids], `default` (bool — makes it the project default and clears the flag elsewhere), `notes`. Unknown keys are preserved. The saved entry is marked source=agent so detection never overwrites it. Validates the depends_on graph."),
+                    doc: "# update\nRequires runs.write. Args: `configuration` — an object (a JSON-encoded string of the object is also accepted, and plain top-level `id`/`command`/… args work too) with at least `id` and `command`; optional `name`, `cwd`, `env` {string:string}, `ports` [int], `preview_url`, `ready_pattern` (regex), `depends_on` [ids], `default` (bool — makes it the project default and clears the flag elsewhere), `quit_behavior` (stopOnQuit, the default, or keepRunning), `notes`. Unknown keys are preserved. The saved entry is marked source=agent so detection never overwrites it. Validates the depends_on graph."),
                 ActionDoc(action: "remove", summary: "Delete one configuration.",
                     doc: "# remove\nRequires runs.write. Args: `id`. Refused while the configuration is starting/running."),
                 ActionDoc(action: "history", summary: "Previous runs with exit codes and log files.",

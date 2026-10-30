@@ -23,6 +23,7 @@ struct UncoilAutoEnvironment {
     var allows: (AgentProvider) -> Bool = { _ in true }
     /// How Auto runs are set up now.
     var autoSettings: () -> AutoHarnessSettings = { AutoHarnessSettings() }
+    var quotaScore: (UncoilAutoRoster.Entry) -> Double = { _ in 0 }
     /// The harness an Auto run is driven through, given Main and the way
     /// this conversation delivers prompts; nil where runs are not possible.
     var harness: (
@@ -226,7 +227,7 @@ final class UncoilAutoSession: StructuredAgentSession {
         // the first such send pins so it stays put until the user changes it.
         var mentions = mentions
         if mentions.isEmpty, let routed = UncoilAutoRouting.target(
-            chosen: conversation.target, roster: roster, allows: environment.allows) {
+            chosen: conversation.target, roster: roster, allows: environment.allows, quotaScore: environment.quotaScore) {
             mentions = [routed.handle]
             if conversation.target == nil { conversation.target = routed.handle }
         }
@@ -521,7 +522,7 @@ final class UncoilAutoSession: StructuredAgentSession {
     /// Main: the conversation's target, started when it has no session yet.
     private func mainForRun() async -> AgentItemSource? {
         let roster = environment.roster()
-        guard let entry = UncoilAutoRouting.target(chosen: conversation.target, roster: roster, allows: environment.allows)
+        guard let entry = UncoilAutoRouting.target(chosen: conversation.target, roster: roster, allows: environment.allows, quotaScore: environment.quotaScore)
         else { return nil }
         var source = entry.source
         if source == nil, let started = environment.startSession(entry.provider)?.source {

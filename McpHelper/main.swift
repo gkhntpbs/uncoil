@@ -36,10 +36,17 @@ let sessionToken = env[ControlProtocol.Environment.sessionToken].flatMap { $0.is
 let controlSocketPath = env[ControlProtocol.Environment.controlSocket]
 
 let instructions = """
-Uncoil's control plane. One tool per domain; every call is {"action": ..., ...}. \
-Call {"action":"help"} on a tool for its actions, or uncoil_system {"action":"describe"} \
-for the whole contract. Prefer structured session actions (capabilities, timeline, \
-events, submit) over reading terminal output.
+Uncoil's control plane: the app the user runs this session in. One tool per domain; every \
+call is {"action": ..., ...}. Call {"action":"help"} on a tool for its actions, or \
+uncoil_system {"action":"describe"} for the whole contract. Prefer these tools over a raw \
+shell equivalent whenever Uncoil manages the thing involved, so the user sees it in the app: \
+a new worktree or branch for a change → uncoil_projects; starting, restarting or reading a dev \
+server or preview → uncoil_run; TODO items and "what's next" → uncoil_tasks; another agent or \
+session ("the other session", "ask Codex to…", "check on my agents") → uncoil_sessions; \
+opening, clicking through, screenshotting or resizing a web page → uncoil_browser. Prefer \
+structured session actions (capabilities, timeline, events, submit) over reading terminal \
+output. Browser loop: open → snapshot → act by ref → re-snapshot after navigation or DOM \
+changes; if a click misses, scroll_into_view the ref, close covering banners, re-snapshot.
 """
 
 // MARK: - Tool catalogue (kept small; full docs live behind the `help` action)
@@ -62,7 +69,7 @@ let tools: [ToolDef] = [
     ToolDef(name: "uncoil_system",
             description: "Report Uncoil control-plane status, version, the full contract (describe), granted capabilities, and health diagnostics. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_browser",
-            description: "Drive an isolated headless browser (open, snapshot, click element refs, fill, screenshot) via the optional agent-browser CLI; needs the browser.use grant. Call {\"action\":\"help\"} for full documentation."),
+            description: "Drive an isolated headless browser (open, snapshot, click element refs, fill, screenshot, resize the viewport) via the optional agent-browser CLI; needs the browser.use grant. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_computer",
             description: "Inspect and control native macOS apps through a per-session window binding via the optional cua-driver CLI; graded computer.inspect/background_control/foreground_control grants. Call {\"action\":\"help\"} for full documentation."),
 ]

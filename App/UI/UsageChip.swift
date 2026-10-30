@@ -133,7 +133,7 @@ struct UsageChip: View {
     private var context: UsageAccountContext {
         UsageAccountContext(
             accountID: account?.id,
-            label: account?.name,
+            label: account?.displayName,
             configDirectory: account?.configDirectory(profilesRoot: settings.profilesRootURL)
         )
     }

@@ -9,11 +9,27 @@ enum RunConfigSource: String, Codable {
     case agent
 }
 
+enum RunQuitBehavior: String, Codable, CaseIterable, Identifiable {
+    case stopOnQuit
+    case keepRunning
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .stopOnQuit: String(localized: "Stop when Uncoil quits")
+        case .keepRunning: String(localized: "Keep running in background")
+        }
+    }
+}
+
+
 /// One runnable dev workflow of a project: a shell command with a working
 /// directory, environment, optional ports/preview URL, readiness signal, and
 /// prerequisites. Lives in the project-owned `.uncoil/run.json` so both the
 /// user and coding agents can review and repair it; the app holds no hidden
 /// copy of these fields.
+
 struct RunConfiguration: Codable, Equatable, Identifiable {
     /// Stable slug (e.g. "web-dev"). Referenced by `depends_on` and MCP calls.
     let id: String
@@ -35,6 +51,7 @@ struct RunConfiguration: Codable, Equatable, Identifiable {
     /// one entry should carry it; writers clear the flag elsewhere on set.
     var isDefault: Bool
     var source: RunConfigSource
+    var quitBehavior: RunQuitBehavior
     var notes: String?
     /// Unknown JSON keys found in the file, preserved verbatim on rewrite so
     /// agents can annotate configurations without the app erasing them.
@@ -52,6 +69,7 @@ struct RunConfiguration: Codable, Equatable, Identifiable {
         dependsOn: [String] = [],
         isDefault: Bool = false,
         source: RunConfigSource = .detected,
+        quitBehavior: RunQuitBehavior = .stopOnQuit,
         notes: String? = nil,
         extra: [String: JSONValue] = [:]
     ) {
@@ -66,13 +84,14 @@ struct RunConfiguration: Codable, Equatable, Identifiable {
         self.dependsOn = dependsOn
         self.isDefault = isDefault
         self.source = source
+        self.quitBehavior = quitBehavior
         self.notes = notes
         self.extra = extra
     }
 
     private static let knownKeys: Set<String> = [
         "id", "name", "command", "cwd", "env", "ports", "preview_url",
-        "ready_pattern", "depends_on", "default", "source", "notes",
+        "ready_pattern", "depends_on", "default", "source", "notes", "quit_behavior",
     ]
 
     init(from decoder: Decoder) throws {
@@ -103,6 +122,7 @@ struct RunConfiguration: Codable, Equatable, Identifiable {
             dependsOn: (object["depends_on"]?.arrayValue ?? []).compactMap(\.stringValue),
             isDefault: object["default"]?.boolValue ?? false,
             source: object["source"]?.stringValue.flatMap(RunConfigSource.init(rawValue:)) ?? .user,
+            quitBehavior: object["quit_behavior"]?.stringValue.flatMap(RunQuitBehavior.init(rawValue:)) ?? .stopOnQuit,
             notes: object["notes"]?.stringValue,
             extra: object.filter { !Self.knownKeys.contains($0.key) }
         )
@@ -127,6 +147,7 @@ struct RunConfiguration: Codable, Equatable, Identifiable {
         if !dependsOn.isEmpty { object["depends_on"] = .array(dependsOn.map(JSONValue.string)) }
         if isDefault { object["default"] = .bool(true) }
         object["source"] = .string(source.rawValue)
+        object["quit_behavior"] = .string(quitBehavior.rawValue)
         if let notes { object["notes"] = .string(notes) }
         return .object(object)
     }

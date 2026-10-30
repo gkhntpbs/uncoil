@@ -346,6 +346,33 @@ final class ProjectContextLaunchTests: XCTestCase {
         XCTAssertEqual(index.map { arguments[$0 + 1] }, context)
     }
 
+    func testAnAttachedUncoilServerAddsTheToolsSection() throws {
+        let record = SessionRecord(projectID: UUID(), provider: .claude, accountID: nil, title: "t")
+        let attached = ClaudeStreamProtocol.arguments(
+            record: record, resume: .fresh(nil), newSessionID: "s", mcpConfigPath: "/tmp/mcp.json",
+            scope: .unrestricted, modeArguments: [], projectContext: context)
+        let prompt = try XCTUnwrap(attached.firstIndex(of: "--append-system-prompt").map { attached[$0 + 1] })
+        XCTAssertTrue(prompt.hasPrefix("## \(ProjectContextBuilder.uncoilToolsSection.title)\n"), prompt)
+        XCTAssertTrue(prompt.hasSuffix(context), prompt)
+
+        let bare = ClaudeStreamProtocol.arguments(
+            record: record, resume: .fresh(nil), newSessionID: "s", mcpConfigPath: "/tmp/mcp.json",
+            scope: .unrestricted, modeArguments: [])
+        XCTAssertTrue(bare.contains(ProjectContextBuilder.withUncoilTools(nil)))
+
+        let codex = TerminalRegistry.launchCommand(
+            for: SessionRecord(projectID: UUID(), provider: .codex, accountID: nil, title: "t"),
+            binaryPath: "/usr/local/bin/codex", resume: .fresh(nil), mcpBinaryPath: "/x/uncoil-mcp",
+            extraArguments: nil, projectContext: nil)
+        let codexArgs = try argv(try XCTUnwrap(codex))
+        XCTAssertTrue(codexArgs.contains { $0.hasPrefix("developer_instructions=") && $0.contains("uncoil_browser") })
+    }
+
+    func testNoServerNoToolsSection() throws {
+        let line = try XCTUnwrap(command(.claude, context: context))
+        XCTAssertFalse(line.contains("Uncoil tools"))
+    }
+
     func testAnSSHTerminalRunsSSHInsteadOfAShell() throws {
         var record = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "ssh matrix")
         XCTAssertNil(TerminalRegistry.launchCommand(for: record, resume: .fresh(nil), extraArguments: nil))

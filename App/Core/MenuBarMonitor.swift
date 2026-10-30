@@ -48,6 +48,7 @@ struct MenuBarTaskCounts: Equatable {
 
 /// What the menu-bar monitor reports at a glance.
 struct MenuBarSummary: Equatable {
+    var backgroundRuns = 0
     var running = 0
     var waitingPermission = 0
     var waitingInput = 0
@@ -99,7 +100,7 @@ struct MenuBarSummary: Equatable {
 
     var icon: Icon {
         if waitingPermission > 0 || waitingInput > 0 || hasProblem { return .waiting }
-        if running > 0 { return .working }
+        if running > 0 || backgroundRuns > 0 { return .working }
         return .idle
     }
 }

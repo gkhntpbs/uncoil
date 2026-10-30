@@ -56,11 +56,23 @@ enum UncoilAutoRouting {
     static func target(
         chosen: String?,
         roster: [UncoilAutoRoster.Entry],
-        allows: (AgentProvider) -> Bool
+        allows: (AgentProvider) -> Bool,
+        quotaScore: (UncoilAutoRoster.Entry) -> Double = { _ in 0 }
     ) -> UncoilAutoRoster.Entry? {
         let open = roster.filter { allows($0.provider) }
         if let chosen, let entry = open.first(where: { $0.handle == chosen }) { return entry }
         let running = open.filter { $0.sessionID != nil }
+        let candidates = running.isEmpty ? open : running
+        var preferred: UncoilAutoRoster.Entry?
+        var bestScore = 0.0
+        for entry in candidates.reversed() {
+            let score = quotaScore(entry)
+            if score > bestScore {
+                preferred = entry
+                bestScore = score
+            }
+        }
+        if let preferred { return preferred }
         if let newest = running.last { return newest }
         return open.count == 1 ? open.first : nil
     }

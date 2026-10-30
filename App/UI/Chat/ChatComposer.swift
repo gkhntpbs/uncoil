@@ -109,7 +109,7 @@ struct ChatComposer: View {
         }
         .buttonStyle(.pressable)
         .disabled(!enabled)
-        .help(help)
+        .infoHelp(help)
         .animation(Theme.Motion.quick, value: icon)
         .accessibilityIdentifier(action == .stop ? "chat.composer.stop" : "chat.composer.send")
     }

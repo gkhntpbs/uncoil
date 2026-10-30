@@ -8,11 +8,13 @@ import Foundation
 /// strings off the pasteboard and must keep working.
 enum SidebarDragPayload: Equatable {
     case project(UUID)
+    case folder(UUID)
     case sessions([UUID])
 
     static let projectPrefix = "project:"
 
     static func parse(_ string: String) -> SidebarDragPayload? {
+        if string.hasPrefix("folder:"), let id = UUID(uuidString: String(string.dropFirst(7))) { return .folder(id) }
         if string.hasPrefix(projectPrefix) {
             guard let id = UUID(uuidString: String(string.dropFirst(projectPrefix.count)))
             else { return nil }
@@ -24,6 +26,7 @@ enum SidebarDragPayload: Equatable {
 
     var pasteboardString: String {
         switch self {
+        case .folder(let id): return "folder:" + id.uuidString
         case .project(let id):
             return Self.projectPrefix + id.uuidString
         case .sessions(let ids):
@@ -34,6 +37,7 @@ enum SidebarDragPayload: Equatable {
 
 /// Where the outline view says the drag currently is.
 enum SidebarDropParent: Equatable {
+    case folder(UUID)
     case root
     case project(UUID)
     case group(UUID)
@@ -43,6 +47,7 @@ enum SidebarDropParent: Equatable {
 /// written. Keeping it a value means the rule is unit-testable without a
 /// window server — the same reason `PopoutDragDecision` exists.
 enum SidebarDropPlan: Equatable {
+    case relocate(SidebarItem, folderID: UUID?, index: Int)
     case reorderProjects(dragged: UUID, toIndex: Int)
     case moveSessions(ids: [UUID], projectID: UUID, groupID: UUID?, toIndex: Int)
     case refuse
@@ -70,6 +75,7 @@ enum SidebarDropResolver {
         context: SidebarDropContext
     ) -> SidebarDropPlan {
         switch payload {
+        case .folder: return .refuse
         case .project(let draggedID):
             // Projects only reorder, and only at the root: a project dropped
             // into another project's session list means nothing.
@@ -88,7 +94,7 @@ enum SidebarDropResolver {
             guard owners.count == 1, let owner = owners.first else { return .refuse }
 
             switch parent {
-            case .root:
+            case .root, .folder:
                 return .refuse
             case .project(let projectID):
                 guard projectID == owner else { return .refuse }

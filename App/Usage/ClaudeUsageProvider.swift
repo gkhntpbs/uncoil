@@ -137,11 +137,15 @@ struct ClaudeAuth: Equatable {
     static func load(
         configDirectory: URL,
         usesDefaultHome: Bool,
-        allowKeychain: Bool
+        allowKeychain: Bool,
+        now: Date = .now
     ) throws -> ClaudeAuth {
         let fileURL = configDirectory.appendingPathComponent(".credentials.json")
         if UsageCredentials.fileExists(at: fileURL) {
-            return try parse(try UsageCredentials.readJSONFile(at: fileURL))
+            let auth = try parse(try UsageCredentials.readJSONFile(at: fileURL))
+            if !usesDefaultHome || !(auth.expiry.map { UsageCredentials.isExpired($0, now: now) } ?? false) {
+                return auth
+            }
         }
 
         // The Keychain item is not scoped to a config directory, so it can only
@@ -150,11 +154,16 @@ struct ClaudeAuth: Equatable {
         guard usesDefaultHome else {
             throw UsageFetchError(.credentialsMissing, detail: nil)
         }
-        if let cached = ClaudeKeychainCache.shared.token { return cached }
+        if let cached = ClaudeKeychainCache.shared.token {
+            if !allowKeychain && !(cached.expiry.map { UsageCredentials.isExpired($0, now: now) } ?? false) {
+                return cached
+            }
+            ClaudeKeychainCache.shared.token = nil
+        }
         guard allowKeychain else {
             throw UsageFetchError(.credentialsMissing, detail: "needs the Keychain")
         }
-        guard let raw = UsageCredentials.readKeychainString(service: "Claude Code-credentials"),
+        guard let raw = UsageCredentials.readKeychainString(service: "Claude Code-credentials", allowInteraction: allowKeychain),
               let data = raw.data(using: .utf8),
               let json = try? JSONDecoder().decode(JSONValue.self, from: data) else {
             throw UsageFetchError(.credentialsMissing, detail: nil)
@@ -218,7 +227,8 @@ struct ClaudeOAuthUsageStrategy: UsageFetchStrategy {
         let auth = try ClaudeAuth.load(
             configDirectory: configDirectory,
             usesDefaultHome: usesDefaultHome,
-            allowKeychain: allowKeychain
+            allowKeychain: allowKeychain,
+            now: clock()
         )
         if let expiry = auth.expiry, UsageCredentials.isExpired(expiry, now: clock()) {
             throw UsageFetchError(.credentialsExpired, detail: nil)
@@ -227,7 +237,13 @@ struct ClaudeOAuthUsageStrategy: UsageFetchStrategy {
         let response = try await http.send(
             .get(Self.usageEndpoint, bearer: auth.accessToken, headers: Self.betaHeader)
         )
-        guard response.isSuccess else { throw response.failure() }
+        guard response.isSuccess else {
+            let failure = response.failure()
+            if usesDefaultHome, failure.kind == .unauthorized || failure.kind == .credentialsExpired {
+                ClaudeKeychainCache.shared.token = nil
+            }
+            throw failure
+        }
 
         // Identity is a second request and is allowed to fail on its own: a
         // profile that cannot be read is a missing label, not a missing number.

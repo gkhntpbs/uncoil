@@ -15,6 +15,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
     case taskCompleted
     case mergeReady
     case loginRequired
+    case unusedQuota
 
     var id: String { rawValue }
 
@@ -26,6 +27,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .problem: String(localized: "Errors and problems")
         case .taskCompleted: String(localized: "Task done")
         case .mergeReady: String(localized: "Ready to merge")
+        case .unusedQuota: String(localized: "Unused weekly quota")
         case .loginRequired: String(localized: "Login needed")
         }
     }
@@ -38,6 +40,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .problem: String(localized: "A runtime error, a failing test or a dropped connection.")
         case .taskCompleted: String(localized: "A task finished.")
         case .mergeReady: String(localized: "A task branch is ready to merge.")
+        case .unusedQuota: String(localized: "Weekly quota is still available shortly before it resets.")
         case .loginRequired: String(localized: "The provider session dropped; you need to sign in again.")
         }
     }
@@ -50,6 +53,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .problem: "exclamationmark.triangle"
         case .taskCompleted: "flag.checkered"
         case .mergeReady: "arrow.trianglehead.merge"
+        case .unusedQuota: "clock.arrow.circlepath"
         case .loginRequired: "person.badge.key"
         }
     }
@@ -60,7 +64,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
     var supportsReminder: Bool {
         switch self {
         case .permission, .input, .loginRequired, .mergeReady: true
-        case .turnCompleted, .problem, .taskCompleted: false
+        case .turnCompleted, .problem, .taskCompleted, .unusedQuota: false
         }
     }
 

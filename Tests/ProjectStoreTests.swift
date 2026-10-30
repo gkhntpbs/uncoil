@@ -388,7 +388,7 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertNil(trees[2].branch)
     }
 
-    func testLaunchCommandComposition() {
+    func testLaunchCommandComposition() throws {
         var record = SessionRecord(projectID: UUID(), provider: .claude, accountID: nil, title: "t")
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
@@ -459,6 +459,10 @@ final class ProjectStoreTests: XCTestCase {
             ),
             "\"/opt/homebrew/bin/codex\" resume '019efe2f-5276-77c2-bd90-5191ecd4b7a0'"
         )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .withoutEscapingSlashes
+        let toolsContext = String(decoding: try encoder.encode(ProjectContextBuilder.withUncoilTools(nil)), as: UTF8.self)
+        let toolsOverride = ("developer_instructions=" + toolsContext).replacingOccurrences(of: "'", with: "'\"'\"'")
         XCTAssertEqual(
             TerminalRegistry.launchCommand(
                 for: codex,
@@ -472,7 +476,7 @@ final class ProjectStoreTests: XCTestCase {
                 ],
                 extraArguments: nil
             ),
-            "\"/opt/homebrew/bin/codex\" -c 'mcp_servers.uncoil.command=\"/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp\"' -c 'mcp_servers.uncoil.env.UNCOIL_CONTROL_SOCKET=\"/tmp/uncoil.sock\"' -c 'mcp_servers.uncoil.env.UNCOIL_PROJECT_ID=\"project-1\"' -c 'mcp_servers.uncoil.env.UNCOIL_SESSION_ID=\"session-1\"'"
+            "\"/opt/homebrew/bin/codex\" -c '\(toolsOverride)' -c 'mcp_servers.uncoil.command=\"/Volumes/External Disk/Uncoil.app/Contents/Helpers/uncoil-mcp\"' -c 'mcp_servers.uncoil.env.UNCOIL_CONTROL_SOCKET=\"/tmp/uncoil.sock\"' -c 'mcp_servers.uncoil.env.UNCOIL_PROJECT_ID=\"project-1\"' -c 'mcp_servers.uncoil.env.UNCOIL_SESSION_ID=\"session-1\"'"
         )
         let shell = SessionRecord(projectID: UUID(), provider: .terminal, accountID: nil, title: "sh")
         XCTAssertNil(

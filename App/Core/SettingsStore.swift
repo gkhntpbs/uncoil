@@ -49,6 +49,7 @@ final class SettingsStore: ObservableObject {
         var attentionEmphasis: AttentionEmphasis? = nil
         var usageWarningsEnabled: Bool? = nil
         var usageWarningThreshold: Double? = nil
+        var quotaOptimization: QuotaOptimizationPrefs? = nil
         /// "Option is Meta" in the terminal. Optional for backward
         /// compatibility; nil ⇒ off, Option types the layout's character.
         var optionAsMetaKey: Bool? = nil
@@ -98,6 +99,7 @@ final class SettingsStore: ObservableObject {
             case attentionEmphasis
             case usageWarningsEnabled
             case usageWarningThreshold
+            case quotaOptimization
             case optionAsMetaKey
             case sessionQuitBehavior
             case transcriptRetentionPolicy
@@ -140,6 +142,7 @@ final class SettingsStore: ObservableObject {
     /// Percent remaining at which an account is called low. Fifteen by default,
     /// which on a five-hour window is roughly enough time to finish a thought.
     @Published private(set) var usageWarningThreshold = UsageAlert.defaultThreshold
+    @Published private(set) var quotaOptimization = QuotaOptimizationPrefs()
     @Published private(set) var launcher: LauncherPrefs = .default
     @Published private(set) var imagePasteMode: ImagePasteMode = .default
     /// When true, Option is sent to the agent as Meta (⌥f, ⌥b, ⌥.). When false
@@ -281,6 +284,14 @@ final class SettingsStore: ObservableObject {
 
     func resetCommandPaletteHotkey() {
         setCommandPaletteHotkey(.commandPaletteDefault)
+    }
+
+    func setQuotaOptimization(_ value: QuotaOptimizationPrefs) {
+        var value = value
+        value.resetWithinHours = min(72, max(1, value.resetWithinHours))
+        value.minimumUnusedPercent = min(90, max(5, value.minimumUnusedPercent))
+        quotaOptimization = value
+        save()
     }
 
     func setUsageWarningsEnabled(_ enabled: Bool) {
@@ -862,6 +873,7 @@ final class SettingsStore: ObservableObject {
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
         usageWarningsEnabled = decoded.usageWarningsEnabled ?? true
         usageWarningThreshold = decoded.usageWarningThreshold ?? UsageAlert.defaultThreshold
+        quotaOptimization = decoded.quotaOptimization ?? QuotaOptimizationPrefs()
         launcher = decoded.launcher ?? .default
         imagePasteMode = decoded.imagePasteMode ?? .default
         sidebarSessionLimit = max(0, decoded.sidebarSessionLimit ?? SidebarSessionLimit.default)
@@ -918,6 +930,7 @@ final class SettingsStore: ObservableObject {
             usageWarningsEnabled: usageWarningsEnabled ? nil : false,
             usageWarningThreshold: usageWarningThreshold == UsageAlert.defaultThreshold
                 ? nil : usageWarningThreshold,
+            quotaOptimization: quotaOptimization == QuotaOptimizationPrefs() ? nil : quotaOptimization,
             optionAsMetaKey: optionAsMetaKey ? true : nil,
             sessionQuitBehavior: sessionQuitBehavior == .keepSessionsRunning
                 ? nil : sessionQuitBehavior,

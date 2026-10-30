@@ -23,10 +23,9 @@ final class SessionAutoTitleTests: XCTestCase {
         XCTAssertNil(SessionAutoTitle.candidate(from: ""))
     }
 
-    func testALongLineIsTruncatedWithAnEllipsis() {
+    func testALongLineKeepsItsFullTitle() {
         let title = SessionAutoTitle.candidate(from: String(repeating: "a", count: 200))
-        XCTAssertEqual(title?.count, SessionAutoTitle.maxLength)
-        XCTAssertEqual(title?.last, "…")
+        XCTAssertEqual(title, String(repeating: "a", count: 200))
     }
 
     func testASlashCommandKeepsItsName() {
@@ -75,7 +74,7 @@ final class SessionAutoTitleTests: XCTestCase {
     func testAPasteLongerThanAnyTitleStillNamesTheSession() {
         let paste = String(repeating: "x", count: SessionAutoTitle.TypedLineBuffer.byteLimit * 2)
         let title = feed(paste + "\r")
-        XCTAssertEqual(title?.count, SessionAutoTitle.maxLength)
+        XCTAssertEqual(title?.count, SessionAutoTitle.TypedLineBuffer.byteLimit)
     }
 }
 

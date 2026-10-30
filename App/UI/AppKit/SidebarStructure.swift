@@ -4,6 +4,7 @@ import Foundation
 /// renamed session or a new status re-renders from the store instead of needing
 /// the outline view to be told about it.
 enum SidebarItem: Equatable {
+    case folder(UUID)
     case project(UUID)
     case group(UUID)
     case session(UUID)
@@ -19,7 +20,7 @@ enum SidebarItem: Equatable {
     var isLeafRow: Bool {
         switch self {
         case .session, .more: true
-        case .project, .group: false
+        case .folder, .project, .group: false
         }
     }
 
@@ -28,6 +29,7 @@ enum SidebarItem: Equatable {
     /// guarantee.
     var nodeID: String {
         switch self {
+        case .folder(let id): return "f:\(id.uuidString)"
         case .project(let id): return "p:\(id.uuidString)"
         case .group(let id): return "g:\(id.uuidString)"
         case .session(let id): return "s:\(id.uuidString)"
@@ -73,6 +75,9 @@ struct SidebarStructure: Equatable {
     }
 
     var projects: [Project] = []
+    var folders: [ProjectFolder] = []
+    var folderOfProject: [UUID: UUID] = [:]
+    var rootItems: [SidebarItem] = []
 
     static func build(
         projectIDs: [UUID],
@@ -166,19 +171,24 @@ struct SidebarStructure: Equatable {
     /// drawn at.
     func depth(of item: SidebarItem) -> Int {
         switch item {
-        case .project:
-            return 0
-        case .group:
-            return 1
+        case .folder: return 0
+        case .project(let id):
+            return folderOfProject[id] == nil ? 0 : 1
+        case .group(let id):
+            let owner = projects.first { $0.groups.contains { $0.id == id } }
+            return 1 + (owner.flatMap { folderOfProject[$0.id] } == nil ? 0 : 1)
         case .more(let id):
             // Sits at the depth of the sessions it continues.
-            return projects.contains { $0.groups.contains { $0.id == id } } ? 2 : 1
+            if let owner = projects.first(where: { $0.groups.contains { $0.id == id } }) {
+                return 2 + (folderOfProject[owner.id] == nil ? 0 : 1)
+            }
+            return 1 + (folderOfProject[id] == nil ? 0 : 1)
         case .session(let id):
             for project in projects {
                 for group in project.groups {
-                    if let nested = Self.depth(of: id, in: group.sessions) { return 2 + nested }
+                    if let nested = Self.depth(of: id, in: group.sessions) { return 2 + nested + (folderOfProject[project.id] == nil ? 0 : 1) }
                 }
-                if let nested = Self.depth(of: id, in: project.ungrouped) { return 1 + nested }
+                if let nested = Self.depth(of: id, in: project.ungrouped) { return 1 + nested + (folderOfProject[project.id] == nil ? 0 : 1) }
             }
             return 1
         }

@@ -1161,6 +1161,11 @@ final class TerminalRegistry {
         // The project's context rides on the system prompt rather than in a
         // file the user maintains: nothing is written into the repository, and
         // a resumed session is told the current answer, not the one it had.
+        let mcpAttached = (record.provider == .claude && mcpConfigPath != nil)
+            || (record.provider == .codex && mcpBinaryPath != nil)
+        let projectContext = mcpAttached
+            ? ProjectContextBuilder.withUncoilTools(projectContext)
+            : projectContext
         if let projectContext, !projectContext.isEmpty {
             if record.provider == .claude {
                 command += " --append-system-prompt \(shellQuote(projectContext))"
