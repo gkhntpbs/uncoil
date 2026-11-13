@@ -11,6 +11,8 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
     case permission
     case input
     case turnCompleted
+    /// The turn ended but a command the agent started is still running.
+    case backgroundWait
     case problem
     case taskCompleted
     case mergeReady
@@ -24,6 +26,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .permission: String(localized: "Waiting for permission")
         case .input: String(localized: "Waiting for input")
         case .turnCompleted: String(localized: "Turn done")
+        case .backgroundWait: String(localized: "Waiting on a background command")
         case .problem: String(localized: "Errors and problems")
         case .taskCompleted: String(localized: "Task done")
         case .mergeReady: String(localized: "Ready to merge")
@@ -37,6 +40,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .permission: String(localized: "The agent is asking to use a tool.")
         case .input: String(localized: "The agent asked a question and is waiting for your answer.")
         case .turnCompleted: String(localized: "The agent finished its turn; over to you.")
+        case .backgroundWait: String(localized: "The agent paused its turn while a command it started keeps running.")
         case .problem: String(localized: "A runtime error, a failing test or a dropped connection.")
         case .taskCompleted: String(localized: "A task finished.")
         case .mergeReady: String(localized: "A task branch is ready to merge.")
@@ -50,6 +54,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
         case .permission: "hand.raised"
         case .input: "bubble.left.and.text.bubble.right"
         case .turnCompleted: "checkmark.circle"
+        case .backgroundWait: "hourglass"
         case .problem: "exclamationmark.triangle"
         case .taskCompleted: "flag.checkered"
         case .mergeReady: "arrow.trianglehead.merge"
@@ -64,7 +69,7 @@ enum NotificationEvent: String, Codable, CaseIterable, Identifiable, Sendable {
     var supportsReminder: Bool {
         switch self {
         case .permission, .input, .loginRequired, .mergeReady: true
-        case .turnCompleted, .problem, .taskCompleted, .unusedQuota: false
+        case .turnCompleted, .backgroundWait, .problem, .taskCompleted, .unusedQuota: false
         }
     }
 

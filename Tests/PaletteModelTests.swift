@@ -37,6 +37,12 @@ final class PaletteModelTests: XCTestCase {
     func testGlobalCommandsAlwaysPresent() {
         let groups = PaletteEngine.compute(baseContext(query: "", projects: []))
         XCTAssertTrue(items(groups).contains { $0.action == .addProject })
+        XCTAssertTrue(items(groups).contains { $0.action == .openExtensions })
+    }
+
+    /// Debug tools are searchable, not part of the empty launcher.
+    func testRarelyUsedCommandsAppearWhenSearched() {
+        let groups = PaletteEngine.compute(baseContext(query: ">", projects: []))
         XCTAssertTrue(items(groups).contains { $0.action == .createTestWorkspace })
         XCTAssertTrue(items(groups).contains { $0.action == .createDebugBundle })
         XCTAssertTrue(items(groups).contains { $0.action == .openExtensions })

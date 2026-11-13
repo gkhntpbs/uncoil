@@ -1,6 +1,171 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+      "Title bar": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Başlık çubuğu"
+            }
+          }
+        }
+      },
+      "Manage approvals in Settings → Permissions.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Onayları Ayarlar → İzinler bölümünden yönetin."
+            }
+          }
+        }
+      },
+      "Denied Requests": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Reddedilen İstekler"
+            }
+          }
+        }
+      },
+      "Remove a denial to let the agent ask again.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agentın tekrar izin isteyebilmesi için ret kaydını kaldırın."
+            }
+          }
+        }
+      },
+      "Allow this agent to continue?": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Bu agentın devam etmesine izin verilsin mi?"
+            }
+          }
+        }
+      },
+      "Don't Allow": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "İzin Verme"
+            }
+          }
+        }
+      },
+      "Allow Until Revoked": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Geri Alınana Kadar İzin Ver"
+            }
+          }
+        }
+      },
+      "Target: %@": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Hedef: %@"
+            }
+          }
+        }
+      },
+      "%@ · Manage approvals in Settings → Permissions.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "%@ · Onayları Ayarlar → İzinler bölümünden yönetin."
+            }
+          }
+        }
+      },
+      "The agent can read app windows, including any sensitive information they show.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, uygulama pencerelerini ve içerdikleri hassas bilgileri okuyabilir."
+            }
+          }
+        }
+      },
+      "The agent can click and type into your real apps in the background, including apps containing sensitive information.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, hassas bilgi içerenler dahil gerçek uygulamalarınıza arka planda tıklayabilir ve yazabilir."
+            }
+          }
+        }
+      },
+      "The agent can bring an app window to the front and change your keyboard focus.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, bir uygulama penceresini öne getirebilir ve klavye odağınızı değiştirebilir."
+            }
+          }
+        }
+      },
+      "The agent can send prompts, interrupt work and resume the target session.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, hedef oturuma istem gönderebilir, çalışmayı duraklatabilir ve oturumu sürdürebilir."
+            }
+          }
+        }
+      },
+      "The agent can stop the target session.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, hedef oturumu durdurabilir."
+            }
+          }
+        }
+      },
+      "The agent can answer the target session's approvals on your behalf, allowing commands and file changes.": {
+        "extractionState": "manual",
+        "localizations": {
+          "tr": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Agent, hedef oturumdaki onayları sizin adınıza yanıtlayarak komutlara ve dosya değişikliklerine izin verebilir."
+            }
+          }
+        }
+      },
     "Show projects" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -26094,6 +26259,1146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bu izleyici kapalı veya boştayken gizlenecek şekilde ayarlanmış olsa da proje işlemleri çalışırken ya da Uncoil menü çubuğunda tutulurken simge görünür kalır."
+          }
+        }
+      }
+    },
+    "Waiting on: %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekleniyor: %@"
+          }
+        }
+      }
+    },
+    "Background command finished" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arka plan komutu bitti"
+          }
+        }
+      }
+    },
+    "Background command running" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arka plan komutu çalışıyor"
+          }
+        }
+      }
+    },
+    "Waiting on a background command" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir arka plan komutu bekleniyor"
+          }
+        }
+      }
+    },
+    "The agent paused its turn while a command it started keeps running." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajan, başlattığı bir komut çalışmaya devam ederken turunu duraklattı."
+          }
+        }
+      }
+    },
+    "Origin is not a GitHub repo, or there is no remote." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Origin bir GitHub deposu değil ya da remote yok."
+          }
+        }
+      }
+    },
+    "No open pull requests." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Açık pull request yok."
+          }
+        }
+      }
+    },
+    "Waiting on a background command · %@\n%@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir arka plan komutu bekleniyor · %@\n%@"
+          }
+        }
+      }
+    },
+    "Background command finished · %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arka plan komutu bitti · %@"
+          }
+        }
+      }
+    },
+    "New Folder Inside…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İçinde Yeni Grup…"
+          }
+        }
+      }
+    },
+    "Move to Top Level" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En Üst Düzeye Taşı"
+          }
+        }
+      }
+    },
+    "Move into %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ grubunun içine taşı"
+          }
+        }
+      }
+    },
+    "%lld Sessions Selected" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturum Seçildi"
+          }
+        }
+      }
+    },
+    "Interrupt %lld Working" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çalışan %lld Oturumu Kes"
+          }
+        }
+      }
+    },
+    "Pause %lld" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturumu Duraklat"
+          }
+        }
+      }
+    },
+    "Hibernate %lld" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturumu Hazırda Beklet"
+          }
+        }
+      }
+    },
+    "Wake %lld" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturumu Uyandır"
+          }
+        }
+      }
+    },
+    "End %lld Sessions" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturumu Sonlandır"
+          }
+        }
+      }
+    },
+    "Delete %lld Sessions…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Oturumu Sil…"
+          }
+        }
+      }
+    },
+    "Navigate" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gezin"
+          }
+        }
+      }
+    },
+    "Ask" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sor"
+          }
+        }
+      }
+    },
+    "Disk Not Connected" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disk Bağlı Değil"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yok"
+          }
+        }
+      }
+    },
+    "%lld waiting for you" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sizi bekliyor"
+          }
+        }
+      }
+    },
+    "%lld working" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld çalışıyor"
+          }
+        }
+      }
+    },
+    "All quiet" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her şey sakin"
+          }
+        }
+      }
+    },
+    "Changes" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Değişiklikler"
+          }
+        }
+      }
+    },
+    "Reading git…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "git okunuyor…"
+          }
+        }
+      }
+    },
+    "on %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ dalında"
+          }
+        }
+      }
+    },
+    "beside the main copy" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ana kopyanın yanında"
+          }
+        }
+      }
+    },
+    "Only the main copy" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca ana kopya"
+          }
+        }
+      }
+    },
+    "None open" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Açık yok"
+          }
+        }
+      }
+    },
+    "open" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "açık"
+          }
+        }
+      }
+    },
+    "Asking GitHub…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub'a soruluyor…"
+          }
+        }
+      }
+    },
+    "running now" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "şu an çalışıyor"
+          }
+        }
+      }
+    },
+    "Nothing running" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çalışan bir şey yok"
+          }
+        }
+      }
+    },
+    "No sessions in this project yet" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu projede henüz oturum yok"
+          }
+        }
+      }
+    },
+    "No live sessions" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canlı oturum yok"
+          }
+        }
+      }
+    },
+    "Start an agent here; it runs in this project's folder and shows up in the sidebar." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Burada bir ajan başlatın; bu projenin klasöründe çalışır ve kenar çubuğunda görünür."
+          }
+        }
+      }
+    },
+    "Closed sessions" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapatılan oturumlar"
+          }
+        }
+      }
+    },
+    "Show %lld more" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tane daha göster"
+          }
+        }
+      }
+    },
+    "Log files" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log dosyaları"
+          }
+        }
+      }
+    },
+    "Uncoil writes what it tried and why it failed — usage tracking above all — to plain-text logs. Secrets are removed before anything is written." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil neyi denediğini ve neden başarısız olduğunu — en çok da kullanım takibinde — düz metin loglara yazar. Gizli bilgiler yazılmadan önce temizlenir."
+          }
+        }
+      }
+    },
+    "Open Logs Folder" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log Klasörünü Aç"
+          }
+        }
+      }
+    },
+    "Pulse speed" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nabız hızı"
+          }
+        }
+      }
+    },
+    "%@× the level's own rate." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seviyenin kendi hızının %@ katı."
+          }
+        }
+      }
+    },
+    "Highlight strength" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vurgu yoğunluğu"
+          }
+        }
+      }
+    },
+    "How strongly the row's border and wash are drawn." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satırın kenarlığının ve renk dolgusunun ne kadar belirgin çizileceği."
+          }
+        }
+      }
+    },
+    "Highlight sessions in the sidebar" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oturumları kenar çubuğunda vurgula"
+          }
+        }
+      }
+    },
+    "Off: rows never get a border or wash. The status dot still shows the state." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapalıyken satırlara hiç kenarlık veya renk dolgusu eklenmez. Durum noktası durumu yine gösterir."
+          }
+        }
+      }
+    },
+    "Permission requests" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İzin istekleri"
+          }
+        }
+      }
+    },
+    "Waiting for your next message" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonraki mesajınızı bekliyor"
+          }
+        }
+      }
+    },
+    "Unread notifications" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Okunmamış bildirimler"
+          }
+        }
+      }
+    },
+    "Show a finished turn as ready, not waiting" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biten turu bekliyor değil, hazır olarak göster"
+          }
+        }
+      }
+    },
+    "An agent that finished and waits for your next message gets the calm \"finished\" dot instead of the waiting one." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "İşini bitirip sonraki mesajınızı bekleyen ajan, bekleme noktası yerine sakin \"tamamlandı\" noktasını alır."
+          }
+        }
+      }
+    },
+    "Animate the working dot" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çalışma noktasını canlandır"
+          }
+        }
+      }
+    },
+    "Pulse the waiting dot" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekleme noktasına nabız efekti ver"
+          }
+        }
+      }
+    },
+    "Restore Defaults" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varsayılanlara Dön"
+          }
+        }
+      }
+    },
+    "What Is Marked" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neler İşaretlenir"
+          }
+        }
+      }
+    },
+    "Notifications are set separately, under Notifications." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildirimler ayrıca, Bildirimler bölümünden ayarlanır."
+          }
+        }
+      }
+    },
+    "Terminal Links" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal Bağlantıları"
+          }
+        }
+      }
+    },
+    "Open links with ⌃-click" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlantıları ⌃-tıklama ile aç"
+          }
+        }
+      }
+    },
+    "⌘-click always opens a link. With this on, ⌃-click does too; elsewhere ⌃-click still shows the menu." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘-tıklama bağlantıyı her zaman açar. Bu açıkken ⌃-tıklama da açar; başka yerlerde ⌃-tıklama yine menüyü gösterir."
+          }
+        }
+      }
+    },
+    "Open file links in" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosya bağlantılarını şurada aç"
+          }
+        }
+      }
+    },
+    "Paths an agent prints, like App/Main.swift:42, open at that line when the editor supports it." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajanın yazdırdığı App/Main.swift:42 gibi yollar, editör destekliyorsa o satırda açılır."
+          }
+        }
+      }
+    },
+    "System default" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistem varsayılanı"
+          }
+        }
+      }
+    },
+    "Open web links in" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web bağlantılarını şurada aç"
+          }
+        }
+      }
+    },
+    "The browser http and https links open in." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "http ve https bağlantılarının açılacağı tarayıcı."
+          }
+        }
+      }
+    },
+    "Ask agents for clickable links" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajanlardan tıklanabilir bağlantı iste"
+          }
+        }
+      }
+    },
+    "Sets FORCE_HYPERLINK=1 in new sessions, so CLIs such as Claude Code mark file paths as links. Applies to sessions started after the change." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni oturumlarda FORCE_HYPERLINK=1 ayarlar; böylece Claude Code gibi CLI'lar dosya yollarını bağlantı olarak işaretler. Değişiklikten sonra başlatılan oturumlara uygulanır."
+          }
+        }
+      }
+    },
+    "Preferred editor" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tercih edilen editör"
+          }
+        }
+      }
+    },
+    "Default app for the file type" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosya türünün varsayılan uygulaması"
+          }
+        }
+      }
+    },
+    "“%@” is not connected. Sessions in %@ can't start until it is." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” bağlı değil. %@ içindeki oturumlar disk bağlanana kadar başlayamaz."
+          }
+        }
+      }
+    },
+    "The disk “%@” is not connected" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” diski bağlı değil"
+          }
+        }
+      }
+    },
+    "The project folder could not be found" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proje klasörü bulunamadı"
+          }
+        }
+      }
+    },
+    "This session lives on an external disk. Connect the disk and the session will start on its own." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu oturum harici bir diskte. Diski bağladığınızda oturum kendiliğinden başlar."
+          }
+        }
+      }
+    },
+    "The folder may have been moved, renamed or deleted. Restore it, or change the project's folder in its settings." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klasör taşınmış, yeniden adlandırılmış veya silinmiş olabilir. Geri yükleyin ya da projenin ayarlarından klasörünü değiştirin."
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeniden Dene"
+          }
+        }
+      }
+    },
+    "Uncoil is starting" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil başlatılıyor"
+          }
+        }
+      }
+    },
+    "1 limit reset left" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 limit sıfırlama hakkı kaldı"
+          }
+        }
+      }
+    },
+    "%lld limit resets left" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld limit sıfırlama hakkı kaldı"
+          }
+        }
+      }
+    },
+    "%lld usable now" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tanesi şu an kullanılabilir"
+          }
+        }
+      }
+    },
+    "Usable once a limit is reached" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir limite ulaşıldığında kullanılabilir"
+          }
+        }
+      }
+    },
+    "next expires %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ilki %@ tarihinde sona eriyor"
+          }
+        }
+      }
+    },
+    "Granted by the provider; each one clears the limits" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sağlayıcının verdiği haklar; her biri limitleri sıfırlar"
+          }
+        }
+      }
+    },
+    "Agent updates" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajan güncellemeleri"
+          }
+        }
+      }
+    },
+    "%lld agent updates waiting" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ajan güncellemesi bekliyor"
+          }
+        }
+      }
+    },
+    "Check" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denetle"
+          }
+        }
+      }
+    },
+    "Update All" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tümünü Güncelle"
+          }
+        }
+      }
+    },
+    "Update All (%lld)" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tümünü Güncelle (%lld)"
+          }
+        }
+      }
+    },
+    "Each agent is updated the way it was installed — Homebrew, npm or its own updater. Running sessions keep the version they started with until they are restarted." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her ajan kurulduğu yolla güncellenir — Homebrew, npm ya da kendi güncelleyicisi. Açık oturumlar yeniden başlatılana kadar başladıkları sürümle çalışmaya devam eder."
+          }
+        }
+      }
+    },
+    "Updating…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Güncelleniyor…"
+          }
+        }
+      }
+    },
+    "Updating %@…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ güncelleniyor…"
+          }
+        }
+      }
+    },
+    "Checking for newer versions…" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni sürümler denetleniyor…"
+          }
+        }
+      }
+    },
+    "Every installed agent is up to date." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurulu tüm ajanlar güncel."
+          }
+        }
+      }
+    },
+    "updated %@ → %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "güncellendi %@ → %@"
+          }
+        }
+      }
+    },
+    "update ran, still on %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "güncelleme çalıştı, hâlâ %@ sürümünde"
+          }
+        }
+      }
+    },
+    "update failed — %@" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "güncelleme başarısız — %@"
+          }
+        }
+      }
+    },
+    "Working" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Çalışıyor"
+          }
+        }
+      }
+    },
+    "Needs you" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sizi bekliyor"
+          }
+        }
+      }
+    },
+    "Finished or quiet" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitti veya sakin"
+          }
+        }
+      }
+    },
+    "Sidebar highlight and motion: Settings › Appearance" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kenar çubuğu vurgusu ve hareket: Ayarlar › Görünüm"
+          }
+        }
+      }
+    },
+    "Reading and planning before it acts." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Harekete geçmeden önce okuyor ve plan yapıyor."
+          }
+        }
+      }
+    },
+    "Running a tool, a command or editing files." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir araç ya da komut çalıştırıyor veya dosya düzenliyor."
+          }
+        }
+      }
+    },
+    "Its own turn is over; sub-agents it started are still working." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kendi turu bitti; başlattığı alt ajanlar hâlâ çalışıyor."
+          }
+        }
+      }
+    },
+    "Turn ended, but a command it started is still running. It continues when that finishes." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tur bitti ama başlattığı bir komut hâlâ çalışıyor. Komut bitince devam eder."
+          }
+        }
+      }
+    },
+    "Asking to use a tool. Nothing happens until you answer." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir aracı kullanmak için izin istiyor. Siz yanıtlayana kadar bir şey olmaz."
+          }
+        }
+      }
+    },
+    "Finished its turn and waiting for your next message." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turunu bitirdi, bir sonraki mesajınızı bekliyor."
+          }
+        }
+      }
+    },
+    "The turn finished." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tur tamamlandı."
+          }
+        }
+      }
+    },
+    "Ready for a message." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesaj almaya hazır."
+          }
+        }
+      }
+    },
+    "Paused on purpose; resumes exactly where it was." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilerek duraklatıldı; kaldığı yerden devam eder."
+          }
+        }
+      }
+    },
+    "Process stopped to save resources; the conversation comes back on wake." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaynak tasarrufu için süreç durduruldu; uyandırınca konuşma geri gelir."
+          }
+        }
+      }
+    },
+    "Ended. The session stays in the history." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sona erdi. Oturum geçmişte kalır."
+          }
+        }
+      }
+    },
+    "Uncoil is still asking the runtime about it." : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uncoil durumu hâlâ çalışma zamanına soruyor."
           }
         }
       }

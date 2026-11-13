@@ -49,6 +49,12 @@ final class ProjectPageStore: ObservableObject {
         var loadedAt: Date?
 
         var hasLoaded: Bool { loadedAt != nil }
+        /// Git status and worktrees are in. Separate from `loadedAt`, which
+        /// also waits for GitHub: the local panels used to sit on skeletons
+        /// until a network request answered.
+        var gitLoaded = false
+        /// The pull-request request has answered (or there is no remote).
+        var pullRequestsLoaded = false
     }
 
     @Published private(set) var snapshots: [UUID: Snapshot] = [:]
@@ -89,7 +95,7 @@ final class ProjectPageStore: ObservableObject {
 
         // What the project has, first: it is stat calls and one `rev-parse`,
         // and it decides which tabs exist at all.
-        let capabilities = await Task.detached(priority: .utility) {
+        let capabilities = await Task.detached(priority: .userInitiated) {
             ProjectDetector.detect(projectRoot: root)
         }.value
         var snapshot = snapshots[id] ?? Snapshot()
@@ -105,33 +111,38 @@ final class ProjectPageStore: ObservableObject {
             snapshots[id] = snapshot
         }
 
-        let (git, worktrees, remote) = await Task.detached(priority: .utility) {
-            (
-                GitService.snapshot(repoPath: root),
-                GitService.worktrees(repoPath: root),
-                GitService.remoteURL(repoPath: root)
-            )
+        // The remote is one quick `git config` read; with it known, GitHub is
+        // asked at the same time as the local git commands run instead of
+        // after them.
+        let remote = await Task.detached(priority: .userInitiated) {
+            GitService.remoteURL(repoPath: root)
         }.value
-        snapshot.git = git
-        snapshot.worktrees = worktrees
-        snapshots[id] = snapshot
-
-        // The network call last: the local half of the page is already on
-        // screen by the time GitHub answers.
-        if let remote, let slug = GitHubService.repoSlug(fromRemoteURL: remote) {
+        async let pulls: (pullRequests: [GitHubService.PullRequest], message: String?) = {
+            guard let remote, let slug = GitHubService.repoSlug(fromRemoteURL: remote) else {
+                return ([], String(localized: "Origin is not a GitHub repo, or there is no remote."))
+            }
             switch await GitHubService.openPullRequests(slug: slug) {
             case .success(let pullRequests):
-                snapshot.pullRequests = pullRequests
-                snapshot.prMessage = pullRequests.isEmpty ? "No open PRs." : nil
+                return (pullRequests, pullRequests.isEmpty ? String(localized: "No open pull requests.") : nil)
             case .failure(let error):
-                snapshot.pullRequests = []
-                snapshot.prMessage = error.errorDescription
+                return ([], error.errorDescription)
             }
-        } else {
-            snapshot.pullRequests = []
-            snapshot.prMessage = "Origin is not a GitHub repo, or there is no remote."
-        }
+        }()
 
+        let (git, worktrees) = await Task.detached(priority: .userInitiated) {
+            (GitService.snapshot(repoPath: root), GitService.worktrees(repoPath: root))
+        }.value
+        snapshot = snapshots[id] ?? snapshot
+        snapshot.git = git
+        snapshot.worktrees = worktrees
+        snapshot.gitLoaded = true
+        snapshots[id] = snapshot
+
+        let answered = await pulls
+        snapshot = snapshots[id] ?? snapshot
+        snapshot.pullRequests = answered.pullRequests
+        snapshot.prMessage = answered.message
+        snapshot.pullRequestsLoaded = true
         snapshot.loadedAt = .now
         snapshots[id] = snapshot
     }

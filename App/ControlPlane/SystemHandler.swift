@@ -1,7 +1,7 @@
 import Foundation
 
 extension CapabilityRouter {
-    func handleSystem(_ request: ControlRequest) -> ControlEnvelope {
+    func handleSystem(_ request: ControlRequest) async -> ControlEnvelope {
         switch request.action {
         case "status":
             let context = callContext(request)
@@ -32,19 +32,43 @@ extension CapabilityRouter {
             guard let grantKey = request.args["grant_key"]?.stringValue, !grantKey.isEmpty else {
                 return .failure(request, code: .invalidArgument, message: "'grant_key' is required")
             }
-            let target = request.args["target_session_id"]?.stringValue
-            guard let permissions else {
-                return .failure(request, code: .controlPlaneUnavailable,
-                    message: "permission service unavailable")
+            let sessionKeys: Set<String> = ["sessions.control", "sessions.close", "sessions.approve"]
+            let computerKeys: Set<String> = ["computer.inspect", "computer.background_control", "computer.foreground_control"]
+            guard sessionKeys.union(computerKeys).contains(grantKey) else {
+                return .failure(request, code: .invalidArgument, message: "unsupported permission grant_key")
             }
-            // Reaching this means the identity gate verified the caller.
-            let from = callContext(request).caller?.id.uuidString ?? "unknown"
-            let record = permissions.request(grantKey: grantKey, from: from, target: target)
+            let target: String?
+            if sessionKeys.contains(grantKey) {
+                guard let raw = request.args["target_session_id"]?.stringValue,
+                      let record = session(id: raw), record.id != callContext(request).callerSessionID else {
+                    return .failure(request, code: .invalidArgument, message: "target_session_id must name another existing session")
+                }
+                target = record.id.uuidString
+            } else {
+                guard request.args["target_session_id"] == nil || request.args["target_session_id"] == .null else {
+                    return .failure(request, code: .invalidArgument, message: "computer permissions do not take target_session_id")
+                }
+                target = nil
+            }
+            guard let permissions else {
+                return .failure(request, code: .controlPlaneUnavailable, message: "permission service unavailable")
+            }
+            let timeout = request.args["timeout_s"]?.doubleValue ?? 120
+            guard timeout.isFinite, (0...300).contains(timeout) else {
+                return .failure(request, code: .invalidArgument, message: "timeout_s must be between 0 and 300")
+            }
+            let from = callContext(request).caller!.id.uuidString
+            let created = permissions.request(grantKey: grantKey, from: from, target: target)
+            guard let record = await permissions.waitForDecision(id: created.id, timeout: timeout) else {
+                return .failure(request, code: .cancelled, message: "permission request cancelled or revoked")
+            }
             return .success(request, data: .object([
                 "request_id": .string(record.id),
                 "grant_key": .string(record.grantKey),
                 "target": .string(optional: record.targetSessionID),
                 "status": .string(record.status.rawValue),
+                "scope": .string(optional: record.scope?.rawValue),
+                "may_retry_action": .bool(record.status == .granted),
             ]), target_session_id: target)
 
         case "doctor":

@@ -437,6 +437,11 @@ enum AgentSessionStatus: String, Codable {
     /// working — Claude Code's Task/Agent tool, run in the background. The
     /// session is not done, so it neither reads as Ready nor sends "Turn done".
     case waitingForSubagents
+    /// The agent's turn is over, but a command it started is still running
+    /// and the agent is waiting for it to report back (Claude Code's
+    /// background shells, a dev server it launched). Not done, not waiting on
+    /// the human — the session picks up on its own when the command ends.
+    case waitingForBackground
     case completed
     /// Stopped mid-flight with SIGSTOP: still in memory, using no CPU, and one
     /// signal away from carrying on exactly where it was.
@@ -455,6 +460,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForPermission: String(localized: "Waiting for permission")
         case .waitingForInput: String(localized: "Waiting for a reply")
         case .waitingForSubagents: String(localized: "Sub-agents working")
+        case .waitingForBackground: String(localized: "Background command running")
         case .completed: String(localized: "Done")
         case .suspended: String(localized: "Paused")
         case .hibernated: String(localized: "Asleep")
@@ -469,7 +475,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForInput: Theme.warn
         case .thinking: Color(hex: 0xB56CD6)
         case .running: Theme.ok
-        case .waitingForSubagents: Theme.info
+        case .waitingForSubagents, .waitingForBackground: Theme.info
         case .completed: Theme.highlight
         case .idle: Theme.textDim
         // Deliberately not the "closed" grey: a sleeping session is coming
@@ -488,7 +494,8 @@ enum AgentSessionStatus: String, Codable {
     var needsAttention: Bool {
         switch self {
         case .waitingForPermission, .waitingForInput: true
-        case .idle, .thinking, .running, .waitingForSubagents, .completed, .terminated, .unknown: false
+        case .idle, .thinking, .running, .waitingForSubagents, .waitingForBackground,
+             .completed, .terminated, .unknown: false
         // Asleep on purpose. Nothing to answer, so nothing to nag about.
         case .suspended, .hibernated: false
         }
@@ -500,7 +507,7 @@ enum AgentSessionStatus: String, Codable {
         case .waitingForPermission: 5
         case .waitingForInput: 4
         case .running: 3
-        case .thinking, .waitingForSubagents: 3
+        case .thinking, .waitingForSubagents, .waitingForBackground: 3
         case .completed: 2
         case .idle: 1
         case .suspended, .hibernated: 0
@@ -517,7 +524,7 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .unknown, .terminated: false
         case .idle, .thinking, .running, .waitingForPermission, .waitingForInput,
-             .waitingForSubagents, .completed, .suspended, .hibernated: true
+             .waitingForSubagents, .waitingForBackground, .completed, .suspended, .hibernated: true
         }
     }
 
@@ -553,7 +560,7 @@ enum AgentSessionStatus: String, Codable {
         switch self {
         case .terminated, .suspended, .hibernated: return false
         case .unknown, .idle, .thinking, .running, .waitingForPermission,
-             .waitingForInput, .waitingForSubagents, .completed: return true
+             .waitingForInput, .waitingForSubagents, .waitingForBackground, .completed: return true
         }
     }
 }
@@ -831,4 +838,7 @@ struct ProjectFolder: Identifiable, Codable, Equatable {
     var iconName: String?
     var colorHex: UInt32?
     var sortIndex: Double
+    /// The folder this one sits in; nil at the top of the sidebar. Optional,
+    /// so folder files written before nesting existed decode as top-level.
+    var parentID: UUID? = nil
 }

@@ -355,7 +355,9 @@ private struct RunConfigurationRow: View {
             }
             .popover(isPresented: $showHistory, arrowEdge: .bottom) {
                 RunHistoryList(project: project, configID: config.id)
+                    .sweepScrollers()
             }
+            .dismissWithTransientPopups($showHistory)
             plainIconButton(
                 "star", tint: config.isDefault ? Theme.warn : Theme.textDim,
                 id: "run.default.\(config.id)"
@@ -550,7 +552,9 @@ private struct RunConfigurationRow: View {
             }
             .popover(isPresented: $showHistory, arrowEdge: .bottom) {
                 RunHistoryList(project: project, configID: config.id)
+                    .sweepScrollers()
             }
+            .dismissWithTransientPopups($showHistory)
             plainIconButton(
                 "star", tint: config.isDefault ? Theme.warn : Theme.textDim,
                 id: "run.default.\(config.id)"

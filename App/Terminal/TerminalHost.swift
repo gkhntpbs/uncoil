@@ -220,6 +220,7 @@ final class TerminalRegistry {
         record: SessionRecord, settings: SettingsStore, sessionStore: SessionStore, projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilTerminalView(frame: .zero)
+        view.linkDirectory = projectStore.projects.first { $0.id == record.projectID }.map { record.workingDirectory(in: $0) }
         applyTheme(view)
         var session: any StructuredAgentSession = LaunchConfig.shared.chatFixture
             ? FixtureAgentSession(record: record, terminal: view, sessionStore: sessionStore)
@@ -276,6 +277,12 @@ final class TerminalRegistry {
         // agent starting inside a light Uncoil picks its light theme instead of
         // painting a dark one into it.
         env.append("COLORFGBG=\(ThemeStore.shared.palette.isLight ? "0;15" : "15;0")")
+        // CLIs decide whether to emit clickable (OSC 8) links from a list of
+        // terminals they know; Uncoil is not on it. SwiftTerm renders them, so
+        // say so — Claude Code then links the file paths it prints.
+        if settings.terminalLinks.advertiseHyperlinks {
+            env.append("FORCE_HYPERLINK=1")
+        }
         let processEnv = ProcessInfo.processInfo.environment
         for key in ["HOME", "USER", "LOGNAME", "SHELL", "PATH", "TMPDIR"] {
             if let value = processEnv[key] {
@@ -587,6 +594,7 @@ final class TerminalRegistry {
             )
         }
         let view = UncoilTerminalView(frame: .zero)
+        view.linkDirectory = record.workingDirectory(in: project)
         applyTheme(view)
         applyOptionAsMeta(view, settings: settings)
         let mode = record.launchSelection?.workingMode ?? settings.workingMode(for: .codex)
@@ -691,6 +699,7 @@ final class TerminalRegistry {
                 settings: settings, sessionStore: sessionStore, projectStore: projectStore)
         }
         let view = UncoilTerminalView(frame: .zero)
+        view.linkDirectory = record.workingDirectory(in: project)
         applyTheme(view)
         applyOptionAsMeta(view, settings: settings)
         let configDirectory = account?.configDirectory(profilesRoot: settings.profilesRootURL)
@@ -766,6 +775,7 @@ final class TerminalRegistry {
         projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilTerminalView(frame: .zero)
+        view.linkDirectory = record.workingDirectory(in: project)
         configureRuntimeTerminal(
             view,
             record: record,
@@ -854,6 +864,7 @@ final class TerminalRegistry {
         projectStore: ProjectStore
     ) -> TerminalView {
         let view = UncoilLocalTerminalView(frame: .zero)
+        view.linkDirectory = record.workingDirectory(in: project)
         applyTheme(view)
         applyOptionAsMeta(view, settings: settings)
         let provider = record.provider
@@ -1280,7 +1291,12 @@ final class RuntimeTerminalDelegate: TerminalViewDelegate {
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func scrolled(source: TerminalView, position: Double) {}
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
-        if let url = URL(string: link) { NSWorkspace.shared.open(url) }
+        // ⌘-click: files go to the chosen editor at the line, web links to
+        // the chosen browser — see `TerminalLinkOpener`.
+        MainActor.assumeIsolated {
+            let directory = (source as? TerminalLinkContext)?.linkDirectory
+            _ = TerminalLinkOpener.open(link, relativeTo: directory)
+        }
     }
     func clipboardCopy(source: TerminalView, content: Data) {
         if let text = String(data: content, encoding: .utf8) {

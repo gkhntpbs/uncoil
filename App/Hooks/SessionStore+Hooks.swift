@@ -74,6 +74,7 @@ extension SessionStore {
             setStatus(.idle, for: sessionID)
             clearNotificationDedup(sessionID)
         case .userPromptSubmit:
+            BackgroundCommandWatcher.shared.turnStarted(sessionID)
             subagents.mainResumed(in: sessionID)
             setStatus(.thinking, for: sessionID)
             // New turn started: allow the next attention/completion ping.
@@ -150,17 +151,61 @@ extension SessionStore {
                 setSubagentStatus(sessionID, tool: nil)
                 return
             }
-            // Turn finished — the agent now idles waiting for the human.
+            // Turn finished — the agent now idles waiting for the human,
+            // unless a command it started is still running. Then it is waiting
+            // for that, and "Turn done" waits with it.
             setStatus(.idle, for: sessionID)
-            notify(
-                .turnCompleted,
-                title: project.name,
-                body: String(localized: "Turn done · \(sessionTitle)"),
-                projectID: project.id,
-                sessionID: sessionID,
-                prefs: prefs
+            let projectName = project.name
+            let projectID = project.id
+            BackgroundCommandWatcher.shared.turnEnded(
+                sessionID,
+                isStill: { [weak self] waiting in
+                    guard let status = self?.status(of: sessionID) else { return false }
+                    // While deciding, anything that is not the agent working
+                    // again still counts as "the turn is over".
+                    return waiting
+                        ? status == .waitingForBackground
+                        : (status == .idle || status == .completed)
+                },
+                noCommand: { [weak self] in
+                    self?.notify(
+                        .turnCompleted,
+                        title: projectName,
+                        body: String(localized: "Turn done · \(sessionTitle)"),
+                        projectID: projectID,
+                        sessionID: sessionID,
+                        prefs: prefs
+                    )
+                },
+                waiting: { [weak self] command in
+                    self?.setStatus(
+                        .waitingForBackground,
+                        detail: String(localized: "Waiting on: \(command)"),
+                        for: sessionID
+                    )
+                    self?.notify(
+                        .backgroundWait,
+                        title: projectName,
+                        body: String(localized: "Waiting on a background command · \(sessionTitle)\n\(command)"),
+                        projectID: projectID,
+                        sessionID: sessionID,
+                        prefs: prefs
+                    )
+                },
+                finished: { [weak self] in
+                    self?.setStatus(.idle, for: sessionID)
+                    self?.notify(
+                        .turnCompleted,
+                        title: projectName,
+                        body: String(localized: "Background command finished · \(sessionTitle)"),
+                        projectID: projectID,
+                        sessionID: sessionID,
+                        prefs: prefs
+                    )
+                }
             )
         case .sessionEnd:
+            BackgroundCommandWatcher.shared.forget(sessionID)
             subagents.reset(sessionID)
             setStatus(.terminated, for: sessionID)
             endSession(sessionID)

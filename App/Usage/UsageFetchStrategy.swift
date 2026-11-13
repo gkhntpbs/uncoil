@@ -87,6 +87,13 @@ protocol UsageFetchStrategy {
 
     /// Bounded by the strategy's own timeout. Throws `UsageFetchError`.
     func fetch() async throws -> UsageSnapshot
+
+    /// Why `isAvailable` said no, for the usage log. Never a secret.
+    var unavailableReason: String? { get }
+}
+
+extension UsageFetchStrategy {
+    var unavailableReason: String? { nil }
 }
 
 // MARK: - Diagnostics
@@ -144,19 +151,24 @@ enum UsageFetchPipeline {
         for strategy in strategies {
             let started = clock()
 
+            let who = "\(provider.rawValue)[\(accountID?.uuidString.prefix(8) ?? "default")] \(strategy.source.rawValue)"
             guard strategy.isAvailable() else {
+                let reason = strategy.unavailableReason
+                AppLog.log(.usage, "\(who): skipped — \(reason ?? "not available")")
                 attempts.append(UsageAttempt(
                     source: strategy.source,
                     skipped: true,
                     succeeded: false,
-                    error: UsageFetchError(.notApplicable),
+                    error: UsageFetchError(.notApplicable, detail: reason),
                     duration: 0
                 ))
                 continue
             }
+            AppLog.log(.usage, "\(who): trying")
 
             do {
                 let snapshot = try await strategy.fetch()
+                AppLog.log(.usage, "\(who): ok in \(String(format: "%.1f", clock().timeIntervalSince(started)))s — \(snapshot.allWindows.count) window(s)\(snapshot.unavailable.map { ", unavailable: \($0.rawValue)" } ?? "")")
                 attempts.append(UsageAttempt(
                     source: strategy.source,
                     skipped: false,
@@ -167,7 +179,8 @@ enum UsageFetchPipeline {
                 return UsageFetchOutcome(snapshot: snapshot, attempts: attempts)
             } catch {
                 let fetchError = (error as? UsageFetchError)
-                    ?? UsageFetchError(.transport, detail: nil)
+                    ?? UsageFetchError(.transport, detail: String(describing: error))
+                AppLog.log(.usage, "\(who): failed in \(String(format: "%.1f", clock().timeIntervalSince(started)))s — \(fetchError.summary)")
                 attempts.append(UsageAttempt(
                     source: strategy.source,
                     skipped: false,

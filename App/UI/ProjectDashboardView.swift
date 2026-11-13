@@ -25,7 +25,6 @@ struct ProjectDashboardView: View {
     private var prMessage: String? { page.prMessage }
     /// True only before a project has ever been loaded — the one moment there
     /// is nothing to draw and a skeleton belongs.
-    private var isFirstLoad: Bool { !page.hasLoaded }
 
     /// Which areas this project actually has. Every area used to be offered
     /// on every project, which showed four tabs leading to empty pages — and
@@ -177,6 +176,14 @@ struct ProjectDashboardView: View {
         .help(candidate.title)
     }
 
+    /// Two columns once there is room: the work on the left (sessions, then
+    /// what changed), the project's furniture on the right (setup, worktrees,
+    /// pull requests, hosts). The old single stack of full-width cards put the
+    /// one thing people come here for — their sessions — between a setup offer
+    /// and a worktree form, and made a short project page scroll.
+    private var isWide: Bool { headerWidth >= 900 }
+    private var sideColumnWidth: CGFloat { min(400, max(300, headerWidth * 0.36)) }
+
     private var overviewContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Only where the absence is the whole point: a project with a task
@@ -194,37 +201,110 @@ struct ProjectDashboardView: View {
                     }
                 )
             }
-            // What this project could turn on. Only here, because the tabs
-            // deliberately show nothing for an area with nothing in it, and
-            // without this there would be no way to find the feature at all.
-            ProjectAreaOffers(project: project, capabilities: capabilities) {
-                pages.invalidate(project.id)
-                Task { await pages.refresh(project: project) }
-            }
-            sessionsPanel
-            if !projectStore.sessionHistory(for: project.id).isEmpty {
-                historyPanel
-            }
-            if git.isRepo {
-                worktreesPanel
-            }
-            if !project.isScratchWorkspace {
-                ProjectRemoteHostsPanel(project: project, selection: $selection)
-            }
-            HStack(alignment: .top, spacing: 14) {
-                VStack(spacing: 14) {
-                    gitPanel
-                    if git.isRepo {
-                        pullRequestsPanel
+            summaryStrip
+            if isWide {
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        sessionsPanel
+                        gitPanel
+                        filesPanel
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                filesPanel
                     .frame(maxWidth: .infinity, alignment: .topLeading)
+                    VStack(alignment: .leading, spacing: 14) {
+                        sideColumn
+                    }
+                    .frame(width: sideColumnWidth, alignment: .topLeading)
+                }
+            } else {
+                sessionsPanel
+                sideColumn
+                gitPanel
+                filesPanel
             }
         }
     }
 
+    @ViewBuilder
+    private var sideColumn: some View {
+        // What this project could turn on. Only here, because the tabs
+        // deliberately show nothing for an area with nothing in it, and
+        // without this there would be no way to find the feature at all.
+        ProjectAreaOffers(project: project, capabilities: capabilities) {
+            pages.invalidate(project.id)
+            Task { await pages.refresh(project: project) }
+        }
+        if git.isRepo {
+            worktreesPanel
+            pullRequestsPanel
+        }
+        if !project.isScratchWorkspace {
+            ProjectRemoteHostsPanel(project: project, selection: $selection)
+        }
+    }
+
+    // MARK: - Summary
+
+    /// The page at a glance: one tile per thing that can need attention, each
+    /// readable without opening anything, and each a way into its area.
+    private var summaryStrip: some View {
+        let live = projectStore.activeSessions(for: project.id)
+        let waiting = live.filter { sessionStore.status(of: $0.id).needsAttention }.count
+        let working = live.filter { sessionStore.status(of: $0.id).isWorking }.count
+        let runningRuns = runs.states.filter {
+            $0.key.projectID == project.id && ($0.value.status == .running || $0.value.status == .starting)
+        }.count
+        return LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 150, maximum: 400), spacing: 10)],
+            alignment: .leading,
+            spacing: 10
+        ) {
+            SummaryTile(
+                icon: "terminal-2",
+                title: String(localized: "Sessions"),
+                value: live.isEmpty ? String(localized: "None") : "\(live.count)",
+                detail: waiting > 0
+                    ? String(localized: "\(waiting) waiting for you")
+                    : (working > 0 ? String(localized: "\(working) working") : String(localized: "All quiet")),
+                tint: waiting > 0 ? Theme.warn : (working > 0 ? Theme.ok : Theme.textDim)
+            )
+            SummaryTile(
+                icon: "git-commit",
+                title: String(localized: "Changes"),
+                value: !page.gitLoaded ? "…" : (!git.isRepo ? "—" : (git.changedFiles.isEmpty ? String(localized: "Clean") : "\(git.changedFiles.count)")),
+                detail: !page.gitLoaded ? String(localized: "Reading git…")
+                    : (!git.isRepo ? String(localized: "Not a git repository") : (git.branch.map { String(localized: "on \($0)") } ?? "")),
+                tint: git.changedFiles.isEmpty ? Theme.ok : Theme.warn
+            )
+            if git.isRepo {
+                SummaryTile(
+                    icon: "git-branch",
+                    title: String(localized: "Worktrees"),
+                    value: "\(max(0, worktrees.count - 1))",
+                    detail: worktrees.count > 1 ? String(localized: "beside the main copy") : String(localized: "Only the main copy"),
+                    tint: Theme.textDim
+                )
+                SummaryTile(
+                    icon: "git-pull-request",
+                    title: String(localized: "Pull Requests"),
+                    value: page.pullRequestsLoaded ? "\(pullRequests.count)" : "…",
+                    detail: page.pullRequestsLoaded ? (pullRequests.isEmpty ? String(localized: "None open") : String(localized: "open")) : String(localized: "Asking GitHub…"),
+                    tint: pullRequests.isEmpty ? Theme.textDim : Theme.info
+                )
+            }
+            if availableAreas.contains(.run) || runningRuns > 0 {
+                SummaryTile(
+                    icon: "player-play",
+                    title: String(localized: "Run"),
+                    value: runningRuns > 0 ? "\(runningRuns)" : String(localized: "Stopped"),
+                    detail: runningRuns > 0 ? String(localized: "running now") : String(localized: "Nothing running"),
+                    tint: runningRuns > 0 ? Theme.ok : Theme.textDim,
+                    action: availableAreas.contains(.run) ? { area = .run } : nil
+                )
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard.summary")
+    }
 
     // MARK: - Pull requests
 
@@ -232,7 +312,7 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             PanelHeading(title: String(localized: "Pull Requests"), count: pullRequests.count)
 
-            if isFirstLoad || (prMessage == nil && pullRequests.isEmpty) {
+            if !page.pullRequestsLoaded && pullRequests.isEmpty {
                 // Pull requests come off the network, so this panel is the last
                 // to fill in — and the one where a placeholder is worth most.
                 SkeletonListRows(count: 2)
@@ -418,30 +498,40 @@ struct ProjectDashboardView: View {
 
     // MARK: - Sessions
 
+    @State private var showsClosedSessions = false
+    @State private var closedLimit = 8
+
     private var sessionsPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let records = projectStore.activeSessions(for: project.id)
+        let closed = projectStore.sessionHistory(for: project.id)
+        return VStack(alignment: .leading, spacing: 0) {
             HStack {
-                PanelHeading(
-                    title: String(localized: "Sessions"),
-                    count: projectStore.activeSessions(for: project.id).count
-                )
+                PanelHeading(title: String(localized: "Sessions"), count: records.count)
                 Spacer()
-                PanelAction(
-                    iconName: "sparkles",
-                    title: String(localized: "Organise"),
-                    help: String(localized: "Group this project's sessions by what they are working on."),
-                    action: onOrganizeSessions
-                )
-                .accessibilityIdentifier("dashboard.sessions.organize")
-                .padding(.trailing, 10)
+                if !records.isEmpty {
+                    PanelAction(
+                        iconName: "sparkles",
+                        title: String(localized: "Organise"),
+                        help: String(localized: "Group this project's sessions by what they are working on."),
+                        action: onOrganizeSessions
+                    )
+                    .accessibilityIdentifier("dashboard.sessions.organize")
+                    .padding(.trailing, 10)
+                }
             }
 
-            let records = projectStore.activeSessions(for: project.id)
             if records.isEmpty {
-                Text("No sessions yet — start an agent from the top right.")
-                    .font(Theme.ui(.body))
-                    .foregroundStyle(Theme.textFaint)
-                    .padding(14)
+                DashboardEmptyState(
+                    icon: "terminal-2",
+                    title: closed.isEmpty
+                        ? String(localized: "No sessions in this project yet")
+                        : String(localized: "No live sessions"),
+                    detail: String(localized: "Start an agent here; it runs in this project's folder and shows up in the sidebar.")
+                ) {
+                    AgentLauncherStrip(project: project, selection: $selection, chrome: .card)
+                }
+                .padding(.horizontal, 6)
+                .padding(.bottom, 6)
             } else {
                 LazyVStack(spacing: 1) {
                     ForEach(records) { record in
@@ -452,26 +542,55 @@ struct ProjectDashboardView: View {
                 }
                 .padding(6)
             }
-        }
-        .panel()
-    }
 
-    private var historyPanel: some View {
-        let records = projectStore.sessionHistory(for: project.id)
-        return VStack(alignment: .leading, spacing: 0) {
-            PanelHeading(title: String(localized: "Closed Sessions"), count: records.count)
-            LazyVStack(spacing: 1) {
-                ForEach(records) { record in
-                    SessionCard(record: record) {
-                        selection = .session(record.id)
+            // Closed sessions fold into the same card: they are history, and a
+            // second full-height panel of them pushed everything else down.
+            if !closed.isEmpty {
+                Divider().overlay(Theme.border)
+                Button {
+                    withAnimation(Theme.Motion.quick) { showsClosedSessions.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        TablerIcon(name: showsClosedSessions ? "chevron-down" : "chevron-right", size: 11, color: Theme.textFaint)
+                        Text("Closed sessions")
+                            .font(Theme.mono(.small, .medium))
+                            .foregroundStyle(Theme.textDim)
+                        Text("\(closed.count)")
+                            .font(Theme.mono(.micro))
+                            .foregroundStyle(Theme.textFaint)
+                        Spacer()
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("dashboard.sessionHistory.toggle")
+                if showsClosedSessions {
+                    LazyVStack(spacing: 1) {
+                        ForEach(closed.prefix(closedLimit)) { record in
+                            SessionCard(record: record) {
+                                selection = .session(record.id)
+                            }
+                        }
+                        if closed.count > closedLimit {
+                            Button(String(localized: "Show \(min(20, closed.count - closedLimit)) more")) {
+                                closedLimit += 20
+                            }
+                            .buttonStyle(.plain)
+                            .font(Theme.mono(.small))
+                            .foregroundStyle(Theme.highlight)
+                            .padding(8)
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 6)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("dashboard.sessionHistory")
                 }
             }
-            .padding(6)
         }
         .panel()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("dashboard.sessionHistory")
     }
 
     // MARK: - Git
@@ -507,7 +626,7 @@ struct ProjectDashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             PanelHeading(title: "Git", count: git.changedFiles.count)
 
-            if isFirstLoad {
+            if !page.gitLoaded {
                 // Nothing is known about this project yet — not even whether it
                 // is a repo — so the panel says "a list is coming" rather than
                 // asserting the wrong empty state for a second.
@@ -773,6 +892,7 @@ private struct SessionCard: View {
                         .font(Theme.mono(.small))
                         .foregroundStyle(status.color)
                 }
+                .statusLegend(status, detail: sessionStore.detail(of: record.id))
                 Text(RelativeClock.short(since: record.lastActivityAt))
                     .font(Theme.mono(.small))
                     .foregroundStyle(Theme.textFaint)
@@ -869,5 +989,100 @@ private struct WorktreeRow: View {
         .onHover { value in
             withAnimation(Theme.Motion.quick) { hovering = value }
         }
+    }
+}
+
+/// One figure on the project page's summary strip.
+private struct SummaryTile: View {
+    let icon: String
+    let title: String
+    let value: String
+    let detail: String
+    var tint: Color = Theme.textDim
+    var action: (() -> Void)?
+    @State private var hovering = false
+
+    var body: some View {
+        let content = VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                TablerIcon(name: icon, size: 12, color: Theme.textFaint)
+                Text(title)
+                    .font(Theme.mono(.small, .semibold))
+                    .foregroundStyle(Theme.textDim)
+                    .textCase(.uppercase)
+                    .kerning(0.5)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if action != nil {
+                    TablerIcon(name: "chevron-right", size: 10, color: hovering ? Theme.text : Theme.textFaint)
+                }
+            }
+            Text(value)
+                .font(Theme.mono(.large, .bold))
+                .foregroundStyle(tint == Theme.textDim ? Theme.text : tint)
+                .lineLimit(1)
+            Text(detail)
+                .font(Theme.mono(.small))
+                .foregroundStyle(Theme.textFaint)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(hovering && action != nil ? Theme.panelHover : Theme.panel,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                .strokeBorder(Theme.border, lineWidth: 1)
+        )
+        .onHover { hovering = $0 }
+
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("dashboard.summary.\(icon)")
+        } else {
+            content
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("dashboard.summary.\(icon)")
+        }
+    }
+}
+
+/// An empty panel that says what would be here and how to get it there,
+/// instead of one grey sentence.
+struct DashboardEmptyState<Actions: View>: View {
+    let icon: String
+    let title: String
+    let detail: String
+    @ViewBuilder var actions: () -> Actions
+
+    var body: some View {
+        VStack(spacing: 10) {
+            TablerIcon(name: icon, size: 22, color: Theme.textFaint)
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(Theme.mono(.body, .semibold))
+                    .foregroundStyle(Theme.text)
+                Text(detail)
+                    .font(Theme.mono(.small))
+                    .foregroundStyle(Theme.textDim)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 420)
+            }
+            actions()
+        }
+        .padding(.vertical, 22)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
+        .background(Theme.bg.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.Radius.panel))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.panel)
+                .strokeBorder(Theme.border, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard.emptyState")
     }
 }

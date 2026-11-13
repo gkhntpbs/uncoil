@@ -125,44 +125,52 @@ final class PermissionService: ObservableObject {
 
     // MARK: - Mutations
 
-    /// Creates (or returns the existing) request for this (from, target, key).
-    /// A matching granted/pending record is reused so repeated asks don't pile
-    /// up; a previously denied record is reopened as pending.
     @discardableResult
-    func request(grantKey: String, from: String, target: String?) -> PermissionRequest {
+    func request(grantKey: String, from: String, target: String?, notify: Bool = true) -> PermissionRequest {
         pruneExpired()
-        if let index = requests.firstIndex(where: {
-            $0.matches(from: from, to: target, key: grantKey) && $0.status != .denied
-        }) {
-            return requests[index]
-        }
-        // Reopen a denied one in place, else append.
-        if let index = requests.firstIndex(where: {
+        if let existing = requests.first(where: {
             $0.matches(from: from, to: target, key: grantKey)
+                && ($0.status == .pending || $0.status == .granted || $0.status == .denied)
         }) {
-            requests[index].status = .pending
-            requests[index].decidedAt = nil
-            save()
-            return requests[index]
+            return existing
         }
         let record = PermissionRequest(
             id: UUID().uuidString, grantKey: grantKey, fromSessionID: from,
             targetSessionID: target, status: .pending, createdAt: Date(), decidedAt: nil)
         requests.append(record)
         save()
-        onRequestCreated?(record)
+        if notify { onRequestCreated?(record) }
         return record
     }
 
     /// Approves a request. `.once` authorizes a single call; `.persistent`
     /// lasts until revoked.
     func grant(id: String, scope: PermissionRequest.Scope = .persistent) {
-        guard let index = requests.firstIndex(where: { $0.id == id }) else { return }
+        pruneExpired()
+        guard let index = requests.firstIndex(where: { $0.id == id && $0.status == .pending }) else { return }
         requests[index].scope = scope
         setStatus(.granted, id: id)
     }
 
-    func deny(id: String) { setStatus(.denied, id: id) }
+    func deny(id: String) {
+        guard requests.contains(where: { $0.id == id && $0.status == .pending }) else { return }
+        setStatus(.denied, id: id)
+    }
+
+    func waitForDecision(id: String, timeout: TimeInterval) async -> PermissionRequest? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !Task.isCancelled {
+            pruneExpired()
+            guard let record = requests.first(where: { $0.id == id }) else { return nil }
+            if record.status != .pending || Date() >= deadline { return record }
+            do {
+                try await Task.sleep(nanoseconds: 100_000_000)
+            } catch {
+                return nil
+            }
+        }
+        return nil
+    }
 
     /// Proactively creates a GRANTED directional record without an agent asking
     /// first (Settings → İzinler → "İzin Ekle"). Produces the exact record shape
@@ -171,7 +179,7 @@ final class PermissionService: ObservableObject {
     /// request. Reuses/reopens a matching record rather than piling up.
     @discardableResult
     func addGrant(grantKey: String, from: String, target: String?) -> PermissionRequest {
-        let record = request(grantKey: grantKey, from: from, target: target)
+        let record = request(grantKey: grantKey, from: from, target: target, notify: false)
         setStatus(.granted, id: record.id)
         return requests.first { $0.id == record.id } ?? record
     }
@@ -193,6 +201,7 @@ final class PermissionService: ObservableObject {
             status: .pending, createdAt: Date(), decidedAt: nil)
         requests.append(record)
         save()
+        onRequestCreated?(record)
         return record
     }
 

@@ -35,7 +35,13 @@ struct CommandPaletteOverlay: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .transition(.opacity)
-        .onAppear { focusSearchField() }
+        .onAppear {
+            // Nothing transient stays up behind the palette, and hover help
+            // cannot open over it.
+            TransientPopups.shared.overlayDidAppear()
+            focusSearchField()
+        }
+        .onDisappear { TransientPopups.shared.overlayDidDisappear() }
     }
 
     /// Moves keyboard focus into the search field on open. The overlay mounts
@@ -60,6 +66,8 @@ struct CommandPaletteOverlay: View {
             if model.askPrompt != nil { askBanner }
             Divider().overlay(Theme.border)
             results
+            Divider().overlay(Theme.border)
+            footer
         }
         .background(Theme.bg)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sheet))
@@ -116,6 +124,7 @@ struct CommandPaletteOverlay: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 1) {
+                    Color.clear.frame(height: 0).id(Self.topAnchor)
                     if model.flatItems.isEmpty {
                         Text("No result")
                             .font(Theme.mono(.body))
@@ -154,9 +163,7 @@ struct CommandPaletteOverlay: View {
                                        abs(location.x - last.x) < 1.5,
                                        abs(location.y - last.y) < 1.5 { return }
                                     lastHoverLocation = location
-                                    if model.selectedIndex != index {
-                                        model.selectedIndex = index
-                                    }
+                                    model.hoverSelect(index)
                                 }
                         }
                     }
@@ -164,13 +171,59 @@ struct CommandPaletteOverlay: View {
                 .padding(.bottom, 8)
                 .uncoilScrollers()
             }
-            .frame(maxHeight: 380)
-            .onChange(of: model.selectedIndex) { _, _ in
-                guard let id = model.selectedItem?.id else { return }
+            .frame(maxHeight: 400)
+            .onChange(of: model.selectedIndex) { _, newIndex in
+                // Only the keyboard scrolls. A hover-driven scroll slides the
+                // next row under a resting pointer, which then claims the
+                // selection and scrolls again.
+                guard model.selectionFromKeyboard,
+                      let id = model.selectedItem?.id else { return }
+                // The first row brings its group header back into view.
+                if newIndex == 0 {
+                    proxy.scrollTo(Self.topAnchor, anchor: .top)
+                    return
+                }
+                // Minimal scroll: a visible row stays put, an off-screen one is
+                // brought just inside the edge it left from.
                 withAnimation(Theme.Motion.quick) {
-                    proxy.scrollTo(id, anchor: .center)
+                    proxy.scrollTo(id)
                 }
             }
+        }
+    }
+
+    private static let topAnchor = "palette.top"
+
+    /// The palette's grammar, always in view: the prefixes are the fastest way
+    /// to the right list and were only discoverable by accident before.
+    private var footer: some View {
+        HStack(spacing: 14) {
+            hint("↑↓", String(localized: "Navigate"))
+            hint("↵", String(localized: "Open"))
+            hint("esc", String(localized: "Close"))
+            Spacer(minLength: 8)
+            hint(">", String(localized: "Commands"))
+            hint("?", String(localized: "Ask"))
+            hint("+", String(localized: "Task"))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Theme.panel)
+        .accessibilityIdentifier("palette.footer")
+    }
+
+    private func hint(_ key: String, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Text(key)
+                .font(Theme.mono(.micro, .semibold))
+                .foregroundStyle(Theme.textDim)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Theme.border, lineWidth: 1))
+            Text(label)
+                .font(Theme.mono(.micro))
+                .foregroundStyle(Theme.textFaint)
         }
     }
 

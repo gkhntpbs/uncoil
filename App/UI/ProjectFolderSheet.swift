@@ -44,6 +44,8 @@ struct ProjectFolderSheet: View {
 struct ProjectFolderRow: View {
     let folderID: UUID
     let isFirst: Bool
+    /// How many folders this one sits inside.
+    var depth: Int = 0
     @EnvironmentObject private var store: ProjectStore
     @ObservedObject private var collapsed = CollapsedProjects.shared
     @State private var hovering = false
@@ -64,29 +66,21 @@ struct ProjectFolderRow: View {
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                     .infoHelp(folder.name)
-                Spacer(minLength: 28)
+                Spacer(minLength: 4)
+                SidebarRunIndicator(projectIDs: store.projectIDs(inFolder: folderID))
+                Spacer().frame(width: 24)
             }
-            .padding(.leading, SidebarIndent.leading(depth: 0))
+            .padding(.leading, SidebarIndent.leading(depth: 0) + CGFloat(depth) * 12)
             .padding(.trailing, 10)
             .padding(.vertical, 6)
             .overlay(alignment: .trailing) {
-                Button {
-                    collapsed.set(folderID, collapsed: !collapsed.contains(folderID))
-                } label: {
-                    TablerIcon(name: "chevron-down", size: 12,
-                               color: hovering ? Theme.text : Theme.textDim)
-                        .rotationEffect(.degrees(collapsed.contains(folderID) ? 0 : 180))
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.pressable)
-                .infoHelp(collapsed.contains(folderID)
-                          ? String(localized: "Show projects")
-                          : String(localized: "Hide projects"))
-                .accessibilityIdentifier("sidebar.folder.toggle.\(folderID.uuidString)")
-                .accessibilityValue(collapsed.contains(folderID) ? "collapsed" : "expanded")
-                .animation(Theme.Motion.quick, value: collapsed.contains(folderID))
-                .padding(.trailing, 4)
+                TablerIcon(name: "chevron-down", size: 12,
+                           color: hovering ? Theme.text : Theme.textDim)
+                    .rotationEffect(.degrees(collapsed.contains(folderID) ? 0 : 180))
+                    .frame(width: 20, height: 20)
+                    .animation(Theme.Motion.quick, value: collapsed.contains(folderID))
+                    .padding(.trailing, 4)
+                    .accessibilityHidden(true)
             }
             .background(hovering ? Theme.panelHover : .clear,
                         in: RoundedRectangle(cornerRadius: Theme.Radius.chip))
@@ -96,6 +90,80 @@ struct ProjectFolderRow: View {
             .onHover { hovering = $0 }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("sidebar.folder.\(folder.name)")
+            .accessibilityValue(collapsed.contains(folderID) ? "collapsed" : "expanded")
+
         }
+    }
+}
+
+/// A small "something is running here" mark for sidebar rows: a project's own
+/// dev servers, or — on a folder — those of every project inside it, however
+/// deep. A run is otherwise only visible on the project's Run tab, so a server
+/// left up in a folded folder was easy to forget.
+struct SidebarRunIndicator: View {
+    let projectIDs: [UUID]
+    @ObservedObject private var runs = RunRegistry.shared
+
+    private struct Summary {
+        var running = 0
+        var starting = 0
+        var failed = 0
+        var names: [String] = []
+        var isEmpty: Bool { running + starting + failed == 0 }
+    }
+
+    private var summary: Summary {
+        let ids = Set(projectIDs)
+        var summary = Summary()
+        for (key, state) in runs.states where ids.contains(key.projectID) {
+            switch state.status {
+            case .running:
+                summary.running += 1
+                summary.names.append(key.configID)
+            case .starting:
+                summary.starting += 1
+                summary.names.append(key.configID)
+            case .failed:
+                summary.failed += 1
+            case .idle, .exited:
+                break
+            }
+        }
+        return summary
+    }
+
+    var body: some View {
+        let summary = summary
+        if !summary.isEmpty {
+            let color = summary.failed > 0 && summary.running + summary.starting == 0
+                ? Theme.danger
+                : (summary.starting > 0 && summary.running == 0 ? Theme.warn : Theme.ok)
+            let active = summary.running + summary.starting
+            HStack(spacing: 3) {
+                TablerIcon(name: summary.failed > 0 && active == 0 ? "alert-triangle" : "player-play",
+                           size: 9, color: color)
+                if active > 1 {
+                    Text("\(active)")
+                        .font(Theme.mono(.micro, .medium))
+                        .foregroundStyle(color)
+                }
+            }
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.14), in: Capsule())
+            .help(help(summary))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(help(summary))
+            .accessibilityIdentifier("sidebar.runIndicator")
+        }
+    }
+
+    private func help(_ summary: Summary) -> String {
+        var parts: [String] = []
+        if summary.running > 0 { parts.append(String(localized: "\(summary.running) running")) }
+        if summary.starting > 0 { parts.append(String(localized: "\(summary.starting) starting")) }
+        if summary.failed > 0 { parts.append(String(localized: "\(summary.failed) failed")) }
+        let names = summary.names.sorted().joined(separator: ", ")
+        return parts.joined(separator: " · ") + (names.isEmpty ? "" : " — \(names)")
     }
 }

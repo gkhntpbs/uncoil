@@ -24,6 +24,75 @@ final class SmokeTests: XCTestCase {
         app.terminate()
     }
 
+    func testTitlebarDoubleClickMaximizesAndRestores() {
+        let window = app.windows["Uncoil"]
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        let original = window.frame
+        let titlebar = app.descendants(matching: .any)["window.titlebar"].firstMatch
+        XCTAssertTrue(titlebar.waitForExistence(timeout: 5))
+        titlebar.doubleClick()
+        let enlarged = NSPredicate { _, _ in window.frame.width > original.width + 10 }
+        expectation(for: enlarged, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        titlebar.doubleClick()
+        let restored = NSPredicate { _, _ in abs(window.frame.width - original.width) < 1
+            && abs(window.frame.height - original.height) < 1 }
+        expectation(for: restored, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+    }
+
+    func testProjectFolderEntireRowTogglesChildren() {
+        app.terminate()
+        app.launchArguments += ["-project-folder-fixture"]
+        app.launch()
+        let folder = app.descendants(matching: .any)["sidebar.folder.Demo Folder"].firstMatch
+        let project = app.descendants(matching: .any)["sidebar.project.demo-project"].firstMatch
+        XCTAssertTrue(folder.waitForExistence(timeout: 10))
+        XCTAssertTrue(project.exists)
+        folder.click()
+        XCTAssertTrue(project.waitForNonExistence(timeout: 5))
+        folder.click()
+        XCTAssertTrue(project.waitForExistence(timeout: 5))
+    }
+
+    func testPermissionPopupKeepsItsSizeWithLongNames() {
+        app.terminate()
+        app.launchArguments += ["-control-plane", "-permission-fixture"]
+        app.launch()
+        let deny = app.buttons["permission.deny"]
+        XCTAssertTrue(deny.waitForExistence(timeout: 10))
+        let popup = app.descendants(matching: .any).matching(identifier: "permission.approvalWindow").firstMatch
+        let size = popup.frame.size
+        XCTAssertEqual(size.width, 520, accuracy: 1)
+        XCTAssertEqual(size.height, 420, accuracy: 1)
+        deny.click()
+        app.terminate()
+        app.launchArguments += ["-permission-long-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
+        app.launch()
+        XCTAssertTrue(deny.waitForExistence(timeout: 10))
+        XCTAssertEqual(popup.frame.width, size.width, accuracy: 1)
+        XCTAssertEqual(popup.frame.height, size.height, accuracy: 1)
+        XCTAssertTrue(app.buttons["permission.allowOnce"].isHittable)
+        XCTAssertTrue(app.buttons["permission.allowPersistent"].isHittable)
+        let capture = XCTAttachment(screenshot: popup.screenshot())
+        capture.name = "Permission-Turkish-long-name"
+        capture.lifetime = .keepAlways
+        add(capture)
+        deny.click()
+    }
+
+    func testPermissionPopupDenialDismissesRequest() {
+        app.terminate()
+        app.launchArguments += ["-control-plane", "-permission-fixture"]
+        app.launch()
+        let deny = app.buttons["permission.deny"]
+        XCTAssertTrue(deny.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["permission.allowOnce"].exists)
+        XCTAssertTrue(app.buttons["permission.allowPersistent"].exists)
+        deny.click()
+        XCTAssertTrue(deny.waitForNonExistence(timeout: 5))
+    }
+
     func testSmokeFlow_dashboard_session_and_back() {
         // 1. Launch: fixture project visible in sidebar, dashboard auto-selected.
         let projectRow = app.descendants(matching: .any)["sidebar.project.demo-project"]

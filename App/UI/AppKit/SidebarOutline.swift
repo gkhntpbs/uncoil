@@ -332,7 +332,14 @@ struct SidebarOutline: NSViewRepresentable {
             result.folderOfProject = Dictionary(uniqueKeysWithValues: store.projects.compactMap { project in
                 project.folderID.flatMap { id in store.projectFolders.contains(where: { $0.id == id }) ? (project.id, id) : nil }
             })
-            result.rootItems = store.sidebarRoots(projectIDs: Set(result.projects.map(\.id)))
+            let visible = Set(result.projects.map(\.id))
+            result.rootItems = store.sidebarRoots(projectIDs: visible)
+            for folder in store.projectFolders {
+                result.folderChildren[folder.id] = store.sidebarChildren(of: folder.id, projectIDs: visible)
+                if let parent = store.effectiveParent(ofFolder: folder.id) {
+                    result.folderParent[folder.id] = parent
+                }
+            }
             return result
         }
 
@@ -369,16 +376,20 @@ struct SidebarOutline: NSViewRepresentable {
                     )
                 )
             }
-            let roots = structure.rootItems.isEmpty ? structure.projects.map { SidebarItem.project($0.id) } : structure.rootItems
-            return OutlineNode(id: "root", payload: .project(UUID()), isGroup: true, children: roots.compactMap { item in
+            var built: Set<UUID> = []
+            func node(for item: SidebarItem) -> OutlineNode<SidebarItem>? {
                 switch item {
                 case .project(let id): return structure.projects.first { $0.id == id }.map(projectNode)
                 case .folder(let id):
+                    // Guarded so a damaged parent chain can never recurse forever.
+                    guard built.insert(id).inserted else { return nil }
                     return OutlineNode(id: item.nodeID, payload: item, isGroup: true,
-                        children: structure.projects.filter { structure.folderOfProject[$0.id] == id }.map(projectNode))
+                        children: (structure.folderChildren[id] ?? []).compactMap(node(for:)))
                 default: return nil
                 }
-            })
+            }
+            let roots = structure.rootItems.isEmpty ? structure.projects.map { SidebarItem.project($0.id) } : structure.rootItems
+            return OutlineNode(id: "root", payload: .project(UUID()), isGroup: true, children: roots.compactMap(node(for:)))
         }
 
         /// The paging row closing a list, when there is anything to load or fold.
@@ -396,15 +407,23 @@ struct SidebarOutline: NSViewRepresentable {
             collapsedGroups: CollapsedGroups
         ) {
             guard let outlineView else { return }
-            for folder in root.children {
-                if case .folder(let id) = folder.payload {
-                    setExpanded(!collapsedProjects.contains(id), for: folder, in: outlineView)
+            // Folders nest, so the walk goes down through every level, parents
+            // before children.
+            var projectNodes: [OutlineNode<SidebarItem>] = []
+            func walk(_ nodes: [OutlineNode<SidebarItem>]) {
+                for node in nodes {
+                    switch node.payload {
+                    case .folder(let id):
+                        setExpanded(!collapsedProjects.contains(id), for: node, in: outlineView)
+                        walk(node.children)
+                    case .project:
+                        projectNodes.append(node)
+                    default:
+                        continue
+                    }
                 }
             }
-            let projectNodes = root.children.flatMap { node -> [OutlineNode<SidebarItem>] in
-                if case .folder = node.payload { return node.children }
-                return [node]
-            }
+            walk(root.children)
             for node in projectNodes {
                 guard case .project(let id) = node.payload else { continue }
                 // A folded project with a child still has one row to show: the
@@ -526,18 +545,24 @@ struct SidebarOutline: NSViewRepresentable {
         ) -> NSView? {
             let node = node(item)
             guard let content = content(for: node) else { return nil }
-            return dequeueHostingCell(
+            let cell = dequeueHostingCell(
                 from: outlineView,
                 identifier: .init(reuseIdentifier(for: node)),
                 owner: self,
                 content: content
             )
+            if case .folder = node.payload {
+                cell.routesMouseEventsToTable = true
+            } else {
+                cell.routesMouseEventsToTable = false
+            }
+            return cell
         }
 
         private func reuseIdentifier(for node: OutlineNode<SidebarItem>) -> String {
             switch node.payload {
             case .folder: return root.children.first?.id == node.id
-                ? "sidebar-folder-first" : "sidebar-folder"
+                ? "sidebar-folder-first" : "sidebar-folder-\(structure.depth(of: node.payload))"
             case .project: return root.children.first?.id == node.id
                 ? "sidebar-project-first" : "sidebar-project"
             case .group: return "sidebar-group"
@@ -555,7 +580,15 @@ struct SidebarOutline: NSViewRepresentable {
             guard let environment else { return nil }
             switch node.payload {
             case .folder(let id):
-                return AnyView(ProjectFolderRow(folderID: id, isFirst: root.children.first?.id == node.id).environmentObject(environment.projectStore))
+                return AnyView(
+                    ProjectFolderRow(
+                        folderID: id,
+                        isFirst: root.children.first?.id == node.id,
+                        depth: structure.folderLevel(id)
+                    )
+                    .environmentObject(environment.projectStore)
+                    .environmentObject(environment.sessionStore)
+                )
             case .project(let id):
                 return AnyView(
                     ProjectRowView(
@@ -567,7 +600,7 @@ struct SidebarOutline: NSViewRepresentable {
                     .environmentObject(environment.projectStore)
                     .environmentObject(environment.sessionStore)
                     .environmentObject(environment.settings)
-                    .padding(.leading, structure.folderOfProject[id] == nil ? 0 : 12)
+                    .padding(.leading, CGFloat(structure.projectLevel(id)) * 12)
                 )
             case .group(let id):
                 return AnyView(
@@ -725,9 +758,13 @@ struct SidebarOutline: NSViewRepresentable {
         /// — changes no selection at all, so nothing would ever be reported.
         func projectRowWasClicked(_ row: Int, wasSelectedBefore: Bool) {
             guard let outlineView,
-                  let node = outlineView.item(atRow: row) as? OutlineNode<SidebarItem>,
-                  case .project(let id) = node.payload
+                  let node = outlineView.item(atRow: row) as? OutlineNode<SidebarItem>
             else { return }
+            if case .folder(let id) = node.payload {
+                CollapsedProjects.shared.set(id, collapsed: !CollapsedProjects.shared.contains(id))
+                return
+            }
+            guard case .project(let id) = node.payload else { return }
             switch ProjectRowClick.outcome(
                 isFolded: CollapsedProjects.shared.contains(id),
                 wasAlreadySelected: wasSelectedBefore
@@ -894,7 +931,8 @@ struct SidebarOutline: NSViewRepresentable {
                 let destination: UUID?
                 switch container {
                 case .folder(let id):
-                    guard case .project = moving else { return nil }
+                    if case .folder(let movingID) = moving,
+                       environment?.projectStore.folder(id, isInside: movingID) == true { return nil }
                     destination = id
                 case nil: destination = nil
                 default: return nil
@@ -931,12 +969,32 @@ struct SidebarOutline: NSViewRepresentable {
             let menu = NSMenu()
             switch node.payload {
             case .folder(let id):
-                guard let folder = environment.projectStore.projectFolders.first(where: { $0.id == id }) else { return nil }
+                let store = environment.projectStore
+                guard let folder = store.projectFolders.first(where: { $0.id == id }) else { return nil }
                 add(to: menu, title: String(localized: "Customize Project Folder…")) {
                     environment.actions.editProjectFolder(folder)
                 }
+                add(to: menu, title: String(localized: "New Folder Inside…")) {
+                    environment.actions.createSubfolder(id)
+                }
+                menu.addItem(.separator())
+                if store.effectiveParent(ofFolder: id) != nil {
+                    add(to: menu, title: String(localized: "Move to Top Level")) {
+                        store.moveSidebarItem(.folder(id), into: nil, at: -1, siblings: [])
+                    }
+                }
+                let targets = store.projectFolders.filter {
+                    $0.id != store.effectiveParent(ofFolder: id) && !store.folder($0.id, isInside: id)
+                }
+                for target in targets.sorted(by: { store.folderPath($0.id) < store.folderPath($1.id) }) {
+                    add(to: menu, title: String(localized: "Move into \(store.folderPath(target.id))")) {
+                        store.moveSidebarItem(.folder(id), into: target.id, at: -1, siblings: [])
+                        CollapsedProjects.shared.set(target.id, collapsed: false)
+                    }
+                }
+                menu.addItem(.separator())
                 add(to: menu, title: String(localized: "Remove Project Folder")) {
-                    environment.projectStore.removeProjectFolder(id)
+                    store.removeProjectFolder(id)
                 }
             case .project(let id):
                 guard let project = environment.projectStore.projects.first(where: { $0.id == id })
@@ -987,9 +1045,13 @@ struct SidebarOutline: NSViewRepresentable {
                         environment.projectStore.moveSidebarItem(.project(id), into: nil, at: -1, siblings: [])
                     }
                 }
-                for folder in environment.projectStore.projectFolders {
-                    add(to: menu, title: String(localized: "Move to \(folder.name)")) {
-                        environment.projectStore.moveSidebarItem(.project(id), into: folder.id, at: -1, siblings: [])
+                let store = environment.projectStore
+                for folder in store.projectFolders
+                    .filter({ $0.id != project.folderID })
+                    .sorted(by: { store.folderPath($0.id) < store.folderPath($1.id) }) {
+                    add(to: menu, title: String(localized: "Move to \(store.folderPath(folder.id))")) {
+                        store.moveSidebarItem(.project(id), into: folder.id, at: -1, siblings: [])
+                        CollapsedProjects.shared.set(folder.id, collapsed: false)
                     }
                 }
                 add(to: menu, title: String(localized: "Import Sessions…")) {
@@ -1034,6 +1096,13 @@ struct SidebarOutline: NSViewRepresentable {
                     environment.selection.wrappedValue = .project(group.projectID)
                 }
             case .session(let id):
+                // Right-clicking inside a selection of several acts on all of
+                // them: one Pause, not one per row.
+                let batch = environment.selectedSessionIDs.wrappedValue
+                if batch.count > 1, batch.contains(id) {
+                    addBatchItems(to: menu, ids: batch, environment: environment)
+                    return menu
+                }
                 guard let record = environment.projectStore.sessions.first(where: { $0.id == id })
                 else { return nil }
                 add(
@@ -1139,6 +1208,94 @@ struct SidebarOutline: NSViewRepresentable {
             menu.addItem(.separator())
             for (title, action) in items {
                 add(to: menu, title: title, action: action)
+            }
+        }
+
+        /// The menu for a multi-selection of sessions. Each verb is offered
+        /// when at least one selected session can take it, and says how many
+        /// it will act on; sessions that cannot take it are left alone.
+        private func addBatchItems(
+            to menu: NSMenu,
+            ids: Set<UUID>,
+            environment: RowEnvironment
+        ) {
+            let projectStore = environment.projectStore
+            let sessionStore = environment.sessionStore
+            let records = projectStore.sessions.filter { ids.contains($0.id) }
+            let header = NSMenuItem(
+                title: String(localized: "\(records.count) Sessions Selected"),
+                action: nil, keyEquivalent: ""
+            )
+            header.isEnabled = false
+            menu.addItem(header)
+            menu.addItem(.separator())
+
+            func status(_ record: SessionRecord) -> AgentSessionStatus {
+                sessionStore.status(of: record.id)
+            }
+            let working = records.filter { status($0).isWorking }
+            let pausable = records.filter {
+                if case .success = SessionSleep.canSuspend(status: status($0)) { return true }
+                return false
+            }
+            let hibernatable = records.filter {
+                if case .success = SessionSleep.canHibernate(
+                    status: status($0), provider: $0.provider, providerSessionID: $0.providerSessionID
+                ) { return true }
+                return false
+            }
+            let wakeable = records.filter { SessionSleep.canWake(status: status($0)) }
+            let live = records.filter {
+                let s = status($0)
+                return s != .terminated && s != .hibernated && s != .suspended
+            }
+
+            if !working.isEmpty {
+                add(to: menu, title: String(localized: "Interrupt \(working.count) Working")) {
+                    for record in working { TerminalRegistry.shared.interrupt(record.id) }
+                }
+            }
+            if !pausable.isEmpty {
+                add(to: menu, title: String(localized: "Pause \(pausable.count)")) {
+                    for record in pausable {
+                        SessionSleepService.sleep(
+                            record, mode: .suspended,
+                            projectStore: projectStore, sessionStore: sessionStore
+                        )
+                    }
+                }
+            }
+            if !hibernatable.isEmpty {
+                add(to: menu, title: String(localized: "Hibernate \(hibernatable.count)")) {
+                    for record in hibernatable {
+                        SessionSleepService.sleep(
+                            record, mode: .hibernated,
+                            projectStore: projectStore, sessionStore: sessionStore
+                        )
+                    }
+                }
+            }
+            if !wakeable.isEmpty {
+                add(to: menu, title: String(localized: "Wake \(wakeable.count)")) {
+                    for record in wakeable {
+                        guard let fresh = projectStore.sessions.first(where: { $0.id == record.id })
+                        else { continue }
+                        SessionSleepService.wake(
+                            fresh, projectStore: projectStore, sessionStore: sessionStore
+                        )
+                    }
+                }
+            }
+            if !live.isEmpty {
+                menu.addItem(.separator())
+                add(to: menu, title: String(localized: "End \(live.count) Sessions")) {
+                    let actions = SessionActions(projects: projectStore, sessions: sessionStore)
+                    for record in live { actions.close(record.id) }
+                }
+            }
+            menu.addItem(.separator())
+            add(to: menu, title: String(localized: "Delete \(records.count) Sessions…")) {
+                environment.actions.confirmDeleteSelection()
             }
         }
 
@@ -1281,4 +1438,8 @@ struct SidebarRowActions {
     var closeScratch: () -> Void
     var createProjectFolder: () -> Void = {}
     var editProjectFolder: (ProjectFolder) -> Void = { _ in }
+    /// A new folder inside the given one.
+    var createSubfolder: (UUID) -> Void = { _ in }
+    /// Asks before deleting every session in the current multi-selection.
+    var confirmDeleteSelection: () -> Void = {}
 }

@@ -48,7 +48,7 @@ enum SessionSleep {
     static func isRunning(_ status: AgentSessionStatus) -> Bool {
         switch status {
         case .idle, .thinking, .running, .waitingForPermission, .waitingForInput,
-             .waitingForSubagents, .completed:
+             .waitingForSubagents, .waitingForBackground, .completed:
             true
         // Not knowing is not the same as knowing there is a process: every
         // caller here is about to signal or kill something.

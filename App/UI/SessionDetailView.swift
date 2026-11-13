@@ -8,6 +8,9 @@ struct SessionDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var projectStore: ProjectStore
+    @ObservedObject private var volumes = VolumeMonitor.shared
+    /// Bumped by "Try Again" so the folder is checked once more on demand.
+    @State private var folderCheck = 0
     private var status: AgentSessionStatus {
         sessionStore.status(of: record.id)
     }
@@ -18,6 +21,16 @@ struct SessionDetailView: View {
 
     private var workingDirectory: String {
         record.workingDirectory(in: project)
+    }
+
+    /// Read on every render; `volumes.revision` and `folderCheck` are touched
+    /// so a mount, an eject or "Try Again" re-evaluates it.
+    private var folderAvailability: FolderAvailability {
+        _ = volumes.revision
+        _ = folderCheck
+        // Remote (SSH) sessions have no local folder to check.
+        guard !workingDirectory.isEmpty, workingDirectory.hasPrefix("/") else { return .available }
+        return FolderAvailability.of(workingDirectory)
     }
 
     var body: some View {
@@ -68,6 +81,19 @@ struct SessionDetailView: View {
                             record, projectStore: projectStore, sessionStore: sessionStore
                         )
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
+                } else if case let availability = folderAvailability,
+                          availability != .available {
+                    // Launching into a folder that is not there leaves a terminal
+                    // that never answers; say why instead. The monitor's revision
+                    // re-asks on every mount, so the session starts by itself
+                    // once the disk is back.
+                    MissingFolderView(
+                        availability: availability,
+                        path: workingDirectory,
+                        onRetry: { folderCheck += 1 }
+                    )
                     .padding(.horizontal, 10)
                     .padding(.bottom, 10)
                 } else {

@@ -17,7 +17,8 @@ struct CodexUsageProvider: UsageProvider {
     var http: UsageHTTPClient = UsageURLSessionClient()
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     var environment: [String: String] = ProcessInfo.processInfo.environment
-    var locateBinary: (String) -> String? = { AgentAdapterSupport.locateBinary($0) }
+    /// Same lookup as sessions: known locations, then the login shell's PATH.
+    var locateBinary: (String) -> String? = { SettingsStore.which($0) }
     var clock: () -> Date = Date.init
 
     func strategies(
@@ -106,6 +107,10 @@ struct CodexOAuthUsageStrategy: UsageFetchStrategy {
         UsageCredentials.fileExists(at: CodexAuth.url(in: codexHome))
     }
 
+    var unavailableReason: String? {
+        "no \(CodexAuth.url(in: codexHome).path) (not logged in, or CODEX_HOME points elsewhere)"
+    }
+
     func fetch() async throws -> UsageSnapshot {
         let auth = try CodexAuth.parse(
             try UsageCredentials.readJSONFile(at: CodexAuth.url(in: codexHome))
@@ -156,6 +161,13 @@ struct CodexAppServerUsageStrategy: UsageFetchStrategy {
     func isAvailable() -> Bool {
         guard let executable else { return false }
         return FileManager.default.isExecutableFile(atPath: executable)
+    }
+
+    var unavailableReason: String? {
+        guard let executable else {
+            return "codex not found in known locations or the login shell PATH; set it under Settings › Agents › Locate…"
+        }
+        return "\(executable) is not executable"
     }
 
     func fetch() async throws -> UsageSnapshot {

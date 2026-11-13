@@ -52,7 +52,40 @@ enum UsageCredentials {
     /// Generic-password lookup by service name.
     ///
     static func readKeychainString(service: String, allowInteraction: Bool = false) -> String? {
-        guard allowedKeychainServices.contains(service) else { return nil }
+        readKeychain(service: service, allowInteraction: allowInteraction).value
+    }
+
+    struct KeychainRead {
+        var value: String?
+        var status: OSStatus
+
+        /// A readable name for the status, for the usage log.
+        var statusText: String {
+            switch status {
+            case errSecSuccess: "ok"
+            case errSecItemNotFound: "no item (is Claude Code logged in on this Mac?)"
+            case errSecInteractionNotAllowed: "would need to ask"
+            case errSecAuthFailed, errSecUserCanceled: "access denied"
+            default:
+                (SecCopyErrorMessageString(status, nil) as String?).map { "\($0) (\(status))" } ?? "OSStatus \(status)"
+            }
+        }
+    }
+
+    /// Like `readKeychainString`, with the status kept for the log.
+    ///
+    /// Without `allowInteraction` the read can never put a dialog up: both the
+    /// authentication context and the legacy keychain's own interaction
+    /// switch are turned off for the call, so an item Uncoil was not already
+    /// allowed to read fails with `errSecInteractionNotAllowed` instead.
+    static func readKeychain(service: String, allowInteraction: Bool) -> KeychainRead {
+        guard allowedKeychainServices.contains(service) else {
+            return KeychainRead(value: nil, status: errSecParam)
+        }
+        keychainLock.lock()
+        defer { keychainLock.unlock() }
+        if !allowInteraction { SecKeychainSetUserInteractionAllowed(false) }
+        defer { if !allowInteraction { SecKeychainSetUserInteractionAllowed(true) } }
         let context = LAContext()
         context.interactionNotAllowed = !allowInteraction
         context.localizedReason = String(localized: "Read Claude Code account usage.")
@@ -64,10 +97,15 @@ enum UsageCredentials {
             kSecUseAuthenticationContext as String: context,
         ]
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            return KeychainRead(value: nil, status: status)
+        }
+        return KeychainRead(value: String(data: data, encoding: .utf8), status: status)
     }
+
+    /// The legacy interaction switch is process-wide; one read at a time.
+    private static let keychainLock = NSLock()
 
     // MARK: - Expiry
 

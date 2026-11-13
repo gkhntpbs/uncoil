@@ -20,6 +20,42 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+## [0.5.0-edge.9] - 2026-11-13
+
+### Added
+
+- A status legend: hovering a session's status in the header, the sidebar or a project's session cards explains every state and color, grouped by working, needs you, finished and stopped, and highlights the current one.
+- Sessions whose turn ended while a command the agent started is still running show a new "Background command running" state, with the command, until it exits.
+- Project folders can be nested. Folders move into other folders by drag and drop or from the context menu, and a folder's run indicator covers the projects inside it.
+- Selecting several sessions in the sidebar offers batch Interrupt, Pause, Hibernate, Wake, End and Delete.
+- Appearance settings choose which states the sidebar marks and how strongly and how fast the markers animate.
+- Settings > Agents can check every agent CLI for updates and update them all at once.
+- Codex usage shows the remaining rate-limit resets and, when known, when they expire.
+- Links printed in a session open with ⌘-click, or optionally ⌃-click; file links such as `App/Main.swift:42` open at that line in the chosen editor, web links in the chosen browser. New sessions can ask CLIs for clickable links.
+- Projects on an external disk that is not connected say so instead of opening an empty terminal, and their sessions start once the disk is back.
+- A launch screen draws the Uncoil mark while the app comes up.
+- Usage tracking, sessions and app events are logged to plain-text files in `~/Library/Application Support/Uncoil/Logs`, which Settings > About opens and the debug bundle includes.
+- MCP permission requests open a separate approval window and wait for a decision. Approvals can be given once or until revoked; closing the window denies.
+- Double-clicking the main window's title bar fills the available screen without entering fullscreen; double-clicking again restores the previous frame.
+
+### Changed
+
+- The project page is laid out as a summary strip with sessions beside worktrees, pull requests and remote hosts on wide windows, and offers to start an agent when the project has no sessions.
+- An empty command palette lists live sessions, projects and a few everyday commands instead of every command.
+- Hover help, the usage card, the attention list and run history no longer stack: one help bubble at a time, never over a menu, sheet or the command palette.
+- Permission requests use a fixed-size panel; long session names no longer resize it.
+- Clicking anywhere on a project folder row expands or collapses it.
+- Agent guidance keeps ordinary work in the current session and uses Uncoil MCP only when the task needs managed state; delegation requires user or project instructions.
+
+### Fixed
+
+- Usage tracking on a fresh Mac: agent CLIs are found through the login shell's `PATH`, Claude's folder-trust prompt no longer blocks the usage probe, Codex 0.167 and later accept the probe's approval mode, Keychain reads in the background never prompt, and a rejected credential is retried periodically instead of never.
+- Uncoil's windows no longer merge into tabs when macOS prefers tabs.
+- The session header's status no longer pushes other controls aside when its text is long.
+- Hovering the command palette no longer scrolls the list away under the pointer.
+- Computer Use honors caller-specific approvals; expired and consumed requests can be requested again, and stale notification actions cannot grant a decided request.
+- Child report delivery reports persistence failures instead of claiming success.
+
 ## [0.4.0-edge.8] - 2026-10-30
 
 ### Added

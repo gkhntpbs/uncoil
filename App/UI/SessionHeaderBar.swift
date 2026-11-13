@@ -239,17 +239,31 @@ struct SessionHeaderBar: View {
             // no control plane: the MCP binary is never handed to it, and a
             // badge reporting on one it does not have was reporting on nothing.
             if record.provider.isAgent {
+                // The detail is whatever the agent last said it was doing, and
+                // that can be a whole sentence. Capped and truncated so it
+                // never shoves the title, path and controls aside; the full
+                // text is on hover.
+                let statusText = sessionStore.detail(of: record.id) ?? status.label
                 HStack(spacing: 7) {
                     StatusOrb(status: status, size: 13)
-                    Text(sessionStore.detail(of: record.id) ?? status.label)
+                    // Only the text is capped: the capsule keeps its own size
+                    // (`fixedSize` below, as it always had), and a long detail
+                    // truncates at 240pt instead of pushing the header apart.
+                    Text(statusText)
                         .font(Theme.mono(.body, .medium))
                         .foregroundStyle(status.color)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                        .cappedWidth(240)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(status.color.opacity(0.10), in: Capsule())
                 .fixedSize()
+                .contentShape(Capsule())
+                // Hovering explains every state and colour, and shows the
+                // full detail the capsule had to truncate.
+                .statusLegend(status, detail: statusText)
 
                 McpStatusBadge(sessionID: record.id)
             } else if record.provider == .uncoil {

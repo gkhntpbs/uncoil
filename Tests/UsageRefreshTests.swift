@@ -63,13 +63,18 @@ final class UsageRefreshPolicyTests: XCTestCase {
 
     // MARK: - Authentication
 
-    /// A rejected credential has no schedule. It is fixed by the user logging
-    /// in again, and until then every timed attempt is noise that can only make
-    /// things worse.
-    func testARejectedCredentialStopsAutomaticRetriesEntirely() {
+    /// A rejected credential is retried rarely, not never: logging in again at
+    /// a terminal must be picked up without anyone pressing Refresh.
+    func testARejectedCredentialIsRetriedOnlyRarely() {
         let state = UsageRefreshState(lastAttempt: now, authenticationBlocked: true)
-        XCTAssertNil(UsageRefreshPolicy.nextRefresh(state: state, activity: .active))
+        XCTAssertEqual(
+            UsageRefreshPolicy.nextRefresh(state: state, activity: .active),
+            now.addingTimeInterval(UsageRefreshPolicy.blockedRetryInterval)
+        )
         XCTAssertFalse(UsageRefreshPolicy.shouldRefresh(
+            state: state, activity: .active, now: now.addingTimeInterval(60)
+        ))
+        XCTAssertTrue(UsageRefreshPolicy.shouldRefresh(
             state: state, activity: .active, now: now.addingTimeInterval(86_400)
         ))
     }

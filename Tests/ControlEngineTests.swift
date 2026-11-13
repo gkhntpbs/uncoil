@@ -383,23 +383,34 @@ final class ComputerHandlerTests: XCTestCase {
                        caller_session_id: caller.id.uuidString, session_token: router.credentials.token(for: caller.id))
     }
 
+    func testComputerPermissionAuthorizesOnlyItsCallerAndOneUse() async {
+        let permissions = PermissionService(dataDirectory: tempDir)
+        router.permissions = permissions
+        let permission = permissions.request(grantKey: "computer.inspect", from: caller.id.uuidString, target: nil)
+        permissions.grant(id: permission.id, scope: .once)
+        let allowed = await router.handle(req("list_apps"))
+        XCTAssertTrue(allowed.ok)
+        let denied = await router.handle(req("list_apps"))
+        XCTAssertEqual(denied.error?.code, "PERMISSION_REQUIRED")
+    }
+
     func testInspectRequiresGrant() async {
         let env = await router.handle(req("list_apps"))
-        XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")
+        XCTAssertEqual(env.error?.code, "PERMISSION_REQUIRED")
     }
 
     func testBackgroundGrantGating() async {
         grant(["computer.inspect"])  // inspect only, no background
         _ = await router.handle(req("inspect_window", ["bundle_id": .string("com.apple.Finder")]))
         let env = await router.handle(req("click", ["x": .int(10), "y": .int(20)]))
-        XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")
+        XCTAssertEqual(env.error?.code, "PERMISSION_REQUIRED")
     }
 
     func testForegroundGrantGating() async {
         grant(["computer.inspect", "computer.background_control"])
         _ = await router.handle(req("inspect_window", ["bundle_id": .string("com.apple.Finder")]))
         let env = await router.handle(req("bring_to_front"))
-        XCTAssertEqual(env.error?.code, "CAPABILITY_DISABLED")
+        XCTAssertEqual(env.error?.code, "PERMISSION_REQUIRED")
     }
 
     func testBindingLifecycleAndClick() async {

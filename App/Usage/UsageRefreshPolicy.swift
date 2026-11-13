@@ -43,6 +43,8 @@ enum UsageRefreshPolicy {
     /// First backoff step; doubles per consecutive failure.
     static let backoffBase: TimeInterval = 60
     static let backoffCeiling: TimeInterval = 30 * 60
+    /// How long a rejected credential waits before it is tried again.
+    static let blockedRetryInterval: TimeInterval = 30 * 60
 
     /// A reset makes the numbers change on their own, so it is worth one look
     /// shortly afterwards — but not at the instant, because the provider's
@@ -67,8 +69,12 @@ enum UsageRefreshPolicy {
         state: UsageRefreshState,
         activity: UsageActivity
     ) -> Date? {
-        if state.authenticationBlocked { return nil }
         guard let lastAttempt = state.lastAttempt else { return .distantPast }
+        // A rejected credential is retried rarely rather than never. Never was
+        // the reason usage stayed blank for good on a Mac where the first try
+        // happened before the user had logged in: logging in at a terminal
+        // does not press Uncoil's Refresh button.
+        if state.authenticationBlocked { return lastAttempt.addingTimeInterval(blockedRetryInterval) }
 
         if state.consecutiveFailures > 0 {
             let exponent = min(state.consecutiveFailures - 1, 8)

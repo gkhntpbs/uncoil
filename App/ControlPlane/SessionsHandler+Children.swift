@@ -173,7 +173,13 @@ extension CapabilityRouter {
         guard let lineData = try? JSONEncoder().encode(JSONValue.object(entry)) else {
             return .failure(request, code: .invalidArgument, message: "could not encode report")
         }
-        appendLine(lineData, to: url)
+        do {
+            try appendLine(lineData, to: url)
+        } catch {
+            return .failure(request, code: .controlPlaneUnavailable,
+                message: "could not persist report", retryable: true,
+                target_session_id: parent.id.uuidString)
+        }
         return .success(request, data: .object(["delivered": .bool(true)]),
                         target_session_id: parent.id.uuidString)
     }
@@ -204,17 +210,17 @@ extension CapabilityRouter {
             }
     }
 
-    private func appendLine(_ line: Data, to url: URL) {
-        try? FileManager.default.createDirectory(
+    private func appendLine(_ line: Data, to url: URL) throws {
+        try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         var payload = line
         payload.append(UInt8(ascii: "\n"))
         if let handle = try? FileHandle(forWritingTo: url) {
             defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            try? handle.write(contentsOf: payload)
+            _ = try handle.seekToEnd()
+            try handle.write(contentsOf: payload)
         } else {
-            try? payload.write(to: url, options: .atomic)
+            try payload.write(to: url, options: .atomic)
         }
     }
 }

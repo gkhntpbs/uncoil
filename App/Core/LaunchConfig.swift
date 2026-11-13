@@ -192,6 +192,11 @@ struct LaunchConfig {
         """.utf8).write(to: projectDir.appendingPathComponent("TODO.md"))
         projectStore.addProject(at: projectDir)
         guard let project = projectStore.projects.first else { return }
+        if ProcessInfo.processInfo.arguments.contains("-project-folder-fixture") {
+            let folder = ProjectFolder(name: "Demo Folder", sortIndex: 0)
+            projectStore.saveProjectFolder(folder)
+            projectStore.moveSidebarItem(.project(project.id), into: folder.id, at: -1, siblings: [])
+        }
         projectStore.createSession(
             projectID: project.id, provider: .terminal, accountID: nil, title: "terminal"
         )

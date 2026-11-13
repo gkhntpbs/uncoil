@@ -73,6 +73,46 @@ final class CodexUsageParsingTests: XCTestCase {
         XCTAssertEqual(snapshot.credits?.balance, 12.5)
     }
 
+    // MARK: - Limit resets
+
+    /// The usage endpoint counts free limit resets, and how many apply now.
+    func testTheEndpointsResetCreditCountIsRead() throws {
+        let snapshot = try snapshot("""
+        {"rate_limit": {"allowed": true, "limit_reached": false,
+          "primary_window": {"used_percent": 0, "limit_window_seconds": 18000, "reset_at": 1700018000}},
+         "rate_limit_reset_credits": {"available_count": 2, "applicable_available_count": 0}}
+        """)
+        XCTAssertEqual(snapshot.resetCredits?.available, 2)
+        XCTAssertEqual(snapshot.resetCredits?.usableNow, 0)
+        XCTAssertEqual(snapshot.resetCredits?.grants, [])
+    }
+
+    /// The app-server lists each grant, with a title and an expiry in seconds;
+    /// one that is no longer available is not counted.
+    func testTheAppServersResetGrantsAreRead() throws {
+        let snapshot = try snapshot("""
+        {"rateLimits": {"primary": {"usedPercent": 10, "windowDurationMins": 300, "resetsAt": 1700018000}},
+         "rateLimitResetCredits": {"availableCount": 2, "credits": [
+           {"status": "available", "title": "Full reset (Weekly + 5 hr)", "expiresAt": 1700500000},
+           {"status": "available", "title": "Full reset (Weekly + 5 hr)", "expiresAt": 1700400000},
+           {"status": "used", "title": "Old", "expiresAt": 1700100000}]}}
+        """)
+        XCTAssertEqual(snapshot.resetCredits?.available, 2)
+        XCTAssertNil(snapshot.resetCredits?.usableNow)
+        XCTAssertEqual(snapshot.resetCredits?.grants.count, 2)
+        XCTAssertEqual(snapshot.resetCredits?.grants.first?.title, "Full reset (Weekly + 5 hr)")
+        XCTAssertEqual(snapshot.resetCredits?.nextExpiry, Date(timeIntervalSince1970: 1_700_400_000))
+    }
+
+    /// No grants, no row.
+    func testNoResetCreditsMeansNone() throws {
+        let snapshot = try snapshot("""
+        {"rate_limit": {"primary_window": {"used_percent": 5, "limit_window_seconds": 18000}},
+         "rate_limit_reset_credits": {"available_count": 0, "applicable_available_count": 0}}
+        """)
+        XCTAssertNil(snapshot.resetCredits)
+    }
+
     /// The account's own details are in the usage response. Throwing them away
     /// left the card unable to say whose numbers it was showing.
     func testTheLivePayloadCarriesTheAccountsIdentity() throws {

@@ -212,7 +212,9 @@ struct UsageChip: View {
                     Task { await usage.refresh(key: key, account: context, userInitiated: true) }
                 }
             )
+            .sweepScrollers()
         }
+        .dismissWithTransientPopups($showCard)
         // Driven from the chip because the chip is what is on screen: a session
         // nobody is looking at costs nothing, and the loop stops with the view.
         .task(id: key) {

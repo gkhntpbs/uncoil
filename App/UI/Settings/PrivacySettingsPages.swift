@@ -108,6 +108,19 @@ struct PermissionsSettingsPage: View {
                 .settingsID("permissions.pending")
             }
 
+            let denied = service.requests.filter { $0.status == .denied }
+            if !denied.isEmpty {
+                Section("Denied Requests") {
+                    ForEach(denied) { request in
+                        requestRow(request) {
+                            Button("Remove") { service.revoke(id: request.id) }
+                        }
+                    }
+                    SettingsNote(String(localized: "Remove a denial to let the agent ask again."))
+                }
+                .settingsID("permissions.denied")
+            }
+
             if !service.expired().isEmpty {
                 Section {
                     ForEach(Array(service.expired().prefix(5))) { request in

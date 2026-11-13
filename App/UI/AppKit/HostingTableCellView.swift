@@ -13,6 +13,11 @@ import SwiftUI
 /// made the move worthwhile in the first place.
 final class HostingTableCellView<Content: View>: NSTableCellView {
     private var hostingView: NSHostingView<Content>?
+    var routesMouseEventsToTable = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        routesMouseEventsToTable ? nil : super.hitTest(point)
+    }
 
     /// Replaces the hosted content, installing the hosting view on first use.
     func host(_ content: Content) {

@@ -31,6 +31,10 @@ struct UsageCard: View {
             if let snapshot, snapshot.hasQuota {
                 windows(of: snapshot)
                 QuotaForecastView(snapshot: snapshot, now: now)
+                if let resets = snapshot.resetCredits {
+                    Divider().overlay(Theme.border)
+                    resetCreditsRow(resets)
+                }
                 if let credits = snapshot.credits {
                     Divider().overlay(Theme.border)
                     creditsRow(credits)
@@ -114,6 +118,52 @@ struct UsageCard: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
+    }
+
+    /// Free limit resets the provider granted. Their own row: a reset is
+    /// neither part of a window's allowance nor money, and its expiry is the
+    /// thing worth knowing — an unused grant simply lapses.
+    private func resetCreditsRow(_ resets: UsageResetCredits) -> some View {
+        let usable = resets.usableNow ?? 0
+        return HStack(alignment: .top, spacing: 7) {
+            TablerIcon(name: "refresh", size: 12, color: usable > 0 ? Theme.ok : Theme.textFaint)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(resets.available == 1
+                     ? String(localized: "1 limit reset left")
+                     : String(localized: "\(resets.available) limit resets left"))
+                    .font(Theme.mono(.small, .medium))
+                    .foregroundStyle(Theme.text)
+                if let title = resets.grants.first?.title {
+                    Text(title)
+                        .font(Theme.mono(.micro))
+                        .foregroundStyle(Theme.textDim)
+                        .lineLimit(1)
+                }
+                Text(resetCreditsDetail(resets))
+                    .font(Theme.mono(.micro))
+                    .foregroundStyle(usable > 0 ? Theme.ok : Theme.textFaint)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("usage.resetCredits")
+    }
+
+    private func resetCreditsDetail(_ resets: UsageResetCredits) -> String {
+        var parts: [String] = []
+        if let usable = resets.usableNow {
+            parts.append(usable > 0
+                ? String(localized: "\(usable) usable now")
+                : String(localized: "Usable once a limit is reached"))
+        }
+        if let expiry = resets.nextExpiry {
+            parts.append(String(localized: "next expires \(expiry.formatted(date: .abbreviated, time: .omitted))"))
+        }
+        return parts.isEmpty ? String(localized: "Granted by the provider; each one clears the limits") : parts.joined(separator: " · ")
     }
 
     private func creditsRow(_ credits: UsageCredits) -> some View {

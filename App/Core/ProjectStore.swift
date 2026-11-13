@@ -68,21 +68,82 @@ final class ProjectStore: ObservableObject {
         save()
     }
 
+    /// Removing a folder keeps what was in it: its projects and sub-folders
+    /// move up into the folder it sat in.
     func removeProjectFolder(_ id: UUID) {
+        let parent = projectFolders.first { $0.id == id }?.parentID
         for index in projects.indices where projects[index].folderID == id {
-            projects[index].folderID = nil
+            projects[index].folderID = parent
+        }
+        for index in projectFolders.indices where projectFolders[index].parentID == id {
+            projectFolders[index].parentID = parent
         }
         projectFolders.removeAll { $0.id == id }
         save()
     }
 
+    /// The folder a folder effectively sits in: nil when its parent no longer
+    /// exists or the chain loops, so a damaged file never hides a folder.
+    func effectiveParent(ofFolder id: UUID) -> UUID? {
+        guard let parent = projectFolders.first(where: { $0.id == id })?.parentID,
+              projectFolders.contains(where: { $0.id == parent }) else { return nil }
+        var seen: Set<UUID> = [id]
+        var cursor: UUID? = parent
+        while let current = cursor {
+            guard seen.insert(current).inserted else { return nil }
+            cursor = projectFolders.first { $0.id == current }?.parentID
+        }
+        return parent
+    }
+
+    /// Whether `id` is `ancestor` or sits anywhere inside it.
+    func folder(_ id: UUID, isInside ancestor: UUID) -> Bool {
+        var cursor: UUID? = id
+        var seen: Set<UUID> = []
+        while let current = cursor, seen.insert(current).inserted {
+            if current == ancestor { return true }
+            cursor = effectiveParent(ofFolder: current)
+        }
+        return false
+    }
+
+    /// Every project in a folder or any folder inside it.
+    func projectIDs(inFolder id: UUID) -> [UUID] {
+        projects.filter { project in
+            guard let folderID = project.folderID,
+                  projectFolders.contains(where: { $0.id == folderID }) else { return false }
+            return folder(folderID, isInside: id)
+        }.map(\.id)
+    }
+
+    /// "Clients › Acme" — a folder's name with the folders above it.
+    func folderPath(_ id: UUID) -> String {
+        var names: [String] = []
+        var cursor: UUID? = id
+        var seen: Set<UUID> = []
+        while let current = cursor, seen.insert(current).inserted,
+              let folder = projectFolders.first(where: { $0.id == current }) {
+            names.insert(folder.name, at: 0)
+            cursor = effectiveParent(ofFolder: current)
+        }
+        return names.joined(separator: " › ")
+    }
+
     func sidebarRoots(projectIDs: Set<UUID>? = nil) -> [SidebarItem] {
+        sidebarChildren(of: nil, projectIDs: projectIDs)
+    }
+
+    /// The rows directly inside a folder (nil: the top of the sidebar), in
+    /// order — sub-folders and projects interleaved by their sort index.
+    func sidebarChildren(of folderID: UUID?, projectIDs: Set<UUID>? = nil) -> [SidebarItem] {
         let visible = projects.filter { projectIDs?.contains($0.id) ?? true }
         let folders = Set(projectFolders.map(\.id))
-        let rows: [(SidebarItem, Double, Int)] = projectFolders.map {
-            (.folder($0.id), $0.sortIndex, 0)
+        let rows: [(SidebarItem, Double, Int)] = projectFolders.compactMap { folder in
+            guard effectiveParent(ofFolder: folder.id) == folderID else { return nil }
+            return (.folder(folder.id), folder.sortIndex, 0)
         } + visible.enumerated().compactMap { index, project in
-            guard project.folderID.map({ !folders.contains($0) }) ?? true else { return nil }
+            let home = project.folderID.flatMap { folders.contains($0) ? $0 : nil }
+            guard home == folderID else { return nil }
             let rank = project.isScratchWorkspace ? 2 : (project.isPinned == true ? -1 : 0)
             return (.project(project.id), project.sortIndex ?? Double(index), rank)
         }
@@ -100,14 +161,16 @@ final class ProjectStore: ObservableObject {
             guard let position = projects.firstIndex(where: { $0.id == id }),
                   !projects[position].isScratchWorkspace else { return }
             projects[position].folderID = folderID
-        case .folder:
-            guard folderID == nil else { return }
+        case .folder(let id):
+            // A folder can go into another folder, never into itself or into
+            // one of its own sub-folders.
+            if let folderID, folder(folderID, isInside: id) { return }
+            guard let position = projectFolders.firstIndex(where: { $0.id == id }) else { return }
+            projectFolders[position].parentID = folderID
         default: return
         }
         let before = index >= 0 && index < siblings.count ? siblings[index...].first(where: { $0 != item }) : nil
-        var order: [SidebarItem] = folderID.map { folder in
-            projects.filter { $0.folderID == folder }.map { .project($0.id) }
-        } ?? sidebarRoots()
+        var order: [SidebarItem] = sidebarChildren(of: folderID)
         order.removeAll { $0 == item }
         let insertion = before.flatMap { order.firstIndex(of: $0) } ?? order.count
         order.insert(item, at: insertion)

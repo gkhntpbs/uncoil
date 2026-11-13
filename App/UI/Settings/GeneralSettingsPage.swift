@@ -6,6 +6,15 @@ import SwiftUI
 struct GeneralSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
 
+    @State private var browsers = TerminalLinkOpener.installedBrowsers()
+
+    private func linkBinding<Value>(_ key: WritableKeyPath<TerminalLinkPrefs, Value>) -> Binding<Value> {
+        Binding(
+            get: { settings.terminalLinks[keyPath: key] },
+            set: { settings.terminalLinks[keyPath: key] = $0; settings.save() }
+        )
+    }
+
     var body: some View {
         SettingsPage(title: String(localized: "General")) {
             Section("Defaults") {
@@ -41,6 +50,52 @@ struct GeneralSettingsPage: View {
                     )
                 }
                 .settingsID("general.editor")
+            }
+
+            Section("Terminal Links") {
+                Toggle(isOn: linkBinding(\.controlClickOpens)) {
+                    SettingsLabel(
+                        title: String(localized: "Open links with ⌃-click"),
+                        detail: String(localized: "⌘-click always opens a link. With this on, ⌃-click does too; elsewhere ⌃-click still shows the menu.")
+                    )
+                }
+                .settingsID("general.links.controlClick")
+
+                Picker(selection: linkBinding(\.fileTarget)) {
+                    ForEach(TerminalFileLinkTarget.allCases) { target in
+                        Text(target == .editor
+                             ? "\(target.displayName) (\(settings.preferredEditor.displayName))"
+                             : target.displayName)
+                            .tag(target)
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Open file links in"),
+                        detail: String(localized: "Paths an agent prints, like App/Main.swift:42, open at that line when the editor supports it.")
+                    )
+                }
+                .settingsID("general.links.fileTarget")
+
+                Picker(selection: linkBinding(\.browserBundleID)) {
+                    Text("System default").tag(String?.none)
+                    ForEach(browsers, id: \.bundleID) { browser in
+                        Text(browser.name).tag(String?.some(browser.bundleID))
+                    }
+                } label: {
+                    SettingsLabel(
+                        title: String(localized: "Open web links in"),
+                        detail: String(localized: "The browser http and https links open in.")
+                    )
+                }
+                .settingsID("general.links.browser")
+
+                Toggle(isOn: linkBinding(\.advertiseHyperlinks)) {
+                    SettingsLabel(
+                        title: String(localized: "Ask agents for clickable links"),
+                        detail: String(localized: "Sets FORCE_HYPERLINK=1 in new sessions, so CLIs such as Claude Code mark file paths as links. Applies to sessions started after the change.")
+                    )
+                }
+                .settingsID("general.links.advertise")
             }
 
             Section("Sidebar") {

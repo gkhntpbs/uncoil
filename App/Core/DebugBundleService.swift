@@ -82,6 +82,17 @@ struct DebugBundleService {
             try addText(usageDiagnostics, named: "usage-status.txt", to: staging,
                         projectPaths: projectPaths, included: &included)
         }
+        // Uncoil's own log files: usage tracking above all, which is the
+        // thing most likely to fail on a Mac that is not the developer's.
+        AppLog.flush()
+        for category in AppLog.Category.allCases {
+            for name in ["\(category.rawValue).1.log", "\(category.rawValue).log"] {
+                let url = AppLog.directory.appendingPathComponent(name)
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                try addText(String(text.suffix(400_000)), named: "logs-\(name).txt", to: staging,
+                            projectPaths: projectPaths, included: &included)
+            }
+        }
         try collectAgentConfigs(into: staging, projectPaths: projectPaths, included: &included)
         try collectMCPHandshake(into: staging, projectPaths: projectPaths, included: &included)
         try collectPermissionDecisions(into: staging, projectPaths: projectPaths, included: &included)
@@ -327,8 +338,11 @@ struct DebugBundleService {
         ["claude", "codex"].map { name in
             guard let path = SettingsStore.which(name) else { return "\(name)=not_found" }
             let version = command(path, ["--version"])?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "\(name)=\(version?.isEmpty == false ? version! : "unknown")"
-        }.joined(separator: "\n") + "\n"
+            // Where it was found, and whether the fixed list alone finds it —
+            // the usage probes used to search only that list.
+            let fixed = BinarySearchPath.locate(name) != nil ? "known_location" : "login_shell_path_only"
+            return "\(name)=\(version?.isEmpty == false ? version! : "unknown") path=\(path) found_via=\(fixed)"
+        }.joined(separator: "\n") + "\nprobe_path=\(ClaudeUsageProbe.probePATH(executable: SettingsStore.which("claude") ?? "/usr/bin/false"))\n"
     }
 
     private func unifiedLog(process: String) -> String {

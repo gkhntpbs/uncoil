@@ -44,6 +44,8 @@ final class CodexAppServerProbe {
     private var pending: [Int: JSONValue] = [:]
     private var failures: [Int: String] = [:]
     private var streamClosed = false
+    /// The last few KB of stderr, for the usage log.
+    private var stderrTail = Data()
     private var nextID = 1
 
     init(configuration: Configuration) {
@@ -89,7 +91,11 @@ final class CodexAppServerProbe {
 
     private func launch() throws {
         process.executableURL = URL(fileURLWithPath: configuration.executable)
-        process.arguments = ["-s", "read-only", "-a", "untrusted", "app-server"]
+        // `never` rather than `untrusted`: Codex 0.167 dropped `untrusted`
+        // (only `on-request` and `never` remain) and refused to start, which
+        // silently broke this whole route. The probe never runs a turn, so the
+        // approval policy has nothing to approve either way.
+        process.arguments = ["-s", "read-only", "-a", "never", "app-server"]
         process.standardInput = stdin
         process.standardOutput = stdout
         process.standardError = stderr
@@ -101,12 +107,13 @@ final class CodexAppServerProbe {
         // whichever one happens to be the default.
         var environment: [String: String] = [:]
         let parent = ProcessInfo.processInfo.environment
-        for key in ["PATH", "HOME", "LANG", "TMPDIR"] {
+        for key in ["HOME", "LANG", "TMPDIR", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
+                    "https_proxy", "http_proxy", "no_proxy"] {
             if let value = parent[key] { environment[key] = value }
         }
-        if environment["PATH"] == nil {
-            environment["PATH"] = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
-        }
+        // The login shell's PATH, not launchd's: an npm-installed `codex` is a
+        // node script, and node is not on `/usr/bin:/bin`.
+        environment["PATH"] = ClaudeUsageProbe.probePATH(executable: configuration.executable)
         if let home = configuration.codexHome {
             environment["CODEX_HOME"] = home.path
         }
@@ -124,16 +131,25 @@ final class CodexAppServerProbe {
             }
             self.ingest(chunk)
         }
-        // Drained and discarded: Codex writes progress and warnings here, and a
-        // full stderr pipe would block the child mid-answer.
-        stderr.fileHandleForReading.readabilityHandler = { handle in
-            _ = handle.availableData
+        // Drained so a full pipe never blocks the child; the tail is kept for
+        // the usage log, where "env: node: No such file or directory" is the
+        // whole diagnosis.
+        stderr.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let chunk = handle.availableData
+            guard let self, !chunk.isEmpty else { return }
+            self.condition.lock()
+            self.stderrTail.append(chunk)
+            if self.stderrTail.count > 4096 { self.stderrTail = self.stderrTail.suffix(4096) }
+            self.condition.unlock()
         }
 
         do {
             try process.run()
         } catch {
-            throw UsageFetchError(.processFailed, detail: "codex app-server did not start")
+            throw UsageFetchError(
+                .processFailed,
+                detail: "codex app-server did not start: \(error.localizedDescription) (\(configuration.executable))"
+            )
         }
     }
 
@@ -167,7 +183,14 @@ final class CodexAppServerProbe {
                 throw UsageFetchError(.processFailed, detail: message)
             }
             if streamClosed {
-                throw UsageFetchError(.processFailed, detail: "codex app-server closed the connection")
+                let said = String(decoding: stderrTail, as: UTF8.self)
+                    .split(whereSeparator: \.isNewline).suffix(4).joined(separator: " | ")
+                throw UsageFetchError(
+                    .processFailed,
+                    detail: said.isEmpty
+                        ? "codex app-server closed the connection"
+                        : "codex app-server closed the connection: \(said.prefix(400))"
+                )
             }
             if Date() >= deadline {
                 throw UsageFetchError(.timedOut, detail: method)

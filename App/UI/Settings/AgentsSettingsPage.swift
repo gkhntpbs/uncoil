@@ -30,6 +30,8 @@ struct AgentsSettingsPage: View {
             title: String(localized: "Installed Agents"),
             subtitle: String(localized: "Every agent CLI Uncoil found on this Mac, and how deeply it is connected.")
         ) {
+            updatesSection
+
             Section {
                 UncoilAutoSettingsRow(open: { open(.uncoil) })
             } header: {
@@ -103,6 +105,88 @@ struct AgentsSettingsPage: View {
             }
         }
         .task { await hookup.scan() }
+    }
+
+    // MARK: - Updates
+
+    /// One button for every agent, instead of opening each agent's page.
+    private var updatesSection: some View {
+        let pending = settings.pendingCLIUpdates
+        let working = settings.cliUpdatingAll || !settings.cliUpdating.isEmpty
+        let outcomes = AgentProvider.agents.compactMap { provider in
+            settings.cliUpdateOutcome[provider.rawValue].map { (provider, $0) }
+        }
+        return Section {
+            AdaptiveRow {
+                SettingsLabel(
+                    title: pending.isEmpty
+                        ? String(localized: "Agent updates")
+                        : String(localized: "\(pending.count) agent updates waiting"),
+                    detail: updatesDetail(pending: pending)
+                )
+            } control: {
+                HStack(spacing: 8) {
+                    if working || settings.cliChecking {
+                        ProgressView().controlSize(.small)
+                    }
+                    Button(String(localized: "Check")) {
+                        Task { await settings.checkCLIUpdates() }
+                    }
+                    .disabled(working || settings.cliChecking)
+                    .settingsID("agents.checkUpdates")
+                    Button(pending.isEmpty
+                           ? String(localized: "Update All")
+                           : String(localized: "Update All (\(pending.count))")) {
+                        Task { await settings.updateAllCLIs() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(pending.isEmpty || working || settings.cliChecking)
+                    .settingsID("agents.updateAll")
+                }
+            }
+            ForEach(outcomes, id: \.0) { provider, outcome in
+                SettingsStatusLine(
+                    level: outcome.isFailure ? .error : .ok,
+                    text: "\(provider.displayName): \(outcomeText(outcome))"
+                )
+            }
+        } header: {
+            Text("Updates")
+        } footer: {
+            SettingsNote(String(localized: "Each agent is updated the way it was installed — Homebrew, npm or its own updater. Running sessions keep the version they started with until they are restarted."))
+        }
+        .task {
+            if settings.cliLatest.isEmpty, !settings.cliChecking {
+                await settings.checkCLIUpdates()
+            }
+        }
+    }
+
+    private func updatesDetail(pending: [AgentProvider]) -> String {
+        if settings.cliUpdatingAll || !settings.cliUpdating.isEmpty {
+            let names = AgentProvider.agents
+                .filter { settings.cliUpdating.contains($0.rawValue) }
+                .map(\.displayName).joined(separator: ", ")
+            return names.isEmpty ? String(localized: "Updating…") : String(localized: "Updating \(names)…")
+        }
+        if settings.cliChecking { return String(localized: "Checking for newer versions…") }
+        guard !pending.isEmpty else { return String(localized: "Every installed agent is up to date.") }
+        return pending.map { provider in
+            let from = settings.cliVersions[provider.rawValue] ?? "?"
+            let to = settings.cliLatest[provider.rawValue] ?? "?"
+            return "\(provider.displayName) \(from) → \(to)"
+        }.joined(separator: " · ")
+    }
+
+    private func outcomeText(_ outcome: AgentUpdateOutcome) -> String {
+        switch outcome {
+        case .updated(let from, let to):
+            return String(localized: "updated \(from ?? "?") → \(to)")
+        case .ranButUnchanged(let version):
+            return String(localized: "update ran, still on \(version)")
+        case .failed(let reason):
+            return String(localized: "update failed — \(reason)")
+        }
     }
 
     /// The panel is `AgentLocationPicker`'s, shared with the Extensions card so

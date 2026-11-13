@@ -196,7 +196,8 @@ enum TerminalFocus {
 }
 
 /// Daemon-backed terminal view.
-final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
+final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal, TerminalLinkContext {
+    var linkDirectory: String?
     var resolveShiftEnterNewline: () -> Bool = { false }
     var newlineSequence = TerminalKeyTranslation.newlineSequence
     var handleImagePaste: () -> Bool = { false }
@@ -208,10 +209,22 @@ final class UncoilTerminalView: TerminalView, ShiftEnterCapableTerminal {
         TerminalMetal.enableIfPossible(self)
         TerminalFocus.claim(self)
     }
+
+    override func mouseDown(with event: NSEvent) {
+        if TerminalLinkClick.handleControlClick(event, in: self, directory: linkDirectory) { return }
+        super.mouseDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        // A ⌃-click on a link opens it; it must not also pop the context menu.
+        if TerminalLinkClick.controlClickTargetsLink(event, in: self) { return nil }
+        return super.menu(for: event)
+    }
 }
 
 /// In-process fallback terminal view.
-final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapableTerminal {
+final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapableTerminal, TerminalLinkContext {
+    var linkDirectory: String?
     var resolveShiftEnterNewline: () -> Bool = { false }
     var newlineSequence = TerminalKeyTranslation.newlineSequence
     var handleImagePaste: () -> Bool = { false }
@@ -228,6 +241,17 @@ final class UncoilLocalTerminalView: LocalProcessTerminalView, ShiftEnterCapable
         guard window != nil else { return }
         TerminalMetal.enableIfPossible(self)
         TerminalFocus.claim(self)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if TerminalLinkClick.handleControlClick(event, in: self, directory: linkDirectory) { return }
+        super.mouseDown(with: event)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        // A ⌃-click on a link opens it; it must not also pop the context menu.
+        if TerminalLinkClick.controlClickTargetsLink(event, in: self) { return nil }
+        return super.menu(for: event)
     }
 }
 
@@ -282,5 +306,48 @@ enum TerminalKeyMonitor {
             }
             return event
         }
+    }
+}
+
+
+/// ⌃-click link opening. SwiftTerm opens links on ⌘-click by itself; on macOS
+/// ⌃-click is the context-menu gesture, so it is claimed only when there is a
+/// link under the pointer and the setting allows it.
+@MainActor
+enum TerminalLinkClick {
+    static func handleControlClick(_ event: NSEvent, in view: TerminalView, directory: String?) -> Bool {
+        guard let link = controlClickLink(event, in: view) else { return false }
+        TerminalLinkOpener.open(link, relativeTo: directory)
+        return true
+    }
+
+    static func controlClickTargetsLink(_ event: NSEvent, in view: TerminalView) -> Bool {
+        controlClickLink(event, in: view) != nil
+    }
+
+    private static func controlClickLink(_ event: NSEvent, in view: TerminalView) -> String? {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard TerminalLinkOpener.prefs.controlClickOpens,
+              flags.contains(.control), !flags.contains(.command),
+              let position = screenPosition(of: event, in: view) else { return nil }
+        return view.getTerminal().link(at: .screen(position), mode: .explicitAndImplicit)
+    }
+
+    /// The cell under the pointer, in viewport coordinates — the same
+    /// arithmetic SwiftTerm uses internally, from its public frame size.
+    private static func screenPosition(of event: NSEvent, in view: TerminalView) -> Position? {
+        let terminal = view.getTerminal()
+        guard terminal.cols > 0, terminal.rows > 0 else { return nil }
+        let optimal = view.getOptimalFrameSize()
+        let scroller = view.subviews.compactMap { $0 as? NSScroller }.first
+        let reserved = (scroller.map { !$0.isHidden } ?? false)
+            ? NSScroller.scrollerWidth(for: .regular, scrollerStyle: scroller!.scrollerStyle) : 0
+        let cellWidth = (optimal.width - reserved) / CGFloat(terminal.cols)
+        let cellHeight = optimal.height / CGFloat(terminal.rows)
+        guard cellWidth > 0, cellHeight > 0 else { return nil }
+        let point = view.convert(event.locationInWindow, from: nil)
+        let col = min(max(0, Int(point.x / cellWidth)), terminal.cols - 1)
+        let row = min(max(0, Int((view.frame.height - point.y) / cellHeight)), terminal.rows - 1)
+        return Position(col: col, row: row)
     }
 }

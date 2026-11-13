@@ -103,6 +103,67 @@ final class PermissionServiceTests: XCTestCase {
         XCTAssertTrue(reloaded.pending().isEmpty, "expired pending request should be pruned")
     }
 
+    func testProactiveGrantDoesNotOpenApprovalAndExpiredNotificationCannotGrant() {
+        var prompts = 0
+        service.onRequestCreated = { _ in prompts += 1 }
+        _ = service.addGrant(grantKey: "computer.inspect", from: "A", target: nil)
+        XCTAssertEqual(prompts, 0)
+        let request = service.request(grantKey: "computer.inspect", from: "B", target: nil)
+        XCTAssertEqual(prompts, 1)
+        service.pendingTTL = -1
+        service.grant(id: request.id)
+        XCTAssertFalse(service.isGranted(from: "B", to: nil, key: "computer.inspect"))
+    }
+
+    func testConsumedAndExpiredRequestsCanBeAskedAgain() {
+        let first = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        service.grant(id: first.id, scope: .once)
+        XCTAssertTrue(service.isGranted(from: "A", to: nil, key: "computer.inspect"))
+        let second = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        XCTAssertNotEqual(first.id, second.id)
+        XCTAssertEqual(second.status, .pending)
+        service.pendingTTL = -1
+        service.pruneExpiredIfNeeded()
+        service.pendingTTL = 600
+        let third = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        XCTAssertNotEqual(second.id, third.id)
+        XCTAssertEqual(third.status, .pending)
+    }
+
+    func testDenialIsNotReopenedByAgentRetries() {
+        let first = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        service.deny(id: first.id)
+        let retry = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        XCTAssertEqual(retry.status, .denied)
+        service.grant(id: first.id)
+        XCTAssertFalse(service.isGranted(from: "A", to: nil, key: "computer.inspect"))
+    }
+
+    func testDecisionWaitTimeoutLeavesRequestPendingAndCancellationReturns() async {
+        let request = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        let pending = await service.waitForDecision(id: request.id, timeout: 0)
+        XCTAssertEqual(pending?.status, .pending)
+        let waiter = Task { @MainActor in
+            await service.waitForDecision(id: request.id, timeout: 300)
+        }
+        waiter.cancel()
+        let cancelled = await waiter.value
+        XCTAssertNil(cancelled)
+        XCTAssertEqual(service.pending().count, 1)
+    }
+
+    func testDecisionWaitReturnsWithoutConsumingOnceGrant() async {
+        let first = service.request(grantKey: "computer.inspect", from: "A", target: nil)
+        Task { @MainActor in
+            await Task.yield()
+            service.grant(id: first.id, scope: .once)
+        }
+        let result = await service.waitForDecision(id: first.id, timeout: 2)
+        XCTAssertEqual(result?.status, .granted)
+        XCTAssertTrue(service.isGranted(from: "A", to: nil, key: "computer.inspect"))
+        XCTAssertFalse(service.isGranted(from: "A", to: nil, key: "computer.inspect"))
+    }
+
     func testPersistenceRoundtrip() {
         let req = service.request(grantKey: "k", from: "A", target: "B")
         service.grant(id: req.id)
@@ -164,6 +225,27 @@ final class OrchestrationRouterTests: XCTestCase {
     private func req(_ action: String, args: [String: JSONValue] = [:], caller c: SessionRecord? = nil) -> ControlRequest {
         ControlRequest(capability: "uncoil_sessions", action: action, args: args,
                        caller_session_id: (c ?? caller).id.uuidString, session_token: router.credentials.token(for: (c ?? caller).id))
+    }
+
+    func testPermissionCallWaitsForDecisionAndRejectsUnknownKeys() async {
+        let permissions = router.permissions!
+        permissions.onRequestCreated = { request in
+            Task { @MainActor in
+                await Task.yield()
+                permissions.grant(id: request.id, scope: .once)
+            }
+        }
+        func systemRequest(_ key: String) -> ControlRequest {
+            ControlRequest(capability: "uncoil_system", action: "request_permission",
+                args: ["grant_key": .string(key), "timeout_s": .int(2)],
+                caller_session_id: caller.id.uuidString,
+                session_token: router.credentials.token(for: caller.id))
+        }
+        let result = await router.handle(systemRequest("computer.inspect"))
+        XCTAssertEqual(result.data?.objectValue?["status"], .string("granted"))
+        XCTAssertEqual(result.data?.objectValue?["may_retry_action"], .bool(true))
+        let invalid = await router.handle(systemRequest("sessions.control_all"))
+        XCTAssertEqual(invalid.error?.code, "INVALID_ARGUMENT")
     }
 
     func testCreateChildDeniedWithoutGrant() async {
@@ -261,6 +343,20 @@ final class OrchestrationRouterTests: XCTestCase {
         if case let .object(data)? = readAgain.data {
             XCTAssertEqual(data["count"], .int(0))
         } else { XCTFail("no data") }
+    }
+
+    func testReportPersistenceFailureDoesNotClaimDelivery() async throws {
+        _ = await router.handle(req("create_child", args: ["preset_id": .string("claude-worker")]))
+        let child = try XCTUnwrap(store.sessions.first { $0.parentSessionID == caller.id })
+        let root = caller.artifactRoot(dataDirectory: tempDir)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("blocked".utf8).write(to: root.appendingPathComponent("reports"))
+        let result = await router.handle(ControlRequest(
+            capability: "uncoil_sessions", action: "report_to_parent",
+            args: ["message": .string("done")], caller_session_id: child.id.uuidString,
+            session_token: router.credentials.token(for: child.id)))
+        XCTAssertFalse(result.ok)
+        XCTAssertEqual(result.error?.code, "CONTROL_PLANE_UNAVAILABLE")
     }
 
     func testReportToParentSizeLimit() async {

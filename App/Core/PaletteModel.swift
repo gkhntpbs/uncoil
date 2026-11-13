@@ -222,6 +222,14 @@ enum PaletteEngine {
             return []
         }
 
+        // The empty palette is a launcher, not a catalogue: what is running,
+        // where to go, and the handful of commands reached for every day.
+        // Everything else — one-off sessions, other projects' commands, debug
+        // tools — is one keystroke of typing away.
+        if isEmpty && !commandsOnly {
+            return emptyStateGroups(ctx)
+        }
+
         // Commands
         let commands = commandItems(ctx: ctx)
         groups.append(contentsOf: grouped(.command, commands, query: query, isEmpty: isEmpty))
@@ -288,6 +296,65 @@ enum PaletteEngine {
         }
 
         return groups.filter { !$0.items.isEmpty }
+    }
+
+    static let emptySessionLimit = 8
+    static let emptyProjectLimit = 6
+
+    /// What an empty palette offers, in the order it is wanted: live sessions
+    /// (attention first, then most recent), projects (current first), then a
+    /// short list of everyday commands for the project in front of the user.
+    static func emptyStateGroups(_ ctx: PaletteContext) -> [PaletteGroup] {
+        var groups: [PaletteGroup] = []
+
+        let live = ctx.sessions
+            .filter { $0.endedAt == nil && (ctx.statuses[$0.id] ?? .unknown) != .terminated }
+            .sorted {
+                let a = (ctx.statuses[$0.id] ?? .unknown).attentionPriority
+                let b = (ctx.statuses[$1.id] ?? .unknown).attentionPriority
+                if a != b { return a > b }
+                // The current project's sessions before the rest.
+                let ac = $0.projectID == ctx.currentProjectID
+                let bc = $1.projectID == ctx.currentProjectID
+                if ac != bc { return ac }
+                return $0.lastActivityAt > $1.lastActivityAt
+            }
+            .prefix(emptySessionLimit)
+        let sessions = live.map { record -> PaletteItem in
+            let status = ctx.statuses[record.id] ?? .unknown
+            let projectName = ctx.projects.first { $0.id == record.projectID }?.name
+            return PaletteItem(
+                id: "session.\(record.id)", title: record.displayTitle,
+                subtitle: [record.provider.displayName, projectName, status.label]
+                    .compactMap { $0 }.joined(separator: " · "),
+                iconName: "message", provider: record.provider, status: status,
+                kind: .session, action: .focusSession(record.id),
+                rank: status.attentionPriority)
+        }
+        if !sessions.isEmpty { groups.append(PaletteGroup(kind: .session, items: Array(sessions))) }
+
+        let projects = ctx.projects
+            .sorted { ($0.id == ctx.currentProjectID ? 1 : 0) > ($1.id == ctx.currentProjectID ? 1 : 0) }
+            .prefix(emptyProjectLimit)
+            .map { project in
+                PaletteItem(
+                    id: "project.\(project.id)", title: project.name,
+                    subtitle: shortPath(project.rootPath), iconName: project.iconName ?? "folder",
+                    kind: .project, action: .openProject(project.id))
+            }
+        if !projects.isEmpty { groups.append(PaletteGroup(kind: .project, items: Array(projects))) }
+
+        let everyday: Set<String> = ["cmd.ask", "cmd.addProject", "cmd.extensions", "cmd.settings"]
+        let commands = commandItems(ctx: ctx).filter { item in
+            if everyday.contains(item.id) { return true }
+            // New sessions only for the current project — one per provider is
+            // the whole "start something here" answer.
+            if let pid = ctx.currentProjectID, case .newSession(pid, _) = item.action { return true }
+            return false
+        }
+        .sorted { $0.rank > $1.rank }
+        if !commands.isEmpty { groups.append(PaletteGroup(kind: .command, items: commands)) }
+        return groups
     }
 
     // MARK: Helpers
@@ -511,6 +578,18 @@ final class PaletteModel: ObservableObject {
     }
     @Published private(set) var groups: [PaletteGroup] = []
     @Published var selectedIndex = 0
+    /// True when the latest selection change came from the keyboard. Only
+    /// those scroll the list: scrolling on a hover moves another row under a
+    /// still pointer, which claims it, which scrolls again — the list ran away
+    /// downward whenever the mouse rested on it.
+    private(set) var selectionFromKeyboard = true
+
+    /// A pointer hovering a row selects it without scrolling the list.
+    func hoverSelect(_ index: Int) {
+        guard selectedIndex != index else { return }
+        selectionFromKeyboard = false
+        selectedIndex = index
+    }
     /// Set when the user runs an item; observed by MainWindow to perform it.
     @Published var pendingAction: PaletteAction?
 
@@ -558,6 +637,7 @@ final class PaletteModel: ObservableObject {
 
     func open() {
         isOpen = true
+        selectionFromKeyboard = true
         selectedIndex = 0
         recomputeNow()
         refreshIndex()
@@ -579,6 +659,7 @@ final class PaletteModel: ObservableObject {
     func move(_ delta: Int) {
         let count = flatItems.count
         guard count > 0 else { return }
+        selectionFromKeyboard = true
         selectedIndex = ((selectedIndex + delta) % count + count) % count
     }
 

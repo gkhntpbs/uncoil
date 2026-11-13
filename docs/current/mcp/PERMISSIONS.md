@@ -69,7 +69,8 @@ blueprints.write
 behalf, that a command may run or a file may change. A session holding it for every
 session it controls could approve its own work through a child.
 
-A missing grant yields `CAPABILITY_DISABLED`. Grants never widen at runtime except
+A missing grant yields `CAPABILITY_DISABLED`, except Computer Use actions which return
+`PERMISSION_REQUIRED` and accept explicit caller-specific user approval. Static grants never widen at runtime except
 through the child-capability intersection (which only ever narrows).
 
 ## Child capability inheritance
@@ -88,7 +89,15 @@ Computer Use and `bring_to_front` — the handler returns
 
 - The agent calls `uncoil_system request_permission {grant_key, target_session_id?}`.
   This creates a **pending**, **directional** record `(from=caller, to=target, key)`.
-- The user approves/denies/revokes in **Uncoil → Settings → Permissions**.
+- A separate approval window identifies the caller, target and requested authority. The user
+  denies, allows one call, or allows until revoked. Closing the window denies the request.
+- `request_permission` waits for the decision (`timeout_s` 0–300, default 120). It returns
+  `status`, `scope`, and `may_retry_action`. Retry the original action only after `granted`.
+  A timed wait may return `pending`; repeating the same key/target waits on the same request.
+  Denials are reused until the user removes them in Settings, preventing repeated prompts.
+- Settings → Permissions still manages pending requests and revokes decisions.
+- Computer permissions apply to the caller with no target and are checked by the Computer
+  handler. They do not change the session capability profile or its children's grants.
 - On each subsequent call, `PolicyEngine`/handlers consult `PermissionService.isGranted`
   — no caching. A grant applies only to the exact `(from, to, key)` triple: A→B granted
   never authorizes C→B, nor a different key.

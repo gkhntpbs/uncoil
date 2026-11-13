@@ -525,6 +525,7 @@ final class CodexAppServerSession: StructuredAgentSession {
             _ = projectStore?.claimProviderSessionID(id, for: recordID)
         case .turnStarted(let turnID):
             activeTurnID = turnID
+            BackgroundCommandWatcher.shared.turnStarted(recordID)
             sessionStore?.setStatus(.thinking, detail: String(localized: "Codex thinking"), for: recordID)
         case .turnCompleted(_, let outcome):
             activeTurnID = nil
@@ -532,6 +533,21 @@ final class CodexAppServerSession: StructuredAgentSession {
                 sessionStore?.setStatus(.completed, detail: String(localized: "Codex turn failed"), for: recordID)
             } else {
                 sessionStore?.setStatus(.completed, detail: String(localized: "Codex finished"), for: recordID)
+                // A command Codex left running (a server it started) keeps the
+                // session from being "finished" until it exits.
+                let id = recordID
+                weak var store = sessionStore
+                BackgroundCommandWatcher.shared.turnEnded(
+                    id,
+                    isStill: { waiting in store?.status(of: id) == (waiting ? .waitingForBackground : .completed) },
+                    noCommand: {},
+                    waiting: { command in
+                        store?.setStatus(.waitingForBackground, detail: String(localized: "Waiting on: \(command)"), for: id)
+                    },
+                    finished: {
+                        store?.setStatus(.completed, detail: String(localized: "Background command finished"), for: id)
+                    }
+                )
             }
         case .itemStarted(let item):
             let detail: String

@@ -56,6 +56,8 @@ struct NewWindowOverlay: View {
             .frame(maxWidth: 420)
         }
         .accessibilityIdentifier("newWindow.overlay")
+        .onAppear { TransientPopups.shared.overlayDidAppear() }
+        .onDisappear { TransientPopups.shared.overlayDidDisappear() }
     }
 }
 

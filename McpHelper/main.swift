@@ -36,17 +36,19 @@ let sessionToken = env[ControlProtocol.Environment.sessionToken].flatMap { $0.is
 let controlSocketPath = env[ControlProtocol.Environment.controlSocket]
 
 let instructions = """
-Uncoil's control plane: the app the user runs this session in. One tool per domain; every \
-call is {"action": ..., ...}. Call {"action":"help"} on a tool for its actions, or \
-uncoil_system {"action":"describe"} for the whole contract. Prefer these tools over a raw \
-shell equivalent whenever Uncoil manages the thing involved, so the user sees it in the app: \
-a new worktree or branch for a change → uncoil_projects; starting, restarting or reading a dev \
-server or preview → uncoil_run; TODO items and "what's next" → uncoil_tasks; another agent or \
-session ("the other session", "ask Codex to…", "check on my agents") → uncoil_sessions; \
-opening, clicking through, screenshotting or resizing a web page → uncoil_browser. Prefer \
-structured session actions (capabilities, timeline, events, submit) over reading terminal \
-output. Browser loop: open → snapshot → act by ref → re-snapshot after navigation or DOM \
-changes; if a click misses, scroll_into_view the ref, close covering banners, re-snapshot.
+Uncoil manages the sessions, worktrees, tasks, dev servers and browser shown in the app. \
+Use its tools when the task needs that managed state; use normal repository tools for \
+inspection, editing, builds and tests. Follow the user's instructions and project rules. \
+Stay in the current session by default. Do not spawn or delegate to agents unless the \
+user or project instructions ask for it. When authorized, reuse suitable sessions and \
+use idempotency_key for creation and prompt submission. Use capabilities to check supported \
+operations, submit to deliver a prompt, and events with wait_s to follow it. Delivery is \
+not completion. Children send report_to_parent; parents read_reports for results.
+Every call is {"action": ..., ...}. Request help only for the tool/action needed. \
+For PERMISSION_REQUIRED, call uncoil_system request_permission with the reported grant_key \
+and target_session_id (omit a null target); an approval window opens and the call waits \
+for the decision. Retry the original action only after status granted. Respect denial \
+and disabled capabilities. Browser loop: open → snapshot → act by ref → re-snapshot.
 """
 
 // MARK: - Tool catalogue (kept small; full docs live behind the `help` action)
@@ -67,7 +69,7 @@ let tools: [ToolDef] = [
     ToolDef(name: "uncoil_run",
             description: "Project run / dev preview: detect the project's dev workflows into the repo-owned .uncoil/run.json, then start/stop/restart them, read structured status and log tails, and repair configurations. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_system",
-            description: "Report Uncoil control-plane status, version, the full contract (describe), granted capabilities, and health diagnostics. Call {\"action\":\"help\"} for full documentation."),
+            description: "Report Uncoil control-plane status, version, the full contract (describe), granted capabilities, and health diagnostics; request user permission through an approval window. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_browser",
             description: "Drive an isolated headless browser (open, snapshot, click element refs, fill, screenshot, resize the viewport) via the optional agent-browser CLI; needs the browser.use grant. Call {\"action\":\"help\"} for full documentation."),
     ToolDef(name: "uncoil_computer",
@@ -201,7 +203,11 @@ func forwardToControlPlane(
         return failure("CONTROL_PLANE_UNAVAILABLE", "cannot reach Uncoil control plane", retryable: true)
     }
 
-    let limit = callTimeout(args)
+    var timeoutArgs = args
+    if capability == "uncoil_system", action == "request_permission", timeoutArgs["timeout_s"] == nil {
+        timeoutArgs["timeout_s"] = 120
+    }
+    let limit = callTimeout(timeoutArgs)
     var timeout = timeval(tv_sec: Int(limit), tv_usec: 0)
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 

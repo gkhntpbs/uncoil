@@ -87,7 +87,10 @@ final class ClaudeUsageProbe {
 
         guard status == 0 else {
             close(master)
-            throw UsageFetchError(.processFailed, detail: "claude did not start")
+            throw UsageFetchError(
+                .processFailed,
+                detail: "claude did not start: \(String(cString: strerror(status))) (\(configuration.executable))"
+            )
         }
         defer { terminate(pid: pid, master: master) }
 
@@ -109,14 +112,48 @@ final class ClaudeUsageProbe {
         let deadline = Date().addingTimeInterval(configuration.timeout)
 
         // Let the CLI draw its prompt before typing into it; a slash command
-        // sent before the input exists is swallowed.
-        _ = readUntil(master: master, deadline: min(deadline, Date().addingTimeInterval(6)), into: &collected) { _ in false }
+        // sent before the input exists is swallowed. A first run in this
+        // folder asks whether to trust it instead — on a Mac where nobody has
+        // answered that yet, `/usage` used to be typed into the question and
+        // the probe timed out. The default answer is "Yes, proceed", and the
+        // folder holds nothing but the README this probe wrote.
+        var answeredTrust = false
+        _ = readUntil(master: master, deadline: min(deadline, Date().addingTimeInterval(6)), into: &collected) { text in
+            Self.asksForTrust(text)
+        }
+        if Self.asksForTrust(String(decoding: collected, as: UTF8.self)) {
+            answeredTrust = true
+            write(master: master, text: "\r")
+            _ = readUntil(master: master, deadline: min(deadline, Date().addingTimeInterval(4)), into: &collected) { _ in false }
+        }
 
         write(master: master, text: "/usage\r")
         var sawPanel = false
-        _ = readUntil(master: master, deadline: deadline, into: &collected) { text in
+        // One retry: a slow first start can still swallow the first command.
+        let firstTry = min(deadline, Date().addingTimeInterval(10))
+        _ = readUntil(master: master, deadline: firstTry, into: &collected) { text in
             sawPanel = ClaudeUsagePanelParser.panelIsPresent(text)
             return sawPanel
+        }
+        if !sawPanel, Date() < deadline {
+            write(master: master, text: "\u{1b}")
+            write(master: master, text: "/usage\r")
+            _ = readUntil(master: master, deadline: deadline, into: &collected) { text in
+                sawPanel = ClaudeUsagePanelParser.panelIsPresent(text)
+                return sawPanel
+            }
+        }
+        if !sawPanel {
+            // What the CLI was showing instead is the whole diagnosis — a login
+            // prompt, an update notice, an error. Logged (redacted), not shown.
+            let tail = String(ClaudeUsagePanelParser.strippingANSI(String(decoding: collected, as: UTF8.self))
+                .split(whereSeparator: \.isNewline)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .suffix(12)
+                .joined(separator: " | ")
+                .suffix(900))
+            AppLog.log(.usage, "claude probe: no panel\(answeredTrust ? " (answered the trust prompt)" : ""); screen ended with: \(tail)")
         }
 
         if sawPanel {
@@ -216,12 +253,11 @@ final class ClaudeUsageProbe {
     private func environment() -> [String] {
         var values: [String: String] = [:]
         let parent = ProcessInfo.processInfo.environment
-        for key in ["PATH", "HOME", "LANG", "TMPDIR", "SHELL", "USER"] {
+        for key in ["HOME", "LANG", "TMPDIR", "SHELL", "USER", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
+                    "https_proxy", "http_proxy", "no_proxy"] {
             if let value = parent[key] { values[key] = value }
         }
-        if values["PATH"] == nil {
-            values["PATH"] = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
-        }
+        values["PATH"] = Self.probePATH(executable: configuration.executable)
         values["TERM"] = "xterm-256color"
         // Colour is stripped before parsing anyway, and asking for none makes
         // the text that survives closer to what a person reads.
@@ -230,6 +266,37 @@ final class ClaudeUsageProbe {
             values["CLAUDE_CONFIG_DIR"] = directory.path
         }
         return values.map { "\($0.key)=\($0.value)" }
+    }
+
+    /// The PATH a probe runs with: the CLI's own folder first (an npm or nvm
+    /// install keeps `node` beside `claude`), then the login shell's PATH, then
+    /// the app's own.
+    ///
+    /// A Finder-launched app gets launchd's `/usr/bin:/bin:/usr/sbin:/sbin`.
+    /// A `claude` that is a `#!/usr/bin/env node` script cannot start under
+    /// that — which never showed on a Mac with the native build, and was the
+    /// whole failure on one with the npm package.
+    static func probePATH(executable: String) -> String {
+        var directories: [String] = []
+        func add(_ directory: String) {
+            if !directory.isEmpty, !directories.contains(directory) { directories.append(directory) }
+        }
+        add((executable as NSString).deletingLastPathComponent)
+        let resolved = (executable as NSString).resolvingSymlinksInPath
+        add((resolved as NSString).deletingLastPathComponent)
+        SettingsStore.interactivePATH.forEach(add)
+        BinarySearchPath.directories().forEach(add)
+        (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init).forEach(add)
+        ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].forEach(add)
+        return directories.joined(separator: ":")
+    }
+
+    /// Claude's "do you trust the files in this folder?" question.
+    static func asksForTrust(_ text: String) -> Bool {
+        let lowered = ClaudeUsagePanelParser.strippingANSI(text).lowercased()
+        return lowered.contains("trust the files")
+            || lowered.contains("do you trust")
+            || (lowered.contains("trust") && lowered.contains("yes, proceed"))
     }
 
     private func writeReadme() throws {

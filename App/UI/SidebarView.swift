@@ -143,7 +143,12 @@ struct SidebarView: View {
                     },
                     closeScratch: { confirmingScratchClose = true },
                     createProjectFolder: { newProjectFolder() },
-                    editProjectFolder: { editingFolder = $0 }
+                    editProjectFolder: { editingFolder = $0 },
+                    createSubfolder: { parent in
+                        let count = projectStore.sidebarChildren(of: parent).count
+                        editingFolder = ProjectFolder(name: "", sortIndex: Double(count), parentID: parent)
+                    },
+                    confirmDeleteSelection: { showBulkDelete = true }
                 )
             )
             .overlay(alignment: .top) {
@@ -597,9 +602,13 @@ struct ProjectRowView: View {
                     PinMark(isPinned: true, size: 10, color: Theme.textDim)
                         .help("Pinned")
                 }
-                // Nothing follows the name inline: the launcher owns the
-                // trailing edge and the name stops short of it.
+                // Nothing follows the name inline but the run mark: the
+                // launcher owns the trailing edge and the name stops short of it.
                 Spacer(minLength: 8)
+                if !showsLauncher {
+                    SidebarRunIndicator(projectIDs: [projectID])
+                        .padding(.trailing, sessionsCollapsed && childCount > 0 ? 18 : 0)
+                }
             }
             .padding(.leading, SidebarIndent.leading(depth: 0))
             .padding(.trailing, 10)
@@ -876,7 +885,10 @@ struct SessionRowView: View {
     /// Waiting on the user right now, or carrying a notification nobody has
     /// looked at yet.
     private var wantsAttention: Bool {
-        sessionStore.wantsAttention(sessionID)
+        attentionMotion.style.marks(
+            status: status,
+            unseen: sessionStore.unseenAttention.contains(sessionID)
+        )
     }
 
     /// The colour of what it is waiting for — the same one the status orb uses,
@@ -955,6 +967,10 @@ struct SessionRowView: View {
                         PinButton(record: record)
                     }
                     StatusOrb(status: status, size: 11)
+                        .padding(3)
+                        .contentShape(Rectangle())
+                        .padding(-3)
+                        .statusLegend(status, detail: sessionStore.detail(of: sessionID))
                     Text(RelativeClock.short(since: record.lastActivityAt))
                         .font(Theme.mono(.small))
                         .foregroundStyle(Theme.textFaint)
@@ -989,7 +1005,7 @@ struct SessionRowView: View {
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.chip)
                     .fill(attentionColor.opacity(
-                        wantsAttention && pulsing ? emphasis.fillOpacity : 0.0
+                        wantsAttention && pulsing ? attentionMotion.style.fillOpacity(for: emphasis) : 0.0
                     ))
             )
             .overlay(
@@ -997,7 +1013,9 @@ struct SessionRowView: View {
                     .strokeBorder(
                         wantsAttention
                             ? attentionColor.opacity(
-                                pulsing ? emphasis.borderRange.high : emphasis.borderRange.low
+                                pulsing
+                                    ? attentionMotion.style.borderRange(for: emphasis).high
+                                    : attentionMotion.style.borderRange(for: emphasis).low
                             )
                             : (isSelected ? Theme.highlightBorder : .clear),
                         lineWidth: 1
@@ -1006,7 +1024,7 @@ struct SessionRowView: View {
             .animation(
                 pulsing
                     ? uncoilAnimation(
-                        .easeInOut(duration: emphasis.period).repeatForever(autoreverses: true)
+                        .easeInOut(duration: attentionMotion.period).repeatForever(autoreverses: true)
                     )
                     : Theme.Motion.standard,
                 value: pulsing
@@ -1017,6 +1035,10 @@ struct SessionRowView: View {
             // Turning the emphasis down mid-pulse has to stop the old
             // animation, not leave the row breathing at the previous rate.
             .onChange(of: emphasis) { _, _ in
+                pulsing = false
+                updatePulse(wants: wantsAttention)
+            }
+            .onChange(of: attentionMotion.style) { _, _ in
                 pulsing = false
                 updatePulse(wants: wantsAttention)
             }

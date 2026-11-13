@@ -65,7 +65,12 @@ final class StructuredSessionTerminalDelegate: TerminalViewDelegate {
     func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {}
     func scrolled(source: TerminalView, position: Double) {}
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
-        if let url = URL(string: link) { NSWorkspace.shared.open(url) }
+        // ⌘-click: files go to the chosen editor at the line, web links to
+        // the chosen browser — see `TerminalLinkOpener`.
+        MainActor.assumeIsolated {
+            let directory = (source as? TerminalLinkContext)?.linkDirectory
+            _ = TerminalLinkOpener.open(link, relativeTo: directory)
+        }
     }
     func clipboardCopy(source: TerminalView, content: Data) {
         if let text = String(data: content, encoding: .utf8) {

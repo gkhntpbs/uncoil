@@ -179,6 +179,29 @@ enum UsageUnavailability: String, Codable, Equatable {
 /// when it was taken, and whether it is still believed to be current. A caller
 /// that cannot tell fresh data from an eighteen-minute-old copy will show the
 /// old one as though it were now.
+/// Free "reset my limits" grants the provider has given the account.
+///
+/// Codex hands these out ("Full reset (Weekly + 5 hr)"): each one, when used,
+/// empties the rate-limit windows. They are not quota and not money, so they
+/// live in their own field rather than beside the windows or the credits.
+struct UsageResetCredits: Codable, Equatable {
+    struct Grant: Codable, Equatable {
+        var title: String?
+        var expiresAt: Date?
+    }
+
+    /// How many are available in total.
+    var available: Int
+    /// How many could be used right now — Codex only lets one be spent while a
+    /// limit is actually in the way. Nil when the route does not say.
+    var usableNow: Int?
+    /// The individual grants, when the route lists them (the app-server does).
+    var grants: [Grant] = []
+
+    /// The soonest a grant runs out, if any do.
+    var nextExpiry: Date? { grants.compactMap(\.expiresAt).min() }
+}
+
 struct UsageSnapshot: Codable, Equatable {
     var provider: AgentProvider
     /// Uncoil's own account id, so two profiles of the same provider never
@@ -196,6 +219,9 @@ struct UsageSnapshot: Codable, Equatable {
     var extraWindows: [UsageWindow]
 
     var credits: UsageCredits?
+
+    /// Limit resets the account can spend; nil when the provider has none.
+    var resetCredits: UsageResetCredits?
 
     /// The provider said outright that this account is refused, whatever the
     /// percentages say.
@@ -223,6 +249,7 @@ struct UsageSnapshot: Codable, Equatable {
         secondaryWindow: UsageWindow? = nil,
         extraWindows: [UsageWindow] = [],
         credits: UsageCredits? = nil,
+        resetCredits: UsageResetCredits? = nil,
         limitReached: Bool = false,
         source: UsageSource,
         updatedAt: Date,
@@ -237,6 +264,7 @@ struct UsageSnapshot: Codable, Equatable {
         self.secondaryWindow = secondaryWindow
         self.extraWindows = extraWindows
         self.credits = credits
+        self.resetCredits = resetCredits
         self.limitReached = limitReached
         self.source = source
         self.updatedAt = updatedAt

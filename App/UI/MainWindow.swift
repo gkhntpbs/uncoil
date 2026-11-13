@@ -12,6 +12,7 @@ struct MainWindow: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var usage: UsageStore
     @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var splash = SplashGate.shared
     @StateObject private var palette = PaletteModel()
     @ObservedObject private var router = Router.shared
     @State private var selection: MainSelection?
@@ -38,6 +39,8 @@ struct MainWindow: View {
     @State private var debugBundleMessage: String?
     @State private var debugBundleURL: URL?
     @State private var runtimeCompatibilityError: String?
+    @State private var missingVolumeMessage: String?
+    @ObservedObject private var volumeMonitor = VolumeMonitor.shared
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Self.defaultSidebarWidth)
     @State private var dragStartWidth: Double?
@@ -65,6 +68,17 @@ struct MainWindow: View {
                 sessionStore: sessionStore,
                 usage: usage
             ))
+            // The launch curtain: hides the first second of loading — stores,
+            // runtime daemon, sidebar — behind the website's own splash.
+            .overlay {
+                if splash.isShowing {
+                    SplashView(gate: splash)
+                        .transition(.identity)
+                }
+            }
+            .onAppear {
+                splash.start { RuntimeClient.shared.isReady }
+            }
     }
 
     private var surfaces: some View {
@@ -140,6 +154,21 @@ struct MainWindow: View {
         } message: {
             Text(runtimeCompatibilityError ?? "")
         }
+        .alert(
+            "Disk Not Connected",
+            isPresented: Binding(
+                get: { missingVolumeMessage != nil },
+                set: { if !$0 { missingVolumeMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(missingVolumeMessage ?? "")
+        }
+        // At launch and on every mount/eject: a project whose disk is gone
+        // is said out loud instead of leaving its sessions on a blank screen.
+        .task { announceMissingVolumes() }
+        .onChange(of: volumeMonitor.revision) { _, _ in announceMissingVolumes() }
         .onReceive(NotificationCenter.default.publisher(for: .runtimeCompatibilityError)) {
             runtimeCompatibilityError = $0.object as? String
         }
@@ -415,9 +444,7 @@ struct MainWindow: View {
             }
         case .createDebugBundle:
             do {
-                let diagnostics = usage.entries.keys.sorted {
-                    ($0.provider.rawValue + ($0.accountID?.uuidString ?? "")) < ($1.provider.rawValue + ($1.accountID?.uuidString ?? ""))
-                }.map { usage.diagnostics(for: $0) }.joined(separator: "\n\n")
+                let diagnostics = usage.allDiagnostics()
                 let result = try DebugBundleService().create(usageDiagnostics: diagnostics)
                 debugBundleURL = result.bundleURL
                 debugBundleMessage = "Created: \(result.bundleURL.path)"
@@ -718,6 +745,13 @@ struct MainWindow: View {
            let first = projectScope.filter(projectStore.visibleProjects).first {
             selection = .project(first.id)
         }
+    }
+
+    private func announceMissingVolumes() {
+        guard missingVolumeMessage == nil, !router.isPresentingOnboarding,
+              let message = volumeMonitor.takeAnnouncement(for: projectStore.projects)
+        else { return }
+        missingVolumeMessage = message
     }
 
     private func persistSelection() {

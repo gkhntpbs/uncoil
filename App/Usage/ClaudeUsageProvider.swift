@@ -17,7 +17,10 @@ struct ClaudeUsageProvider: UsageProvider {
 
     var http: UsageHTTPClient = UsageURLSessionClient()
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
-    var locateBinary: (String) -> String? = { AgentAdapterSupport.locateBinary($0) }
+    /// The same lookup sessions use — known install locations, then the login
+    /// shell's PATH. The fixed list alone missed nvm, fnm, mise and friends, so
+    /// a Mac whose sessions worked could not find the CLI to read usage with.
+    var locateBinary: (String) -> String? = { SettingsStore.which($0) }
     var probeDirectory: URL
     var clock: () -> Date = Date.init
     /// Supplies a `claude.ai` session cookie when the user has enabled that
@@ -28,7 +31,7 @@ struct ClaudeUsageProvider: UsageProvider {
         probeDirectory: URL,
         http: UsageHTTPClient = UsageURLSessionClient(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        locateBinary: @escaping (String) -> String? = { AgentAdapterSupport.locateBinary($0) },
+        locateBinary: @escaping (String) -> String? = { SettingsStore.which($0) },
         clock: @escaping () -> Date = Date.init,
         webSessionKey: (() -> String?)? = nil
     ) {
@@ -160,13 +163,22 @@ struct ClaudeAuth: Equatable {
             }
             ClaudeKeychainCache.shared.token = nil
         }
-        guard allowKeychain else {
-            throw UsageFetchError(.credentialsMissing, detail: "needs the Keychain")
+        // Without permission to ask, read silently: macOS answers only if the
+        // user already allowed Uncoil, and fails rather than showing a dialog.
+        let read = UsageCredentials.readKeychain(
+            service: "Claude Code-credentials", allowInteraction: allowKeychain
+        )
+        guard let raw = read.value else {
+            throw UsageFetchError(
+                .credentialsMissing,
+                detail: allowKeychain
+                    ? "Keychain: \(read.statusText)"
+                    : "Keychain not readable without asking (\(read.statusText)); press Refresh in the usage card once"
+            )
         }
-        guard let raw = UsageCredentials.readKeychainString(service: "Claude Code-credentials", allowInteraction: allowKeychain),
-              let data = raw.data(using: .utf8),
+        guard let data = raw.data(using: .utf8),
               let json = try? JSONDecoder().decode(JSONValue.self, from: data) else {
-            throw UsageFetchError(.credentialsMissing, detail: nil)
+            throw UsageFetchError(.malformedResponse, detail: "Keychain item is not JSON")
         }
         let auth = try parse(json)
         ClaudeKeychainCache.shared.token = auth
@@ -219,8 +231,14 @@ struct ClaudeOAuthUsageStrategy: UsageFetchStrategy {
         if UsageCredentials.fileExists(
             at: configDirectory.appendingPathComponent(".credentials.json")
         ) { return true }
-        guard usesDefaultHome else { return false }
-        return ClaudeKeychainCache.shared.isPrimed || allowKeychain
+        // The default account can always try: without permission to ask, the
+        // Keychain is read silently, which succeeds only where the user has
+        // already allowed Uncoil ("Always Allow") and never shows a dialog.
+        return usesDefaultHome
+    }
+
+    var unavailableReason: String? {
+        "no \(configDirectory.appendingPathComponent(".credentials.json").path), and the Keychain login only answers for the default account"
     }
 
     func fetch() async throws -> UsageSnapshot {
@@ -280,6 +298,13 @@ struct ClaudeCLIUsageStrategy: UsageFetchStrategy {
     func isAvailable() -> Bool {
         guard let executable else { return false }
         return FileManager.default.isExecutableFile(atPath: executable)
+    }
+
+    var unavailableReason: String? {
+        guard let executable else {
+            return "claude not found in known locations or the login shell PATH; set it under Settings › Agents › Locate…"
+        }
+        return "\(executable) is not executable"
     }
 
     func fetch() async throws -> UsageSnapshot {

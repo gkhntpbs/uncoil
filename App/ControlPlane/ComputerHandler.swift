@@ -29,25 +29,21 @@ extension CapabilityRouter {
         let grants = PolicyEngine.grants(for: caller)
         let action = request.action
 
-        // Grant gating by action class.
+        let requiredKey: String?
         if Self.foregroundActions.contains(action) {
-            guard grants.contains("computer.foreground_control") else {
-                return .failure(request, code: .capabilityDisabled,
-                    message: "computer.foreground_control is not granted",
-                    details: .object(["remedy": .string("enable foreground computer control for this session in Uncoil")]))
-            }
+            requiredKey = "computer.foreground_control"
         } else if Self.backgroundActions.contains(action) {
-            guard grants.contains("computer.background_control") else {
-                return .failure(request, code: .capabilityDisabled,
-                    message: "computer.background_control is not granted",
-                    details: .object(["remedy": .string("enable background computer control for this session in Uncoil")]))
-            }
+            requiredKey = "computer.background_control"
         } else if Self.inspectActions.contains(action) {
-            guard grants.contains("computer.inspect") else {
-                return .failure(request, code: .capabilityDisabled,
-                    message: "computer.inspect is not granted",
-                    details: .object(["remedy": .string("enable computer inspection for this session in Uncoil")]))
-            }
+            requiredKey = "computer.inspect"
+        } else {
+            requiredKey = nil
+        }
+        if let key = requiredKey, !grants.contains(key),
+           permissions?.isGranted(from: caller.id.uuidString, to: nil, key: key) != true {
+            return .failure(request, code: .permissionRequired,
+                message: "user permission required: call uncoil_system request_permission",
+                details: .object(["grant_key": .string(key), "target": .null]))
         }
 
         // Availability probe (status still reports even when uninstalled).

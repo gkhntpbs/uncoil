@@ -47,6 +47,8 @@ final class SettingsStore: ObservableObject {
         /// How loudly the sidebar pulses for a session that wants attention.
         /// Optional for backward compatibility; nil ⇒ subtle.
         var attentionEmphasis: AttentionEmphasis? = nil
+        /// What is marked and how strongly; nil ⇒ defaults.
+        var attentionStyle: AttentionStyle? = nil
         var usageWarningsEnabled: Bool? = nil
         var usageWarningThreshold: Double? = nil
         var quotaOptimization: QuotaOptimizationPrefs? = nil
@@ -85,6 +87,8 @@ final class SettingsStore: ObservableObject {
         /// Sessions a sidebar list shows before "Load more"; 0 = all of them.
         /// nil = `SidebarSessionLimit.default`.
         var sidebarSessionLimit: Int? = nil
+        /// How terminal links open; nil ⇒ defaults.
+        var terminalLinks: TerminalLinkPrefs? = nil
         enum CodingKeys: String, CodingKey, CaseIterable {
             case accounts
             case defaultAccountByProvider
@@ -97,6 +101,7 @@ final class SettingsStore: ObservableObject {
             case providerBehaviors
             case commandPaletteHotkey
             case attentionEmphasis
+            case attentionStyle
             case usageWarningsEnabled
             case usageWarningThreshold
             case quotaOptimization
@@ -114,6 +119,7 @@ final class SettingsStore: ObservableObject {
             case agentBinaryLocations
             case uncoilAuto
             case sidebarSessionLimit
+            case terminalLinks
         }
     }
 
@@ -126,7 +132,13 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var agentBinaryLocations: [String: String] = [:]
     /// Extra CLI arguments appended to the agent launch command, per provider.
     @Published var extraArguments: [String: String] = [:]
-    @Published var preferredEditor: PreferredEditor = .vscode
+    @Published var preferredEditor: PreferredEditor = .vscode {
+        didSet { TerminalLinkOpener.configure(prefs: terminalLinks, editor: preferredEditor) }
+    }
+    /// How links in session terminals open (⌃-click, editor, browser).
+    @Published var terminalLinks: TerminalLinkPrefs = .default {
+        didSet { TerminalLinkOpener.configure(prefs: terminalLinks, editor: preferredEditor) }
+    }
     @Published var notifications = NotificationPrefs()
     /// Configured session presets; nil ⇒ the built-in defaults are used.
     @Published var configuredPresets: [SessionPreset]? = nil
@@ -136,6 +148,7 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var commandPaletteHotkey: HotkeyBinding = .commandPaletteDefault
     /// How loudly the sidebar pulses for a session that wants attention.
     @Published private(set) var attentionEmphasis: AttentionEmphasis = .subtle
+    @Published private(set) var attentionStyle: AttentionStyle = .default
     /// Whether an account running low is worth saying anything about. The
     /// figures stay either way — this is about being told, not about knowing.
     @Published private(set) var usageWarningsEnabled = true
@@ -184,6 +197,8 @@ final class SettingsStore: ObservableObject {
     /// Latest published versions from the registry.
     @Published var cliLatest: [String: String] = [:]
     @Published var cliChecking = false
+    /// True while "Update All" is working through the list.
+    @Published private(set) var cliUpdatingAll = false
 
     private var settingsDocument = SettingsDocument()
     private var isLoadingSettings = false
@@ -206,6 +221,7 @@ final class SettingsStore: ObservableObject {
         // is no settings.json — on a first launch that left the global holding
         // whatever the last store had put there.
         AttentionMotion.shared.emphasis = attentionEmphasis
+        AttentionMotion.shared.style = attentionStyle
         BinarySearchPath.setUserLocations(agentBinaryLocations)
         ensureDefaultAccounts()
     }
@@ -303,6 +319,12 @@ final class SettingsStore: ObservableObject {
     /// the account was already empty, and one of 100 would fire always.
     func setUsageWarningThreshold(_ percent: Double) {
         usageWarningThreshold = min(90, max(1, percent))
+        save()
+    }
+
+    func setAttentionStyle(_ style: AttentionStyle) {
+        attentionStyle = style
+        AttentionMotion.shared.style = style
         save()
     }
 
@@ -674,6 +696,26 @@ final class SettingsStore: ObservableObject {
         } ?? .unknown
     }
 
+    /// Every agent with a newer version waiting, one after another.
+    ///
+    /// Sequential on purpose: two of them can come from Homebrew or npm, and
+    /// both hold a lock while they install. Asks the channels first when no
+    /// check has run yet, so the button works on a fresh Settings window.
+    @discardableResult
+    func updateAllCLIs() async -> [AgentProvider: AgentUpdateOutcome] {
+        guard !cliUpdatingAll else { return [:] }
+        cliUpdatingAll = true
+        defer { cliUpdatingAll = false }
+        if cliLatest.isEmpty { await checkCLIUpdates() }
+        var results: [AgentProvider: AgentUpdateOutcome] = [:]
+        for provider in pendingCLIUpdates {
+            AppLog.log(.app, "update all: \(provider.rawValue) \(cliVersions[provider.rawValue] ?? "?") → \(cliLatest[provider.rawValue] ?? "?")")
+            await updateCLI(provider)
+            if let outcome = cliUpdateOutcome[provider.rawValue] { results[provider] = outcome }
+        }
+        return results
+    }
+
     func updateCLI(_ provider: AgentProvider) async {
         guard !cliUpdating.contains(provider.rawValue) else { return }
         guard case .run(let command) = updatePlan(for: provider) else {
@@ -866,11 +908,13 @@ final class SettingsStore: ObservableObject {
         agentBinaryLocations = decoded.agentBinaryLocations ?? [:]
         extraArguments = decoded.extraArguments
         preferredEditor = decoded.preferredEditor
+        terminalLinks = decoded.terminalLinks ?? .default
         notifications = decoded.notifications
         configuredPresets = decoded.presets
         providerBehaviors = decoded.providerBehaviors ?? [:]
         commandPaletteHotkey = decoded.commandPaletteHotkey ?? .commandPaletteDefault
         attentionEmphasis = decoded.attentionEmphasis ?? .subtle
+        attentionStyle = decoded.attentionStyle ?? .default
         usageWarningsEnabled = decoded.usageWarningsEnabled ?? true
         usageWarningThreshold = decoded.usageWarningThreshold ?? UsageAlert.defaultThreshold
         quotaOptimization = decoded.quotaOptimization ?? QuotaOptimizationPrefs()
@@ -927,6 +971,7 @@ final class SettingsStore: ObservableObject {
             commandPaletteHotkey: commandPaletteHotkey == .commandPaletteDefault
                 ? nil : commandPaletteHotkey,
             attentionEmphasis: attentionEmphasis == .subtle ? nil : attentionEmphasis,
+            attentionStyle: attentionStyle == .default ? nil : attentionStyle,
             usageWarningsEnabled: usageWarningsEnabled ? nil : false,
             usageWarningThreshold: usageWarningThreshold == UsageAlert.defaultThreshold
                 ? nil : usageWarningThreshold,
@@ -949,7 +994,8 @@ final class SettingsStore: ObservableObject {
             agentBinaryLocations: agentBinaryLocations.isEmpty ? nil : agentBinaryLocations,
             uncoilAuto: uncoilAuto == .default ? nil : uncoilAuto,
             sidebarSessionLimit: sidebarSessionLimit == SidebarSessionLimit.default
-                ? nil : sidebarSessionLimit
+                ? nil : sidebarSessionLimit,
+            terminalLinks: terminalLinks == .default ? nil : terminalLinks
         )
     }
 

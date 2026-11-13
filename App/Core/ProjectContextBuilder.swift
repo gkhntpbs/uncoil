@@ -25,20 +25,23 @@ enum ProjectContextBuilder {
     }
 
     static let uncoilToolsSection = Section(
-        title: "Uncoil tools (prefer them over doing it by hand)",
+        title: "Uncoil tools",
         body: """
-        You run inside Uncoil, which manages this project's sessions, worktrees, tasks, dev servers \
-        and a browser. When a request touches one of these, use the `uncoil_*` MCP tool rather than \
-        a raw shell equivalent, so the user sees the result in Uncoil:
-        - New branch/worktree for a change → uncoil_projects (not `git worktree add`).
-        - Starting, restarting or reading a dev server, preview or its logs → uncoil_run \
-        (not a backgrounded `npm run dev`).
-        - TODO items, "what's next", claiming or finishing a task → uncoil_tasks.
-        - Delegating to or checking on another agent/session → uncoil_sessions.
-        - Opening, clicking through or screenshotting a web page, checking a layout at a size \
-        → uncoil_browser (open → snapshot → act by ref; `viewport` to resize).
-        Every tool takes {"action": …}; {"action":"help"} lists the actions. If a tool reports \
-        a capability as disabled, say so instead of working around it.
+        You run inside Uncoil. Use its MCP tools when the task needs Uncoil-managed state: \
+        sessions (uncoil_sessions), worktrees (uncoil_projects), tasks (uncoil_tasks), \
+        dev servers (uncoil_run), or its browser (uncoil_browser). Use your normal tools for \
+        repository inspection, editing, builds and tests. The user's instructions and project \
+        rules take precedence; MCP availability does not require extra tool calls.
+        Work in the current session by default. Do not create or delegate to other agents unless \
+        the user or project instructions ask for it. When authorized, reuse an appropriate existing \
+        session, give each worker a bounded task, and use an idempotency_key when creating one. \
+        Use events with wait_s to follow a session rather than repeatedly polling its output. \
+        A child reports results with report_to_parent; the parent reads them with read_reports. \
+        A delivered prompt is not proof that the task finished.
+        Every tool takes {"action": …}; request help only for the tool/action you need. \
+        On PERMISSION_REQUIRED, call uncoil_system request_permission with the returned grant_key \
+        and target. It opens an approval window and waits for the user's decision. Continue only \
+        after approval; do not repeat a denied request or bypass a disabled capability.
         """
     )
 

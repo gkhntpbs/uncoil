@@ -11,29 +11,35 @@ struct StatusOrb: View {
     var size: CGFloat = 12
     @ObservedObject private var motion = AttentionMotion.shared
 
+    /// "Waiting for input" drawn as "finished" when the user asked for that.
+    private var displayedStatus: AgentSessionStatus {
+        if status == .waitingForInput, motion.style.inputLooksReady { return .completed }
+        return status
+    }
+
     var body: some View {
-        switch status {
+        switch displayedStatus {
         // With the attention emphasis off, the orb keeps its colour and loses
         // its motion — the same bargain the sidebar row makes. A still dot
         // still says "running"; a list of them does not flicker.
-        case .running, .thinking, .waitingForSubagents:
-            if motion.animates {
+        case .running, .thinking, .waitingForSubagents, .waitingForBackground:
+            if motion.animates && motion.style.animateWorkingOrb {
                 OrbitingDots(color: status.color, size: size)
             } else {
                 StillOrb(color: status.color, size: size)
             }
         case .waitingForPermission, .waitingForInput:
-            if motion.animates {
-                PulsingOrb(color: status.color, size: size, period: motion.emphasis.period)
+            if motion.animates && motion.style.pulseWaitingOrb {
+                PulsingOrb(color: status.color, size: size, period: motion.period)
             } else {
                 StillOrb(color: status.color, size: size, ring: true)
             }
         case .completed:
             ZStack {
                 Circle()
-                    .strokeBorder(status.color.opacity(0.35), lineWidth: 1)
+                    .strokeBorder(displayedStatus.color.opacity(0.35), lineWidth: 1)
                 Circle()
-                    .fill(status.color)
+                    .fill(displayedStatus.color)
                     .frame(width: size * 0.45, height: size * 0.45)
             }
             .frame(width: size, height: size)

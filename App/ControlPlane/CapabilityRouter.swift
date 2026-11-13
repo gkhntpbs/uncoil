@@ -185,7 +185,7 @@ final class CapabilityRouter {
         // with the child as it is now rather than as it was.
         if !capabilityDoc.isRead(request.action),
            let key = request.args["idempotency_key"]?.stringValue, !key.isEmpty,
-           !["create_child", "create_session"].contains(request.action) {
+           !["create_child", "create_session", "request_permission"].contains(request.action) {
             return await idempotency.run(
                 key: IdempotencyLedger.key(for: request, idempotencyKey: key),
                 request: request
@@ -244,7 +244,7 @@ final class CapabilityRouter {
         case "uncoil_sessions": return await handleSessions(request)
         case "uncoil_artifacts": return handleArtifacts(request)
         case "uncoil_tasks": return await handleTasks(request)
-        case "uncoil_system": return handleSystem(request)
+        case "uncoil_system": return await handleSystem(request)
         case "uncoil_browser": return await handleBrowser(request)
         case "uncoil_computer": return await handleComputer(request)
         case "uncoil_run": return await handleRun(request)

@@ -418,7 +418,7 @@ enum HelpRegistry {
     static let system: CapabilityDoc = {
         let names = ["help", "status", "version", "capabilities", "doctor", "dependencies",
                      "request_permission", "describe"]
-        let overview = "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics."
+        let overview = "Report Uncoil control-plane status, version, granted capabilities, and health diagnostics; request user permission through an approval window."
         return CapabilityDoc(
             capability: "uncoil_system",
             overview: overview,
@@ -437,7 +437,7 @@ enum HelpRegistry {
                 ActionDoc(action: "describe", summary: "The control-plane contract: versions, domains, actions, errors, caller.",
                     doc: "# describe\nReturns `{protocol:{version, minimum_version}, app_version, features:[…], capabilities:[{name, actions:[{name, kind: read|effect, summary}]}], effects:[…], error_codes:[…], caller:{caller_session_id, verification, provider, project_id, account_id, grants, may_act}}`. Needs no caller; use it to discover what this Uncoil supports before relying on it."),
                 ActionDoc(action: "request_permission", summary: "Ask the user to authorize a denied action.",
-                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`, `sessions.approve`), `target_session_id` (optional). Creates a pending, directional (caller→target) permission request the user approves/denies in Uncoil → Settings → Permissions. Grants are revocable and pending requests auto-expire after 10 minutes."),
+                    doc: "# request_permission\nArgs: `grant_key` (required — e.g. `sessions.control`, `sessions.close`, `sessions.approve`), `target_session_id` (optional). Opens a separate approval window and waits for the user. `timeout_s`: 0–300, default 120; 0 returns immediately. Session keys: `sessions.control`, `sessions.close`, `sessions.approve` require another existing `target_session_id`. Computer keys: `computer.inspect`, `computer.background_control`, `computer.foreground_control` take no target. Returns `request_id`, `status`, `scope`, `may_retry_action`. Retry the original action only when status is `granted`; a pending answer may be checked by repeating this request with the same key/target. Do not repeat a denied request. Allows once or until revoked; Settings → Permissions manages decisions. Pending requests expire after the configured timeout (10 minutes by default)."),
             ])
     }()
 

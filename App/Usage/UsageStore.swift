@@ -65,6 +65,10 @@ final class UsageStore: ObservableObject {
         for provider in resolved {
             self.providers[provider.provider] = provider
         }
+        // The probes look for the CLIs on the login shell's PATH too; resolving
+        // it costs a shell spawn, which must never land on the main actor at
+        // the first refresh.
+        Task.detached(priority: .utility) { _ = SettingsStore.interactivePATH }
         // Applied as the store is built rather than from a view's `onAppear`,
         // so the fixture is in place before anything can read it.
         if LaunchConfig.shared.usageFixture {
@@ -147,6 +151,7 @@ final class UsageStore: ObservableObject {
         starting.isRefreshing = true
         entries[key] = starting
 
+        AppLog.log(.usage, "refresh \(key.provider.rawValue)[\(key.accountID?.uuidString.prefix(8) ?? "default")] userInitiated=\(userInitiated) configDir=\(account.configDirectory?.path ?? "default")")
         let strategies = provider.strategies(for: account, userInitiated: userInitiated)
         let providerKind = key.provider
         let accountID = key.accountID
@@ -242,16 +247,29 @@ final class UsageStore: ObservableObject {
     /// returned: response bodies here sit next to identity and authentication
     /// data, and the useful part of a diagnostic is which route was tried and
     /// what it said, not what came back in it.
+    /// Every account's diagnostics, in a stable order, for the debug bundle.
+    func allDiagnostics() -> String {
+        let keys = entries.keys.sorted {
+            ($0.provider.rawValue + ($0.accountID?.uuidString ?? "")) < ($1.provider.rawValue + ($1.accountID?.uuidString ?? ""))
+        }
+        guard !keys.isEmpty else {
+            return "No usage reading has been attempted in this run — no session header was open and the quota monitor had not run yet."
+        }
+        return keys.map { diagnostics(for: $0) }.joined(separator: "\n\n")
+    }
+
     func diagnostics(for key: UsageKey) -> String {
         let entry = self.entry(for: key)
         var lines: [String] = ["\(key.provider.displayName) usage"]
         if let account = key.accountID { lines.append("account: \(account.uuidString)") }
         for attempt in entry.attempts {
-            let state = attempt.skipped ? "skipped"
+            let state = attempt.skipped ? "skipped" + (attempt.error?.detail.map { " (\($0))" } ?? "")
                 : attempt.succeeded ? "ok"
                 : (attempt.error?.summary ?? "failed")
-            lines.append("  \(attempt.source.rawValue): \(state)")
+            lines.append("  \(attempt.source.rawValue): \(state) [\(String(format: "%.1f", attempt.duration))s]")
         }
+        let refresh = entry.refresh
+        lines.append("  refresh: last=\(refresh.lastAttempt.map { ISO8601DateFormatter().string(from: $0) } ?? "never") failures=\(refresh.consecutiveFailures) blocked=\(refresh.authenticationBlocked)")
         if let snapshot = entry.snapshot {
             lines.append("  source: \(snapshot.source.rawValue), stale: \(snapshot.stale)")
             if let reason = snapshot.unavailable {

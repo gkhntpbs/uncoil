@@ -7,6 +7,7 @@ struct AboutSettingsPage: View {
     @EnvironmentObject private var settings: SettingsStore
     @Environment(\.openWindow) private var openWindow
     @ObservedObject private var updater = UpdaterService.shared
+    @EnvironmentObject private var usage: UsageStore
     @State private var debugBundleURL: URL?
     @State private var debugBundleError: String?
 
@@ -110,6 +111,19 @@ struct AboutSettingsPage: View {
                     Button("Create") { createDebugBundle() }
                         .settingsID("about.debugBundle")
                 }
+
+                AdaptiveRow {
+                    SettingsLabel(
+                        title: String(localized: "Log files"),
+                        detail: String(localized: "Uncoil writes what it tried and why it failed — usage tracking above all — to plain-text logs. Secrets are removed before anything is written.")
+                    )
+                } control: {
+                    Button("Open Logs Folder") {
+                        try? FileManager.default.createDirectory(at: AppLog.directory, withIntermediateDirectories: true)
+                        NSWorkspace.shared.open(AppLog.directory)
+                    }
+                    .settingsID("about.openLogs")
+                }
             } header: {
                 Text("Support")
             } footer: {
@@ -132,7 +146,7 @@ struct AboutSettingsPage: View {
 
     private func createDebugBundle() {
         do {
-            debugBundleURL = try DebugBundleService().create().bundleURL
+            debugBundleURL = try DebugBundleService().create(usageDiagnostics: usage.allDiagnostics()).bundleURL
             debugBundleError = nil
         } catch {
             debugBundleURL = nil

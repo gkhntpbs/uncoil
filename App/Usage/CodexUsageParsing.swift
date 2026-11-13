@@ -93,9 +93,36 @@ enum CodexUsageParser {
             secondaryWindow: secondary,
             extraWindows: extras,
             credits: credits,
+            resetCredits: resetCredits(root),
             limitReached: refused,
             source: source,
             updatedAt: now
+        )
+    }
+
+    /// Free limit resets. The usage endpoint gives counts
+    /// (`rate_limit_reset_credits.available_count`, plus how many apply right
+    /// now); the app-server lists each grant with its title and expiry
+    /// (`rateLimitResetCredits.credits[]`). Either is enough.
+    static func resetCredits(_ root: [String: JSONValue]) -> UsageResetCredits? {
+        guard let object = UsageJSON.object(root, ["rate_limit_reset_credits", "rateLimitResetCredits"]) else {
+            return nil
+        }
+        let listed = (UsageJSON.array(object, ["credits", "grants"]) ?? []).compactMap { item -> UsageResetCredits.Grant? in
+            guard let grant = item.objectValue else { return nil }
+            if let status = UsageJSON.string(grant, ["status"]), status.lowercased() != "available" { return nil }
+            return UsageResetCredits.Grant(
+                title: UsageJSON.string(grant, ["title", "name"]),
+                expiresAt: UsageJSON.double(grant, ["expiresAt", "expires_at"])
+                    .map(UsageCredentials.expiryDate(fromEpoch:))
+            )
+        }
+        let count = UsageJSON.double(object, ["available_count", "availableCount"]).map { Int($0) } ?? listed.count
+        guard count > 0 || !listed.isEmpty else { return nil }
+        return UsageResetCredits(
+            available: max(count, listed.count),
+            usableNow: UsageJSON.double(object, ["applicable_available_count", "applicableAvailableCount"]).map { Int($0) },
+            grants: listed
         )
     }
 

@@ -220,7 +220,9 @@ struct AttentionRailButton: View {
                 showPanel = false
                 onOpen(item)
             }
+            .sweepScrollers()
         }
+        .dismissWithTransientPopups($showPanel)
     }
 
     private var badgeColor: Color? {

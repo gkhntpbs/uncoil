@@ -222,7 +222,7 @@ final class HookReducerTests: XCTestCase {
         XCTAssertEqual(capturedTitle, "Login ekranındaki hatayı düzelt")
     }
 
-    func testLongPromptTitleTruncated() {
+    func testLongPromptTitlePreserved() {
         let long = String(repeating: "a", count: 80)
         let data = try! JSONSerialization.data(withJSONObject: [
             "hook_event_name": "UserPromptSubmit",
@@ -230,8 +230,7 @@ final class HookReducerTests: XCTestCase {
             "prompt": long,
         ])
         let title = SessionStore.titleCandidate(from: HookEvent(jsonLine: data)!)
-        XCTAssertEqual(title?.count, 42)
-        XCTAssertTrue(title!.hasSuffix("…"))
+        XCTAssertEqual(title, long)
     }
 
     func testEventWithNoLiveSessionIgnored() {

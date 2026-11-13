@@ -19,6 +19,7 @@ final class AppServices {
     static let shared = AppServices()
 
     private var hasStarted = false
+    private var permissionWindow: PermissionApprovalWindow?
     /// The stores, once the app has them.
     ///
     /// Read by the menu bar's own commands, which are declared beside the
@@ -226,6 +227,7 @@ final class AppServices {
         permissions.pendingTTL = settings.permissionTimeout
         sessionStore.permissionService = permissions
         router.permissions = permissions
+        permissionWindow = PermissionApprovalWindow(permissions: permissions, projects: projectStore)
 
         // Permission banners: tapping opens the session; only non-sensitive
         // grants can be answered from the notification itself.
@@ -239,12 +241,29 @@ final class AppServices {
             return projectStore?.sessions.first { $0.id == id }
         }
         notifications.activate()
-        permissions.onRequestCreated = { [weak projectStore] request in
+        permissions.onRequestCreated = { [weak self, weak projectStore] request in
+            self?.permissionWindow?.refresh()
             let target = request.targetSessionID ?? request.fromSessionID
             let projectID = UUID(uuidString: target).flatMap { id in
                 projectStore?.sessions.first { $0.id == id }?.projectID
             }
             notifications.post(request, projectID: projectID)
+        }
+
+        permissionWindow?.refresh()
+        if LaunchConfig.shared.isUITesting,
+           ProcessInfo.processInfo.arguments.contains("-permission-fixture"),
+           let caller = projectStore.sessions.first {
+            if ProcessInfo.processInfo.arguments.contains("-permission-long-fixture"),
+               let target = projectStore.sessions.dropFirst().first {
+                projectStore.updateSession(caller.id) {
+                    $0.title = String(repeating: "A long session title ", count: 12)
+                }
+                permissions.request(grantKey: "sessions.approve", from: caller.id.uuidString,
+                                    target: target.id.uuidString)
+            } else {
+                permissions.request(grantKey: "computer.inspect", from: caller.id.uuidString, target: nil)
+            }
         }
 
         // Child-session launcher: spawn the PTY through the normal terminal
