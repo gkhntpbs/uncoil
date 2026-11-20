@@ -268,8 +268,14 @@ final class ScratchPaletteTests: XCTestCase {
         PaletteEngine.compute(ctx).flatMap(\.items)
     }
 
+    /// The empty palette is a launcher and leaves one-off sessions out on
+    /// purpose; the commands list (`>`) is where every command is offered.
+    private func commands(providers: [AgentProvider]) -> [PaletteItem] {
+        items(context(query: ">", providers: providers))
+    }
+
     func testOneCommandPerLauncherProvider() {
-        let found = items(context(query: "", providers: [.claude, .terminal]))
+        let found = commands(providers: [.claude, .terminal])
             .filter { $0.id.hasPrefix("cmd.scratch.") }
         XCTAssertEqual(found.count, 2)
     }
@@ -277,14 +283,14 @@ final class ScratchPaletteTests: XCTestCase {
     /// Same answer as everywhere else, so an agent that is not installed is not
     /// offered here either.
     func testOnlyTheProvidersTheStripOffers() {
-        let found = items(context(query: "", providers: [.claude]))
+        let found = commands(providers: [.claude])
             .filter { $0.id.hasPrefix("cmd.scratch.") }
         XCTAssertEqual(found.map(\.id), ["cmd.scratch.claude"])
     }
 
     func testTheCommandCarriesTheProviderItWillOpen() throws {
         let item = try XCTUnwrap(
-            items(context(query: "", providers: [.codex]))
+            commands(providers: [.codex])
                 .first { $0.id == "cmd.scratch.codex" }
         )
         guard case .newScratchSession(let provider) = item.action else {
@@ -296,7 +302,7 @@ final class ScratchPaletteTests: XCTestCase {
     /// Available with no project open at all — which is the case it exists for.
     func testItIsOfferedWithNothingElseOpen() {
         XCTAssertFalse(
-            items(context(query: "", providers: [.claude]))
+            commands(providers: [.claude])
                 .filter { $0.id.hasPrefix("cmd.scratch.") }
                 .isEmpty
         )

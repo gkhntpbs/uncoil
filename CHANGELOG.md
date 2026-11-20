@@ -20,6 +20,17 @@ the Edge builds at `/edge/`, straight from the signed feed.
 
 ## Unreleased
 
+## [0.5.1-edge.10] - 2026-11-20
+
+### Fixed
+
+- Uncoil no longer crashes a few seconds after launch when the system language
+  is Turkish. The usage warning ("N% left of the window") had its Turkish
+  translation's arguments swapped, so the percentage was read as an object and
+  the app quit as soon as an account's usage crossed the warning threshold. Every
+  translation's format arguments are now checked against the source string by a
+  unit test.
+
 ## [0.5.0-edge.9] - 2026-11-13
 
 ### Added

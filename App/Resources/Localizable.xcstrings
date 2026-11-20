@@ -2482,7 +2482,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ için %lld%% kaldı"
+            "value" : "%2$@ için %1$lld%% kaldı"
           }
         }
       }

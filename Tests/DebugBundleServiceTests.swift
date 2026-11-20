@@ -61,8 +61,10 @@ final class DebugBundleServiceTests: XCTestCase {
         let result = try service.create()
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: result.bundleURL.path))
+        // Uncoil's own logs (`logs-<category>.log.txt`) are added only when
+        // this Mac has written them, so they are allowed but not required.
         XCTAssertEqual(
-            Set(result.includedFiles),
+            Set(result.includedFiles.filter { !$0.hasPrefix("logs-") }),
             Set([
                 "acceptance-results.txt",
                 "agent-versions.txt",

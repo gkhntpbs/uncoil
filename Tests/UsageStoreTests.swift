@@ -374,9 +374,10 @@ final class UsageAccountIsolationTests: XCTestCase {
         let timed = provider.strategies(for: .providerDefault, userInitiated: false)
             .compactMap { $0 as? ClaudeOAuthUsageStrategy }.first
         XCTAssertEqual(timed?.allowKeychain, false)
-        // And with no credential file and nothing cached, it does not even
-        // offer itself — asking whether the item exists is enough to prompt.
-        XCTAssertEqual(timed?.isAvailable(), false)
+        // Without permission to ask it still offers itself for the default
+        // account, because it reads the Keychain silently: macOS answers only
+        // where the user already chose "Always Allow", and never shows a dialog.
+        XCTAssertEqual(timed?.isAvailable(), true)
 
         let asked = provider.strategies(for: .providerDefault, userInitiated: true)
             .compactMap { $0 as? ClaudeOAuthUsageStrategy }.first
